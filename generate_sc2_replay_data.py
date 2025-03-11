@@ -4,6 +4,7 @@ from datetime import datetime
 from typing import Dict, List, Optional
 import os
 import sc2reader
+from config import API_KEY, REPLAY_FILE, OUTPUT_FILE
 
 class TournamentAnalyzer:
     def __init__(self, api_key: str):
@@ -227,11 +228,6 @@ class TournamentAnalyzer:
             json.dump(self.results, f, indent=2)
 
 def main():
-    # Configuration
-    API_KEY = "your_challonge_api_key_here"
-    REPLAY_FILE = "path_to_your_replay.SC2Replay"
-    OUTPUT_FILE = "tournament_results.json"
-
     # Initialize analyzer
     analyzer = TournamentAnalyzer(API_KEY)
     

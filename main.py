@@ -3,6 +3,8 @@ import json
 from datetime import datetime
 from typing import Dict, List, Optional
 import os
+from config import API_KEY, BNET_CONFIG, REPLAY_FILE, OUTPUT_FILE
+
 
 class TournamentAnalyzer:
     def __init__(self, api_key: str, battlenet_config_path: str):
@@ -23,7 +25,8 @@ class TournamentAnalyzer:
         if not os.path.exists(config_path):
             raise FileNotFoundError(f"Battle.net config file not found at {config_path}")
         
-        with open(config_path, 'r') as f:
+        # Specify the encoding when opening the file
+        with open(config_path, 'r', encoding='utf-8') as f:
             return json.load(f)  # Expected format: {"player_name": "battlenet_id"}
 
     def get_tournament_list(self) -> List[Dict]:
@@ -81,6 +84,15 @@ class TournamentAnalyzer:
             name = participant['attributes']['name']
             participants[participant_id] = name
         return participants
+
+    def print_participants(self, tournament_id: str) -> None:
+        """Print list of participants with ID and name"""
+        participants = self.get_participants(tournament_id)
+        print("\nTournament Participants:")
+        print("-" * 50)
+        for participant_id, name in participants.items():
+            print(f"ID: {participant_id} | Name: {name}")
+        print("-" * 50)
 
     def process_replay_data(self, replay_file: str) -> Dict:
         """Process SC2 replay file - placeholder for your replay processing logic"""
@@ -166,31 +178,30 @@ class TournamentAnalyzer:
             json.dump(self.results, f, indent=2)
 
 def main():
-    # Configuration
-    API_KEY = "your_challonge_api_key_here"
-    BNET_CONFIG = "battlenet_ids.json"
-    REPLAY_FILE = "sc2_replay_data.json"
-    OUTPUT_FILE = "tournament_results.json"
-
     # Initialize analyzer
     analyzer = TournamentAnalyzer(API_KEY, BNET_CONFIG)
-    
+
     # Print tournament list and get user input
     analyzer.print_tournament_list()
-    tournament_id = input("Enter the tournament ID you want to analyze: ").strip()
-    
-    # Analyze tournament
-    try:
-        results = analyzer.analyze_tournament(tournament_id, REPLAY_FILE)
-        
-        # Save results
-        analyzer.save_results(OUTPUT_FILE)
-        print(f"Results saved to {OUTPUT_FILE}")
-        print(f"Tournament: {results['tournament_name']}")
-        print(f"Total matches: {len(results['matches'])}")
-        print(f"Total players: {len(results['players'])}")
-    except Exception as e:
-        print(f"Error: {str(e)}")
+    user_input = input("Enter the tournament ID you want to analyze (add '-p' to print participants only): ").strip()
+
+    parts = user_input.split()
+    tournament_id = parts[0]
+    print_participants_only = '-p' in parts
+
+    if print_participants_only:
+        analyzer.print_participants(tournament_id)
+    else:
+        try:
+            results = analyzer.analyze_tournament(tournament_id, REPLAY_FILE)
+            analyzer.save_results(OUTPUT_FILE)
+            print(f"Results saved to {OUTPUT_FILE}")
+            print(f"Tournament: {results['tournament_name']}")
+            print(f"Total matches: {len(results['matches'])}")
+            print(f"Total players: {len(results['players'])}")
+        except Exception as e:
+            print(f"Error: {str(e)}")
+
 
 if __name__ == "__main__":
     main()
