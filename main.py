@@ -3,7 +3,7 @@ import json
 from datetime import datetime
 from typing import Dict, List, Optional
 import os
-from config import API_KEY, BNET_CONFIG, REPLAY_FILE, OUTPUT_FILE
+from config import API_KEY, BNET_CONFIG, SUB_DOMAIN, REPLAY_FILE, OUTPUT_FILE
 
 class TournamentAnalyzer:
     def __init__(self, api_key: str, battlenet_config_path: str, subdomain: str = None):
@@ -33,6 +33,8 @@ class TournamentAnalyzer:
         """Fetch list of all tournaments using v1 API"""
         url = f"{self.base_url}/tournaments.json"
         params = self._get_params()
+        print(url)
+        print(params)
         response = requests.get(url, params=params)
         
         if response.status_code != 200:
@@ -214,7 +216,7 @@ class TournamentAnalyzer:
 
 def main():
     # Initialize analyzer (set subdomain if needed)
-    analyzer = TournamentAnalyzer(API_KEY, BNET_CONFIG, subdomain=None)
+    analyzer = TournamentAnalyzer(API_KEY, BNET_CONFIG, subdomain=SUB_DOMAIN)
 
     # Print tournament list and get user input
     analyzer.print_tournament_list()
