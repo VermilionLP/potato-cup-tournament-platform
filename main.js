@@ -46,7 +46,9 @@ class TournamentAnalyzer {
         }
 
         const data = JSON.parse(text);
-        return data.map(item => item.tournament);
+        const tournaments = data.map(item => item.tournament);
+        tournaments.sort((a, b) => b.id - a.id);
+        return tournaments;
     }
 
     async printTournamentList() {
