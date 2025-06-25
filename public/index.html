@@ -25,8 +25,15 @@
 
     <div>
         <h2>3. Select Replay Folder</h2>
-        <input type="text" id="replayFolder" placeholder="Enter folder path">
-        <button onclick="runReplayReader()">Process Replays</button>
+        <div id="folderPicker" style="display: none;">
+            <button onclick="selectReplayFolder()">Choose Replay Folder</button>
+        </div>
+        <div id="folderInput" style="display: none;">
+            <input type="text" id="replayFolderPath" placeholder="Enter folder path (e.g., D:\Replays)">
+            <button onclick="useFolderPath()">Use Folder Path</button>
+        </div>
+        <p id="replayFolderStatus"></p>
+        <button id="processReplaysBtn" onclick="runReplayReader()" style="display: none;">Process Replays</button>
         <p id="replayStatus"></p>
         <select id="replayFileSelect" style="display: none;">
             <option value="">Select a replay file...</option>

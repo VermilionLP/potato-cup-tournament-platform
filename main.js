@@ -3,7 +3,7 @@ const fs = require('fs').promises;
 const path = require('path');
 const { exec } = require('child_process');
 const util = require('util');
-const { API_KEY, SUB_DOMAIN, BNET_CONFIG, OUTPUT_FILE, PYTHON_SCRIPT } = require('./config');
+const { API_KEY, SUB_DOMAIN, BNET_CONFIG, OUTPUT_FILE, PYTHON_SCRIPT, TEMP_REPLAY_DIR, REPLAY_FILE } = require('./config');
 
 const app = express();
 const port = 3000;
@@ -137,8 +137,7 @@ class TournamentAnalyzer {
             const player1Name = participants[player1Id] || "Unknown";
             const player2Name = participants[player2Id] || "Unknown";
 
-            // Use matchReplayMap to get player associations
-            const player1Bnet = matchReplayMap[player1Name] 
+            const player1Bnet = matchReplayMap[player1Name]
                 ? battlenetIds.find(p => p.challonge_names.includes(matchReplayMap[player1Name])) || null
                 : battlenetIds.find(p => p.challonge_names.includes(player1Name)) || null;
             const player2Bnet = matchReplayMap[player2Name]
@@ -210,10 +209,17 @@ class TournamentAnalyzer {
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Create temp replay directory if it doesn't exist
+if (!TEMP_REPLAY_DIR) {
+    throw new Error('TEMP_REPLAY_DIR is not defined in config.js');
+}
+fs.mkdir(TEMP_REPLAY_DIR, { recursive: true }).catch(error => {
+    console.error(`Failed to create temporary replay directory: ${error.message}`);
+});
+
 const analyzer = new TournamentAnalyzer(API_KEY, BNET_CONFIG, SUB_DOMAIN);
 
 // API Endpoints
-
 app.get('/api/tournaments', async (req, res) => {
     try {
         const tournaments = await analyzer.getTournamentList();
@@ -234,24 +240,52 @@ app.get('/api/tournament/:id', async (req, res) => {
 
 app.get('/api/replay-files', async (req, res) => {
     try {
-        const files = await fs.readdir(path.dirname(REPLAY_FILE));
+        const dir = path.dirname(REPLAY_FILE);
+        if (!dir) {
+            throw new Error('Invalid REPLAY_FILE path in config.js');
+        }
+        const files = await fs.readdir(dir).catch(error => {
+            console.error(`Failed to read directory ${dir}: ${error.message}`);
+            return [];
+        });
         const replayFiles = files.filter(f => f.startsWith('replay_dat_') && f.endsWith('.json'));
         res.json(replayFiles);
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        console.error(`Error in /api/replay-files: ${error.message}`);
+        res.status(500).json({ error: `Failed to fetch replay files: ${error.message}` });
     }
 });
 
 app.post('/api/run-replayreader', async (req, res) => {
-    const { folder } = req.body;
-    if (!folder) {
-        return res.status(400).json({ error: 'Folder path is required' });
-    }
     try {
+        const { files, folder } = req.body;
+        if (!files && !folder) {
+            return res.status(400).json({ error: 'Either files or folder path is required' });
+        }
+
+        // Clear temp directory
+        const tempFiles = await fs.readdir(TEMP_REPLAY_DIR);
+        await Promise.all(tempFiles.map(f => fs.unlink(path.join(TEMP_REPLAY_DIR, f))));
+
+        let replayFolder = TEMP_REPLAY_DIR;
+
+        if (files && Array.isArray(files)) {
+            // Handle uploaded files (Chromium browsers)
+            for (const file of files) {
+                const buffer = Buffer.from(file.content, 'base64');
+                await fs.writeFile(path.join(TEMP_REPLAY_DIR, file.name), buffer);
+            }
+        } else if (folder) {
+            // Use provided folder path directly (Firefox fallback)
+            replayFolder = folder;
+        }
+
+        // Run replayreader.py
         const execPromise = util.promisify(exec);
-        await execPromise(`python ${PYTHON_SCRIPT} "${folder}"`);
+        await execPromise(`python ${PYTHON_SCRIPT} "${replayFolder}"`);
         res.json({ message: 'Replay processing completed' });
     } catch (error) {
+        console.error(`Error in /api/run-replayreader: ${error.message}`);
         res.status(500).json({ error: `Failed to run replayreader.py: ${error.message}` });
     }
 });
@@ -274,7 +308,6 @@ app.post('/api/analyze', async (req, res) => {
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
-
 
 app.listen(port, () => {
     console.log(`Server running at http://localhost:${port}`);
