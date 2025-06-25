@@ -1,5 +1,12 @@
+const express = require('express');
 const fs = require('fs').promises;
-const { API_KEY, SUB_DOMAIN, BNET_CONFIG, REPLAY_FILE, OUTPUT_FILE } = require('./config');
+const path = require('path');
+const { exec } = require('child_process');
+const util = require('util');
+const { API_KEY, SUB_DOMAIN, BNET_CONFIG, OUTPUT_FILE, PYTHON_SCRIPT } = require('./config');
+
+const app = express();
+const port = 3000;
 
 class TournamentAnalyzer {
     constructor(apiKey, battlenetConfigPath, subdomain) {
@@ -14,8 +21,12 @@ class TournamentAnalyzer {
     }
 
     async _loadBattlenetConfig(configPath) {
-        const data = await fs.readFile(configPath, 'utf-8');
-        return JSON.parse(data);
+        try {
+            const data = await fs.readFile(configPath, 'utf-8');
+            return JSON.parse(data);
+        } catch (error) {
+            throw new Error(`Failed to load Battle.net config: ${error.message}`);
+        }
     }
 
     _getParams() {
@@ -32,33 +43,12 @@ class TournamentAnalyzer {
     async getTournamentList() {
         const url = `${this.baseUrl}/tournaments.json`;
         const params = this._getParams();
-
-        console.log(`Sending request to ${url} with params ${params.toString()}`);
         const response = await fetch(`${url}?${params.toString()}`, { headers: this.headers });
-        console.log(`Response status: ${response.status}`);
-        console.log(`Response headers: ${JSON.stringify(Object.fromEntries(response.headers))}`);
-        
-        const text = await response.text();
-        console.log(`Response text: ${text.slice(0, 500)}...`);
-
         if (!response.ok) {
-            throw new Error(`Failed to fetch tournament list: ${response.status} - ${text}`);
+            throw new Error(`Failed to fetch tournament list: ${response.status} - ${await response.text()}`);
         }
-
-        const data = JSON.parse(text);
-        const tournaments = data.map(item => item.tournament);
-        tournaments.sort((a, b) => b.id - a.id);
-        return tournaments;
-    }
-
-    async printTournamentList() {
-        const tournaments = await this.getTournamentList();
-        console.log("\nAvailable Tournaments:");
-        console.log("-".repeat(50));
-        tournaments.forEach(tournament => {
-            console.log(`ID: ${tournament.id} | Name: ${tournament.name}`);
-        });
-        console.log("-".repeat(50));
+        const data = await response.json();
+        return data.map(item => item.tournament);
     }
 
     async getTournamentInfo(tournamentId, includeExtras = false) {
@@ -98,34 +88,28 @@ class TournamentAnalyzer {
         const participants = {};
         data.forEach(participant => {
             const p = participant.participant;
-            participants[String(p.id)] = p.display_name	;
+            participants[String(p.id)] = p.name;
         });
         return participants;
     }
 
-    async printParticipants(tournamentId) {
-        const participants = await this.getParticipants(tournamentId);
-        console.log("\nTournament Participants:");
-        console.log("-".repeat(50));
-        for (const [id, display_name] of Object.entries(participants)) {
-            console.log(`ID: ${id} | Name: ${display_name}`);
-        };
-        console.log("-".repeat(50));
-    }
-
     async processReplayData(replayFile) {
-        const replayDataList = JSON.parse(await fs.readFile(replayFile, 'utf-8'));
-        const playerRaces = {};
-        for (const replay of replayDataList) {
-            for (const player of replay.players) {
-                playerRaces[player.name] = player.actual_race;
+        try {
+            const replayDataList = JSON.parse(await fs.readFile(replayFile, 'utf-8'));
+            const playerRaces = {};
+            for (const replay of replayDataList) {
+                for (const player of replay.players) {
+                    playerRaces[player.name] = player.actual_race;
+                }
             }
+            const matchStart = replayDataList.length > 0 ? replayDataList[0].start_time : new Date().toISOString();
+            return { player_races: playerRaces, match_start: matchStart };
+        } catch (error) {
+            throw new Error(`Failed to process replay data: ${error.message}`);
         }
-        const matchStart = replayDataList.length > 0 ? replayDataList[0].start_time : new Date().toISOString();
-        return { player_races: playerRaces, match_start: matchStart };
     }
 
-    async analyzeTournament(tournamentId, replayFile) {
+    async analyzeTournament(tournamentId, replayFile, matchReplayMap) {
         const [tournamentInfo, replayData, battlenetIds] = await Promise.all([
             this.getTournamentInfo(tournamentId, true),
             this.processReplayData(replayFile),
@@ -133,7 +117,7 @@ class TournamentAnalyzer {
         ]);
 
         const participants = Object.fromEntries(
-            (tournamentInfo.participants || []).map(p => [String(p.participant.id), p.participant.display_name])
+            (tournamentInfo.participants || []).map(p => [String(p.participant.id), p.participant.name])
         );
         const matches = (tournamentInfo.matches || []).map(m => m.match);
 
@@ -153,8 +137,13 @@ class TournamentAnalyzer {
             const player1Name = participants[player1Id] || "Unknown";
             const player2Name = participants[player2Id] || "Unknown";
 
-            const player1Bnet = battlenetIds.find(p => p.challonge_names.includes(player1Name)) || null;
-            const player2Bnet = battlenetIds.find(p => p.challonge_names.includes(player2Name)) || null;
+            // Use matchReplayMap to get player associations
+            const player1Bnet = matchReplayMap[player1Name] 
+                ? battlenetIds.find(p => p.challonge_names.includes(matchReplayMap[player1Name])) || null
+                : battlenetIds.find(p => p.challonge_names.includes(player1Name)) || null;
+            const player2Bnet = matchReplayMap[player2Name]
+                ? battlenetIds.find(p => p.challonge_names.includes(matchReplayMap[player2Name])) || null
+                : battlenetIds.find(p => p.challonge_names.includes(player2Name)) || null;
 
             const scoresCsv = match.scores_csv || "0-0";
             const [score1, score2] = scoresCsv.split('-').map(s => parseInt(s.trim()) || 0);
@@ -217,36 +206,76 @@ class TournamentAnalyzer {
     }
 }
 
-async function main() {
-    const analyzer = new TournamentAnalyzer(API_KEY, BNET_CONFIG, SUB_DOMAIN);
+// Initialize Express
+app.use(express.json());
+app.use(express.static(path.join(__dirname, 'public')));
 
-    await analyzer.printTournamentList();
-    const userInput = await new Promise(resolve => {
-        process.stdin.once('data', data => resolve(data.toString().trim()));
-        process.stdout.write("Enter the tournament ID you want to analyze (add '-p' to print participants only): ");
-    });
+const analyzer = new TournamentAnalyzer(API_KEY, BNET_CONFIG, SUB_DOMAIN);
 
-    const [tournamentId, ...flags] = userInput.split(' ');
-    const printParticipantsOnly = flags.includes('-p');
+// API Endpoints
 
-    if (printParticipantsOnly) {
-        await analyzer.printParticipants(tournamentId);
-    } else {
-        try {
-            const results = await analyzer.analyzeTournament(tournamentId, REPLAY_FILE);
-            await analyzer.saveResults(OUTPUT_FILE);
-            console.log(`Results saved to ${OUTPUT_FILE}`);
-            console.log(`Tournament: ${results.tournament_name}`);
-            console.log(`Total matches: ${results.matches.length}`);
-            console.log(`Total players: ${Object.keys(results.players).length}`);
-        } catch (error) {
-            console.error(`Error: ${error.message}`);
-        }
+app.get('/api/tournaments', async (req, res) => {
+    try {
+        const tournaments = await analyzer.getTournamentList();
+        res.json(tournaments);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
     }
-    process.exit(0); // Exit cleanly after input
-}
+});
 
-main().catch(error => {
-    console.error(`Main error: ${error.message}`);
-    process.exit(1);
+app.get('/api/tournament/:id', async (req, res) => {
+    try {
+        const tournamentInfo = await analyzer.getTournamentInfo(req.params.id, true);
+        res.json(tournamentInfo);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.get('/api/replay-files', async (req, res) => {
+    try {
+        const files = await fs.readdir(path.dirname(REPLAY_FILE));
+        const replayFiles = files.filter(f => f.startsWith('replay_dat_') && f.endsWith('.json'));
+        res.json(replayFiles);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.post('/api/run-replayreader', async (req, res) => {
+    const { folder } = req.body;
+    if (!folder) {
+        return res.status(400).json({ error: 'Folder path is required' });
+    }
+    try {
+        const execPromise = util.promisify(exec);
+        await execPromise(`python ${PYTHON_SCRIPT} "${folder}"`);
+        res.json({ message: 'Replay processing completed' });
+    } catch (error) {
+        res.status(500).json({ error: `Failed to run replayreader.py: ${error.message}` });
+    }
+});
+
+app.post('/api/analyze', async (req, res) => {
+    const { tournamentId, replayFile, matchReplayMap } = req.body;
+    if (!tournamentId || !replayFile) {
+        return res.status(400).json({ error: 'tournamentId and replayFile are required' });
+    }
+    try {
+        const results = await analyzer.analyzeTournament(tournamentId, path.join(path.dirname(REPLAY_FILE), replayFile), matchReplayMap || {});
+        await analyzer.saveResults(OUTPUT_FILE);
+        res.json(results);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Serve the web interface
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+
+app.listen(port, () => {
+    console.log(`Server running at http://localhost:${port}`);
 });

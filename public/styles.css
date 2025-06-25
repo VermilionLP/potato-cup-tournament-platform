@@ -1,0 +1,40 @@
+body {
+    font-family: Arial, sans-serif;
+    margin: 20px;
+    max-width: 1200px;
+}
+
+h1, h2, h3 {
+    color: #333;
+}
+
+select, input, button {
+    margin: 10px 0;
+    padding: 8px;
+}
+
+#matchList, #replayPlayerList {
+    border: 1px solid #ccc;
+    padding: 10px;
+    min-height: 200px;
+    background: #f9f9f9;
+}
+
+.sortable li {
+    padding: 8px;
+    margin: 5px;
+    background: #fff;
+    border: 1px solid #ddd;
+    cursor: move;
+}
+
+.sortable li:hover {
+    background: #e0e0e0;
+}
+
+pre {
+    background: #f4f4f4;
+    padding: 10px;
+    max-height: 400px;
+    overflow-y: auto;
+}

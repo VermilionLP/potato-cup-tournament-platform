@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>Challonge SC2 分析工具</title>
+    <style>
+        .dropzone {
+            border: 2px dashed #ccc;
+            padding: 20px;
+            margin: 10px 0;
+            min-height: 100px;
+        }
+        .match, .replay {
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin: 5px;
+            cursor: move;
+        }
+    </style>
+</head>
+<body>
+    <h1>Challonge SC2 数据分析工具</h1>
+    
+    <!-- 步骤1: 获取赛事列表 -->
+    <button id="fetchTournaments">获取赛事列表</button>
+    <select id="tournamentSelect"></select>
+    
+    <!-- 步骤2: 获取赛事详情 -->
+    <button id="fetchTournamentDetails">获取赛事详情</button>
+    <div id="tournamentDetails"></div>
+    
+    <!-- 步骤3: 选择回放文件夹 -->
+    <input type="file" id="replayFolder" webkitdirectory directory multiple />
+    <button id="processReplays">处理回放文件</button>
+    <div id="replayStatus"></div>
+    
+    <!-- 步骤4: 拖拽匹配 -->
+    <div id="matchReplayMapping">
+        <h3>拖拽匹配比赛与回放</h3>
+        <div id="matches" class="dropzone">Challonge比赛 (拖到此处)</div>
+        <div id="replays" class="dropzone">SC2回放 (拖到此处)</div>
+    </div>
+    
+    <!-- 步骤5: 导出结果 -->
+    <button id="exportJson">导出为JSON</button>
+    <textarea id="jsonOutput" style="width:100%;height:300px;"></textarea>
+
+    <!-- 分别加载 service.js 和 main.js -->
+    <script type="module" src="service.js"></script>
+    <script type="module" src="main.js"></script>
+    <script type="module">
+        import TournamentAnalyzer from './main.js';
+
+        // 初始化分析器
+        const analyzer = new TournamentAnalyzer();
+
+        // 绑定事件监听器
+        document.getElementById('fetchTournaments').addEventListener('click', async () => {
+            try {
+                const tournaments = await window.apiService.fetchTournamentList();
+                analyzer.renderTournamentList(tournaments);
+            } catch (error) {
+                alert('获取赛事列表失败: ' + error.message);
+            }
+        });
+
+        document.getElementById('fetchTournamentDetails').addEventListener('click', async () => {
+            try {
+                const select = document.getElementById('tournamentSelect');
+                if (!select.value) {
+                    alert('请先选择一个赛事');
+                    return;
+                }
+                
+                const details = await window.apiService.fetchTournamentDetails(select.value);
+                analyzer.renderTournamentDetails(details.tournament);
+            } catch (error) {
+                alert('获取赛事详情失败: ' + error.message);
+            }
+        });
+
+        document.getElementById('processReplays').addEventListener('click', async () => {
+            try {
+                const input = document.getElementById('replayFolder');
+                if (!input.files.length) {
+                    alert('请选择包含回放文件的文件夹');
+                    return;
+                }
+                
+                const results = await window.apiService.processReplayFiles(input.files);
+                analyzer.displayReplayResults(results);
+            } catch (error) {
+                alert('处理回放文件失败: ' + error.message);
+            }
+        });
+
+        document.getElementById('exportJson').addEventListener('click', () => {
+            analyzer.exportToJson();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tournament Analyzer</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+</head>
+<body>
+    <h1>Tournament Analyzer</h1>
+
+    <div>
+        <h2>1. Select Tournament</h2>
+        <select id="tournamentSelect">
+            <option value="">Select a tournament...</option>
+        </select>
+        <button onclick="loadTournament()">Load Tournament</button>
+    </div>
+
+    <div id="tournamentInfo" style="display: none;">
+        <h2>2. Tournament Details</h2>
+        <pre id="tournamentDetails"></pre>
+    </div>
+
+    <div>
+        <h2>3. Select Replay Folder</h2>
+        <input type="text" id="replayFolder" placeholder="Enter folder path">
+        <button onclick="runReplayReader()">Process Replays</button>
+        <p id="replayStatus"></p>
+        <select id="replayFileSelect" style="display: none;">
+            <option value="">Select a replay file...</option>
+        </select>
+    </div>
+
+    <div id="matchReplaySection" style="display: none;">
+        <h2>4. Match Replays to Players</h2>
+        <div style="display: flex;">
+            <div style="width: 50%;">
+                <h3>Matches</h3>
+                <ul id="matchList" class="sortable"></ul>
+            </div>
+            <div style="width: 50%;">
+                <h3>Replay Players</h3>
+                <ul id="replayPlayerList" class="sortable"></ul>
+            </div>
+        </div>
+        <button onclick="analyzeTournament()">Analyze and Export JSON</button>
+    </div>
+
+    <div id="resultsSection" style="display: none;">
+        <h2>5. Results</h2>
+        <pre id="results"></pre>
+        <a id="downloadLink" href="#" download="results.json">Download JSON</a>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
