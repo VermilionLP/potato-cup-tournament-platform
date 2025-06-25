@@ -38,14 +38,43 @@
         <select id="replayFileSelect" style="display: none;">
             <option value="">Select a replay file...</option>
         </select>
+        <button id="loadPlayersBtn" onclick="loadReplayPlayers()" style="display: none;">Load Replay Players</button>
     </div>
 
     <div id="matchReplaySection" style="display: none;">
-        <h2>4. Match Replays to Players</h2>
+        <h2>4. Link Matches to Replay Files</h2>
         <div style="display: flex;">
             <div style="width: 50%;">
                 <h3>Matches</h3>
                 <ul id="matchList" class="sortable"></ul>
+            </div>
+            <div style="width: 50%;">
+                <h3>Replay Files</h3>
+                <ul id="replayFileList" class="sortable"></ul>
+            </div>
+        </div>
+    </div>
+
+    <div id="playerBnetSection" style="display: none;">
+        <h2>5. Link Participants to Battle.net IDs</h2>
+        <div style="display: flex;">
+            <div style="width: 50%;">
+                <h3>Challonge Participants</h3>
+                <ul id="participantList" class="sortable"></ul>
+            </div>
+            <div style="width: 50%;">
+                <h3>Battle.net IDs</h3>
+                <ul id="bnetIdList" class="sortable"></ul>
+            </div>
+        </div>
+    </div>
+
+    <div id="playerReplaySection" style="display: none;">
+        <h2>6. Link Replay Players</h2>
+        <div style="display: flex;">
+            <div style="width: 50%;">
+                <h3>Matches</h3>
+                <ul id="matchPlayerList" class="sortable"></ul>
             </div>
             <div style="width: 50%;">
                 <h3>Replay Players</h3>
@@ -56,7 +85,7 @@
     </div>
 
     <div id="resultsSection" style="display: none;">
-        <h2>5. Results</h2>
+        <h2>7. Results</h2>
         <pre id="results"></pre>
         <a id="downloadLink" href="#" download="results.json">Download JSON</a>
     </div>

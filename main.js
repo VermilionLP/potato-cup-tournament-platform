@@ -25,6 +25,7 @@ class TournamentAnalyzer {
             const data = await fs.readFile(configPath, 'utf-8');
             return JSON.parse(data);
         } catch (error) {
+            console.error(`Error loading Battle.net config: ${error.message}`);
             throw new Error(`Failed to load Battle.net config: ${error.message}`);
         }
     }
@@ -96,20 +97,30 @@ class TournamentAnalyzer {
     async processReplayData(replayFile) {
         try {
             const replayDataList = JSON.parse(await fs.readFile(replayFile, 'utf-8'));
+            if (!Array.isArray(replayDataList)) {
+                throw new Error('Replay data is not an array');
+            }
             const playerRaces = {};
             for (const replay of replayDataList) {
+                if (!replay.players || !Array.isArray(replay.players)) {
+                    console.warn(`Replay data missing players: ${JSON.stringify(replay)}`);
+                    continue;
+                }
                 for (const player of replay.players) {
-                    playerRaces[player.name] = player.actual_race;
+                    if (player.name && player.actual_race) {
+                        playerRaces[player.name] = player.actual_race;
+                    }
                 }
             }
             const matchStart = replayDataList.length > 0 ? replayDataList[0].start_time : new Date().toISOString();
             return { player_races: playerRaces, match_start: matchStart };
         } catch (error) {
+            console.error(`Error processing replay data: ${error.message}`);
             throw new Error(`Failed to process replay data: ${error.message}`);
         }
     }
 
-    async analyzeTournament(tournamentId, replayFile, matchReplayMap) {
+    async analyzeTournament(tournamentId, replayFile, matchReplayMap, matchFileMap, bnetIdMap) {
         const [tournamentInfo, replayData, battlenetIds] = await Promise.all([
             this.getTournamentInfo(tournamentId, true),
             this.processReplayData(replayFile),
@@ -137,11 +148,14 @@ class TournamentAnalyzer {
             const player1Name = participants[player1Id] || "Unknown";
             const player2Name = participants[player2Id] || "Unknown";
 
-            const player1Bnet = matchReplayMap[player1Name]
-                ? battlenetIds.find(p => p.challonge_names.includes(matchReplayMap[player1Name])) || null
+            const player1ReplayName = matchReplayMap[player1Name] || player1Name;
+            const player2ReplayName = matchReplayMap[player2Name] || player2Name;
+
+            const player1Bnet = bnetIdMap[player1Name]
+                ? battlenetIds.find(p => p.challonge_names.includes(bnetIdMap[player1Name])) || null
                 : battlenetIds.find(p => p.challonge_names.includes(player1Name)) || null;
-            const player2Bnet = matchReplayMap[player2Name]
-                ? battlenetIds.find(p => p.challonge_names.includes(matchReplayMap[player2Name])) || null
+            const player2Bnet = bnetIdMap[player2Name]
+                ? battlenetIds.find(p => p.challonge_names.includes(bnetIdMap[player2Name])) || null
                 : battlenetIds.find(p => p.challonge_names.includes(player2Name)) || null;
 
             const scoresCsv = match.scores_csv || "0-0";
@@ -156,15 +170,17 @@ class TournamentAnalyzer {
                 [totalScore1, totalScore2] = [score1, score2];
             }
 
-            for (const [playerName, bnet, score, totalScore] of [
-                [player1Name, player1Bnet, score1, totalScore1],
-                [player2Name, player2Bnet, score2, totalScore2]
+            for (const [playerName, replayName, bnet, score, totalScore] of [
+                [player1Name, player1ReplayName, player1Bnet, score1, totalScore1],
+                [player2Name, player2ReplayName, player2Bnet, score2, totalScore2]
             ]) {
                 if (!this.results.players[playerName]) {
                     this.results.players[playerName] = {
+                        challonge_name: playerName,
+                        replay_name: replayName,
                         battlenet_id: bnet && bnet.battle_net_name ? bnet.battle_net_name : "Unknown",
                         battlenet_url: bnet ? bnet.battle_net_url : "Unknown",
-                        race: replayData.player_races[playerName] || "Unknown",
+                        race: replayData.player_races[replayName] || "Unknown",
                         total_score: 0,
                         matches_played: 0
                     };
@@ -175,19 +191,22 @@ class TournamentAnalyzer {
 
             this.results.matches.push({
                 match_id: match.id,
+                replay_file: matchFileMap[String(match.id)] || "Unknown",
                 player1: {
-                    name: player1Name,
+                    challonge_name: player1Name,
+                    replay_name: player1ReplayName,
                     battlenet_id: player1Bnet && player1Bnet.battle_net_name ? player1Bnet.battle_net_name : "Unknown",
                     score: score1,
                     total_score: totalScore1,
-                    race: replayData.player_races[player1Name] || "Unknown"
+                    race: replayData.player_races[player1ReplayName] || "Unknown"
                 },
                 player2: {
-                    name: player2Name,
+                    challonge_name: player2Name,
+                    replay_name: player2ReplayName,
                     battlenet_id: player2Bnet && player2Bnet.battle_net_name ? player2Bnet.battle_net_name : "Unknown",
                     score: score2,
                     total_score: totalScore2,
-                    race: replayData.player_races[player2Name] || "Unknown"
+                    race: replayData.player_races[player2ReplayName] || "Unknown"
                 },
                 start_time: match.started_at || replayData.match_start,
                 state: match.state,
@@ -291,15 +310,15 @@ app.post('/api/run-replayreader', async (req, res) => {
 });
 
 app.post('/api/analyze', async (req, res) => {
-    const { tournamentId, replayFile, matchReplayMap } = req.body;
+    const { tournamentId, replayFile, matchReplayMap, matchFileMap, bnetIdMap } = req.body;
     if (!tournamentId || !replayFile) {
         return res.status(400).json({ error: 'tournamentId and replayFile are required' });
     }
     try {
-        const results = await analyzer.analyzeTournament(tournamentId, path.join(path.dirname(REPLAY_FILE), replayFile), matchReplayMap || {});
-        await analyzer.saveResults(OUTPUT_FILE);
+        const results = await analyzer.analyzeTournament(tournamentId, path.join(path.dirname(REPLAY_FILE), replayFile), matchReplayMap || {}, matchFileMap || {}, bnetIdMap || {});
         res.json(results);
     } catch (error) {
+        console.error(`Error in /api/analyze: ${error.message}`);
         res.status(500).json({ error: error.message });
     }
 });

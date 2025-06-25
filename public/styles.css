@@ -13,7 +13,7 @@ select, input, button {
     padding: 8px;
 }
 
-#matchList, #replayPlayerList {
+#matchList, #replayFileList, #participantList, #bnetIdList, #matchPlayerList, #replayPlayerList {
     border: 1px solid #ccc;
     padding: 10px;
     min-height: 200px;
