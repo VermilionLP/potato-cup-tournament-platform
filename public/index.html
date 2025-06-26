@@ -38,19 +38,19 @@
         <select id="replayFileSelect" style="display: none;">
             <option value="">Select a replay file...</option>
         </select>
-        <button id="loadPlayersBtn" onclick="loadReplayPlayers()" style="display: none;">Load Replay Players</button>
+        <button id="loadPlayersBtn" onclick="loadReplayPlayers()" style="display: none;">Load Replay Data</button>
     </div>
 
-    <div id="matchReplaySection" style="display: none;">
-        <h2>4. Link Matches to Replay Files</h2>
+    <div id="matchReplayObjectSection" style="display: none;">
+        <h2>4. Link Matches to Replay Objects</h2>
         <div style="display: flex;">
             <div style="width: 50%;">
-                <h3>Matches</h3>
+                <h3>Challonge Matches</h3>
                 <ul id="matchList" class="sortable"></ul>
             </div>
             <div style="width: 50%;">
-                <h3>Replay Files</h3>
-                <ul id="replayFileList" class="sortable"></ul>
+                <h3>Replay Match Objects</h3>
+                <ul id="replayObjectList" class="sortable"></ul>
             </div>
         </div>
     </div>
@@ -67,25 +67,11 @@
                 <ul id="bnetIdList" class="sortable"></ul>
             </div>
         </div>
-    </div>
-
-    <div id="playerReplaySection" style="display: none;">
-        <h2>6. Link Replay Players</h2>
-        <div style="display: flex;">
-            <div style="width: 50%;">
-                <h3>Matches</h3>
-                <ul id="matchPlayerList" class="sortable"></ul>
-            </div>
-            <div style="width: 50%;">
-                <h3>Replay Players</h3>
-                <ul id="replayPlayerList" class="sortable"></ul>
-            </div>
-        </div>
         <button onclick="analyzeTournament()">Analyze and Export JSON</button>
     </div>
 
     <div id="resultsSection" style="display: none;">
-        <h2>7. Results</h2>
+        <h2>6. Results</h2>
         <pre id="results"></pre>
         <a id="downloadLink" href="#" download="results.json">Download JSON</a>
     </div>

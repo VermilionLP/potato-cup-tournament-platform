@@ -1,9 +1,9 @@
 let tournaments = [];
 let tournamentInfo = null;
 let replayFiles = [];
-let matchReplayMap = {};
-let matchFileMap = {};
+let matchObjectMap = {};
 let bnetIdMap = {};
+let replayMatchObjects = [];
 let selectedReplayFiles = [];
 let selectedFolderPath = '';
 let isFolderPickerSupported = typeof window.showDirectoryPicker === 'function';
@@ -36,7 +36,7 @@ async function loadTournament() {
         document.getElementById('tournamentDetails').textContent = JSON.stringify(tournamentInfo, null, 2);
         document.getElementById('tournamentInfo').style.display = 'block';
 
-        // Populate match list for match-to-replay linking
+        // Populate match list for match-to-replay-object linking
         const matchList = document.getElementById('matchList');
         matchList.innerHTML = '';
         const participants = Object.fromEntries(
@@ -48,21 +48,8 @@ async function loadTournament() {
             li.dataset.matchId = match.id;
             li.dataset.player1 = participants[String(match.player1_id)] || 'Unknown';
             li.dataset.player2 = participants[String(match.player2_id)] || 'Unknown';
-            li.textContent = `Match ${match.id}: ${li.dataset.player1} vs ${li.dataset.player2}`;
+            li.textContent = `Match ${match.id}: ${li.dataset.player1} vs ${li.dataset.player2} (${match.started_at})`;
             matchList.appendChild(li);
-        });
-
-        // Populate match list for player-to-replay linking
-        const matchPlayerList = document.getElementById('matchPlayerList');
-        matchPlayerList.innerHTML = '';
-        (tournamentInfo.matches || []).forEach(m => {
-            const match = m.match;
-            const li = document.createElement('li');
-            li.dataset.matchId = match.id;
-            li.dataset.player1 = participants[String(match.player1_id)] || 'Unknown';
-            li.dataset.player2 = participants[String(match.player2_id)] || 'Unknown';
-            li.textContent = `Match ${match.id}: ${li.dataset.player1} vs ${li.dataset.player2}`;
-            matchPlayerList.appendChild(li);
         });
 
         // Populate participant list for Battle.net ID linking
@@ -77,9 +64,9 @@ async function loadTournament() {
             participantList.appendChild(li);
         });
 
-        document.getElementById('matchReplaySection').style.display = 'block';
+        document.getElementById('matchReplayObjectSection').style.display = 'block';
         document.getElementById('playerBnetSection').style.display = 'block';
-        setupDragAndDrop();
+        setupDragAndDrop(); // Keep for potential reordering, but mapping will use position
     } catch (error) {
         status.textContent = `Error loading tournament: ${error.message}`;
     }
@@ -169,8 +156,6 @@ async function loadReplayFiles() {
         replayFiles = Array.isArray(data) ? data : [];
         const select = document.getElementById('replayFileSelect');
         select.innerHTML = '<option value="">Select a replay file...</option>';
-        const replayFileList = document.getElementById('replayFileList');
-        replayFileList.innerHTML = '';
 
         if (replayFiles.length === 0) {
             status.textContent = 'No replay files found. Ensure replayreader.py generated replay_dat_*.json files.';
@@ -184,17 +169,12 @@ async function loadReplayFiles() {
             option.value = file;
             option.textContent = file;
             select.appendChild(option);
-
-            const li = document.createElement('li');
-            li.dataset.file = file;
-            li.textContent = file;
-            replayFileList.appendChild(li);
         });
         select.style.display = 'block';
         document.getElementById('loadPlayersBtn').style.display = 'block';
-        document.getElementById('playerReplaySection').style.display = 'block';
         status.textContent = '';
     } catch (error) {
+        console.error('Error in loadReplayFiles:', error);
         status.textContent = `Error loading replay files: ${error.message}`;
         document.getElementById('replayFileSelect').style.display = 'none';
         document.getElementById('loadPlayersBtn').style.display = 'none';
@@ -209,57 +189,76 @@ async function loadReplayPlayers() {
     }
 
     const status = document.getElementById('replayStatus');
-    const replayPlayerList = document.getElementById('replayPlayerList');
-    replayPlayerList.innerHTML = '';
-    status.textContent = 'Loading players...';
+    const replayObjectList = document.getElementById('replayObjectList');
+    const bnetIdList = document.getElementById('bnetIdList');
+    replayObjectList.innerHTML = '';
+    bnetIdList.innerHTML = '';
+    status.textContent = 'Loading replay data...';
 
     try {
-        console.log(`Fetching /api/analyze for replayFile: ${replayFile}`);
-        const response = await fetch(`/api/analyze`, {
+        console.log(`Fetching /api/load-replay-data for replayFile: ${replayFile}`);
+        const response = await fetch(`/api/load-replay-data`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                tournamentId: document.getElementById('tournamentSelect').value, 
-                replayFile 
-            })
+            body: JSON.stringify({ replayFile })
         });
 
         const data = await response.json();
-        console.log('Response from /api/analyze:', data);
+        console.log('Response from /api/load-replay-data:', data);
 
         if (!response.ok) {
-            throw new Error(data.error || 'Failed to analyze replay');
+            throw new Error(data.error || 'Failed to load replay data');
         }
 
-        if (!data.players || typeof data.players !== 'object' || Object.keys(data.players).length === 0) {
-            status.textContent = 'No players found in the selected replay file. Check replayreader.py output or file contents.';
+        if (!data.matches || !Array.isArray(data.matches)) {
+            status.textContent = 'No match data found in the selected replay file. Check replayreader.py output.';
             return;
         }
 
-        Object.keys(data.players).forEach(player => {
+        // Populate replay match objects
+        replayMatchObjects = data.matches;
+        replayMatchObjects.forEach((match, index) => {
             const li = document.createElement('li');
-            li.dataset.player = player;
-            li.textContent = `${player} (${data.players[player].race || 'Unknown'})`;
-            replayPlayerList.appendChild(li);
+            li.dataset.matchIndex = index;
+            li.textContent = `Match ${index + 1}: ${match.players.map(p => p.name).join(' vs ')} (${match.start_time})`;
+            replayObjectList.appendChild(li);
         });
 
-        status.textContent = `Loaded ${Object.keys(data.players).length} players.`;
+        // Populate unique Battle.net IDs
+        const uniquePlayers = new Map();
+        replayMatchObjects.forEach(match => {
+            match.players.forEach(player => {
+                if (player.name && !uniquePlayers.has(player.name)) {
+                    uniquePlayers.set(player.name, player.battle_net_url || '');
+                }
+            });
+        });
+
+        uniquePlayers.forEach((battleNetUrl, name) => {
+            const li = document.createElement('li');
+            li.dataset.bnetId = name;
+            li.textContent = `${name} (${battleNetUrl || 'No URL'})`;
+            bnetIdList.appendChild(li);
+        });
+
+        document.getElementById('playerBnetSection').style.display = 'block';
+        status.textContent = `Loaded ${replayMatchObjects.length} matches and ${uniquePlayers.size} unique players.`;
     } catch (error) {
         console.error('Error in loadReplayPlayers:', error);
-        status.textContent = `Error loading players: ${error.message}`;
+        status.textContent = `Error loading replay data: ${error.message}`;
     }
 }
 
 function setupDragAndDrop() {
     Sortable.create(document.getElementById('matchList'), {
-        group: 'matches',
+        group: 'match-objects',
         animation: 150,
-        onEnd: updateMatchFileMap
+        onEnd: updateMatchObjectMap
     });
-    Sortable.create(document.getElementById('replayFileList'), {
-        group: 'matches',
+    Sortable.create(document.getElementById('replayObjectList'), {
+        group: 'match-objects',
         animation: 150,
-        onEnd: updateMatchFileMap
+        onEnd: updateMatchObjectMap
     });
 
     Sortable.create(document.getElementById('participantList'), {
@@ -272,55 +271,42 @@ function setupDragAndDrop() {
         animation: 150,
         onEnd: updateBnetIdMap
     });
-
-    Sortable.create(document.getElementById('matchPlayerList'), {
-        group: 'players',
-        animation: 150,
-        onEnd: updateMatchReplayMap
-    });
-    Sortable.create(document.getElementById('replayPlayerList'), {
-        group: 'players',
-        animation: 150,
-        onEnd: updateMatchReplayMap
-    });
 }
 
-function updateMatchFileMap() {
-    matchFileMap = {};
-    const matches = document.getElementById('matchList').children;
-    for (const match of matches) {
-        const matchId = match.dataset.matchId;
-        const replayFile = match.querySelector('li')?.dataset.file;
-        if (replayFile) {
-            matchFileMap[matchId] = replayFile;
+function updateMatchObjectMap() {
+    matchObjectMap = {};
+    const matchList = document.getElementById('matchList');
+    const replayObjectList = document.getElementById('replayObjectList');
+    const matchItems = matchList.getElementsByTagName('li');
+    const replayItems = replayObjectList.getElementsByTagName('li');
+    const minLength = Math.min(matchItems.length, replayItems.length);
+    for (let i = 0; i < minLength; i++) {
+        const matchId = matchItems[i].dataset.matchId;
+        const matchIndex = replayItems[i].dataset.matchIndex;
+        if (matchId && matchIndex !== undefined) {
+            matchObjectMap[matchId] = parseInt(matchIndex);
+            console.log(`Mapped Match ${matchId} to Replay Index ${matchIndex} by position`);
         }
     }
+    console.log('Current matchObjectMap:', matchObjectMap);
 }
 
 function updateBnetIdMap() {
     bnetIdMap = {};
-    const participants = document.getElementById('participantList').children;
-    for (const participant of participants) {
-        const participantName = participant.dataset.name;
-        const bnetId = participant.querySelector('li')?.dataset.bnetId;
-        if (bnetId) {
+    const participantList = document.getElementById('participantList');
+    const bnetIdList = document.getElementById('bnetIdList');
+    const participantItems = participantList.getElementsByTagName('li');
+    const bnetItems = bnetIdList.getElementsByTagName('li');
+    const minLength = Math.min(participantItems.length, bnetItems.length);
+    for (let i = 0; i < minLength; i++) {
+        const participantName = participantItems[i].dataset.name;
+        const bnetId = bnetItems[i].dataset.bnetId;
+        if (participantName && bnetId) {
             bnetIdMap[participantName] = bnetId;
+            console.log(`Mapped ${participantName} to Battle.net ID ${bnetId} by position`);
         }
     }
-}
-
-function updateMatchReplayMap() {
-    matchReplayMap = {};
-    const matches = document.getElementById('matchPlayerList').children;
-    for (const match of matches) {
-        const player1 = match.dataset.player1;
-        const player2 = match.dataset.player2;
-        const replayPlayer = match.querySelector('li')?.dataset.player;
-        if (replayPlayer) {
-            matchReplayMap[player1] = replayPlayer;
-            matchReplayMap[player2] = replayPlayer;
-        }
-    }
+    console.log('Current bnetIdMap:', bnetIdMap);
 }
 
 async function analyzeTournament() {
@@ -330,10 +316,11 @@ async function analyzeTournament() {
 
     const status = document.getElementById('replayStatus');
     try {
+        console.log('Sending to /api/analyze:', { tournamentId, replayFile, matchObjectMap, bnetIdMap });
         const response = await fetch('/api/analyze', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ tournamentId, replayFile, matchReplayMap, matchFileMap, bnetIdMap })
+            body: JSON.stringify({ tournamentId, replayFile, matchObjectMap, bnetIdMap })
         });
         const results = await response.json();
         if (!response.ok) {
@@ -345,6 +332,7 @@ async function analyzeTournament() {
         document.getElementById('downloadLink').href = '/results.json';
         status.textContent = 'Analysis completed successfully.';
     } catch (error) {
+        console.error('Error in analyzeTournament:', error);
         status.textContent = `Error analyzing tournament: ${error.message}`;
     }
 }
