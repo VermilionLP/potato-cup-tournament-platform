@@ -66,7 +66,7 @@ async function loadTournament() {
 
         document.getElementById('matchReplayObjectSection').style.display = 'block';
         document.getElementById('playerBnetSection').style.display = 'block';
-        setupDragAndDrop(); // Keep for potential reordering, but mapping will use position
+        setupDragAndDrop();
     } catch (error) {
         status.textContent = `Error loading tournament: ${error.message}`;
     }
@@ -329,12 +329,37 @@ async function analyzeTournament() {
 
         document.getElementById('results').textContent = JSON.stringify(results, null, 2);
         document.getElementById('resultsSection').style.display = 'block';
-        document.getElementById('downloadLink').href = '/results.json';
-        status.textContent = 'Analysis completed successfully.';
+        document.getElementById('downloadLink').href = 'data:application/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(results, null, 2));
+        document.getElementById('downloadLink').style.display = 'block';
+
+        // Generate and display wiki script
+        await generateWikiScript(results);
     } catch (error) {
         console.error('Error in analyzeTournament:', error);
         status.textContent = `Error analyzing tournament: ${error.message}`;
     }
+}
+
+async function generateWikiScript(results) {
+    const response = await fetch('/api/generate-wiki', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ results })
+    });
+    if (!response.ok) {
+        throw new Error('Failed to generate wiki script');
+    }
+    const wikiScript = await response.text();
+    const wikiOutput = document.getElementById('wikiOutput');
+    wikiOutput.value = wikiScript;
+    document.getElementById('wikiSection').style.display = 'block';
+}
+
+function copyWikiToClipboard() {
+    const wikiOutput = document.getElementById('wikiOutput');
+    wikiOutput.select();
+    document.execCommand('copy');
+    alert('Wiki script copied to clipboard!');
 }
 
 window.onload = () => {

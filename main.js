@@ -121,8 +121,11 @@ class TournamentAnalyzer {
                     return;
                 }
                 replay.players.forEach(player => {
-                    if (player.name && player.actual_race) {
-                        playerRaces[player.name] = player.actual_race;
+                    if (player.name) {
+                        playerRaces[player.name] = {
+                            picked_race: player.picked_race || 'Unknown',
+                            actual_race: player.actual_race || 'Unknown'
+                        };
                     }
                 });
                 matchData[index] = {
@@ -145,6 +148,13 @@ class TournamentAnalyzer {
             this.processReplayData(replayFile, matchObjectMap),
             this._loadBattlenetConfig(BNET_CONFIG)
         ]);
+
+        if (Object.keys(matchObjectMap).length === 0) {
+            console.warn('matchObjectMap is empty, using default mapping');
+        }
+        if (Object.keys(bnetIdMap).length === 0) {
+            console.warn('bnetIdMap is empty, using default Battle.net IDs');
+        }
 
         const participants = Object.fromEntries(
             (tournamentInfo.participants || []).map(p => [String(p.participant.id), p.participant.name])
@@ -170,9 +180,15 @@ class TournamentAnalyzer {
             const matchIndex = matchObjectMap[String(match.id)];
             const replayMatch = replayData.match_data[matchIndex] || {};
 
-            // Map replay players to Challonge names based on participant IDs
-            const player1Replay = replayMatch.players.find(p => p.name === player1Name) || replayMatch.players[0] || {};
-            const player2Replay = replayMatch.players.find(p => p.name === player2Name) || replayMatch.players[1] || {};
+            // Match Challonge names to replay names
+            const player1Replay = replayMatch.players.find(p => 
+                p.name === player1Name || 
+                (bnetIdMap[player1Name] && bnetIdMap[player1Name] === p.name)
+            ) || replayMatch.players[0] || {};
+            const player2Replay = replayMatch.players.find(p => 
+                p.name === player2Name || 
+                (bnetIdMap[player2Name] && bnetIdMap[player2Name] === p.name)
+            ) || replayMatch.players[1] || {};
 
             const player1Bnet = bnetIdMap[player1Name]
                 ? battlenetIds.find(p => p.battle_net_name === bnetIdMap[player1Name]) || player1Replay
@@ -203,7 +219,7 @@ class TournamentAnalyzer {
                         replay_name: replayPlayer.name || playerName,
                         battlenet_id: bnet && bnet.battle_net_name ? bnet.battle_net_name : bnet && bnet.name ? bnet.name : "Unknown",
                         battlenet_url: bnet && bnet.battle_net_url ? bnet.battle_net_url : replayPlayer.battle_net_url || "Unknown",
-                        race: replayData.player_races[replayPlayer.name] || "Unknown",
+                        races: replayData.player_races[replayPlayer.name] || { picked_race: "Unknown", actual_race: "Unknown" },
                         total_score: 0,
                         matches_played: 0
                     };
@@ -224,7 +240,7 @@ class TournamentAnalyzer {
                     battlenet_url: player1Bnet && player1Bnet.battle_net_url ? player1Bnet.battle_net_url : player1Replay.battle_net_url || "Unknown",
                     score: score1,
                     total_score: totalScore1,
-                    race: replayData.player_races[player1Replay.name] || "Unknown"
+                    races: replayData.player_races[player1Replay.name] || { picked_race: "Unknown", actual_race: "Unknown" }
                 },
                 player2: {
                     challonge_name: player2Name,
@@ -233,7 +249,7 @@ class TournamentAnalyzer {
                     battlenet_url: player2Bnet && player2Bnet.battle_net_url ? player2Bnet.battle_net_url : player2Replay.battle_net_url || "Unknown",
                     score: score2,
                     total_score: totalScore2,
-                    race: replayData.player_races[player2Replay.name] || "Unknown"
+                    races: replayData.player_races[player2Replay.name] || { picked_race: "Unknown", actual_race: "Unknown" }
                 },
                 state: match.state,
                 winner_id: match.winner_id ? String(match.winner_id) : null,
@@ -241,6 +257,13 @@ class TournamentAnalyzer {
                 identifier: match.identifier
             });
         }
+
+        // Add racial distribution
+        const raceCounts = { P: 0, T: 0, Z: 0, R: 0 };
+        for (const player of Object.values(this.results.players)) {
+            raceCounts[player.races.actual_race[0]] = (raceCounts[player.races.actual_race[0]] || 0) + 1;
+        }
+        this.results.race_distribution = raceCounts;
 
         return this.results;
     }
@@ -361,6 +384,109 @@ app.post('/api/analyze', async (req, res) => {
         console.error(`Error in /api/analyze: ${error.message}`);
         res.status(500).json({ error: error.message });
     }
+});
+
+app.post('/api/generate-wiki', async (req, res) => {
+    const { results } = req.body;
+    if (!results || !results.matches || !results.players) {
+        return res.status(400).json({ error: 'Invalid results data' });
+    }
+
+    let wikiScript = `{{DISPLAYTITLE:StarCraft Ultra Chicken King #${results.tournament_id.match(/\d+$/)[0]}}}\n`;
+    wikiScript += `{{SUCK_Navbox}}\n`;
+    wikiScript += `{{Infobox league\n`;
+    wikiScript += `|name=S.U.C.K #${results.tournament_id.match(/\d+$/)[0]}\n`;
+    wikiScript += `|image=Alpha X logo dec 2020.png\n`;
+    wikiScript += `|series=StarCraft Ultra Chicken King\n`;
+    wikiScript += `|abbreviation=SUCK\n`;
+    wikiScript += `|tickername=SUCK#${results.tournament_id.match(/\d+$/)[0]}\n`;
+    wikiScript += `|number=${results.tournament_id.match(/\d+$/)[0]}\n`;
+    wikiScript += `|organizer=AlphaX战队星际水友群\n`;
+    wikiScript += `|sponsor=\n`;
+    wikiScript += `|game=lotv\n`;
+    wikiScript += `|server=cn\n`;
+    wikiScript += `|type=Online\n`;
+    wikiScript += `|country=China\n`;
+    wikiScript += `|format=1v1<br>Single-elimination\n`;
+    wikiScript += `|prizepool=0\n`;
+    wikiScript += `|localcurrency=cny\n`;
+    wikiScript += `|date=${new Date().toISOString().split('T')[0]}\n`; // Update with actual date if available
+    wikiScript += `|liquipediatier=4 |tiertype=Showmatch\n`;
+    wikiScript += `|web=\n`;
+    wikiScript += `|bracket=https://challonge.com/succk${results.tournament_id.match(/\d+$/)[0]}\n`;
+    wikiScript += `|protoss_number=${results.race_distribution.P || 0}\n`;
+    wikiScript += `|terran_number=${results.race_distribution.T || 0}\n`;
+    wikiScript += `|zerg_number=${results.race_distribution.Z || 0}\n`;
+    wikiScript += `|map1=\n`;
+    wikiScript += `}}\n`;
+
+    wikiScript += `==Format==\n`;
+    wikiScript += `* 单淘 Single-elimination bracket\n`;
+    wikiScript += `* 所有比赛均Bo1 All matches are Bo1\n`;
+    wikiScript += `* 败者晋级 Loser of each match advance to the next round.\n`;
+
+    wikiScript += `===Map Pool===\n`;
+    wikiScript += `* 选手可以Ban图或者限定天梯地图，不然主办随机选了 Player can specify maps to ban, or demand ladder maps. Otherwise the organizer will randomly pick from all Blizzard or GSL maps.\n`;
+    wikiScript += `{{Maps}}\n`;
+
+    wikiScript += `==Talents==\n`;
+    wikiScript += `{{BroadcasterCard\n`;
+    wikiScript += `|position=Host\n`;
+    wikiScript += `|b1=Wayne|b1flag=CN|b1link=User:Wayne19980\n`;
+    wikiScript += `}}\n`;
+    wikiScript += `{{BroadcasterCard\n`;
+    wikiScript += `|position=Caster\n`;
+    wikiScript += `|b1=Wayne|b1flag=CN|b1link=User:Wayne19980\n`;
+    wikiScript += `}}\n`;
+
+    wikiScript += `==Prize Pool==\n`;
+    wikiScript += `{{ParticipantTable|hidden=true\n`;
+    Object.values(results.players).forEach((player, index) => {
+        wikiScript += `|p${index + 1}=${player.challonge_name}|p${index + 1}race=${player.races.actual_race[0]}|p${index + 1}flag=cn\n`;
+    });
+    wikiScript += `}}\n`;
+    wikiScript += `{{SoloPrizePool\n`;
+    wikiScript += `|{{Slot|place=1}}\n`;
+    wikiScript += `|{{Slot|place=2}}\n`;
+    wikiScript += `|{{Slot|place=3-4}}\n`;
+    wikiScript += `|{{Slot|place=5}}\n`;
+    wikiScript += `}}\n`;
+
+    wikiScript += `==Notable Participants==\n`;
+    wikiScript += `{{ParticipantTable|count=true|onlyNotable=|tournament=#}}\n`;
+
+    wikiScript += `==Results==\n`;
+    wikiScript += `{{Bracket|Bracket/2L1DH2L|id=AXsuck${results.tournament_id.match(/\d+$/)[0]}\n`;
+    const matchesByRound = {};
+    results.matches.forEach(match => {
+        matchesByRound[match.round] = matchesByRound[match.round] || [];
+        matchesByRound[match.round].push(match);
+    });
+    let matchNum = 1;
+    for (const round in matchesByRound) {
+        matchesByRound[round].forEach(match => {
+            wikiScript += `|R${round}M${matchNum}={{Match\n`;
+            wikiScript += `    |bestof=1\n`;
+            wikiScript += `    |winner=${match.winner_id === String(match.player1.challonge_name) ? 1 : 2}\n`;
+            wikiScript += `    |date=${new Date(match.start_time).toISOString().replace('T', ' ').split('.')[0]} {{abbr/CST}}\n`;
+            wikiScript += `    |opponent1={{1Opponent|${match.player1.challonge_name}}}\n`;
+            wikiScript += `    |opponent2={{1Opponent|${match.player2.challonge_name}}}\n`;
+            wikiScript += `    |map1={{Map|map=${match.map_name}|race1=${match.player1.races.actual_race[0]}|race2=${match.player2.races.actual_race[0]}|winner=${match.winner_id === String(match.player1.challonge_name) ? 1 : 2}}}\n`;
+            wikiScript += `}}\n`;
+            matchNum++;
+        });
+    }
+    wikiScript += `}}\n`;
+
+    wikiScript += `==Racial Distribution==\n`;
+    wikiScript += `{{RaceDist|last=1}}\n`;
+
+    wikiScript += `==View Games==\n`;
+    wikiScript += `===VODs===\n`;
+    wikiScript += `*[https://www.bilibili.com/video/BV1oA2HYVE4B/ VODs on Bilibili]\n`;
+
+    res.set('Content-Type', 'text/plain');
+    res.send(wikiScript);
 });
 
 // Serve the web interface

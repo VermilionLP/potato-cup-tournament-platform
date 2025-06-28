@@ -5,75 +5,85 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tournament Analyzer</title>
     <link rel="stylesheet" href="styles.css">
-    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 </head>
 <body>
     <h1>Tournament Analyzer</h1>
 
     <div>
-        <h2>1. Select Tournament</h2>
-        <select id="tournamentSelect">
+        <label for="tournamentSelect">Select Tournament:</label>
+        <select id="tournamentSelect" onchange="loadTournament()">
             <option value="">Select a tournament...</option>
         </select>
-        <button onclick="loadTournament()">Load Tournament</button>
     </div>
 
     <div id="tournamentInfo" style="display: none;">
-        <h2>2. Tournament Details</h2>
+        <h2>Tournament Details</h2>
         <pre id="tournamentDetails"></pre>
     </div>
 
-    <div>
-        <h2>3. Select Replay Folder</h2>
-        <div id="folderPicker" style="display: none;">
-            <button onclick="selectReplayFolder()">Choose Replay Folder</button>
-        </div>
+    <div id="replayFolderSection">
+        <h2>1. Select Replay Folder</h2>
+        <button id="folderPicker" onclick="selectReplayFolder()">Pick Folder</button>
         <div id="folderInput" style="display: none;">
-            <input type="text" id="replayFolderPath" placeholder="Enter folder path (e.g., D:\Replays)">
+            <input type="text" id="replayFolderPath" placeholder="Enter folder path">
             <button onclick="useFolderPath()">Use Folder Path</button>
         </div>
         <p id="replayFolderStatus"></p>
-        <button id="processReplaysBtn" onclick="runReplayReader()" style="display: none;">Process Replays</button>
-        <p id="replayStatus"></p>
-        <select id="replayFileSelect" style="display: none;">
+        <button id="processReplaysBtn" style="display: none;" onclick="runReplayReader()">Process Replays</button>
+    </div>
+
+    <div id="replayFileSection">
+        <h2>2. Select Replay File</h2>
+        <select id="replayFileSelect" onchange="loadReplayPlayers()" style="display: none;">
             <option value="">Select a replay file...</option>
         </select>
-        <button id="loadPlayersBtn" onclick="loadReplayPlayers()" style="display: none;">Load Replay Data</button>
+        <button id="loadPlayersBtn" style="display: none;" onclick="loadReplayPlayers()">Load Replay Data</button>
+        <p id="replayStatus"></p>
     </div>
 
     <div id="matchReplayObjectSection" style="display: none;">
-        <h2>4. Link Matches to Replay Objects</h2>
+        <h2>3. Link Matches to Replay Objects</h2>
         <div style="display: flex;">
             <div style="width: 50%;">
                 <h3>Challonge Matches</h3>
-                <ul id="matchList" class="sortable"></ul>
+                <ul id="matchList"></ul>
             </div>
             <div style="width: 50%;">
                 <h3>Replay Match Objects</h3>
-                <ul id="replayObjectList" class="sortable"></ul>
+                <ul id="replayObjectList"></ul>
             </div>
         </div>
     </div>
 
     <div id="playerBnetSection" style="display: none;">
-        <h2>5. Link Participants to Battle.net IDs</h2>
+        <h2>4. Link Participants to Battle.net IDs</h2>
         <div style="display: flex;">
             <div style="width: 50%;">
                 <h3>Challonge Participants</h3>
-                <ul id="participantList" class="sortable"></ul>
+                <ul id="participantList"></ul>
             </div>
             <div style="width: 50%;">
                 <h3>Battle.net IDs</h3>
-                <ul id="bnetIdList" class="sortable"></ul>
+                <ul id="bnetIdList"></ul>
             </div>
         </div>
+    </div>
+
+    <div>
         <button onclick="analyzeTournament()">Analyze and Export JSON</button>
     </div>
 
     <div id="resultsSection" style="display: none;">
-        <h2>6. Results</h2>
+        <h2>Results</h2>
         <pre id="results"></pre>
-        <a id="downloadLink" href="#" download="results.json">Download JSON</a>
+        <a id="downloadLink" download="results.json" style="display: none;">Download JSON</a>
+    </div>
+
+    <div id="wikiSection" style="display: none;">
+        <h2>5. Generate Liquipedia Wiki Script</h2>
+        <textarea id="wikiOutput" rows="20" cols="80" readonly></textarea>
+        <button onclick="copyWikiToClipboard()">Copy to Clipboard</button>
     </div>
 
     <script src="script.js"></script>
