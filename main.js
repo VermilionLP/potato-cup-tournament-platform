@@ -164,6 +164,9 @@ class TournamentAnalyzer {
         this.results = {
             tournament_name: tournamentInfo.name,
             tournament_id: tournamentId,
+            tournament_date: tournamentInfo.start_at || tournamentInfo.matches[0]?.started_at,
+            tournament_type: tournamentInfo.tournament_type,
+            hold_third_place_match: tournamentInfo.hold_third_place_match,
             matches: [],
             players: {}
         };
@@ -392,15 +395,15 @@ app.post('/api/generate-wiki', async (req, res) => {
         return res.status(400).json({ error: 'Invalid results data' });
     }
 
-    let wikiScript = `{{DISPLAYTITLE:StarCraft Ultra Chicken King #${results.tournament_id.match(/\d+$/)[0]}}}\n`;
+    let wikiScript = `{{DISPLAYTITLE:StarCraft Ultra Chicken King #${results.tournament_name.match(/\d+$/)[0]}}}\n`;
     wikiScript += `{{SUCK_Navbox}}\n`;
     wikiScript += `{{Infobox league\n`;
-    wikiScript += `|name=S.U.C.K #${results.tournament_id.match(/\d+$/)[0]}\n`;
+    wikiScript += `|name=S.U.C.K #{{SUBPAGENAME}}\n`;
     wikiScript += `|image=Alpha X logo dec 2020.png\n`;
     wikiScript += `|series=StarCraft Ultra Chicken King\n`;
     wikiScript += `|abbreviation=SUCK\n`;
-    wikiScript += `|tickername=SUCK#${results.tournament_id.match(/\d+$/)[0]}\n`;
-    wikiScript += `|number=${results.tournament_id.match(/\d+$/)[0]}\n`;
+    wikiScript += `|tickername=SUCK#{{SUBPAGENAME}}\n`;
+    wikiScript += `|number={{SUBPAGENAME}}\n`;
     wikiScript += `|organizer=AlphaX战队星际水友群\n`;
     wikiScript += `|sponsor=\n`;
     wikiScript += `|game=lotv\n`;
