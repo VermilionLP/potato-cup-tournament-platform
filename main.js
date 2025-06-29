@@ -164,7 +164,7 @@ class TournamentAnalyzer {
         this.results = {
             tournament_name: tournamentInfo.name,
             tournament_id: tournamentId,
-            tournament_date: tournamentInfo.start_at || tournamentInfo.matches[0]?.started_at,
+            tournament_date: tournamentInfo.started_at || tournamentInfo.matches[0]?.started_at,
             tournament_type: tournamentInfo.tournament_type,
             hold_third_place_match: tournamentInfo.hold_third_place_match,
             matches: [],
@@ -413,14 +413,9 @@ app.post('/api/generate-wiki', async (req, res) => {
     wikiScript += `|format=1v1<br>Single-elimination\n`;
     wikiScript += `|prizepool=0\n`;
     wikiScript += `|localcurrency=cny\n`;
-    wikiScript += `|date=${new Date().toISOString().split('T')[0]}\n`; // Update with actual date if available
+    wikiScript += `|date=${results.tournament_date.split('T')[0]}\n`; // Update with actual date if available
     wikiScript += `|liquipediatier=4 |tiertype=Showmatch\n`;
-    wikiScript += `|web=\n`;
-    wikiScript += `|bracket=https://challonge.com/succk${results.tournament_id.match(/\d+$/)[0]}\n`;
-    wikiScript += `|protoss_number=${results.race_distribution.P || 0}\n`;
-    wikiScript += `|terran_number=${results.race_distribution.T || 0}\n`;
-    wikiScript += `|zerg_number=${results.race_distribution.Z || 0}\n`;
-    wikiScript += `|map1=\n`;
+    wikiScript += `|bracket=https://challonge.com/succk${results.tournament_name.match(/\d+$/)[0]}\n`;
     wikiScript += `}}\n`;
 
     wikiScript += `==Format==\n`;
@@ -452,21 +447,22 @@ app.post('/api/generate-wiki', async (req, res) => {
     wikiScript += `|{{Slot|place=1}}\n`;
     wikiScript += `|{{Slot|place=2}}\n`;
     wikiScript += `|{{Slot|place=3-4}}\n`;
-    wikiScript += `|{{Slot|place=5}}\n`;
+    wikiScript += `|{{Slot|place=5-8}}\n`;
     wikiScript += `}}\n`;
 
     wikiScript += `==Notable Participants==\n`;
     wikiScript += `{{ParticipantTable|count=true|onlyNotable=|tournament=#}}\n`;
 
     wikiScript += `==Results==\n`;
-    wikiScript += `{{Bracket|Bracket/2L1DH2L|id=AXsuck${results.tournament_id.match(/\d+$/)[0]}\n`;
+    wikiScript += `{{Bracket|Bracket/2L1DH2L|id=AXsuck00${results.tournament_name.match(/\d+$/)[0]}\n`;
     const matchesByRound = {};
     results.matches.forEach(match => {
         matchesByRound[match.round] = matchesByRound[match.round] || [];
         matchesByRound[match.round].push(match);
     });
-    let matchNum = 1;
+    
     for (const round in matchesByRound) {
+        let matchNum = 1;
         matchesByRound[round].forEach(match => {
             wikiScript += `|R${round}M${matchNum}={{Match\n`;
             wikiScript += `    |bestof=1\n`;
@@ -486,7 +482,7 @@ app.post('/api/generate-wiki', async (req, res) => {
 
     wikiScript += `==View Games==\n`;
     wikiScript += `===VODs===\n`;
-    wikiScript += `*[https://www.bilibili.com/video/BV1oA2HYVE4B/ VODs on Bilibili]\n`;
+    wikiScript += `*[https://space.bilibili.com/10130071/lists/5654276?type=season VODs on Bilibili]\n`;
 
     res.set('Content-Type', 'text/plain');
     res.send(wikiScript);
