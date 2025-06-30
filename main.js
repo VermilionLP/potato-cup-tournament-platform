@@ -184,12 +184,12 @@ class TournamentAnalyzer {
             const replayMatch = replayData.match_data[matchIndex] || {};
 
             // Match Challonge names to replay names
-            const player1Replay = replayMatch.players.find(p => 
-                p.name === player1Name || 
+            const player1Replay = replayMatch.players.find(p =>
+                p.name === player1Name ||
                 (bnetIdMap[player1Name] && bnetIdMap[player1Name] === p.name)
             ) || replayMatch.players[0] || {};
-            const player2Replay = replayMatch.players.find(p => 
-                p.name === player2Name || 
+            const player2Replay = replayMatch.players.find(p =>
+                p.name === player2Name ||
                 (bnetIdMap[player2Name] && bnetIdMap[player2Name] === p.name)
             ) || replayMatch.players[1] || {};
 
@@ -207,7 +207,7 @@ class TournamentAnalyzer {
             if (tournamentInfo.tournament_type === "round robin") {
                 if (score1 > score2) [totalScore1, totalScore2] = [3, 0];
                 else if (score1 < score2) [totalScore1, totalScore2] = [0, 3];
-                else [totalScore1, totalScore2] = [1, 1];
+                else[totalScore1, totalScore2] = [1, 1];
             } else {
                 [totalScore1, totalScore2] = [score1, score2];
             }
@@ -237,6 +237,7 @@ class TournamentAnalyzer {
                 start_time: replayMatch.start_time || match.started_at || new Date().toISOString(),
                 map_name: replayMatch.map_name || "Unknown",
                 player1: {
+                    challonge_id: player1Id,
                     challonge_name: player1Name,
                     replay_name: player1Replay.name || player1Name,
                     battlenet_id: player1Bnet && (player1Bnet.battle_net_name || player1Bnet.name) ? (player1Bnet.battle_net_name || player1Bnet.name) : "Unknown",
@@ -246,6 +247,7 @@ class TournamentAnalyzer {
                     races: replayData.player_races[player1Replay.name] || { picked_race: "Unknown", actual_race: "Unknown" }
                 },
                 player2: {
+                    challonge_id: player2Id,
                     challonge_name: player2Name,
                     replay_name: player2Replay.name || player2Name,
                     battlenet_id: player2Bnet && (player2Bnet.battle_net_name || player2Bnet.name) ? (player2Bnet.battle_net_name || player2Bnet.name) : "Unknown",
@@ -454,23 +456,43 @@ app.post('/api/generate-wiki', async (req, res) => {
     wikiScript += `{{ParticipantTable|count=true|onlyNotable=|tournament=#}}\n`;
 
     wikiScript += `==Results==\n`;
-    wikiScript += `{{Bracket|Bracket/2L1DH2L|id=AXsuck00${results.tournament_name.match(/\d+$/)[0]}\n`;
+    const bracketTemplates = {
+        2: "Bracket/2",
+        3: "Bracket/2L1D",
+        4: "Bracket/4",
+        5: "Bracket/2L1DH2L",
+        6: "Bracket/4L2DS",
+        7: "Bracket/2L1DH4L",
+        8: "Bracket/8",
+        9: "Bracket/2L1DH2LH4L",
+        10: "Bracket/4L2DH4LS",
+        11: "Bracket/2L1DH2LH4L2DSL",
+        12: "Bracket/8L4DSS",
+        13: "Bracket/2L1DH4LH4L2DSL",
+        14: "Bracket/4L2DH8LS",
+        15: "Bracket/4L2DH8LS",
+        16: "Bracket/16"
+    };
+    const playerCount = Object.keys(results.players).length;
+    const bracketTemplate = bracketTemplates[playerCount] || "Bracket/16";
+    const tournamentNumber = results.tournament_name.match(/\d+$/)[0].padStart(4, '0');
+    wikiScript += `{{Bracket|${bracketTemplate}|id=AXsuck${tournamentNumber}\n`;
     const matchesByRound = {};
     results.matches.forEach(match => {
         matchesByRound[match.round] = matchesByRound[match.round] || [];
         matchesByRound[match.round].push(match);
     });
-    
+
     for (const round in matchesByRound) {
         let matchNum = 1;
         matchesByRound[round].forEach(match => {
             wikiScript += `|R${round}M${matchNum}={{Match\n`;
             wikiScript += `    |bestof=1\n`;
-            wikiScript += `    |winner=${match.winner_id === String(match.player1.challonge_name) ? 1 : 2}\n`;
-            wikiScript += `    |date=${new Date(match.start_time).toISOString().replace('T', ' ').split('.')[0]} {{abbr/CST}}\n`;
+            wikiScript += `    |winner=${match.winner_id === String(match.player1.challonge_id) ? 1 : 2}\n`;
+            wikiScript += `    |date=${match.start_time.replace('T', ' ').split('.')[0]} {{abbr/UTC}} \n`;
             wikiScript += `    |opponent1={{1Opponent|${match.player1.challonge_name}}}\n`;
             wikiScript += `    |opponent2={{1Opponent|${match.player2.challonge_name}}}\n`;
-            wikiScript += `    |map1={{Map|map=${match.map_name}|race1=${match.player1.races.actual_race[0]}|race2=${match.player2.races.actual_race[0]}|winner=${match.winner_id === String(match.player1.challonge_name) ? 1 : 2}}}\n`;
+            wikiScript += `    |map1={{Map|map=${match.map_name}|race1=${match.player1.races.actual_race[0]}|race2=${match.player2.races.actual_race[0]}|winner=${match.winner_id === String(match.player1.challonge_id) ? 2 : 1}}}\n`;
             wikiScript += `}}\n`;
             matchNum++;
         });
