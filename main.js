@@ -394,7 +394,7 @@ app.post('/api/generate-wiki', async (req, res) => {
         return res.status(400).json({ error: 'Invalid results data' });
     }
 
-    let wikiScript = `{{DISPLAYTITLE:StarCraft Ultra Chicken King #${results.tournament_name.match(/\d+$/)[0]}}}\n`;
+    let wikiScript = `{{DISPLAYTITLE:StarCraft Ultra Chicken King #{{SUBPAGENAME}}}}\n`;
     wikiScript += `{{SUCK_Navbox}}\n`;
     wikiScript += `{{Infobox league\n`;
     wikiScript += `|name=S.U.C.K #{{SUBPAGENAME}}\n`;
