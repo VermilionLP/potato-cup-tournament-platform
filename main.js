@@ -160,7 +160,7 @@ class TournamentAnalyzer {
             (tournamentInfo.participants || []).map(p => [String(p.participant.id), p.participant.display_name])
         );
         const matches = (tournamentInfo.matches || []).map(m => m.match);
-        console.log("participants:", participants);
+        // console.log("participants:", participants);
 
         this.results = {
             tournament_name: tournamentInfo.name,
@@ -228,6 +228,20 @@ class TournamentAnalyzer {
                 this.results.players[playerName].matches_played += 1;
             }
 
+            // Get player races from replay data directly
+            const playerRaces = {};
+            console.log("replayMatch:", replayMatch);
+            if (replayMatch && replayMatch.players) {
+                replayMatch.players.forEach(player => {
+                        playerRaces[player.name] = {
+                            picked_race: player.picked_race,
+                            actual_race: player.actual_race
+                        };
+                    
+                });
+            }
+            console.log(playerRaces)
+
             this.results.matches.push({
                 match_id: match.id,
                 replay_file: replayFile,
@@ -241,7 +255,7 @@ class TournamentAnalyzer {
                     battlenet_url: player1Bnet && player1Bnet.battle_net_url ? player1Bnet.battle_net_url : player1Replay.battle_net_url || "Unknown",
                     score: score1,
                     total_score: totalScore1,
-                    races: replayData.player_races[player1Replay.name] || { picked_race: "Unknown", actual_race: "Unknown" }
+                    races: playerRaces[player1Replay.name] || { picked_race: "Unknown", actual_race: "Unknown" }
                 },
                 player2: {
                     challonge_id: player2Id,
@@ -251,7 +265,7 @@ class TournamentAnalyzer {
                     battlenet_url: player2Bnet && player2Bnet.battle_net_url ? player2Bnet.battle_net_url : player2Replay.battle_net_url || "Unknown",
                     score: score2,
                     total_score: totalScore2,
-                    races: replayData.player_races[player2Replay.name] || { picked_race: "Unknown", actual_race: "Unknown" }
+                    races: playerRaces[player2Replay.name] || { picked_race: "Unknown", actual_race: "Unknown" }
                 },
                 state: match.state,
                 winner_id: match.winner_id ? String(match.winner_id) : null,
@@ -439,7 +453,7 @@ app.post('/api/generate-wiki', async (req, res) => {
     wikiScript += `==Prize Pool==\n`;
     wikiScript += `{{ParticipantTable|hidden=true\n`;
     Object.values(results.players).forEach((player, index) => {
-        wikiScript += `|p${index + 1}=${player.challonge_name}|p${index + 1}race=${player.races.actual_race[0]}|p${index + 1}flag=cn\n`;
+        wikiScript += `|p${index + 1}=${player.challonge_name}|p${index + 1}race=${player.races.picked_race[0]}|p${index + 1}flag=cn\n`;
     });
     wikiScript += `}}\n`;
     wikiScript += `{{SoloPrizePool\n`;
@@ -487,10 +501,10 @@ app.post('/api/generate-wiki', async (req, res) => {
             wikiScript += `    |bestof=1\n`;
             wikiScript += `    |winner=${match.winner_id === String(match.player1.challonge_id) ? 1 : 2}\n`;
             wikiScript += `    |date=${match.start_time.replace('T', ' ').split('.')[0]} {{abbr/UTC}} \n`;
-            wikiScript += `    |opponent1={{1Opponent|${match.player1.challonge_name}}}\n`;
-            wikiScript += `    |opponent2={{1Opponent|${match.player2.challonge_name}}}\n`;
-            wikiScript += `    |map1={{Map|map=${match.map_name.replace('-天梯版', '')}|race1=${match.player1.races.actual_race[0]}|race2=${match.player2.races.actual_race[0]}|winner=${match.winner_id === String(match.player1.challonge_id) ? 1 : 2}}}\n`;
-            // wikiScript += `    |map1={{Map|map=${match.map_name.replace('-天梯版', '')}|race1=${match.player1.races.actual_race[0]}|race2=${match.player2.races.actual_race[0]}|winner=${match.winner_id === String(match.player1.challonge_id) ? 2 : 1}}}\n`;
+            wikiScript += `    |opponent1={{1Opponent|${match.player1.challonge_name}|race=${match.player1.races.picked_race[0]}}}\n`;
+            wikiScript += `    |opponent2={{1Opponent|${match.player2.challonge_name}|race=${match.player2.races.picked_race[0]}}}\n`;
+            wikiScript += `    |map1={{Map|map=${match.map_name.replace('-天梯版', '')}|race1=${match.player1.races.actual_race[0]}|race2=${match.player2.races.actual_race[0]}|winner=${match.winner_id === String(match.player1.challonge_id) ? 2 : 1}}}\n`;
+            // wikiScript += `    |map1={{Map|map=${match.map_name.replace('-天梯版', '')}|race1=${match.player1.races.actual_race[0]}|race2=${match.player2.races.actual_race[0]}|winner=${match.winner_id === String(match.player1.challonge_id) ? 1 : 2}}}\n`;
             wikiScript += `}}\n`;
             matchNum++;
         });
