@@ -453,7 +453,8 @@ app.post('/api/generate-wiki', async (req, res) => {
     wikiScript += `==Prize Pool==\n`;
     wikiScript += `{{ParticipantTable|hidden=true\n`;
     Object.values(results.players).forEach((player, index) => {
-        wikiScript += `|p${index + 1}=${player.challonge_name}|p${index + 1}race=${player.races.picked_race[0]}|p${index + 1}flag=cn\n`;
+        const cleanedName = player.challonge_name.replace(/\s*\(invitation pending\)/g, '');
+        wikiScript += `|p${index + 1}=${cleanedName}|p${index + 1}race=${player.races.picked_race[0]}|p${index + 1}flag=cn\n`;
     });
     wikiScript += `}}\n`;
     wikiScript += `{{SoloPrizePool\n`;
@@ -497,12 +498,14 @@ app.post('/api/generate-wiki', async (req, res) => {
     for (const round in matchesByRound) {
         let matchNum = 1;
         matchesByRound[round].forEach(match => {
+            const player1Name = match.player1.challonge_name.replace(/\s*\(invitation pending\)/g, '');
+            const player2Name = match.player2.challonge_name.replace(/\s*\(invitation pending\)/g, '');
             wikiScript += `|R${round}M${matchNum}={{Match\n`;
             wikiScript += `    |bestof=1\n`;
             wikiScript += `    |winner=${match.winner_id === String(match.player1.challonge_id) ? 1 : 2}\n`;
             wikiScript += `    |date=${match.start_time.replace('T', ' ').split('.')[0]} {{abbr/UTC}} \n`;
-            wikiScript += `    |opponent1={{1Opponent|${match.player1.challonge_name}|race=${match.player1.races.picked_race[0]}}}\n`;
-            wikiScript += `    |opponent2={{1Opponent|${match.player2.challonge_name}|race=${match.player2.races.picked_race[0]}}}\n`;
+            wikiScript += `    |opponent1={{1Opponent|${player1Name}|race=${match.player1.races.picked_race[0]}}}\n`;
+            wikiScript += `    |opponent2={{1Opponent|${player2Name}|race=${match.player2.races.picked_race[0]}}}\n`;
             wikiScript += `    |map1={{Map|map=${match.map_name.replace('-天梯版', '')}|race1=${match.player1.races.actual_race[0]}|race2=${match.player2.races.actual_race[0]}|winner=${match.winner_id === String(match.player1.challonge_id) ? 2 : 1}}}\n`;
             // wikiScript += `    |map1={{Map|map=${match.map_name.replace('-天梯版', '')}|race1=${match.player1.races.actual_race[0]}|race2=${match.player2.races.actual_race[0]}|winner=${match.winner_id === String(match.player1.challonge_id) ? 1 : 2}}}\n`;
             wikiScript += `}}\n`;

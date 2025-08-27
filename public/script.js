@@ -40,7 +40,7 @@ async function loadTournament() {
         const matchList = document.getElementById('matchList');
         matchList.innerHTML = '';
         const participants = Object.fromEntries(
-            (tournamentInfo.participants || []).map(p => [String(p.participant.id), p.participant.display_name])
+            (tournamentInfo.participants || []).map(p => [String(p.participant.id), p.participant.display_name.replace(/\s*\(invitation pending\)/g, '')])
         );
         (tournamentInfo.matches || []).forEach(m => {
             const match = m.match;
@@ -57,10 +57,11 @@ async function loadTournament() {
         participantList.innerHTML = '';
         (tournamentInfo.participants || []).forEach(p => {
             const participant = p.participant;
+            const displayName = participant.display_name.replace(/\s*\(invitation pending\)/g, '');
             const li = document.createElement('li');
             li.dataset.participantId = participant.id;
-            li.dataset.name = participant.display_name;
-            li.textContent = participant.display_name;
+            li.dataset.name = displayName;
+            li.textContent = displayName;
             participantList.appendChild(li);
         });
 
