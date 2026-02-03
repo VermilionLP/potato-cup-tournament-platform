@@ -203,54 +203,9 @@ def main():
 
     if replay_data_list:
         # Generate JSON files
-        generate_sc2_replay_data(replay_data_list)
-        generate_battlenet_ids(replay_data_list)
-
-
-def main():
-    """Main function to process replay files and generate JSON files."""
-    args = parse_args()
-    if args.verbose:
-        logger.setLevel(logging.DEBUG)
-
-    path = Path(args.path)
-
-    if not path.exists():
-        logger.error(f"Directory does not exist: {path}")
-        sys.exit(1)
-
-    if not path.is_dir():
-        logger.error(f"Path is not a directory: {path}")
-        sys.exit(1)
-
-    replay_files = list_dir(path)
-    if not replay_files:
-        logger.warning(f"No replay files found in {path}")
-        return
-
-    logger.info(f"Found {len(replay_files)} replay files to process")
-
-    # Process files in parallel and collect data
-    replay_data_list = []
-    with ThreadPoolExecutor(max_workers=ReplayConfig.MAX_WORKERS) as executor:
-        results = list(
-            executor.map(
-                lambda p: process_replay_file(p, path, args.dry_run), replay_files
-            )
-        )
-        replay_data_list = [r for r in results if r is not None]
-
-    # Summary
-    successes = len(replay_data_list)
-    logger.info(
-        f"Processing complete: {successes}/{len(replay_files)} files processed successfully"
-    )
-
-    if replay_data_list:
-        # Generate JSON files
         path_name = path.name
         output_folder = Path("./.cache")
-        os.makedirs(output_folder, exist_ok=True)
+        output_folder.mkdir(exist_ok=True)
         sc2_replay_output_path = output_folder / f"replay_dat_{path_name}.json"
 
         generate_sc2_replay_data(replay_data_list, output_path=sc2_replay_output_path)
