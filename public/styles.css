@@ -116,13 +116,47 @@ ul.sortable li {
     background: white;
     border: 1px solid var(--border-color);
     border-radius: 6px;
-    cursor: grab;
     font-size: 0.9rem;
     box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
 }
 
-ul.sortable li:active {
+.replay-item-content {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: help;
+}
+
+ul.sortable li.draggable {
+    cursor: grab;
+    padding: 0.5rem 0.75rem;
+}
+
+ul.sortable li.draggable:active {
     cursor: grabbing;
+}
+
+.drop-zone {
+    margin-top: 0.5rem;
+    min-height: 40px;
+    background: #f8fafc;
+    border: 2px dashed #e2e8f0;
+    border-radius: 4px;
+    padding: 5px;
+    list-style: none;
+}
+
+.drop-zone li {
+    padding: 5px 10px !important;
+    margin-bottom: 3px !important;
+    background: #fff !important;
+    border: 1px solid #cbd5e1 !important;
+    font-size: 0.8rem !important;
+}
+
+.container-item {
+    background: #f1f5f9 !important;
+    border-left: 4px solid var(--primary-color) !important;
 }
 
 ul.sortable li:hover {
@@ -166,6 +200,19 @@ textarea#wikiOutput {
     background-color: #dcfce7;
     color: var(--success-color);
     border: 1px solid #bbf7d0;
+}
+
+details {
+    margin-top: 1rem;
+    padding: 0.5rem;
+    background: #f1f5f9;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+}
+
+summary {
+    cursor: pointer;
+    font-weight: 600;
 }
 
 .loading-spinner {

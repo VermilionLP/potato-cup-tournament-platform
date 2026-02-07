@@ -25,6 +25,8 @@ const analyzer = new TournamentAnalyzer(API_KEY, BNET_CONFIG, SUB_DOMAIN);
 app.use(express.json({ limit: '50mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
+const MAPPINGS_FILE = path.join(__dirname, 'mappings.json');
+
 // Ensure temp directory exists
 async function ensureDir(dir) {
     try {
@@ -34,8 +36,20 @@ async function ensureDir(dir) {
     }
 }
 
+async function ensureMappingsFile() {
+    try {
+        await fs.access(MAPPINGS_FILE);
+    } catch {
+        await fs.writeFile(MAPPINGS_FILE, JSON.stringify({ players: {} }, null, 2));
+    }
+}
+
 ensureDir(TEMP_REPLAY_DIR).catch(err => {
     console.error(`Failed to create temp directory: ${err.message}`);
+});
+
+ensureMappingsFile().catch(err => {
+    console.error(`Failed to create mappings file: ${err.message}`);
 });
 
 // Helper for exec
@@ -64,8 +78,30 @@ app.get('/api/replay-files', async (req, res, next) => {
     try {
         const dir = path.dirname(REPLAY_FILE);
         const files = await fs.readdir(dir);
-        const replayFiles = files.filter(f => f.startsWith('replay_dat_') && f.endsWith('.json'));
+        const replayFiles = files.filter(f => f.startsWith('replay_dat_') && f.endsWith('.json'))
+            .sort((a, b) => b.localeCompare(a)); // Newest first
         res.json(replayFiles);
+    } catch (error) {
+        next(error);
+    }
+});
+
+app.get('/api/mappings', async (req, res, next) => {
+    try {
+        const data = await fs.readFile(MAPPINGS_FILE, 'utf8');
+        res.json(JSON.parse(data));
+    } catch (error) {
+        next(error);
+    }
+});
+
+app.post('/api/mappings', async (req, res, next) => {
+    try {
+        const { players } = req.body;
+        if (!players) return res.status(400).json({ error: 'players mapping is required' });
+        
+        await fs.writeFile(MAPPINGS_FILE, JSON.stringify({ players }, null, 2));
+        res.json({ message: 'Mappings saved' });
     } catch (error) {
         next(error);
     }

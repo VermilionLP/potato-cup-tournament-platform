@@ -34,6 +34,16 @@ async function fetchTournaments() {
     try {
         const response = await fetch('/api/tournaments');
         tournaments = await response.json();
+        
+        // Sort tournaments by ID or created_at (descending)
+        tournaments.sort((a, b) => {
+            // Usually higher ID means newer, or use created_at if available
+            const dateA = new Date(a.created_at || 0).getTime();
+            const dateB = new Date(b.created_at || 0).getTime();
+            if (dateA !== dateB) return dateB - dateA;
+            return b.id - a.id;
+        });
+
         const select = document.getElementById('tournamentSelect');
         select.innerHTML = '<option value="">Select a tournament...</option>';
         tournaments.forEach(t => {
@@ -41,6 +51,18 @@ async function fetchTournaments() {
             option.value = t.id;
             option.textContent = `${t.id} - ${t.name}`;
             select.appendChild(option);
+        });
+
+        // Load replay files list
+        const filesResponse = await fetch('/api/replay-files');
+        const files = await filesResponse.json();
+        const replaySelect = document.getElementById('replayFileSelect');
+        replaySelect.innerHTML = '<option value="">Select a replay data file...</option>';
+        files.forEach(file => {
+            const option = document.createElement('option');
+            option.value = file;
+            option.textContent = file;
+            replaySelect.appendChild(option);
         });
     } catch (err) {
         console.error('Failed to fetch tournaments:', err);
@@ -73,10 +95,15 @@ async function loadTournament() {
         (tournamentInfo.matches || []).forEach(m => {
             const match = m.match;
             const li = document.createElement('li');
+            li.className = 'container-item';
             li.dataset.matchId = match.id;
             const p1 = participants[String(match.player1_id)] || 'Unknown';
             const p2 = participants[String(match.player2_id)] || 'Unknown';
-            li.textContent = `Match ${match.id}: ${p1} vs ${p2} (ID: ${match.id})`;
+            const round = match.round > 0 ? `R${match.round}` : `LB R${Math.abs(match.round)}`;
+            li.innerHTML = `
+                <div><strong>${round} M${match.suggested_play_order}:</strong> ${p1} vs ${p2}</div>
+                <ul class="drop-zone" data-match-id="${match.id}"></ul>
+            `;
             matchList.appendChild(li);
         });
 
@@ -87,9 +114,13 @@ async function loadTournament() {
             const participant = p.participant;
             const displayName = participant.display_name.replace(/\s*\(invitation pending\)/g, '');
             const li = document.createElement('li');
+            li.className = 'container-item';
             li.dataset.participantId = participant.id;
             li.dataset.name = displayName;
-            li.textContent = displayName;
+            li.innerHTML = `
+                <div><strong>${displayName}</strong></div>
+                <ul class="drop-zone" data-participant-name="${displayName}"></ul>
+            `;
             participantList.appendChild(li);
         });
 
@@ -97,8 +128,190 @@ async function loadTournament() {
         document.getElementById('playerBnetSection').style.display = 'block';
         setupDragAndDrop();
         setStatus('replayStatus', 'Tournament loaded. Now select replays.', 'success');
+        
+        // Auto-match players if mappings exist
+        await autoMatchPlayers();
     } catch (error) {
         setStatus('replayStatus', `Error: ${error.message}`, 'error');
+    }
+}
+
+async function autoMatchPlayers() {
+    try {
+        const response = await fetch('/api/mappings');
+        const { players: mappings } = await response.json();
+        
+        const bnetIdList = document.getElementById('bnetIdList');
+        const bItems = Array.from(bnetIdList.querySelectorAll('li.draggable'));
+        
+        if (bItems.length === 0) return;
+
+        // Try to match based on saved mappings
+        document.querySelectorAll('#participantList .drop-zone').forEach(zone => {
+            const pName = zone.dataset.participantName;
+            const mapping = mappings[pName];
+            
+            if (mapping) {
+                const mappingArray = Array.isArray(mapping) ? mapping : [mapping];
+                
+                mappingArray.forEach(m => {
+                    const mappedBnetId = typeof m === 'string' ? m : m.id;
+                    const mappedBnetUrl = typeof m === 'object' ? m.url : null;
+
+                    const bIndex = bItems.findIndex(b => {
+                        if (mappedBnetUrl && b.dataset.bnetUrl === mappedBnetUrl) return true;
+                        return b.dataset.bnetId === mappedBnetId;
+                    });
+
+                    if (bIndex !== -1) {
+                        const bItem = bItems.splice(bIndex, 1)[0];
+                        zone.appendChild(bItem);
+                    }
+                });
+            }
+        });
+    } catch (err) {
+        console.error('Failed to auto-match players:', err);
+    }
+}
+
+async function autoMatchMatches(providedMappings = null) {
+    try {
+        let mappings;
+        if (providedMappings) {
+            mappings = providedMappings;
+        } else {
+            const response = await fetch('/api/mappings');
+            const data = await response.json();
+            mappings = data.players;
+        }
+        
+        const replayList = document.getElementById('replayObjectList');
+        const availableReplays = Array.from(replayList.querySelectorAll('li.draggable'));
+        
+        if (availableReplays.length === 0) return;
+
+        // Map Challonge participant IDs to their mapped BNet IDs for quick lookup
+        const participantToBnet = {};
+        (tournamentInfo.participants || []).forEach(p => {
+            const displayName = p.participant.display_name.replace(/\s*\(invitation pending\)/g, '');
+            const mapping = mappings[displayName];
+            if (mapping) {
+                // Handle both single object and array of objects
+                const mappingArray = Array.isArray(mapping) ? mapping : [mapping];
+                participantToBnet[p.participant.id] = mappingArray.map(m => typeof m === 'string' ? m : m.id);
+            }
+        });
+
+        // Get all match drop zones
+        const matchZones = Array.from(document.querySelectorAll('#matchList .drop-zone'));
+        
+        // Track which replays we've already assigned
+        const usedReplayIndices = new Set();
+
+        matchZones.forEach(zone => {
+            const matchId = zone.dataset.matchId;
+            const matchData = (tournamentInfo.matches || []).find(m => String(m.match.id) === String(matchId));
+            
+            if (!matchData) return;
+            
+            const p1BnetIds = participantToBnet[matchData.match.player1_id] || [];
+            const p2BnetIds = participantToBnet[matchData.match.player2_id] || [];
+            
+            if (p1BnetIds.length === 0 || p2BnetIds.length === 0) return;
+
+            // Find replays that match these two players
+            availableReplays.forEach(replayItem => {
+                if (usedReplayIndices.has(replayItem.dataset.matchIndex)) return;
+                
+                const replay = replayMatchObjects[parseInt(replayItem.dataset.matchIndex)];
+                const replayPlayerNames = replay.players.map(p => p.name);
+                
+                // Check if this replay features both players (using any of their mapped IDs)
+                const hasP1 = p1BnetIds.some(id => replayPlayerNames.includes(id));
+                const hasP2 = p2BnetIds.some(id => replayPlayerNames.includes(id));
+                
+                if (hasP1 && hasP2) {
+                    zone.appendChild(replayItem);
+                    usedReplayIndices.add(replayItem.dataset.matchIndex);
+                }
+            });
+        });
+    } catch (err) {
+        console.error('Failed to auto-match matches:', err);
+    }
+}
+
+async function savePlayerMappings() {
+    updateBnetIdMap();
+    try {
+        const response = await fetch('/api/mappings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ players: bnetIdMap })
+        });
+        if (response.ok) {
+            // After saving, immediately trigger match linking using the current mappings
+            await autoMatchMatches(bnetIdMap);
+            setStatus('replayStatus', 'Mappings saved and matches linked!', 'success');
+        } else {
+            throw new Error('Failed to save mappings');
+        }
+    } catch (err) {
+        alert('Error saving mappings: ' + err.message);
+    }
+}
+
+async function processAndLoadReplays() {
+    const folderPath = document.getElementById('replayFolderPath').value.trim();
+    
+    if (selectedReplayFiles.length === 0 && !folderPath) {
+        return alert('Please pick a folder or enter a folder path first.');
+    }
+    
+    if (folderPath) {
+        selectedFolderPath = folderPath;
+        selectedReplayFiles = []; // Clear picked files if path is used
+    }
+
+    setStatus('replayFolderStatus', 'Processing replays...', 'success');
+    try {
+        const body = (selectedReplayFiles.length > 0)
+            ? { files: selectedReplayFiles }
+            : { folder: selectedFolderPath };
+
+        const response = await fetch('/api/run-replayreader', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        });
+        
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || 'Failed to process replays');
+
+        // Automatically load the newest replay data file
+        const filesResponse = await fetch('/api/replay-files');
+        const files = await filesResponse.json();
+        if (files.length > 0) {
+            const newestFile = files[0];
+            const select = document.getElementById('replayFileSelect');
+            
+            // Update select options if they aren't updated yet
+            select.innerHTML = '<option value="">Select a replay data file...</option>';
+            files.forEach(file => {
+                const option = document.createElement('option');
+                option.value = file;
+                option.textContent = file;
+                select.appendChild(option);
+            });
+            
+            select.value = newestFile;
+            await loadReplayPlayers();
+        }
+        
+        setStatus('replayFolderStatus', 'Replays processed and loaded!', 'success');
+    } catch (error) {
+        setStatus('replayFolderStatus', `Error: ${error.message}`, 'error');
     }
 }
 
@@ -212,8 +425,7 @@ async function loadReplayPlayers() {
     if (!replayFile) return;
 
     setStatus('replayStatus', 'Loading replay data...', 'success');
-    showLoading('loadPlayersBtn', true);
-
+    
     try {
         const response = await fetch(`/api/load-replay-data`, {
             method: 'POST',
@@ -237,11 +449,37 @@ async function loadReplayPlayers() {
         replayObjectList.innerHTML = '';
         bnetIdList.innerHTML = '';
 
+        replayMatchObjects.sort((a, b) => {
+            const timeA = new Date(a.start_time || 0).getTime();
+            const timeB = new Date(b.start_time || 0).getTime();
+            return timeA - timeB; // Oldest first (chronological)
+        });
+
         replayMatchObjects.forEach((match, index) => {
             const li = document.createElement('li');
+            li.className = 'draggable';
             li.dataset.matchIndex = index;
-            const playersStr = match.players.map(p => p.name).join(' vs ');
-            li.textContent = `Replay ${index + 1}: ${playersStr}`;
+            const p1 = match.players[0] || { name: '?', actual_race: '?' };
+            const p2 = match.players[1] || { name: '?', actual_race: '?' };
+            const p1Str = `${p1.name}(${p1.actual_race ? p1.actual_race[0] : '?'})`;
+            const p2Str = `${p2.name}(${p2.actual_race ? p2.actual_race[0] : '?'})`;
+            
+            // Try to get result from p.result, otherwise fallback to match.winner
+            const results = match.players.map(p => {
+                if (p.result) return p.result === 'Win' ? 'W' : 'L';
+                if (match.winner) return p.name === match.winner ? 'W' : 'L';
+                return '-';
+            });
+            const resultStr = results.join('-');
+            
+            const timeStr = match.start_time ? match.start_time.replace('T', ' ').split('.')[0] : 'Unknown Time';
+            const mapStr = match.map || match.map_name || 'Unknown Map';
+            
+            li.innerHTML = `
+                <div class="replay-item-content" title="Time: ${timeStr}&#10;Map: ${mapStr}">
+                    ${p1Str} vs ${p2Str} (${resultStr || '-'})
+                </div>
+            `;
             replayObjectList.appendChild(li);
         });
 
@@ -254,68 +492,101 @@ async function loadReplayPlayers() {
 
         uniquePlayers.forEach((url, name) => {
             const li = document.createElement('li');
+            li.className = 'draggable';
             li.dataset.bnetId = name;
-            li.textContent = `${name} (${url ? 'Has Profile' : 'No Profile'})`;
+            li.dataset.bnetUrl = url;
+            li.textContent = `${name}`;
             bnetIdList.appendChild(li);
         });
 
         setStatus('replayStatus', `Loaded ${replayMatchObjects.length} matches. Please link them above.`, 'success');
+        
+        setupDragAndDrop();
+        // After loading replays, try auto-matching
+        await autoMatchPlayers();
+        await autoMatchMatches();
     } catch (error) {
         setStatus('replayStatus', `Error: ${error.message}`, 'error');
-    } finally {
-        showLoading('loadPlayersBtn', false);
     }
 }
 
 function setupDragAndDrop() {
-    const sortableOptions = {
-        group: { name: 'shared', pull: false, put: false },
+    const replayOptions = {
+        group: 'replays',
         animation: 200,
         ghostClass: 'sortable-ghost',
-        onEnd: () => {
-            updateMatchObjectMap();
-            updateBnetIdMap();
-        }
+        draggable: '.draggable'
     };
 
-    Sortable.create(document.getElementById('matchList'), sortableOptions);
-    Sortable.create(document.getElementById('replayObjectList'), sortableOptions);
-    Sortable.create(document.getElementById('participantList'), sortableOptions);
-    Sortable.create(document.getElementById('bnetIdList'), sortableOptions);
+    const bnetOptions = {
+        group: 'bnetIds',
+        animation: 200,
+        ghostClass: 'sortable-ghost',
+        draggable: '.draggable'
+    };
+
+    // Source lists - check if already initialized
+    const replaySource = document.getElementById('replayObjectList');
+    if (replaySource && !replaySource.sortable) {
+        replaySource.sortable = Sortable.create(replaySource, replayOptions);
+    }
+    
+    const bnetSource = document.getElementById('bnetIdList');
+    if (bnetSource && !bnetSource.sortable) {
+        bnetSource.sortable = Sortable.create(bnetSource, bnetOptions);
+    }
+
+    // Target drop zones for matches
+    document.querySelectorAll('#matchList .drop-zone').forEach(el => {
+        if (!el.sortable) {
+            el.sortable = Sortable.create(el, replayOptions);
+        }
+    });
+
+    // Target drop zones for participants
+    document.querySelectorAll('#participantList .drop-zone').forEach(el => {
+        if (!el.sortable) {
+            el.sortable = Sortable.create(el, bnetOptions);
+        }
+    });
 }
 
 function updateMatchObjectMap() {
     matchObjectMap = {};
-    const matchItems = document.getElementById('matchList').getElementsByTagName('li');
-    const replayItems = document.getElementById('replayObjectList').getElementsByTagName('li');
-    const min = Math.min(matchItems.length, replayItems.length);
-    
-    for (let i = 0; i < min; i++) {
-        const matchId = matchItems[i].dataset.matchId;
-        const matchIndex = replayItems[i].dataset.matchIndex;
-        if (matchId && matchIndex !== undefined) {
-            matchObjectMap[matchId] = parseInt(matchIndex);
+    document.querySelectorAll('#matchList .drop-zone').forEach(zone => {
+        const matchId = zone.dataset.matchId;
+        const items = zone.querySelectorAll('li');
+        if (items.length > 0) {
+            // If one-to-many, we can store an array or just the first one if the analyzer expects a single index
+            // Looking at the analyzer, it seems to expect matchObjectMap[matchId] = replayIndex
+            // If we want to support multiple replays per match, we might need to update the analyzer
+            // For now, let's store an array and see if analyzer can handle it, or just take the first.
+            // Let's check analyzer.js
+            matchObjectMap[matchId] = Array.from(items).map(li => parseInt(li.dataset.matchIndex));
         }
-    }
+    });
 }
 
 function updateBnetIdMap() {
     bnetIdMap = {};
-    const pItems = document.getElementById('participantList').getElementsByTagName('li');
-    const bItems = document.getElementById('bnetIdList').getElementsByTagName('li');
-    const min = Math.min(pItems.length, bItems.length);
-    
-    for (let i = 0; i < min; i++) {
-        const pName = pItems[i].dataset.name;
-        const bId = bItems[i].dataset.bnetId;
-        if (pName && bId) bnetIdMap[pName] = bId;
-    }
+    document.querySelectorAll('#participantList .drop-zone').forEach(zone => {
+        const pName = zone.dataset.participantName;
+        const items = zone.querySelectorAll('li');
+        if (pName && items.length > 0) {
+            // Support multiple accounts per person
+            bnetIdMap[pName] = Array.from(items).map(item => ({
+                id: item.dataset.bnetId,
+                url: item.dataset.bnetUrl || ''
+            }));
+        }
+    });
 }
 
 async function analyzeTournament() {
     const tournamentId = document.getElementById('tournamentSelect').value;
     const replayFile = document.getElementById('replayFileSelect').value;
-    if (!tournamentId || !replayFile) return alert('Please select tournament and replay data file first.');
+    if (!tournamentId) return alert('Please select a tournament first.');
+    if (!replayFile) return alert('No replay data loaded. Please process replays first.');
 
     updateMatchObjectMap();
     updateBnetIdMap();

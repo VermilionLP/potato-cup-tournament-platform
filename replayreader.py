@@ -90,15 +90,23 @@ def process_replay_file(replay_path, path, dry_run=False, config=ReplayConfig):
         # Collect replay data
         players = []
         for player in replay.players:
-            battle_net_url = getattr(
-                player, "url", f"https://starcraft2.com/profile/{player.pid}"
-            )
+            battle_net_url = getattr(player, "url", None)
+            if not battle_net_url and hasattr(player, "region") and hasattr(player, "subregion") and hasattr(player, "id"):
+                # Construct URL manually if url attribute is missing: https://starcraft2.com/profile/region/subregion/id
+                battle_net_url = f"https://starcraft2.com/profile/{player.region}/{player.subregion}/{player.id}"
+            
+            # Result determination
+            result = "Loss"
+            if replay.winner and player in replay.winner.players:
+                result = "Win"
+
             players.append(
                 {
                     "name": player.name,
-                    "battle_net_url": battle_net_url,
+                    "battle_net_url": battle_net_url or f"https://starcraft2.com/profile/{player.pid}",
                     "picked_race": player.pick_race,
                     "actual_race": player.play_race,
+                    "result": result
                 }
             )
 
@@ -110,9 +118,9 @@ def process_replay_file(replay_path, path, dry_run=False, config=ReplayConfig):
 
         return {
             "winner": winner,
-            "start_time": replay.start_time.isoformat(),
+            "start_time": (replay.start_time + config.TIME_OFFSET).isoformat(),
             "players": players,
-            "map_name": replay.map_name,
+            "map": replay.map_name,
         }
 
     except Exception as e:
@@ -133,33 +141,31 @@ def generate_sc2_replay_data(
 
 
 def generate_battlenet_ids(replay_data_list, output_path="./.cache/battlenet_ids.json"):
-    """Generate initial battlenet_ids.json from replay data with actual characters,
-    and avoid duplicates by checking existing battle_net_url."""
-    os.makedirs('./cache', exist_ok=True)
+    """Generate initial battlenet_ids.json from replay data, keeping it simple."""
+    os.makedirs('./.cache', exist_ok=True)
     existing_players = {}
     if os.path.exists(output_path):
-        with open(output_path, 'r', encoding='utf-8') as f:
-            existing_data = json.load(f)
-            for player in existing_data:
-                existing_players[player["battle_net_url"]] = player
+        try:
+            with open(output_path, 'r', encoding='utf-8') as f:
+                existing_data = json.load(f)
+                for player in existing_data:
+                    if "battle_net_url" in player:
+                        existing_players[player["battle_net_url"]] = player
+        except Exception:
+            pass
 
     for replay_data in replay_data_list:
         for player in replay_data["players"]:
-            battle_net_url = player["battle_net_url"]
-            if battle_net_url not in existing_players:
-                existing_players[battle_net_url] = {
-                    "challonge_names": [],
-                    "challonge_id": "TBD",
-                    "starcraft_name": player["name"],
-                    "battle_net_url": battle_net_url
+            url = player["battle_net_url"]
+            if url not in existing_players:
+                existing_players[url] = {
+                    "name": player["name"],
+                    "battle_net_url": url
                 }
 
-    player_data = list(existing_players.values())
-
     with open(output_path, 'w', encoding='utf-8') as f:
-        json.dump(player_data, f, indent=2, ensure_ascii=False)  # Ensure actual characters
-    logger.info(f"Initial battlenet_ids.json saved to {output_path}")
-    logger.info("Note: Please manually update challonge_names and challonge_id fields.")
+        json.dump(list(existing_players.values()), f, indent=2, ensure_ascii=False)
+    logger.info(f"Updated {output_path}")
 
 
 def main():

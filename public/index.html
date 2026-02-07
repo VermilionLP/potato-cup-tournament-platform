@@ -15,62 +15,37 @@
         <h1>Tournament Analyzer</h1>
 
         <div class="section">
-            <div class="control-group">
-                <label for="tournamentSelect">Select Tournament:</label>
-                <select id="tournamentSelect" onchange="loadTournament()">
-                    <option value="">Select a tournament...</option>
-                </select>
-            </div>
-            
-            <div id="tournamentInfo" style="display: none;">
-                <h3>Tournament Details</h3>
-                <pre id="tournamentDetails"></pre>
-            </div>
-        </div>
-
-        <div class="section" id="replayFolderSection">
-            <h2>1. Select Replay Folder</h2>
-            <div class="control-group">
-                <button id="folderPicker" onclick="selectReplayFolder()">Pick Folder (Chrome/Edge)</button>
-                <div id="folderInput" style="display: none; flex-grow: 1;">
-                    <div class="control-group">
-                        <input type="text" id="replayFolderPath" placeholder="Enter full folder path">
-                        <button class="secondary" onclick="useFolderPath()">Use Path</button>
+            <div class="grid-2">
+                <div class="control-group">
+                    <label for="tournamentSelect">Select Tournament:</label>
+                    <select id="tournamentSelect" onchange="loadTournament()">
+                        <option value="">Select a tournament...</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label>Replay Folder:</label>
+                    <div style="display: flex; gap: 0.5rem; width: 100%;">
+                        <button id="folderPicker" onclick="selectReplayFolder()">Pick Folder</button>
+                        <input type="text" id="replayFolderPath" placeholder="Or enter full path" style="flex-grow: 1;">
+                        <button class="secondary" onclick="processAndLoadReplays()">Process & Load</button>
                     </div>
                 </div>
-                <button id="processReplaysBtn" style="display: none;" onclick="runReplayReader()">Process Replays</button>
             </div>
             <div id="replayFolderStatus" class="status-msg"></div>
-        </div>
-
-        <div class="section" id="replayFileSection">
-            <h2>2. Select Replay Data File</h2>
-            <div class="control-group">
-                <select id="replayFileSelect" onchange="loadReplayPlayers()" style="display: none;">
-                    <option value="">Select a replay data file...</option>
-                </select>
-                <button id="loadPlayersBtn" style="display: none;" onclick="loadReplayPlayers()">Load Data</button>
-            </div>
-            <div id="replayStatus" class="status-msg"></div>
-        </div>
-
-        <div class="section" id="matchReplayObjectSection" style="display: none;">
-            <h2>3. Link Matches to Replay Data</h2>
-            <p><small>Drag and drop to match items in both lists. They will be linked by position.</small></p>
-            <div class="grid-2">
-                <div>
-                    <h3>Challonge Matches</h3>
-                    <ul id="matchList" class="sortable"></ul>
-                </div>
-                <div>
-                    <h3>Replay Match Data</h3>
-                    <ul id="replayObjectList" class="sortable"></ul>
-                </div>
+            
+            <div id="tournamentInfo" style="display: none;">
+                <details>
+                    <summary>Tournament Details</summary>
+                    <pre id="tournamentDetails"></pre>
+                </details>
             </div>
         </div>
 
         <div class="section" id="playerBnetSection" style="display: none;">
-            <h2>4. Link Participants to Battle.net</h2>
+            <h2>1. Link Participants to Battle.net</h2>
+            <div class="control-group" style="margin-bottom: 1rem;">
+                <button class="secondary" onclick="savePlayerMappings()">Save Player Mappings</button>
+            </div>
             <div class="grid-2">
                 <div>
                     <h3>Challonge Participants</h3>
@@ -83,16 +58,40 @@
             </div>
         </div>
 
+        <div class="section" id="matchReplayObjectSection" style="display: none;">
+            <h2>2. Link Matches to Replay Data</h2>
+            <div class="control-group" style="margin-bottom: 1rem; display: none;">
+                <label for="replayFileSelect">Replay Data File:</label>
+                <select id="replayFileSelect" onchange="loadReplayPlayers()">
+                    <option value="">Select a replay data file...</option>
+                </select>
+            </div>
+            <p><small>Drag replay files into the corresponding Challonge matches. Multiple replays can be added to one match (e.g. BO3).</small></p>
+            <div class="grid-2">
+                <div>
+                    <h3>Challonge Matches</h3>
+                    <ul id="matchList" class="sortable"></ul>
+                </div>
+                <div>
+                    <h3>Replay Match Data</h3>
+                    <ul id="replayObjectList" class="sortable"></ul>
+                </div>
+            </div>
+        </div>
+
         <div class="section">
+            <div id="replayStatus" class="status-msg"></div>
             <button id="analyzeBtn" onclick="analyzeTournament()" style="width: 100%; font-size: 1.1rem; padding: 1rem;">
                 Analyze & Generate Everything
             </button>
         </div>
 
         <div class="section" id="resultsSection" style="display: none;">
-            <h2>Analysis Results (JSON)</h2>
-            <pre id="results"></pre>
-            <a id="downloadLink" download="results.json" style="display: none;">Download Results JSON</a>
+            <details>
+                <summary><h2 style="display: inline-block; margin: 0;">Analysis Results (JSON)</h2></summary>
+                <pre id="results"></pre>
+                <a id="downloadLink" download="results.json" style="display: none;">Download Results JSON</a>
+            </details>
         </div>
 
         <div class="section" id="wikiSection" style="display: none;">
