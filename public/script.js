@@ -118,7 +118,25 @@ async function loadTournament() {
             li.dataset.participantId = participant.id;
             li.dataset.name = displayName;
             li.innerHTML = `
-                <div><strong>${displayName}</strong></div>
+                <div style="display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 0.5rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <strong>${displayName}</strong>
+                        <div style="display: flex; gap: 0.3rem;">
+                            <input type="text" class="flag-input" placeholder="flag (cn)" title="Flag (e.g. cn, hk)" style="width: 45px; padding: 2px 5px; font-size: 0.8rem;" value="cn">
+                            <input type="text" class="team-input" placeholder="team" title="Team Tag" style="width: 70px; padding: 2px 5px; font-size: 0.8rem;">
+                        </div>
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 0.3rem;">
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <small style="color: #64748b; width: 40px;">Alias:</small>
+                            <input type="text" class="alias-input" placeholder="Liquipedia ID" style="flex-grow: 1; padding: 2px 5px; font-size: 0.8rem;">
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <small style="color: #64748b; width: 40px;">Link:</small>
+                            <input type="text" class="link-input" placeholder="User:Wayne19980" style="flex-grow: 1; padding: 2px 5px; font-size: 0.8rem;">
+                        </div>
+                    </div>
+                </div>
                 <ul class="drop-zone" data-participant-name="${displayName}"></ul>
             `;
             participantList.appendChild(li);
@@ -152,9 +170,15 @@ async function autoMatchPlayers() {
             const mapping = mappings[pName];
             
             if (mapping) {
-                const mappingArray = Array.isArray(mapping) ? mapping : [mapping];
+                const container = zone.closest('.container-item');
+                if (mapping.flag) container.querySelector('.flag-input').value = mapping.flag;
+                if (mapping.team) container.querySelector('.team-input').value = mapping.team;
+                if (mapping.alias) container.querySelector('.alias-input').value = mapping.alias;
+                if (mapping.link) container.querySelector('.link-input').value = mapping.link;
+
+                const accounts = mapping.accounts || (Array.isArray(mapping) ? mapping : [mapping]);
                 
-                mappingArray.forEach(m => {
+                accounts.forEach(m => {
                     const mappedBnetId = typeof m === 'string' ? m : m.id;
                     const mappedBnetUrl = typeof m === 'object' ? m.url : null;
 
@@ -197,9 +221,9 @@ async function autoMatchMatches(providedMappings = null) {
             const displayName = p.participant.display_name.replace(/\s*\(invitation pending\)/g, '');
             const mapping = mappings[displayName];
             if (mapping) {
-                // Handle both single object and array of objects
-                const mappingArray = Array.isArray(mapping) ? mapping : [mapping];
-                participantToBnet[p.participant.id] = mappingArray.map(m => typeof m === 'string' ? m : m.id);
+                // Handle both single object, array of objects, and new structure
+                const accounts = mapping.accounts || (Array.isArray(mapping) ? mapping : [mapping]);
+                participantToBnet[p.participant.id] = accounts.map(m => typeof m === 'string' ? m : m.id);
             }
         });
 
@@ -262,6 +286,25 @@ async function savePlayerMappings() {
     }
 }
 
+async function selectReplayFolder() {
+    try {
+        setStatus('replayFolderStatus', 'Waiting for folder selection...', 'success');
+        const response = await fetch('/api/pick-folder');
+        const data = await response.json();
+        
+        if (data.path) {
+            document.getElementById('replayFolderPath').value = data.path;
+            selectedFolderPath = data.path;
+            selectedReplayFiles = []; // Use path instead of uploaded files
+            setStatus('replayFolderStatus', `Selected: ${data.path}`, 'success');
+        } else {
+            setStatus('replayFolderStatus', 'Folder selection cancelled.', 'error');
+        }
+    } catch (error) {
+        setStatus('replayFolderStatus', `Error picking folder: ${error.message}`, 'error');
+    }
+}
+
 async function processAndLoadReplays() {
     const folderPath = document.getElementById('replayFolderPath').value.trim();
     
@@ -315,39 +358,67 @@ async function processAndLoadReplays() {
     }
 }
 
+function updateFolderStatus() {
+    if (selectedReplayFiles.length === 0) {
+        setStatus('replayFolderStatus', 'No .SC2Replay files found in the selected folder.', 'error');
+    } else {
+        setStatus('replayFolderStatus', `Picked ${selectedReplayFiles.length} replay file(s). Click "Process & Load" to begin.`, 'success');
+        document.getElementById('replayFolderPath').value = ''; // Clear path if files are picked
+    }
+}
+
 async function selectReplayFolder() {
-    if (!isFolderPickerSupported) return;
-
     try {
-        const dirHandle = await window.showDirectoryPicker();
-        setStatus('replayFolderStatus', `Reading files from ${dirHandle.name}...`, 'success');
+        setStatus('replayFolderStatus', 'Waiting for folder selection...', 'success');
+        const response = await fetch('/api/pick-folder');
+        const data = await response.json();
         
-        selectedReplayFiles = [];
-        selectedFolderPath = '';
-
-        for await (const entry of dirHandle.values()) {
-            if (entry.kind === 'file' && entry.name.toLowerCase().endsWith('.sc2replay')) {
-                const file = await entry.getFile();
-                const reader = new FileReader();
-                const content = await new Promise((resolve) => {
-                    reader.onload = (e) => resolve(e.target.result.split(',')[1]);
-                    reader.readAsDataURL(file);
-                });
-                selectedReplayFiles.push({ name: entry.name, content });
-            }
-        }
-
-        if (selectedReplayFiles.length === 0) {
-            setStatus('replayFolderStatus', 'No .SC2Replay files found in the selected folder.', 'error');
-            document.getElementById('processReplaysBtn').style.display = 'none';
+        if (data.path) {
+            document.getElementById('replayFolderPath').value = data.path;
+            selectedFolderPath = data.path;
+            selectedReplayFiles = []; // Use path instead of uploaded files
+            setStatus('replayFolderStatus', `Selected: ${data.path}`, 'success');
         } else {
-            setStatus('replayFolderStatus', `Found ${selectedReplayFiles.length} replay file(s). Click "Process Replays" to begin.`, 'success');
-            document.getElementById('processReplaysBtn').style.display = 'inline-block';
+            setStatus('replayFolderStatus', 'Folder selection cancelled.', 'error');
         }
     } catch (error) {
-        if (error.name !== 'AbortError') {
-            setStatus('replayFolderStatus', `Error selecting folder: ${error.message}`, 'error');
-        }
+        setStatus('replayFolderStatus', `Error picking folder: ${error.message}`, 'error');
+    }
+}
+
+async function handleFallbackFolder(input) {
+    const files = Array.from(input.files);
+    if (files.length === 0) return;
+
+    setStatus('replayFolderStatus', `Reading ${files.length} files...`, 'success');
+    
+    selectedReplayFiles = [];
+    selectedFolderPath = '';
+
+    const replayFiles = files.filter(f => f.name.toLowerCase().endsWith('.sc2replay'));
+    
+    for (const file of replayFiles) {
+        const content = await readFileAsBase64(file);
+        selectedReplayFiles.push({ name: file.name, content });
+    }
+
+    updateFolderStatus();
+}
+
+function readFileAsBase64(file) {
+    return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (e) => resolve(e.target.result.split(',')[1]);
+        reader.readAsDataURL(file);
+    });
+}
+
+function updateFolderStatus() {
+    if (selectedReplayFiles.length === 0) {
+        setStatus('replayFolderStatus', 'No .SC2Replay files found in the selected folder.', 'error');
+    } else {
+        setStatus('replayFolderStatus', `Picked ${selectedReplayFiles.length} replay file(s). Click "Process & Load" to begin.`, 'success');
+        document.getElementById('replayFolderPath').value = ''; // Clear path if files are picked
     }
 }
 
@@ -571,14 +642,23 @@ function updateBnetIdMap() {
     bnetIdMap = {};
     document.querySelectorAll('#participantList .drop-zone').forEach(zone => {
         const pName = zone.dataset.participantName;
+        const container = zone.closest('.container-item');
+        const flag = container.querySelector('.flag-input').value || 'cn';
+        const team = container.querySelector('.team-input').value || '';
+        const alias = container.querySelector('.alias-input').value || '';
+        const link = container.querySelector('.link-input').value || '';
         const items = zone.querySelectorAll('li');
-        if (pName && items.length > 0) {
-            // Support multiple accounts per person
-            bnetIdMap[pName] = Array.from(items).map(item => ({
+        
+        bnetIdMap[pName] = {
+            flag: flag,
+            team: team,
+            alias: alias,
+            link: link,
+            accounts: Array.from(items).map(item => ({
                 id: item.dataset.bnetId,
                 url: item.dataset.bnetUrl || ''
-            }));
-        }
+            }))
+        };
     });
 }
 
@@ -645,9 +725,4 @@ function copyWikiToClipboard() {
 
 window.onload = () => {
     fetchTournaments();
-    if (!isFolderPickerSupported) {
-        document.getElementById('folderPicker').style.display = 'none';
-        document.getElementById('folderInput').style.display = 'block';
-        setStatus('replayFolderStatus', 'Note: Chrome/Edge recommended for folder picking.', 'error');
-    }
 };

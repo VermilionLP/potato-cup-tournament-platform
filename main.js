@@ -56,6 +56,18 @@ ensureMappingsFile().catch(err => {
 const execPromise = util.promisify(exec);
 
 // API Endpoints
+app.get('/api/pick-folder', async (req, res, next) => {
+    try {
+        // PowerShell command to open a native folder dialog and return the path
+        const cmd = `powershell -Command "Add-Type -AssemblyName System.Windows.Forms; $f = New-Object System.Windows.Forms.FolderBrowserDialog; $f.Description = 'Select SC2 Replay Folder'; if($f.ShowDialog() -eq 'OK'){ $f.SelectedPath }"`;
+        const { stdout } = await execPromise(cmd);
+        const selectedPath = stdout.trim();
+        res.json({ path: selectedPath });
+    } catch (error) {
+        next(error);
+    }
+});
+
 app.get('/api/tournaments', async (req, res, next) => {
     try {
         const tournaments = await analyzer.getTournamentList();
@@ -97,11 +109,43 @@ app.get('/api/mappings', async (req, res, next) => {
 
 app.post('/api/mappings', async (req, res, next) => {
     try {
-        const { players } = req.body;
-        if (!players) return res.status(400).json({ error: 'players mapping is required' });
+        const { players: newPlayers } = req.body;
+        if (!newPlayers) return res.status(400).json({ error: 'players mapping is required' });
         
-        await fs.writeFile(MAPPINGS_FILE, JSON.stringify({ players }, null, 2));
-        res.json({ message: 'Mappings saved' });
+        // Read existing mappings
+        let existingData = { players: {} };
+        try {
+            const data = await fs.readFile(MAPPINGS_FILE, 'utf8');
+            existingData = JSON.parse(data);
+        } catch (e) {
+            // File might not exist or be invalid, use default
+        }
+
+        // Merge new players into existing ones
+        const mergedPlayers = { ...existingData.players };
+        
+        for (const [name, newInfo] of Object.entries(newPlayers)) {
+            if (mergedPlayers[name]) {
+                // Accumulate accounts
+                const existingAccounts = mergedPlayers[name].accounts || [];
+                const newAccounts = newInfo.accounts || [];
+                
+                // Use a Map to keep unique accounts by URL
+                const accountMap = new Map();
+                existingAccounts.forEach(acc => accountMap.set(acc.url || acc.id, acc));
+                newAccounts.forEach(acc => accountMap.set(acc.url || acc.id, acc));
+                
+                mergedPlayers[name] = {
+                    ...newInfo,
+                    accounts: Array.from(accountMap.values())
+                };
+            } else {
+                mergedPlayers[name] = newInfo;
+            }
+        }
+        
+        await fs.writeFile(MAPPINGS_FILE, JSON.stringify({ players: mergedPlayers }, null, 2));
+        res.json({ message: 'Mappings saved and merged' });
     } catch (error) {
         next(error);
     }
