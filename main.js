@@ -1,33 +1,40 @@
-const express = require('express');
-const fs = require('fs').promises;
+const fastify = require('fastify')({
+    logger: true,
+    bodyLimit: 50 * 1024 * 1024
+});
 const path = require('path');
+const fs = require('fs').promises;
 const { exec } = require('child_process');
 const util = require('util');
-const { 
-    API_KEY, 
-    SUB_DOMAIN, 
-    BNET_CONFIG, 
-    PYTHON_SCRIPT, 
-    TEMP_REPLAY_DIR, 
-    REPLAY_FILE 
+const {
+    API_KEY,
+    SUB_DOMAIN,
+    BNET_CONFIG,
+    PYTHON_SCRIPT,
+    TEMP_REPLAY_DIR,
+    REPLAY_FILE
 } = require('./config');
 
 const TournamentAnalyzer = require('./lib/analyzer');
 const { generateWiki } = require('./lib/wiki');
 
-const app = express();
 const port = process.env.PORT || 3000;
 
 // Initialize Analyzer
 const analyzer = new TournamentAnalyzer(API_KEY, BNET_CONFIG, SUB_DOMAIN);
 
-// Middleware
-app.use(express.json({ limit: '50mb' }));
-app.use(express.static(path.join(__dirname, 'public')));
-
 const MAPPINGS_FILE = path.join(__dirname, 'mappings.json');
 
-// Ensure temp directory exists
+// Helper for exec
+const execPromise = util.promisify(exec);
+
+// Register Static Files
+fastify.register(require('@fastify/static'), {
+    root: path.join(__dirname, 'public'),
+    prefix: '/',
+});
+
+// Ensure directories and files
 async function ensureDir(dir) {
     try {
         await fs.mkdir(dir, { recursive: true });
@@ -44,193 +51,144 @@ async function ensureMappingsFile() {
     }
 }
 
-ensureDir(TEMP_REPLAY_DIR).catch(err => {
-    console.error(`Failed to create temp directory: ${err.message}`);
+// Routes
+fastify.get('/api/tournaments', async (request, reply) => {
+    const tournaments = await analyzer.getTournamentList();
+    return tournaments;
 });
 
-ensureMappingsFile().catch(err => {
-    console.error(`Failed to create mappings file: ${err.message}`);
-});
-
-// Helper for exec
-const execPromise = util.promisify(exec);
-
-// API Endpoints
-app.get('/api/pick-folder', async (req, res, next) => {
+fastify.get('/api/tournament/:id', async (request, reply) => {
     try {
-        // PowerShell command to open a native folder dialog and return the path
-        const cmd = `powershell -Command "Add-Type -AssemblyName System.Windows.Forms; $f = New-Object System.Windows.Forms.FolderBrowserDialog; $f.Description = 'Select SC2 Replay Folder'; if($f.ShowDialog() -eq 'OK'){ $f.SelectedPath }"`;
-        const { stdout } = await execPromise(cmd);
-        const selectedPath = stdout.trim();
-        res.json({ path: selectedPath });
+        const tournamentInfo = await analyzer.getTournamentInfo(request.params.id, true);
+        return tournamentInfo;
     } catch (error) {
-        next(error);
+        reply.status(500).send({ error: error.message });
     }
 });
 
-app.get('/api/tournaments', async (req, res, next) => {
-    try {
-        const tournaments = await analyzer.getTournamentList();
-        res.json(tournaments);
-    } catch (error) {
-        next(error);
-    }
+fastify.get('/api/replay-files', async (request, reply) => {
+    const dir = path.dirname(REPLAY_FILE);
+    const files = await fs.readdir(dir);
+    const replayFiles = files.filter(f => f.startsWith('replay_dat_') && f.endsWith('.json'))
+        .sort((a, b) => b.localeCompare(a));
+    return replayFiles;
 });
 
-app.get('/api/tournament/:id', async (req, res, next) => {
-    try {
-        const tournamentInfo = await analyzer.getTournamentInfo(req.params.id, true);
-        res.json(tournamentInfo);
-    } catch (error) {
-        next(error);
-    }
+fastify.get('/api/mappings', async (request, reply) => {
+    const data = await fs.readFile(MAPPINGS_FILE, 'utf8');
+    return JSON.parse(data);
 });
 
-app.get('/api/replay-files', async (req, res, next) => {
-    try {
-        const dir = path.dirname(REPLAY_FILE);
-        const files = await fs.readdir(dir);
-        const replayFiles = files.filter(f => f.startsWith('replay_dat_') && f.endsWith('.json'))
-            .sort((a, b) => b.localeCompare(a)); // Newest first
-        res.json(replayFiles);
-    } catch (error) {
-        next(error);
+fastify.post('/api/mappings', async (request, reply) => {
+    const { players: newPlayers } = request.body;
+    if (!newPlayers) {
+        reply.status(400).send({ error: 'players mapping is required' });
+        return;
     }
-});
 
-app.get('/api/mappings', async (req, res, next) => {
+    let existingData = { players: {} };
     try {
         const data = await fs.readFile(MAPPINGS_FILE, 'utf8');
-        res.json(JSON.parse(data));
-    } catch (error) {
-        next(error);
+        existingData = JSON.parse(data);
+    } catch (e) { }
+
+    const mergedPlayers = { ...existingData.players };
+
+    for (const [name, newInfo] of Object.entries(newPlayers)) {
+        if (mergedPlayers[name]) {
+            const existingAccounts = mergedPlayers[name].accounts || [];
+            const newAccounts = newInfo.accounts || [];
+            const accountMap = new Map();
+            existingAccounts.forEach(acc => accountMap.set(acc.url || acc.id, acc));
+            newAccounts.forEach(acc => accountMap.set(acc.url || acc.id, acc));
+
+            mergedPlayers[name] = {
+                ...newInfo,
+                accounts: Array.from(accountMap.values())
+            };
+        } else {
+            mergedPlayers[name] = newInfo;
+        }
     }
+
+    await fs.writeFile(MAPPINGS_FILE, JSON.stringify({ players: mergedPlayers }, null, 2));
+    return { message: 'Mappings saved and merged' };
 });
 
-app.post('/api/mappings', async (req, res, next) => {
-    try {
-        const { players: newPlayers } = req.body;
-        if (!newPlayers) return res.status(400).json({ error: 'players mapping is required' });
-        
-        // Read existing mappings
-        let existingData = { players: {} };
-        try {
-            const data = await fs.readFile(MAPPINGS_FILE, 'utf8');
-            existingData = JSON.parse(data);
-        } catch (e) {
-            // File might not exist or be invalid, use default
-        }
-
-        // Merge new players into existing ones
-        const mergedPlayers = { ...existingData.players };
-        
-        for (const [name, newInfo] of Object.entries(newPlayers)) {
-            if (mergedPlayers[name]) {
-                // Accumulate accounts
-                const existingAccounts = mergedPlayers[name].accounts || [];
-                const newAccounts = newInfo.accounts || [];
-                
-                // Use a Map to keep unique accounts by URL
-                const accountMap = new Map();
-                existingAccounts.forEach(acc => accountMap.set(acc.url || acc.id, acc));
-                newAccounts.forEach(acc => accountMap.set(acc.url || acc.id, acc));
-                
-                mergedPlayers[name] = {
-                    ...newInfo,
-                    accounts: Array.from(accountMap.values())
-                };
-            } else {
-                mergedPlayers[name] = newInfo;
-            }
-        }
-        
-        await fs.writeFile(MAPPINGS_FILE, JSON.stringify({ players: mergedPlayers }, null, 2));
-        res.json({ message: 'Mappings saved and merged' });
-    } catch (error) {
-        next(error);
+fastify.post('/api/run-replayreader', async (request, reply) => {
+    const { files, folder } = request.body;
+    if (!files && !folder) {
+        reply.status(400).send({ error: 'Either files or folder path is required' });
+        return;
     }
+
+    const tempFiles = await fs.readdir(TEMP_REPLAY_DIR);
+    await Promise.all(tempFiles.map(f => fs.unlink(path.join(TEMP_REPLAY_DIR, f))));
+
+    let replayFolder = TEMP_REPLAY_DIR;
+
+    if (files && Array.isArray(files)) {
+        for (const file of files) {
+            const buffer = Buffer.from(file.content, 'base64');
+            await fs.writeFile(path.join(TEMP_REPLAY_DIR, file.name), buffer);
+        }
+    } else if (folder) {
+        replayFolder = folder;
+    }
+
+    await execPromise(`python "${PYTHON_SCRIPT}" "${replayFolder}"`);
+    return { message: 'Replay processing completed' };
 });
 
-app.post('/api/run-replayreader', async (req, res, next) => {
-    try {
-        const { files, folder } = req.body;
-        if (!files && !folder) {
-            return res.status(400).json({ error: 'Either files or folder path is required' });
-        }
-
-        // Clear temp directory
-        const tempFiles = await fs.readdir(TEMP_REPLAY_DIR);
-        await Promise.all(tempFiles.map(f => fs.unlink(path.join(TEMP_REPLAY_DIR, f))));
-
-        let replayFolder = TEMP_REPLAY_DIR;
-
-        if (files && Array.isArray(files)) {
-            for (const file of files) {
-                const buffer = Buffer.from(file.content, 'base64');
-                await fs.writeFile(path.join(TEMP_REPLAY_DIR, file.name), buffer);
-            }
-        } else if (folder) {
-            replayFolder = folder;
-        }
-
-        // Run Python script
-        await execPromise(`python "${PYTHON_SCRIPT}" "${replayFolder}"`);
-        res.json({ message: 'Replay processing completed' });
-    } catch (error) {
-        next(error);
+fastify.post('/api/load-replay-data', async (request, reply) => {
+    const { replayFile } = request.body;
+    if (!replayFile) {
+        reply.status(400).send({ error: 'replayFile is required' });
+        return;
     }
+
+    const dataPath = path.join(path.dirname(REPLAY_FILE), replayFile);
+    const results = await analyzer.loadReplayData(dataPath);
+    return results;
 });
 
-app.post('/api/load-replay-data', async (req, res, next) => {
-    const { replayFile } = req.body;
-    if (!replayFile) return res.status(400).json({ error: 'replayFile is required' });
-
-    try {
-        const dataPath = path.join(path.dirname(REPLAY_FILE), replayFile);
-        const results = await analyzer.loadReplayData(dataPath);
-        res.json(results);
-    } catch (error) {
-        next(error);
-    }
-});
-
-app.post('/api/analyze', async (req, res, next) => {
-    const { tournamentId, replayFile, matchObjectMap, bnetIdMap } = req.body;
+fastify.post('/api/analyze', async (request, reply) => {
+    const { tournamentId, replayFile, matchObjectMap, bnetIdMap } = request.body;
     if (!tournamentId || !replayFile) {
-        return res.status(400).json({ error: 'tournamentId and replayFile are required' });
+        reply.status(400).send({ error: 'tournamentId and replayFile are required' });
+        return;
     }
-    try {
-        const dataPath = path.join(path.dirname(REPLAY_FILE), replayFile);
-        const results = await analyzer.analyzeTournament(tournamentId, dataPath, matchObjectMap || {}, bnetIdMap || {});
-        res.json(results);
-    } catch (error) {
-        next(error);
-    }
+    const dataPath = path.join(path.dirname(REPLAY_FILE), replayFile);
+    const results = await analyzer.analyzeTournament(tournamentId, dataPath, matchObjectMap || {}, bnetIdMap || {});
+    return results;
 });
 
-app.post('/api/generate-wiki', (req, res) => {
-    const { results } = req.body;
+fastify.post('/api/generate-wiki', async (request, reply) => {
+    const { results } = request.body;
     try {
         const wikiScript = generateWiki(results);
-        res.set('Content-Type', 'text/plain');
-        res.send(wikiScript);
+        reply.type('text/plain').send(wikiScript);
     } catch (error) {
-        res.status(400).json({ error: error.message });
+        reply.status(400).send({ error: error.message });
     }
 });
 
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+// Fallback to index.html
+fastify.get('/', async (request, reply) => {
+    return reply.sendFile('index.html');
 });
 
-// Centralized Error Handler
-app.use((err, req, res, next) => {
-    console.error(`[Error] ${err.stack}`);
-    res.status(err.status || 500).json({
-        error: err.message || 'Internal Server Error'
-    });
-});
+// Start Server
+const start = async () => {
+    try {
+        await ensureDir(TEMP_REPLAY_DIR);
+        await ensureMappingsFile();
+        await fastify.listen({ port: port, host: '0.0.0.0' });
+        console.log(`Server running at http://localhost:${port}`);
+    } catch (err) {
+        fastify.log.error(err);
+        process.exit(1);
+    }
+};
 
-app.listen(port, () => {
-    console.log(`Server running at http://localhost:${port}`);
-});
+start();

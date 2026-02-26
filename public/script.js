@@ -6,7 +6,6 @@ let bnetIdMap = {};
 let replayMatchObjects = [];
 let selectedReplayFiles = [];
 let selectedFolderPath = '';
-let isFolderPickerSupported = typeof window.showDirectoryPicker === 'function';
 
 const setStatus = (id, message, type = '') => {
     const el = document.getElementById(id);
@@ -34,7 +33,7 @@ async function fetchTournaments() {
     try {
         const response = await fetch('/api/tournaments');
         tournaments = await response.json();
-        
+
         // Sort tournaments by ID or created_at (descending)
         tournaments.sort((a, b) => {
             // Usually higher ID means newer, or use created_at if available
@@ -72,7 +71,7 @@ async function fetchTournaments() {
 async function loadTournament() {
     const tournamentId = document.getElementById('tournamentSelect').value;
     if (!tournamentId) return;
-    
+
     setStatus('replayStatus', 'Loading tournament info...', 'success');
     try {
         const response = await fetch(`/api/tournament/${tournamentId}`);
@@ -87,7 +86,7 @@ async function loadTournament() {
         matchList.innerHTML = '';
         const participants = Object.fromEntries(
             (tournamentInfo.participants || []).map(p => [
-                String(p.participant.id), 
+                String(p.participant.id),
                 p.participant.display_name.replace(/\s*\(invitation pending\)/g, '')
             ])
         );
@@ -146,7 +145,7 @@ async function loadTournament() {
         document.getElementById('playerBnetSection').style.display = 'block';
         setupDragAndDrop();
         setStatus('replayStatus', 'Tournament loaded. Now select replays.', 'success');
-        
+
         // Auto-match players if mappings exist
         await autoMatchPlayers();
     } catch (error) {
@@ -158,17 +157,17 @@ async function autoMatchPlayers() {
     try {
         const response = await fetch('/api/mappings');
         const { players: mappings } = await response.json();
-        
+
         const bnetIdList = document.getElementById('bnetIdList');
         const bItems = Array.from(bnetIdList.querySelectorAll('li.draggable'));
-        
+
         if (bItems.length === 0) return;
 
         // Try to match based on saved mappings
         document.querySelectorAll('#participantList .drop-zone').forEach(zone => {
             const pName = zone.dataset.participantName;
             const mapping = mappings[pName];
-            
+
             if (mapping) {
                 const container = zone.closest('.container-item');
                 if (mapping.flag) container.querySelector('.flag-input').value = mapping.flag;
@@ -177,7 +176,7 @@ async function autoMatchPlayers() {
                 if (mapping.link) container.querySelector('.link-input').value = mapping.link;
 
                 const accounts = mapping.accounts || (Array.isArray(mapping) ? mapping : [mapping]);
-                
+
                 accounts.forEach(m => {
                     const mappedBnetId = typeof m === 'string' ? m : m.id;
                     const mappedBnetUrl = typeof m === 'object' ? m.url : null;
@@ -209,10 +208,10 @@ async function autoMatchMatches(providedMappings = null) {
             const data = await response.json();
             mappings = data.players;
         }
-        
+
         const replayList = document.getElementById('replayObjectList');
         const availableReplays = Array.from(replayList.querySelectorAll('li.draggable'));
-        
+
         if (availableReplays.length === 0) return;
 
         // Map Challonge participant IDs to their mapped BNet IDs for quick lookup
@@ -229,32 +228,32 @@ async function autoMatchMatches(providedMappings = null) {
 
         // Get all match drop zones
         const matchZones = Array.from(document.querySelectorAll('#matchList .drop-zone'));
-        
+
         // Track which replays we've already assigned
         const usedReplayIndices = new Set();
 
         matchZones.forEach(zone => {
             const matchId = zone.dataset.matchId;
             const matchData = (tournamentInfo.matches || []).find(m => String(m.match.id) === String(matchId));
-            
+
             if (!matchData) return;
-            
+
             const p1BnetIds = participantToBnet[matchData.match.player1_id] || [];
             const p2BnetIds = participantToBnet[matchData.match.player2_id] || [];
-            
+
             if (p1BnetIds.length === 0 || p2BnetIds.length === 0) return;
 
             // Find replays that match these two players
             availableReplays.forEach(replayItem => {
                 if (usedReplayIndices.has(replayItem.dataset.matchIndex)) return;
-                
+
                 const replay = replayMatchObjects[parseInt(replayItem.dataset.matchIndex)];
                 const replayPlayerNames = replay.players.map(p => p.name);
-                
+
                 // Check if this replay features both players (using any of their mapped IDs)
                 const hasP1 = p1BnetIds.some(id => replayPlayerNames.includes(id));
                 const hasP2 = p2BnetIds.some(id => replayPlayerNames.includes(id));
-                
+
                 if (hasP1 && hasP2) {
                     zone.appendChild(replayItem);
                     usedReplayIndices.add(replayItem.dataset.matchIndex);
@@ -286,32 +285,15 @@ async function savePlayerMappings() {
     }
 }
 
-async function selectReplayFolder() {
-    try {
-        setStatus('replayFolderStatus', 'Waiting for folder selection...', 'success');
-        const response = await fetch('/api/pick-folder');
-        const data = await response.json();
-        
-        if (data.path) {
-            document.getElementById('replayFolderPath').value = data.path;
-            selectedFolderPath = data.path;
-            selectedReplayFiles = []; // Use path instead of uploaded files
-            setStatus('replayFolderStatus', `Selected: ${data.path}`, 'success');
-        } else {
-            setStatus('replayFolderStatus', 'Folder selection cancelled.', 'error');
-        }
-    } catch (error) {
-        setStatus('replayFolderStatus', `Error picking folder: ${error.message}`, 'error');
-    }
-}
+
 
 async function processAndLoadReplays() {
     const folderPath = document.getElementById('replayFolderPath').value.trim();
-    
+
     if (selectedReplayFiles.length === 0 && !folderPath) {
         return alert('Please pick a folder or enter a folder path first.');
     }
-    
+
     if (folderPath) {
         selectedFolderPath = folderPath;
         selectedReplayFiles = []; // Clear picked files if path is used
@@ -328,7 +310,7 @@ async function processAndLoadReplays() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body)
         });
-        
+
         const result = await response.json();
         if (!response.ok) throw new Error(result.error || 'Failed to process replays');
 
@@ -338,7 +320,7 @@ async function processAndLoadReplays() {
         if (files.length > 0) {
             const newestFile = files[0];
             const select = document.getElementById('replayFileSelect');
-            
+
             // Update select options if they aren't updated yet
             select.innerHTML = '<option value="">Select a replay data file...</option>';
             files.forEach(file => {
@@ -347,11 +329,11 @@ async function processAndLoadReplays() {
                 option.textContent = file;
                 select.appendChild(option);
             });
-            
+
             select.value = newestFile;
             await loadReplayPlayers();
         }
-        
+
         setStatus('replayFolderStatus', 'Replays processed and loaded!', 'success');
     } catch (error) {
         setStatus('replayFolderStatus', `Error: ${error.message}`, 'error');
@@ -367,36 +349,19 @@ function updateFolderStatus() {
     }
 }
 
-async function selectReplayFolder() {
-    try {
-        setStatus('replayFolderStatus', 'Waiting for folder selection...', 'success');
-        const response = await fetch('/api/pick-folder');
-        const data = await response.json();
-        
-        if (data.path) {
-            document.getElementById('replayFolderPath').value = data.path;
-            selectedFolderPath = data.path;
-            selectedReplayFiles = []; // Use path instead of uploaded files
-            setStatus('replayFolderStatus', `Selected: ${data.path}`, 'success');
-        } else {
-            setStatus('replayFolderStatus', 'Folder selection cancelled.', 'error');
-        }
-    } catch (error) {
-        setStatus('replayFolderStatus', `Error picking folder: ${error.message}`, 'error');
-    }
-}
+
 
 async function handleFallbackFolder(input) {
     const files = Array.from(input.files);
     if (files.length === 0) return;
 
     setStatus('replayFolderStatus', `Reading ${files.length} files...`, 'success');
-    
+
     selectedReplayFiles = [];
     selectedFolderPath = '';
 
     const replayFiles = files.filter(f => f.name.toLowerCase().endsWith('.sc2replay'));
-    
+
     for (const file of replayFiles) {
         const content = await readFileAsBase64(file);
         selectedReplayFiles.push({ name: file.name, content });
@@ -436,7 +401,7 @@ function useFolderPath() {
 async function runReplayReader() {
     setStatus('replayStatus', 'Processing replays on server...', 'success');
     showLoading('processReplaysBtn', true);
-    
+
     try {
         const body = (selectedReplayFiles.length > 0)
             ? { files: selectedReplayFiles }
@@ -447,7 +412,7 @@ async function runReplayReader() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body)
         });
-        
+
         const result = await response.json();
         if (!response.ok) throw new Error(result.error || 'Failed to process replays');
 
@@ -483,7 +448,7 @@ async function loadReplayFiles() {
             option.textContent = file;
             select.appendChild(option);
         });
-        
+
         select.style.display = 'block';
         document.getElementById('loadPlayersBtn').style.display = 'block';
     } catch (error) {
@@ -496,7 +461,7 @@ async function loadReplayPlayers() {
     if (!replayFile) return;
 
     setStatus('replayStatus', 'Loading replay data...', 'success');
-    
+
     try {
         const response = await fetch(`/api/load-replay-data`, {
             method: 'POST',
@@ -513,7 +478,7 @@ async function loadReplayPlayers() {
         }
 
         replayMatchObjects = data.matches;
-        
+
         // Populate lists
         const replayObjectList = document.getElementById('replayObjectList');
         const bnetIdList = document.getElementById('bnetIdList');
@@ -534,7 +499,7 @@ async function loadReplayPlayers() {
             const p2 = match.players[1] || { name: '?', actual_race: '?' };
             const p1Str = `${p1.name}(${p1.actual_race ? p1.actual_race[0] : '?'})`;
             const p2Str = `${p2.name}(${p2.actual_race ? p2.actual_race[0] : '?'})`;
-            
+
             // Try to get result from p.result, otherwise fallback to match.winner
             const results = match.players.map(p => {
                 if (p.result) return p.result === 'Win' ? 'W' : 'L';
@@ -542,10 +507,10 @@ async function loadReplayPlayers() {
                 return '-';
             });
             const resultStr = results.join('-');
-            
+
             const timeStr = match.start_time ? match.start_time.replace('T', ' ').split('.')[0] : 'Unknown Time';
             const mapStr = match.map || match.map_name || 'Unknown Map';
-            
+
             li.innerHTML = `
                 <div class="replay-item-content" title="Time: ${timeStr}&#10;Map: ${mapStr}">
                     ${p1Str} vs ${p2Str} (${resultStr || '-'})
@@ -571,7 +536,7 @@ async function loadReplayPlayers() {
         });
 
         setStatus('replayStatus', `Loaded ${replayMatchObjects.length} matches. Please link them above.`, 'success');
-        
+
         setupDragAndDrop();
         // After loading replays, try auto-matching
         await autoMatchPlayers();
@@ -601,7 +566,7 @@ function setupDragAndDrop() {
     if (replaySource && !replaySource.sortable) {
         replaySource.sortable = Sortable.create(replaySource, replayOptions);
     }
-    
+
     const bnetSource = document.getElementById('bnetIdList');
     if (bnetSource && !bnetSource.sortable) {
         bnetSource.sortable = Sortable.create(bnetSource, bnetOptions);
@@ -648,7 +613,7 @@ function updateBnetIdMap() {
         const alias = container.querySelector('.alias-input').value || '';
         const link = container.querySelector('.link-input').value || '';
         const items = zone.querySelectorAll('li');
-        
+
         bnetIdMap[pName] = {
             flag: flag,
             team: team,
@@ -680,13 +645,13 @@ async function analyzeTournament() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ tournamentId, replayFile, matchObjectMap, bnetIdMap })
         });
-        
+
         const results = await response.json();
         if (!response.ok) throw new Error(results.error || 'Analysis failed');
 
         document.getElementById('results').textContent = JSON.stringify(results, null, 2);
         document.getElementById('resultsSection').style.display = 'block';
-        
+
         const blob = new Blob([JSON.stringify(results, null, 2)], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const dl = document.getElementById('downloadLink');
@@ -708,9 +673,9 @@ async function generateWikiScript(results) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ results })
     });
-    
+
     if (!response.ok) throw new Error('Failed to generate wiki script');
-    
+
     const wikiScript = await response.text();
     document.getElementById('wikiOutput').value = wikiScript;
     document.getElementById('wikiSection').style.display = 'block';
