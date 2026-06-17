@@ -142,7 +142,7 @@
 
       {#if existingPlayers.length > 0}
         <div class="space-y-1.5">
-          <label class="text-xs font-medium text-muted-foreground block">快捷选择已有选手：</label>
+          <span class="text-xs font-medium text-muted-foreground block">快捷选择已有选手：</span>
           <div class="flex flex-wrap gap-1.5 max-h-[120px] overflow-y-auto pr-1">
             {#each existingPlayers as p}
               <button

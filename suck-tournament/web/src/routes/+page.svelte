@@ -262,9 +262,9 @@
               <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 rounded-xl border border-border bg-card/40 hover:bg-card/75 transition-all gap-4">
                 <div class="space-y-1">
                   <div class="flex items-center gap-2 flex-wrap">
-                    <h3 class="font-bold text-foreground hover:text-primary transition-colors cursor-pointer text-sm sm:text-base" onclick={() => goto(`/tournament/${encodeURIComponent(t.id)}`)}>
+                    <button type="button" class="font-bold text-foreground hover:text-primary transition-colors cursor-pointer text-sm sm:text-base text-left bg-transparent border-none p-0" onclick={() => goto(`/tournament/${encodeURIComponent(t.id)}`)}>
                       {t.name}
-                    </h3>
+                    </button>
                     <Badge variant="outline" class="text-[9px] px-1.5 py-0 bg-zinc-500/10 text-zinc-400 border-zinc-500/20">
                       已完结
                     </Badge>
