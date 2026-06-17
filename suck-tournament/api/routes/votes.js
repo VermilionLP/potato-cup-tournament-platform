@@ -1,0 +1,36 @@
+import { VoteRepo } from '../repositories/vote-repo.js';
+import { TournamentRepo } from '../repositories/tournament-repo.js';
+import { PlayerRepo } from '../repositories/player-repo.js';
+
+export default async function votesRoutes(fastify) {
+  const repo = VoteRepo(fastify.db);
+  const tourneyRepo = TournamentRepo(fastify.db);
+  const playerRepo = PlayerRepo(fastify.db);
+
+  fastify.get('/tournaments/:id/votes', async (req) => {
+    const t = tourneyRepo.getById(req.params.id);
+    if (!t) throw fastify.httpErrors.notFound('Tournament not found');
+    return repo.getByTournament(req.params.id);
+  });
+
+  fastify.post('/tournaments/:id/vote', async (req) => {
+    const { player_id, proposed_time } = req.body;
+    if (!player_id || !proposed_time) {
+      throw fastify.httpErrors.badRequest('player_id and proposed_time are required');
+    }
+    const t = tourneyRepo.getById(req.params.id);
+    if (!t) throw fastify.httpErrors.notFound('Tournament not found');
+    if (t.status !== 'voting' && t.status !== 'registration') {
+      throw fastify.httpErrors.badRequest('Voting is not open');
+    }
+    playerRepo.upsert(player_id, player_id);
+    return repo.upsert(req.params.id, player_id, proposed_time);
+  });
+
+  fastify.delete('/tournaments/:id/vote', async (req) => {
+    const { player_id, proposed_time } = req.body;
+    if (!player_id) throw fastify.httpErrors.badRequest('player_id is required');
+    repo.removeVote(req.params.id, player_id, proposed_time || null);
+    return repo.getByTournament(req.params.id);
+  });
+}

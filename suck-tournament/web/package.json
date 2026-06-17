@@ -1,0 +1,29 @@
+{
+  "name": "suck-tournament-web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite dev",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "clsx": "^2.1.1",
+    "svelte-sonner": "^1.1.1",
+    "tailwind-merge": "^3.6.0"
+  },
+  "devDependencies": {
+    "@internationalized/date": "^3.12.2",
+    "@lucide/svelte": "^1.20.0",
+    "@sveltejs/adapter-static": "^3.0.10",
+    "@sveltejs/kit": "^2.20.8",
+    "@sveltejs/vite-plugin-svelte": "^5.0.3",
+    "@tailwindcss/vite": "^4.2.2",
+    "bits-ui": "^2.18.1",
+    "svelte": "^5.28.2",
+    "tailwind-variants": "^3.2.2",
+    "tailwindcss": "^4.2.2",
+    "vite": "^6.4.0"
+  }
+}
