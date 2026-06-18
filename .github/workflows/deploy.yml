@@ -33,6 +33,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Create Remote Directory
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT || 22 }}
+          script: mkdir -p ${{ secrets.VPS_PROJECT_PATH }}/apps/api
+
       - name: Deploy Files to VPS
         uses: easingthemes/ssh-deploy@main
         with:
@@ -83,6 +92,15 @@ jobs:
 
       - name: Build Web App
         run: pnpm --filter suck-tournament-web build
+
+      - name: Create Remote Directory
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT || 22 }}
+          script: mkdir -p ${{ secrets.VPS_PROJECT_PATH }}/apps/web/build
 
       - name: Deploy to Server
         uses: easingthemes/ssh-deploy@main
