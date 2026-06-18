@@ -285,6 +285,10 @@
   }
 </script>
 
+<svelte:head>
+  <title>AlphaX SUCK</title>
+</svelte:head>
+
 <ModeWatcher defaultMode="dark" />
 
 <div
@@ -299,11 +303,7 @@
     >
       <!-- Left: Logo -->
       <a href="/" class="flex items-center gap-1.5 sm:gap-2.5 shrink-0 group">
-        <div
-          class="w-7 h-7 rounded-md bg-primary/15 border border-primary/30 flex items-center justify-center group-hover:bg-primary/25 transition-colors"
-        >
-          <TrophyIcon class="w-4 h-4 text-primary" />
-        </div>
+        <img src="/favicon.svg" alt="SUCK" class="w-7 h-7 object-contain group-hover:scale-105 transition-transform" />
         <span
           class="font-bold text-sm sm:text-base tracking-tight text-foreground group-hover:text-primary transition-colors"
         >
