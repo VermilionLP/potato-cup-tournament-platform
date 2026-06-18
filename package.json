@@ -1,6 +1,11 @@
 {
   "name": "suck-utilities-monorepo",
   "private": true,
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "better-sqlite3"
+    ]
+  },
   "scripts": {
     "dev:api": "pnpm --filter suck-tournament-api dev",
     "dev:web": "pnpm --filter suck-tournament-web dev",
