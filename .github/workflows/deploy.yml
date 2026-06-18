@@ -65,6 +65,7 @@ jobs:
             export NVM_DIR="$HOME/.nvm"
             [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
             source ~/.bashrc || source ~/.profile || echo "No profile sourced"
+            export CI=true
             
             echo "Navigating to ${{ secrets.VPS_PROJECT_PATH }}/apps/api"
             cd ${{ secrets.VPS_PROJECT_PATH }}/apps/api || { echo "Failed to cd"; exit 1; }
