@@ -53,6 +53,17 @@ jobs:
           REMOTE_USER: ${{ secrets.VPS_USER }}
           TARGET: "${{ secrets.VPS_PROJECT_PATH }}/apps/api"
 
+      - name: Deploy Root Config Files to VPS
+        uses: easingthemes/ssh-deploy@main
+        with:
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
+          ARGS: "-avz"
+          SOURCE: "pnpm-lock.yaml pnpm-workspace.yaml package.json"
+          REMOTE_HOST: ${{ secrets.VPS_HOST }}
+          REMOTE_PORT: ${{ secrets.VPS_PORT || 22 }}
+          REMOTE_USER: ${{ secrets.VPS_USER }}
+          TARGET: "${{ secrets.VPS_PROJECT_PATH }}"
+
       - name: Execute Post-Deployment Commands
         uses: appleboy/ssh-action@master
         with:
@@ -70,7 +81,7 @@ jobs:
             echo "Navigating to /var/www/suck-utilities/apps/api"
             cd /var/www/suck-utilities/apps/api || { echo "Failed to cd to /var/www/suck-utilities/apps/api"; exit 1; }
             echo "Running pnpm install"
-            pnpm install --prod || { echo "pnpm install failed"; exit 1; }
+            pnpm install --prod --no-frozen-lockfile || { echo "pnpm install failed"; exit 1; }
 
   deploy-web:
     needs: changes
