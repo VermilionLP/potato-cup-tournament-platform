@@ -20,9 +20,11 @@ jobs:
             api:
               - 'apps/api/**'
               - 'pnpm-lock.yaml'
+              - '.github/workflows/deploy.yml'
             web:
               - 'apps/web/**'
               - 'pnpm-lock.yaml'
+              - '.github/workflows/deploy.yml'
 
   deploy-api:
     needs: changes
