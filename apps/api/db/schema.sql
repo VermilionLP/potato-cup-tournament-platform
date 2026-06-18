@@ -13,12 +13,11 @@ CREATE TABLE IF NOT EXISTS tournaments (
 
 CREATE TABLE IF NOT EXISTS players (
   id TEXT PRIMARY KEY,
-  display_name TEXT NOT NULL,
   flag TEXT DEFAULT 'cn',
   team TEXT DEFAULT '',
-  alias TEXT DEFAULT '',
   link TEXT DEFAULT '',
   bnet_ids TEXT DEFAULT '[]',
+  battle_tags TEXT DEFAULT '{}',
   last_ip TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
@@ -27,6 +26,9 @@ CREATE TABLE IF NOT EXISTS tournament_players (
   tournament_id TEXT NOT NULL REFERENCES tournaments(id) ON DELETE CASCADE,
   player_id TEXT NOT NULL REFERENCES players(id),
   seed INTEGER,
+  team TEXT DEFAULT '',
+  flag TEXT DEFAULT 'cn',
+  link TEXT DEFAULT '',
   registered_at TEXT NOT NULL DEFAULT (datetime('now')),
   PRIMARY KEY (tournament_id, player_id)
 );

@@ -1,3 +1,5 @@
+import { getPlayerDisplayName } from './player-repo.js';
+
 export function TournamentRepo(db) {
   function list() {
     return db.prepare(`
@@ -45,14 +47,13 @@ export function TournamentRepo(db) {
   }
 
   function getPlayers(tournamentId) {
-    return db.prepare(`
+    const rows = db.prepare(`
       SELECT 
         p.id, 
-        p.display_name, 
-        p.flag, 
+        p.battle_tags,
+        COALESCE(tp.flag, p.flag) AS flag, 
         COALESCE(tp.team, p.team) AS team, 
-        p.alias, 
-        p.link, 
+        COALESCE(tp.link, p.link) AS link, 
         p.bnet_ids,
         tp.seed, 
         tp.registered_at
@@ -61,6 +62,11 @@ export function TournamentRepo(db) {
       WHERE tp.tournament_id = ?
       ORDER BY tp.seed IS NULL, tp.seed ASC, tp.registered_at ASC
     `).all(tournamentId);
+
+    return rows.map(r => ({
+      ...r,
+      display_name: getPlayerDisplayName(r)
+    }));
   }
 
   function addPlayer(tournamentId, playerId) {
@@ -80,9 +86,16 @@ export function TournamentRepo(db) {
       throw new Error('Tournament is full');
     }
 
-    db.prepare(`
-      INSERT OR IGNORE INTO players (id, display_name) VALUES (?, ?)
-    `).run(playerId, playerId);
+    const columns = db.prepare(`PRAGMA table_info(players)`).all().map(c => c.name);
+    if (columns.includes('display_name')) {
+      db.prepare(`
+        INSERT OR IGNORE INTO players (id, display_name) VALUES (?, ?)
+      `).run(playerId, playerId);
+    } else {
+      db.prepare(`
+        INSERT OR IGNORE INTO players (id) VALUES (?)
+      `).run(playerId);
+    }
 
     const p = db.prepare('SELECT team FROM players WHERE id = ?').get(playerId);
 
@@ -138,13 +151,18 @@ export function TournamentRepo(db) {
   }
 
   function getVotes(tournamentId) {
-    return db.prepare(`
-      SELECT tv.*, p.display_name
+    const rows = db.prepare(`
+      SELECT tv.*, p.battle_tags, p.id AS player_id
       FROM time_votes tv
       JOIN players p ON p.id = tv.player_id
       WHERE tv.tournament_id = ?
       ORDER BY tv.created_at ASC
     `).all(tournamentId);
+
+    return rows.map(r => ({
+      ...r,
+      display_name: getPlayerDisplayName({ id: r.player_id, battle_tags: r.battle_tags })
+    }));
   }
 
   return { list, getById, create, updateStatus, getPlayers, addPlayer, removePlayer, setSeeds, getMatches, getVotes };

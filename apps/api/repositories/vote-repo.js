@@ -1,12 +1,19 @@
+import { getPlayerDisplayName } from './player-repo.js';
+
 export function VoteRepo(db) {
   function getByTournament(tournamentId) {
-    return db.prepare(`
-      SELECT tv.*, p.display_name
+    const rows = db.prepare(`
+      SELECT tv.*, p.battle_tags, p.id AS player_id
       FROM time_votes tv
       JOIN players p ON p.id = tv.player_id
       WHERE tv.tournament_id = ?
       ORDER BY tv.proposed_time ASC, tv.created_at ASC
     `).all(tournamentId);
+
+    return rows.map(row => ({
+      ...row,
+      display_name: getPlayerDisplayName({ id: row.player_id, battle_tags: row.battle_tags })
+    }));
   }
 
   function upsert(tournamentId, playerId, proposedTime) {
@@ -16,13 +23,17 @@ export function VoteRepo(db) {
     `).run(tournamentId, playerId, proposedTime);
 
     const row = db.prepare(`
-      SELECT tv.*, p.display_name
+      SELECT tv.*, p.battle_tags, p.id AS player_id
       FROM time_votes tv
       JOIN players p ON p.id = tv.player_id
       WHERE tv.tournament_id = ? AND tv.player_id = ? AND tv.proposed_time = ?
     `).get(tournamentId, playerId, proposedTime);
 
-    return row;
+    if (!row) return null;
+    return {
+      ...row,
+      display_name: getPlayerDisplayName({ id: row.player_id, battle_tags: row.battle_tags })
+    };
   }
 
   function removeVote(tournamentId, playerId, proposedTime) {

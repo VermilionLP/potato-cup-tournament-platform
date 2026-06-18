@@ -120,6 +120,36 @@ export default fp(async function databasePlugin(fastify) {
       try {
         db.prepare("ALTER TABLE players ADD COLUMN last_ip TEXT").run();
       } catch (e) {}
+    },
+    // Migration 6: Add battle_tags column to players
+    () => {
+      console.log('Running database migration v6: adding battle_tags column to players...');
+      try {
+        db.prepare("ALTER TABLE players ADD COLUMN battle_tags TEXT DEFAULT '{}'").run();
+      } catch (e) {}
+    },
+    // Migration 7: Drop obsolete columns (display_name, alias from players; alias from tournament_players)
+    () => {
+      console.log('Running database migration v7: dropping obsolete columns display_name, alias...');
+      try {
+        const columnsPlayers = db.prepare(`PRAGMA table_info(players)`).all().map(c => c.name);
+        if (columnsPlayers.includes('display_name')) {
+          db.prepare("ALTER TABLE players DROP COLUMN display_name").run();
+        }
+        if (columnsPlayers.includes('alias')) {
+          db.prepare("ALTER TABLE players DROP COLUMN alias").run();
+        }
+      } catch (e) {
+        console.error("Migration v7 players table failed:", e);
+      }
+      try {
+        const columnsTP = db.prepare(`PRAGMA table_info(tournament_players)`).all().map(c => c.name);
+        if (columnsTP.includes('alias')) {
+          db.prepare("ALTER TABLE tournament_players DROP COLUMN alias").run();
+        }
+      } catch (e) {
+        console.error("Migration v7 tournament_players table failed:", e);
+      }
     }
   ];
 

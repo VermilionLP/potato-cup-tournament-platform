@@ -6,6 +6,7 @@ import util from 'util';
 import zlib from 'zlib';
 import os from 'os';
 import { MatchRepo } from '../repositories/match-repo.js';
+import { getPlayerDisplayName } from '../repositories/player-repo.js';
 
 const execPromise = util.promisify(exec);
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -181,13 +182,31 @@ export default async function replaysRoutes(fastify) {
     let matched = players.find(p => p.id.toLowerCase().trim() === nameLower);
     if (matched) return matched;
     
-    // Check exact display name match
+    // Check exact display name match (derived from first non-empty battle tag nickname)
     matched = players.find(p => (p.display_name || '').toLowerCase().trim() === nameLower);
     if (matched) return matched;
     
-    // Check exact alias match
-    matched = players.find(p => (p.alias || '').toLowerCase().trim() === nameLower);
-    if (matched) return matched;
+    // Check inside battle_tags JSON
+    for (const p of players) {
+      if (p.battle_tags) {
+        try {
+          const tags = typeof p.battle_tags === 'string' ? JSON.parse(p.battle_tags) : p.battle_tags;
+          const tagList = [];
+          if (tags) {
+            for (const key of Object.keys(tags)) {
+              const val = tags[key];
+              if (Array.isArray(val)) {
+                tagList.push(...val.filter(Boolean).map(t => t.toLowerCase().trim()));
+              } else if (typeof val === 'string' && val) {
+                tagList.push(val.toLowerCase().trim());
+              }
+            }
+          }
+          const hasMatch = tagList.some(tag => tag === nameLower || tag.split('#')[0] === nameLower);
+          if (hasMatch) return p;
+        } catch (_) {}
+      }
+    }
 
     // Check inside bnet_ids JSON array
     for (const p of players) {
@@ -213,7 +232,6 @@ export default async function replaysRoutes(fastify) {
     const candidates = players.filter(p => 
       p.id.toLowerCase().includes(nameLower) || 
       (p.display_name || '').toLowerCase().includes(nameLower) ||
-      (p.alias || '').toLowerCase().includes(nameLower) ||
       nameLower.includes(p.id.toLowerCase())
     );
     if (candidates.length === 1) {
@@ -251,7 +269,10 @@ export default async function replaysRoutes(fastify) {
       FROM tournament_players tp
       JOIN players p ON tp.player_id = p.id
       WHERE tp.tournament_id = ?
-    `).all(tournamentId);
+    `).all(tournamentId).map(p => ({
+      ...p,
+      display_name: getPlayerDisplayName(p)
+    }));
 
     const tempDir = join(os.tmpdir(), 'suck-replays');
     if (!existsSync(tempDir)) {
@@ -376,8 +397,25 @@ export default async function replaysRoutes(fastify) {
         let score1 = 0;
         let score2 = 0;
 
-        const p1Name = db.prepare('SELECT display_name FROM players WHERE id = ?').get(match.player1_id)?.display_name || match.player1_id;
-        const p2Name = db.prepare('SELECT display_name FROM players WHERE id = ?').get(match.player2_id)?.display_name || match.player2_id;
+        const p1Row = db.prepare('SELECT * FROM players WHERE id = ?').get(match.player1_id);
+        const p2Row = db.prepare('SELECT * FROM players WHERE id = ?').get(match.player2_id);
+        const p1Name = getPlayerDisplayName(p1Row) || match.player1_id;
+        const p2Name = getPlayerDisplayName(p2Row) || match.player2_id;
+
+        const checkPlayerMatch = (player, nameLower) => {
+          if (!player) return false;
+          if (player.id.toLowerCase().trim() === nameLower) return true;
+          const disp = getPlayerDisplayName(player);
+          if (disp && disp.toLowerCase().trim() === nameLower) return true;
+          if (player.battle_tags) {
+            try {
+              const tags = typeof player.battle_tags === 'string' ? JSON.parse(player.battle_tags) : player.battle_tags;
+              const tagList = Object.values(tags || {}).filter(Boolean).map(t => t.toLowerCase().trim());
+              return tagList.some(tag => tag === nameLower || tag.split('#')[0] === nameLower);
+            } catch (_) {}
+          }
+          return false;
+        };
 
         allReplays.forEach(r => {
           const parsed = JSON.parse(r.parsed_data);
@@ -385,13 +423,10 @@ export default async function replaysRoutes(fastify) {
           
           if (rWinner) {
             const rWinnerLower = rWinner.toLowerCase().trim();
-            if (rWinnerLower === match.player1_id.toLowerCase().trim() || rWinnerLower === p1Name.toLowerCase().trim()) {
+            if (checkPlayerMatch(p1Row, rWinnerLower)) {
               score1++;
-            } else if (rWinnerLower === match.player2_id.toLowerCase().trim() || rWinnerLower === p2Name.toLowerCase().trim()) {
+            } else if (checkPlayerMatch(p2Row, rWinnerLower)) {
               score2++;
-            } else {
-              if (p1.alias && rWinnerLower === p1.alias.toLowerCase().trim()) score1++;
-              else if (p2.alias && rWinnerLower === p2.alias.toLowerCase().trim()) score2++;
             }
           }
         });
@@ -489,12 +524,29 @@ export default async function replaysRoutes(fastify) {
       throw fastify.httpErrors.notFound('Tournament not found.');
     }
 
-    function getPlayerInfoFromReplay(playerId, playerDisplayName, playerAlias, playerBnetIds, parsedData) {
+    function getPlayerInfoFromReplay(playerId, playerDisplayName, playerBattleTags, playerBnetIds, parsedData) {
       const repPlayers = parsedData.teams?.flatMap((t, tIdx) => (t.players || []).map(p => ({ ...p, teamIdx: tIdx }))) || [];
       const pIdLower = playerId.toLowerCase().trim();
       const pDispLower = (playerDisplayName || '').toLowerCase().trim();
-      const pAliasLower = (playerAlias || '').toLowerCase().trim();
       
+      let tags = {};
+      if (playerBattleTags) {
+        try {
+          tags = typeof playerBattleTags === 'string' ? JSON.parse(playerBattleTags) : playerBattleTags;
+        } catch (_) {}
+      }
+      const tagList = [];
+      if (tags) {
+        for (const key of Object.keys(tags)) {
+          const val = tags[key];
+          if (Array.isArray(val)) {
+            tagList.push(...val.filter(Boolean).map(t => t.toLowerCase().trim()));
+          } else if (typeof val === 'string' && val) {
+            tagList.push(val.toLowerCase().trim());
+          }
+        }
+      }
+
       let bnetIds = [];
       if (playerBnetIds) {
         try {
@@ -508,7 +560,7 @@ export default async function replaysRoutes(fastify) {
         const nameLower = p.name.toLowerCase().trim();
         return nameLower === pIdLower || 
                nameLower === pDispLower || 
-               nameLower === pAliasLower || 
+               tagList.some(tag => tag === nameLower || tag.split('#')[0] === nameLower) ||
                bnetNames.includes(nameLower);
       });
     }
@@ -516,11 +568,10 @@ export default async function replaysRoutes(fastify) {
     const players = db.prepare(`
       SELECT 
         p.id, 
-        p.display_name, 
         p.bnet_ids,
+        p.battle_tags,
         COALESCE(tp.flag, p.flag) AS flag, 
         COALESCE(tp.team, p.team) AS team, 
-        COALESCE(tp.alias, p.alias) AS alias, 
         COALESCE(tp.link, p.link) AS link, 
         tp.seed, 
         tp.registered_at
@@ -528,21 +579,24 @@ export default async function replaysRoutes(fastify) {
       JOIN players p ON tp.player_id = p.id
       WHERE tp.tournament_id = ?
       ORDER BY tp.seed IS NULL, tp.seed ASC, tp.registered_at ASC
-    `).all(tournamentId);
+    `).all(tournamentId).map(p => ({
+      ...p,
+      display_name: getPlayerDisplayName(p)
+    }));
 
     const matches = db.prepare(`
       SELECT m.*, 
-             p1.display_name AS player1_name, 
+             p1.battle_tags AS player1_battle_tags,
+             p1.bnet_ids AS player1_bnet_ids,
              COALESCE(tp1.flag, p1.flag) AS player1_flag,
              COALESCE(tp1.team, p1.team) AS player1_team,
-             COALESCE(tp1.alias, p1.alias) AS player1_alias,
              COALESCE(tp1.link, p1.link) AS player1_link,
-             p2.display_name AS player2_name,
+             p2.battle_tags AS player2_battle_tags,
+             p2.bnet_ids AS player2_bnet_ids,
              COALESCE(tp2.flag, p2.flag) AS player2_flag,
              COALESCE(tp2.team, p2.team) AS player2_team,
-             COALESCE(tp2.alias, p2.alias) AS player2_alias,
              COALESCE(tp2.link, p2.link) AS player2_link,
-             w.display_name AS winner_name
+             w.battle_tags AS winner_battle_tags
       FROM matches m
       LEFT JOIN players p1 ON m.player1_id = p1.id
       LEFT JOIN tournament_players tp1 ON tp1.tournament_id = m.tournament_id AND tp1.player_id = m.player1_id
@@ -551,7 +605,17 @@ export default async function replaysRoutes(fastify) {
       LEFT JOIN players w ON m.winner_id = w.id
       WHERE m.tournament_id = ?
       ORDER BY m.round ASC, m.position ASC
-    `).all(tournamentId);
+    `).all(tournamentId).map(m => {
+      const p1Name = getPlayerDisplayName({ id: m.player1_id, battle_tags: m.player1_battle_tags }) || m.player1_id || 'TBD';
+      const p2Name = getPlayerDisplayName({ id: m.player2_id, battle_tags: m.player2_battle_tags }) || m.player2_id || 'TBD';
+      const winnerName = getPlayerDisplayName({ id: m.winner_id, battle_tags: m.winner_battle_tags }) || m.winner_id;
+      return {
+        ...m,
+        player1_name: p1Name,
+        player2_name: p2Name,
+        winner_name: winnerName
+      };
+    });
 
     // Fetch replays for these matches to extract maps and game details
     const matchIds = matches.map(m => m.id);
@@ -650,14 +714,14 @@ export default async function replaysRoutes(fastify) {
     wikiScript += `==Prize Pool==\n`;
     wikiScript += `{{ParticipantTable|hidden=true\n`;
     players.forEach((player, index) => {
-      const displayName = player.alias || player.display_name;
+      const displayName = player.display_name;
       // Get race from replays or default to 'u'
       let race = 'u';
       const playerMatches = matches.filter(m => m.player1_id === player.id || m.player2_id === player.id);
       for (const pm of playerMatches) {
         const reps = replaysByMatchId[pm.id] || [];
         if (reps.length > 0) {
-          const repPlayer = getPlayerInfoFromReplay(player.id, player.display_name, player.alias, player.bnet_ids, reps[0].parsed_data);
+          const repPlayer = getPlayerInfoFromReplay(player.id, player.display_name, player.battle_tags, player.bnet_ids, reps[0].parsed_data);
           if (repPlayer && repPlayer.race) {
             race = repPlayer.race[0].toLowerCase();
             break;
@@ -736,8 +800,8 @@ export default async function replaysRoutes(fastify) {
         const winner = m.winner_id === m.player1_id ? 1 : (m.winner_id === m.player2_id ? 2 : 0);
         const isWalkover = m.status === 'walkover';
 
-        const p1Name = m.player1_alias || m.player1_name || 'TBD';
-        const p2Name = m.player2_alias || m.player2_name || 'TBD';
+        const p1Name = m.player1_name || 'TBD';
+        const p2Name = m.player2_name || 'TBD';
 
         const matchIdx = idx + 1;
         wikiScript += `|R${rKey}M${matchIdx} = {{Match\n`;
@@ -765,16 +829,14 @@ export default async function replaysRoutes(fastify) {
           }
           wikiScript += `    |date=${matchDateStr}\n`;
 
-          const p1BnetIdsObj = db.prepare('SELECT bnet_ids FROM players WHERE id = ?').get(m.player1_id);
-          const p2BnetIdsObj = db.prepare('SELECT bnet_ids FROM players WHERE id = ?').get(m.player2_id);
-          const p1Bnet = p1BnetIdsObj ? p1BnetIdsObj.bnet_ids : null;
-          const p2Bnet = p2BnetIdsObj ? p2BnetIdsObj.bnet_ids : null;
+          const p1Bnet = m.player1_bnet_ids;
+          const p2Bnet = m.player2_bnet_ids;
 
           let race1 = 'u';
           let race2 = 'u';
           if (matchReplays.length > 0) {
-            const repP1 = getPlayerInfoFromReplay(m.player1_id, m.player1_name, m.player1_alias, p1Bnet, matchReplays[0].parsed_data);
-            const repP2 = getPlayerInfoFromReplay(m.player2_id, m.player2_name, m.player2_alias, p2Bnet, matchReplays[0].parsed_data);
+            const repP1 = getPlayerInfoFromReplay(m.player1_id, m.player1_name, m.player1_battle_tags, p1Bnet, matchReplays[0].parsed_data);
+            const repP2 = getPlayerInfoFromReplay(m.player2_id, m.player2_name, m.player2_battle_tags, p2Bnet, matchReplays[0].parsed_data);
             if (repP1 && repP1.race) race1 = repP1.race[0].toLowerCase();
             if (repP2 && repP2.race) race2 = repP2.race[0].toLowerCase();
           }
@@ -786,8 +848,8 @@ export default async function replaysRoutes(fastify) {
             matchReplays.forEach((rep, gIdx) => {
               const mapName = (rep.map_name || 'Unknown').replace("-天梯版", "").replace("- 天梯版", "");
               
-              const repP1 = getPlayerInfoFromReplay(m.player1_id, m.player1_name, m.player1_alias, p1Bnet, rep.parsed_data);
-              const repP2 = getPlayerInfoFromReplay(m.player2_id, m.player2_name, m.player2_alias, p2Bnet, rep.parsed_data);
+              const repP1 = getPlayerInfoFromReplay(m.player1_id, m.player1_name, m.player1_battle_tags, p1Bnet, rep.parsed_data);
+              const repP2 = getPlayerInfoFromReplay(m.player2_id, m.player2_name, m.player2_battle_tags, p2Bnet, rep.parsed_data);
 
               const gRace1 = (repP1 && repP1.race ? repP1.race : 'u')[0].toLowerCase();
               const gRace2 = (repP2 && repP2.race ? repP2.race : 'u')[0].toLowerCase();

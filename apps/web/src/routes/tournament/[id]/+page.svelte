@@ -38,6 +38,7 @@
   import ListOrderedIcon from "@lucide/svelte/icons/list-ordered";
   import CopyIcon from "@lucide/svelte/icons/copy";
   import SettingsIcon from "@lucide/svelte/icons/settings";
+  import PlusIcon from "@lucide/svelte/icons/plus";
 
   let tid = $derived(page.params.id);
   let tournament = $state(null);
@@ -63,10 +64,9 @@
   let showPlayerEditDialog = $state(false);
   let editingPlayerId = $state("");
   let editPlayerNewId = $state("");
-  let editPlayerDisplayName = $state("");
   let editPlayerFlag = $state("cn");
   let editPlayerTeam = $state("");
-  let editPlayerAlias = $state("");
+  let editPlayerBattleTags = $state({ cn: [], global: [] });
   let editPlayerLink = $state("");
   let editPlayerBnetIds = $state([]);
   let unmappedReplays = $state([]);
@@ -581,11 +581,10 @@
           });
 
           await API.updatePlayer(playerObj.id, {
-            display_name: playerObj.display_name,
             flag: playerObj.flag,
             team: playerObj.team,
-            alias: playerObj.alias,
             link: playerObj.link,
+            battle_tags: playerObj.battle_tags,
             bnet_ids: bnetIds,
             tournament_id: tid,
           });
@@ -817,11 +816,33 @@
   function openEditPlayer(p) {
     editingPlayerId = p.id;
     editPlayerNewId = p.id;
-    editPlayerDisplayName = p.display_name || p.id;
     editPlayerFlag = p.flag || "cn";
     editPlayerTeam = p.team || "";
-    editPlayerAlias = p.alias || "";
     editPlayerLink = p.link || "";
+
+    let parsedTags = {};
+    if (p.battle_tags) {
+      try {
+        parsedTags =
+          typeof p.battle_tags === "string"
+            ? JSON.parse(p.battle_tags)
+            : p.battle_tags;
+      } catch (_) {}
+    }
+    const parseToArray = (val) => {
+      if (!val) return [];
+      if (Array.isArray(val)) return val.filter(Boolean);
+      if (typeof val === "string")
+        return val
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean);
+      return [];
+    };
+    editPlayerBattleTags = {
+      cn: parseToArray(parsedTags.cn),
+      global: parseToArray(parsedTags.global),
+    };
 
     if (p.bnet_ids) {
       try {
@@ -863,28 +884,40 @@
       }
 
       if (cleanNewId !== editingPlayerId) {
+        const isMe = (editingPlayerId === userState.id);
+        if (isMe) {
+          const confirmed = confirm(`修改您的选手 ID 将会同时更新您的登录凭证，确定要修改吗？`);
+          if (!confirmed) return;
+        }
         toast.loading("正在修改选手唯一 ID 并同步所有关联数据...", {
           id: "player-save",
         });
         await API.renamePlayer(editingPlayerId, cleanNewId);
+        if (isMe) {
+          userState.setId(cleanNewId);
+        }
         editingPlayerId = cleanNewId;
       }
 
       toast.loading("正在更新选手资料...", { id: "player-save" });
       await API.updatePlayer(editingPlayerId, {
-        display_name: editPlayerDisplayName,
         flag: editPlayerFlag,
         team: editPlayerTeam,
-        alias: editPlayerAlias,
         link: editPlayerLink,
-        bnet_ids: editPlayerBnetIds,
+        battle_tags: editPlayerBattleTags,
         tournament_id: tid,
       });
 
       toast.dismiss("player-save");
       toast.success("选手资料更新成功");
       showPlayerEditDialog = false;
+      const isMe = (editingPlayerId === userState.id);
       await load();
+      if (isMe) {
+        setTimeout(() => {
+          window.location.reload();
+        }, 100);
+      }
     } catch (e) {
       toast.dismiss("player-save");
       toast.error("更新资料失败: " + e.message);
@@ -968,7 +1001,6 @@
         display_name: p.display_name,
         flag: p.flag,
         team: p.team,
-        alias: p.alias,
         link: p.link,
         rank: "TBD",
         eliminatedRound: null,
@@ -2571,7 +2603,7 @@
                             class="flex items-center gap-2 shrink-0 font-mono text-muted-foreground"
                           >
                             {#if bo.supply}
-                              <span>{bo.supply}人</span>
+                              <span>{bo.supply} </span>
                             {/if}
                             <span>{formatDuration(bo.start_time)}</span>
                           </div>
@@ -2859,6 +2891,7 @@
     </Dialog.Header>
 
     <div class="space-y-4 py-2">
+      <!-- ID -->
       <div class="space-y-1.5">
         <label
           for="edit-player-id"
@@ -2873,18 +2906,172 @@
         />
       </div>
 
-      <div class="space-y-1.5">
-        <label
-          for="edit-display-name"
-          class="text-xs font-bold text-muted-foreground"
-          >显示名称 (Display Name)</label
+      <!-- BattleTags -->
+      <div class="space-y-2.5">
+        <span class="text-xs font-bold text-muted-foreground"
+          >游戏 BattleTags</span
         >
-        <Input
-          id="edit-display-name"
-          bind:value={editPlayerDisplayName}
-          placeholder="选手显示名称"
-          class="bg-background border-border text-foreground text-xs"
-        />
+        <div
+          class="grid grid-cols-1 gap-3 bg-muted/20 border border-border/60 p-3 rounded-lg"
+        >
+          <!-- CN Server -->
+          <div class="space-y-1.5">
+            <span
+              class="text-[10px] font-bold text-muted-foreground flex items-center justify-between"
+            >
+              <span>中国服务器 (CN)</span>
+              <span class="text-[9px] text-muted-foreground/60 font-normal"
+                >已添加 {editPlayerBattleTags.cn.length} 个</span
+              >
+            </span>
+            <div
+              class="flex flex-wrap gap-1 min-h-[30px] p-1.5 rounded bg-background/50 border border-border"
+            >
+              {#each editPlayerBattleTags.cn as tag, idx}
+                <Badge
+                  variant="secondary"
+                  class="text-[9px] font-mono py-0 px-1.5 bg-muted border border-border/80 text-foreground flex items-center gap-1"
+                >
+                  {tag}
+                  <button
+                    type="button"
+                    onclick={() =>
+                      (editPlayerBattleTags.cn = editPlayerBattleTags.cn.filter(
+                        (_, i) => i !== idx,
+                      ))}
+                    class="text-muted-foreground hover:text-destructive font-bold text-xs cursor-pointer"
+                    >&times;</button
+                  >
+                </Badge>
+              {/each}
+              {#if editPlayerBattleTags.cn.length === 0}
+                <span
+                  class="text-[9px] text-muted-foreground/50 italic self-center px-1"
+                  >暂无账号</span
+                >
+              {/if}
+            </div>
+            <div class="flex gap-1">
+              <Input
+                type="text"
+                placeholder="例如: Bnet#1234"
+                id="edit-add-cn-input"
+                class="bg-background border-border text-foreground text-xs h-7 flex-1"
+                onkeydown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    const val = e.currentTarget.value.trim();
+                    if (val && !editPlayerBattleTags.cn.includes(val)) {
+                      editPlayerBattleTags.cn = [
+                        ...editPlayerBattleTags.cn,
+                        val,
+                      ];
+                      e.currentTarget.value = "";
+                    }
+                  }
+                }}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                class="w-7 h-7 border-border shrink-0 cursor-pointer"
+                onclick={() => {
+                  const input = document.getElementById("edit-add-cn-input");
+                  const val = input.value.trim();
+                  if (val && !editPlayerBattleTags.cn.includes(val)) {
+                    editPlayerBattleTags.cn = [...editPlayerBattleTags.cn, val];
+                    input.value = "";
+                  }
+                }}
+              >
+                <PlusIcon class="w-3 h-3" />
+              </Button>
+            </div>
+          </div>
+
+          <!-- Global Server -->
+          <div class="space-y-1.5">
+            <span
+              class="text-[10px] font-bold text-muted-foreground flex items-center justify-between"
+            >
+              <span>国际服务器 (Global)</span>
+              <span class="text-[9px] text-muted-foreground/60 font-normal"
+                >已添加 {editPlayerBattleTags.global.length} 个</span
+              >
+            </span>
+            <div
+              class="flex flex-wrap gap-1 min-h-[30px] p-1.5 rounded bg-background/50 border border-border"
+            >
+              {#each editPlayerBattleTags.global as tag, idx}
+                <Badge
+                  variant="secondary"
+                  class="text-[9px] font-mono py-0 px-1.5 bg-muted border border-border/80 text-foreground flex items-center gap-1"
+                >
+                  {tag}
+                  <button
+                    type="button"
+                    onclick={() =>
+                      (editPlayerBattleTags.global =
+                        editPlayerBattleTags.global.filter(
+                          (_, i) => i !== idx,
+                        ))}
+                    class="text-muted-foreground hover:text-destructive font-bold text-xs cursor-pointer"
+                    >&times;</button
+                  >
+                </Badge>
+              {/each}
+              {#if editPlayerBattleTags.global.length === 0}
+                <span
+                  class="text-[9px] text-muted-foreground/50 italic self-center px-1"
+                  >暂无账号</span
+                >
+              {/if}
+            </div>
+            <div class="flex gap-1">
+              <Input
+                type="text"
+                placeholder="例如: Bnet#9012"
+                id="edit-add-global-input"
+                class="bg-background border-border text-foreground text-xs h-7 flex-1"
+                onkeydown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    const val = e.currentTarget.value.trim();
+                    if (val && !editPlayerBattleTags.global.includes(val)) {
+                      editPlayerBattleTags.global = [
+                        ...editPlayerBattleTags.global,
+                        val,
+                      ];
+                      e.currentTarget.value = "";
+                    }
+                  }
+                }}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                class="w-7 h-7 border-border shrink-0 cursor-pointer"
+                onclick={() => {
+                  const input = document.getElementById(
+                    "edit-add-global-input",
+                  );
+                  const val = input.value.trim();
+                  if (val && !editPlayerBattleTags.global.includes(val)) {
+                    editPlayerBattleTags.global = [
+                      ...editPlayerBattleTags.global,
+                      val,
+                    ];
+                    input.value = "";
+                  }
+                }}
+              >
+                <PlusIcon class="w-3 h-3" />
+              </Button>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div class="grid grid-cols-2 gap-3">
@@ -2912,39 +3099,29 @@
         </div>
       </div>
 
-      <div class="space-y-1.5">
-        <label for="edit-alias" class="text-xs font-bold text-muted-foreground"
-          >Wiki 别名 (Alias / Liquipedia ID)</label
-        >
-        <Input
-          id="edit-alias"
-          bind:value={editPlayerAlias}
-          placeholder="Liquipedia ID, 为空则使用显示名称"
-          class="bg-background border-border text-foreground text-xs"
-        />
-      </div>
-
+      <!-- Battle.net IDs (Read-only) -->
       <div class="space-y-1.5">
         <span class="text-xs font-bold text-muted-foreground block"
-          >已关联游戏账号 (Battle.net IDs)</span
+          >已关联游戏账号 (Battle.net IDs) (只读，来自录像上传)</span
         >
         <div
           class="flex flex-wrap gap-1.5 min-h-[40px] p-2 rounded-xl border border-border bg-background/30"
         >
-          {#each editPlayerBnetIds as account, idx}
+          {#each editPlayerBnetIds as account}
             <Badge
               variant="secondary"
-              class="gap-1 text-xs py-0.5 pl-2.5 pr-1.5 bg-muted/65 border border-border/60 hover:bg-muted text-foreground"
+              class="text-xs py-0.5 px-2 bg-muted/65 border border-border/60 text-foreground font-mono"
             >
-              <span>{account.id}</span>
-              <button
-                type="button"
-                onclick={() => removeBnetId(idx)}
-                class="text-muted-foreground hover:text-red-400 font-bold ml-1 transition-colors cursor-pointer text-sm"
-                title="解除关联"
-              >
-                &times;
-              </button>
+              {#if account.url}
+                <a
+                  href={account.url}
+                  target="_blank"
+                  rel="noopener"
+                  class="text-primary hover:underline">{account.id} ↗</a
+                >
+              {:else}
+                {account.id}
+              {/if}
             </Badge>
           {/each}
           {#if editPlayerBnetIds.length === 0}
@@ -2956,6 +3133,7 @@
         </div>
       </div>
 
+      <!-- Wiki Link -->
       <div class="space-y-1.5">
         <label for="edit-link" class="text-xs font-bold text-muted-foreground"
           >Wiki 个人页链接 (Link)</label
@@ -2963,9 +3141,13 @@
         <Input
           id="edit-link"
           bind:value={editPlayerLink}
-          placeholder="例如: User:Wayne19980"
+          placeholder="例如: User:Bnet"
           class="bg-background border-border text-foreground text-xs"
         />
+        <p class="text-[10px] text-muted-foreground/60">
+          Liquipedia Wiki 页面名称，最终将链接至
+          https://liquipedia.net/starcraft2/&lt;名称&gt;
+        </p>
       </div>
     </div>
 
