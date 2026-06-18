@@ -23,6 +23,8 @@ export default async function tournamentsRoutes(fastify) {
   fastify.get('/tournaments/:id/stream', (req, reply) => {
     const { id: tournamentId } = req.params;
     
+    reply.hijack();
+    
     reply.raw.writeHead(200, {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache, no-transform',
@@ -30,7 +32,6 @@ export default async function tournamentsRoutes(fastify) {
       'Access-Control-Allow-Origin': '*',
       'X-Accel-Buffering': 'no'
     });
-    reply.sent = true;
     
     const heartbeat = setInterval(() => {
       reply.raw.write(': heartbeat\n\n');
