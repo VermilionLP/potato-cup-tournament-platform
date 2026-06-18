@@ -145,9 +145,11 @@
         toast.loading("正在创建选手...", { id: "ps" });
       } else {
         if (cleanNewId !== editingId) {
-          const isMe = (editingId === userState.id);
+          const isMe = editingId === userState.id;
           if (isMe) {
-            const confirmed = confirm(`修改您的选手 ID 将会同时更新您的登录凭证，确定要修改吗？`);
+            const confirmed = confirm(
+              `修改您的选手 ID 将会同时更新您的登录凭证，确定要修改吗？`,
+            );
             if (!confirmed) return;
           }
           toast.loading("正在修改选手 ID...", { id: "ps" });
@@ -171,7 +173,7 @@
       toast.dismiss("ps");
       toast.success(isCreating ? "选手创建成功" : "资料更新成功");
       showEditDialog = false;
-      const isMe = (editingId === userState.id);
+      const isMe = editingId === userState.id;
       await load();
       if (isMe) {
         setTimeout(() => {
@@ -318,7 +320,7 @@
               <th class="px-5 py-3">战队</th>
               <th class="px-5 py-3">国籍</th>
               <th class="px-5 py-3">BattleTags</th>
-              <th class="px-5 py-3">Wiki</th>
+              <th class="px-5 py-3">Liquipedia</th>
               <th class="px-5 py-3">IP 地址</th>
               <th class="px-5 py-3 text-right">操作</th>
             </tr>
@@ -362,9 +364,6 @@
                     <div>
                       <div class="font-semibold text-foreground leading-tight">
                         {p.display_name || p.id}
-                      </div>
-                      <div class="text-[10px] text-muted-foreground font-mono">
-                        ID: {p.id}
                       </div>
                     </div>
                   </div>
@@ -431,7 +430,7 @@
                       class="text-[11px] text-primary hover:underline truncate block max-w-[160px]"
                       title={p.link}
                     >
-                      Wiki 链接 ↗
+                      {p.link} ↗
                     </a>
                   {:else}
                     <span class="text-muted-foreground/40 text-xs">—</span>
@@ -541,9 +540,6 @@
                     </Badge>
                   {/if}
                 </div>
-                <div class="text-[10px] text-muted-foreground font-mono mt-0.5">
-                  ID: {p.id}
-                </div>
               </div>
             </div>
 
@@ -572,7 +568,7 @@
             </div>
             <div>
               <span class="text-[10px] text-muted-foreground block mb-0.5"
-                >Liquipedia Wiki</span
+                >Liquipedia</span
               >
               {#if p.link}
                 <div class="text-xs truncate max-w-full">
@@ -584,7 +580,7 @@
                     rel="noopener"
                     class="text-primary hover:underline font-medium"
                   >
-                    查看个人页 ↗
+                    {p.link} ↗
                   </a>
                 </div>
               {:else}
