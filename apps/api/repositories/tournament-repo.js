@@ -1,10 +1,26 @@
 export function TournamentRepo(db) {
   function list() {
-    return db.prepare(`SELECT * FROM tournaments ORDER BY created_at DESC`).all();
+    return db.prepare(`
+      SELECT
+        t.*,
+        COUNT(tp.player_id) AS player_count
+      FROM tournaments t
+      LEFT JOIN tournament_players tp ON tp.tournament_id = t.id
+      GROUP BY t.id
+      ORDER BY t.created_at DESC
+    `).all();
   }
 
   function getById(id) {
-    return db.prepare(`SELECT * FROM tournaments WHERE id = ?`).get(id);
+    return db.prepare(`
+      SELECT
+        t.*,
+        COUNT(tp.player_id) AS player_count
+      FROM tournaments t
+      LEFT JOIN tournament_players tp ON tp.tournament_id = t.id
+      WHERE t.id = ?
+      GROUP BY t.id
+    `).get(id);
   }
 
   function create({ id, name, description, player_capacity, hold_third_place }) {
