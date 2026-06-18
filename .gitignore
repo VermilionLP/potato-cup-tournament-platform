@@ -1,0 +1,13 @@
+node_modules/
+build/
+dist/
+.env
+.env.*
+!.env.example
+*.db
+*.db-shm
+*.db-wal
+*.db-journal
+.DS_Store
+.svelte-kit/
+.pnpm-store/

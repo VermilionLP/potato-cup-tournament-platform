@@ -1,0 +1,11 @@
+{
+  "name": "suck-utilities-monorepo",
+  "private": true,
+  "scripts": {
+    "dev:api": "pnpm --filter suck-tournament-api dev",
+    "dev:web": "pnpm --filter suck-tournament-web dev",
+    "dev": "pnpm --filter suck-tournament-api --filter suck-tournament-web --parallel dev",
+    "build:web": "pnpm --filter suck-tournament-web build",
+    "build:all": "pnpm -r build"
+  }
+}

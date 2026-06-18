@@ -1,0 +1,91 @@
+name: Deploy Monorepo Apps
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      api: ${{ steps.filter.outputs.api }}
+      web: ${{ steps.filter.outputs.web }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v4
+        id: filter
+        with:
+          filters: |
+            api:
+              - 'apps/api/**'
+              - 'pnpm-lock.yaml'
+            web:
+              - 'apps/web/**'
+              - 'pnpm-lock.yaml'
+
+  deploy-api:
+    needs: changes
+    if: ${{ needs.changes.outputs.api == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy Files to VPS
+        uses: easingthemes/ssh-deploy@main
+        with:
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
+          ARGS: "-avz --delete --exclude=.env --exclude=.env.production --exclude=node_modules --exclude=data"
+          SOURCE: "apps/api/"
+          REMOTE_HOST: ${{ secrets.VPS_HOST }}
+          REMOTE_USER: ${{ secrets.VPS_USER }}
+          TARGET: "${{ secrets.VPS_PROJECT_PATH }}/apps/api"
+
+      - name: Execute Post-Deployment Commands
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            echo "Navigating to ${{ secrets.VPS_PROJECT_PATH }}/apps/api"
+            cd ${{ secrets.VPS_PROJECT_PATH }}/apps/api || { echo "Failed to cd"; exit 1; }
+            echo "Running pnpm install"
+            pnpm install --prod || { echo "pnpm install failed"; exit 1; }
+            echo "Restarting PM2 service"
+            pm2 restart suck-tournament || pm2 start app.js --name suck-tournament || { echo "PM2 restart failed"; exit 1; }
+            echo "Deployment completed"
+
+  deploy-web:
+    needs: changes
+    if: ${{ needs.changes.outputs.web == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Build Web App
+        run: pnpm --filter suck-tournament-web build
+
+      - name: Deploy to Server
+        uses: easingthemes/ssh-deploy@main
+        with:
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
+          ARGS: "-avz --delete --exclude=.env --exclude=.env.production"
+          SOURCE: "apps/web/build/"
+          REMOTE_HOST: ${{ secrets.VPS_HOST }}
+          REMOTE_USER: ${{ secrets.VPS_USER }}
+          TARGET: "${{ secrets.VPS_PROJECT_PATH }}/apps/web/build"
