@@ -41,7 +41,15 @@
 
   let tid = $derived(page.params.id);
   let tournament = $state(null);
+  let allPlayers = $state([]);
   let loading = $state(true);
+
+  // Derived unregistered players list for quick registration select
+  let unregisteredPlayers = $derived(
+    allPlayers.filter(
+      (ap) => !(tournament?.players || []).some((tp) => tp.id === ap.id),
+    ),
+  );
 
   // Replays integration states
   let showMatchDetailsDialog = $state(false);
@@ -146,7 +154,7 @@
     if (!tid) return;
     const es = new EventSource(`/api/tournaments/${tid}/stream`);
     eventSource = es;
-    
+
     es.onmessage = async (event) => {
       try {
         const msg = JSON.parse(event.data);
@@ -172,6 +180,7 @@
     loading = true;
     try {
       tournament = await API.getTournament(tid);
+      allPlayers = await API.listPlayers();
       initializeSeedOrder();
 
       // Auto-generate/refresh bracket preview on page load in registration phase
@@ -363,7 +372,7 @@
   async function uploadFileList(files) {
     uploadingReplays = true;
     const list = [];
-    
+
     const readAsBase64 = (file) =>
       new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -392,12 +401,12 @@
         list,
         userState.qqGroup,
       );
-      
+
       const successCount = res.results.filter(
         (r) => r.status === "success",
       ).length;
       const failCount = res.results.length - successCount;
-      
+
       if (successCount > 0) {
         toast.success(`成功上传并解析 ${successCount} 个录像文件！`);
       }
@@ -466,7 +475,7 @@
       }
 
       const res = await API.uploadBatchReplays(tid, list, userState.qqGroup);
-      
+
       const successCount = res.results.filter(
         (r) => r.status === "success",
       ).length;
@@ -474,10 +483,11 @@
         (r) => r.status === "skipped",
       ).length;
       const unmapped = res.results.filter((r) => r.status === "unmapped");
-      const failCount = res.results.length - successCount - skippedCount - unmapped.length;
+      const failCount =
+        res.results.length - successCount - skippedCount - unmapped.length;
 
       toast.dismiss("batch-upload");
-      
+
       if (successCount > 0) {
         toast.success(`成功自动匹配并导入了 ${successCount} 个对局！`);
       }
@@ -488,7 +498,9 @@
         unmappedReplays = unmapped;
         tempBnetMappings = {};
         showUnmappedDialog = true;
-        toast.info(`发现 ${unmapped.length} 个无法自动匹配的录像，已为您打开手动关联窗口。`);
+        toast.info(
+          `发现 ${unmapped.length} 个无法自动匹配的录像，已为您打开手动关联窗口。`,
+        );
       }
       if (failCount > 0) {
         const errors = res.results
@@ -509,7 +521,7 @@
 
   function getUnrecognizedIds(replays) {
     const ids = new Set();
-    replays.forEach(r => {
+    replays.forEach((r) => {
       if (!r.p1Matched && r.repPlayers?.[0]) ids.add(r.repPlayers[0]);
       if (!r.p2Matched && r.repPlayers?.[1]) ids.add(r.repPlayers[1]);
     });
@@ -521,11 +533,13 @@
     const selectedPlayerIds = Object.entries(tempBnetMappings)
       .filter(([bid, pid]) => bid !== currentBnetId && !!pid)
       .map(([_, pid]) => pid);
-    return allPlayers.filter(p => !selectedPlayerIds.includes(p.id));
+    return allPlayers.filter((p) => !selectedPlayerIds.includes(p.id));
   }
 
   async function submitAllManualMappings() {
-    const entries = Object.entries(tempBnetMappings).filter(([_, pid]) => !!pid);
+    const entries = Object.entries(tempBnetMappings).filter(
+      ([_, pid]) => !!pid,
+    );
     if (entries.length === 0) {
       return toast.error("请至少选择一个账号进行关联");
     }
@@ -542,18 +556,25 @@
       });
 
       for (const [pid, newBnetIds] of Object.entries(playerBnetUpdates)) {
-        const playerObj = tournament.players.find(p => p.id === pid);
+        const playerObj = tournament.players.find((p) => p.id === pid);
         if (playerObj) {
           let bnetIds = [];
           if (playerObj.bnet_ids) {
             try {
-              bnetIds = typeof playerObj.bnet_ids === "string" ? JSON.parse(playerObj.bnet_ids) : playerObj.bnet_ids;
+              bnetIds =
+                typeof playerObj.bnet_ids === "string"
+                  ? JSON.parse(playerObj.bnet_ids)
+                  : playerObj.bnet_ids;
             } catch (_) {}
           }
           if (!Array.isArray(bnetIds)) bnetIds = [];
 
-          newBnetIds.forEach(newId => {
-            const hasId = bnetIds.some(b => (typeof b === "string" ? b : b.id).toLowerCase() === newId.toLowerCase());
+          newBnetIds.forEach((newId) => {
+            const hasId = bnetIds.some(
+              (b) =>
+                (typeof b === "string" ? b : b.id).toLowerCase() ===
+                newId.toLowerCase(),
+            );
             if (!hasId) {
               bnetIds.push({ id: newId, url: "" });
             }
@@ -566,29 +587,39 @@
             alias: playerObj.alias,
             link: playerObj.link,
             bnet_ids: bnetIds,
-            tournament_id: tid
+            tournament_id: tid,
           });
         }
       }
 
-      const replaysToUpload = unmappedReplays.map(r => ({
+      const replaysToUpload = unmappedReplays.map((r) => ({
         filename: r.filename,
-        content: r.content
+        content: r.content,
       }));
 
-      const res = await API.uploadBatchReplays(tid, replaysToUpload, userState.qqGroup);
+      const res = await API.uploadBatchReplays(
+        tid,
+        replaysToUpload,
+        userState.qqGroup,
+      );
 
-      const successCount = res.results.filter(r => r.status === "success").length;
-      const skippedCount = res.results.filter(r => r.status === "skipped").length;
-      const stillUnmapped = res.results.filter(r => r.status === "unmapped");
-      const failCount = res.results.filter(r => r.status === "error").length;
+      const successCount = res.results.filter(
+        (r) => r.status === "success",
+      ).length;
+      const skippedCount = res.results.filter(
+        (r) => r.status === "skipped",
+      ).length;
+      const stillUnmapped = res.results.filter((r) => r.status === "unmapped");
+      const failCount = res.results.filter((r) => r.status === "error").length;
 
       toast.dismiss("manual-map");
 
       if (stillUnmapped.length > 0) {
         unmappedReplays = stillUnmapped;
         tempBnetMappings = {};
-        toast.info(`导入了部分对局，但仍有 ${stillUnmapped.length} 个录像未关联。`);
+        toast.info(
+          `导入了部分对局，但仍有 ${stillUnmapped.length} 个录像未关联。`,
+        );
       } else {
         showUnmappedDialog = false;
         unmappedReplays = [];
@@ -791,12 +822,15 @@
     editPlayerTeam = p.team || "";
     editPlayerAlias = p.alias || "";
     editPlayerLink = p.link || "";
-    
+
     if (p.bnet_ids) {
       try {
-        const ids = typeof p.bnet_ids === "string" ? JSON.parse(p.bnet_ids) : p.bnet_ids;
+        const ids =
+          typeof p.bnet_ids === "string" ? JSON.parse(p.bnet_ids) : p.bnet_ids;
         if (Array.isArray(ids)) {
-          editPlayerBnetIds = ids.map(item => typeof item === "string" ? { id: item, url: "" } : item);
+          editPlayerBnetIds = ids.map((item) =>
+            typeof item === "string" ? { id: item, url: "" } : item,
+          );
         } else {
           editPlayerBnetIds = [];
         }
@@ -806,7 +840,7 @@
     } else {
       editPlayerBnetIds = [];
     }
-    
+
     showPlayerEditDialog = true;
   }
 
@@ -829,7 +863,9 @@
       }
 
       if (cleanNewId !== editingPlayerId) {
-        toast.loading("正在修改选手唯一 ID 并同步所有关联数据...", { id: "player-save" });
+        toast.loading("正在修改选手唯一 ID 并同步所有关联数据...", {
+          id: "player-save",
+        });
         await API.renamePlayer(editingPlayerId, cleanNewId);
         editingPlayerId = cleanNewId;
       }
@@ -842,7 +878,7 @@
         alias: editPlayerAlias,
         link: editPlayerLink,
         bnet_ids: editPlayerBnetIds,
-        tournament_id: tid
+        tournament_id: tid,
       });
 
       toast.dismiss("player-save");
@@ -924,9 +960,9 @@
   // Derive standings for completed/in-progress stages
   let standings = $derived.by(() => {
     if (!tournament?.matches?.length) return [];
-    
+
     const playersMap = {};
-    (tournament.players || []).forEach(p => {
+    (tournament.players || []).forEach((p) => {
       playersMap[p.id] = {
         id: p.id,
         display_name: p.display_name,
@@ -934,7 +970,7 @@
         team: p.team,
         alias: p.alias,
         link: p.link,
-        rank: 'TBD',
+        rank: "TBD",
         eliminatedRound: null,
         matchesPlayed: 0,
         matchesWon: 0,
@@ -942,52 +978,60 @@
     });
 
     const matches = tournament.matches || [];
-    const finalMatch = matches.find(m => m.round === 1 && m.position === 1);
-    
-    matches.forEach(m => {
-      if (m.player1_id && playersMap[m.player1_id]) playersMap[m.player1_id].matchesPlayed++;
-      if (m.player2_id && playersMap[m.player2_id]) playersMap[m.player2_id].matchesPlayed++;
+    const finalMatch = matches.find((m) => m.round === 1 && m.position === 1);
 
-      if (m.status === 'completed' || m.status === 'walkover') {
+    matches.forEach((m) => {
+      if (m.player1_id && playersMap[m.player1_id])
+        playersMap[m.player1_id].matchesPlayed++;
+      if (m.player2_id && playersMap[m.player2_id])
+        playersMap[m.player2_id].matchesPlayed++;
+
+      if (m.status === "completed" || m.status === "walkover") {
         const winnerId = m.winner_id;
         const loserId = winnerId === m.player1_id ? m.player2_id : m.player1_id;
 
         if (winnerId && playersMap[winnerId]) {
           playersMap[winnerId].matchesWon++;
         }
-        
+
         if (loserId && playersMap[loserId]) {
           playersMap[loserId].eliminatedRound = m.round;
         }
       }
     });
 
-    if (finalMatch && (finalMatch.status === 'completed' || finalMatch.status === 'walkover')) {
+    if (
+      finalMatch &&
+      (finalMatch.status === "completed" || finalMatch.status === "walkover")
+    ) {
       const champId = finalMatch.winner_id;
-      const runnerUpId = champId === finalMatch.player1_id ? finalMatch.player2_id : finalMatch.player1_id;
-      
+      const runnerUpId =
+        champId === finalMatch.player1_id
+          ? finalMatch.player2_id
+          : finalMatch.player1_id;
+
       if (champId && playersMap[champId]) {
-        playersMap[champId].rank = '第 1 名 (冠军)';
+        playersMap[champId].rank = "第 1 名 (冠军)";
       }
       if (runnerUpId && playersMap[runnerUpId]) {
-        playersMap[runnerUpId].rank = '第 2 名 (亚军)';
+        playersMap[runnerUpId].rank = "第 2 名 (亚军)";
       }
     }
 
-    Object.values(playersMap).forEach(p => {
-      if (p.rank !== 'TBD') return;
+    Object.values(playersMap).forEach((p) => {
+      if (p.rank !== "TBD") return;
       if (p.eliminatedRound === null) {
-        p.rank = '未淘汰';
+        p.rank = "未淘汰";
         return;
       }
-      
+
       const r = p.eliminatedRound;
       if (r === 2) {
-        p.rank = '第 3 - 4 名 (四强)';
+        p.rank = "第 3 - 4 名 (四强)";
       } else if (r === 3) {
-        p.rank = '第 5 - 8 名 (八强)';
+        p.rank = "第 5 - 8 名 (八强)";
       } else if (r === 4) {
-        p.rank = '第 9 - 16 名';
+        p.rank = "第 9 - 16 名";
       } else if (r > 4) {
         const minRank = (1 << (r - 1)) + 1;
         const maxRank = 1 << r;
@@ -997,12 +1041,12 @@
 
     return Object.values(playersMap).sort((a, b) => {
       const getPriority = (rankStr) => {
-        if (rankStr.includes('1')) return 1;
-        if (rankStr.includes('2')) return 2;
-        if (rankStr.includes('3')) return 3;
-        if (rankStr.includes('5')) return 4;
-        if (rankStr.includes('9')) return 5;
-        if (rankStr.includes('未淘汰')) return 0;
+        if (rankStr.includes("1")) return 1;
+        if (rankStr.includes("2")) return 2;
+        if (rankStr.includes("3")) return 3;
+        if (rankStr.includes("5")) return 4;
+        if (rankStr.includes("9")) return 5;
+        if (rankStr.includes("未淘汰")) return 0;
         return 100;
       };
       return getPriority(a.rank) - getPriority(b.rank);
@@ -1054,9 +1098,7 @@
   {#snippet rosterSidebar()}
     <Card.Root class="border-border bg-card/40">
       <Card.Header class="p-5 pb-3">
-        <Card.Title
-          class="text-sm font-bold flex items-center justify-between"
-        >
+        <Card.Title class="text-sm font-bold flex items-center justify-between">
           <span>选手名册</span>
           <Badge
             variant="outline"
@@ -1073,16 +1115,23 @@
             <div
               class="flex items-center justify-between px-3 py-1.5 rounded-lg bg-background/40 border border-border/60 hover:bg-background/80 transition-colors"
             >
-              <span class="text-xs font-medium flex items-center gap-1.5 truncate mr-2">
+              <span
+                class="text-xs font-medium flex items-center gap-1.5 truncate mr-2"
+              >
                 <div
                   class="w-2.5 h-2.5 rounded-full bg-primary/30 border border-primary/50"
                 ></div>
                 {#if p.team}
-                  <span class="text-[10px] text-muted-foreground font-mono">[{p.team}]</span>
+                  <span class="text-[10px] text-muted-foreground font-mono"
+                    >[{p.team}]</span
+                  >
                 {/if}
                 <span class="truncate">{p.display_name}</span>
                 {#if p.flag}
-                  <span class="text-[9px] font-bold px-1 rounded bg-muted text-muted-foreground uppercase font-mono">{p.flag}</span>
+                  <span
+                    class="text-[9px] font-bold px-1 rounded bg-muted text-muted-foreground uppercase font-mono"
+                    >{p.flag}</span
+                  >
                 {/if}
                 {#if p.seed}
                   <span class="text-[10px] text-amber-500 font-bold"
@@ -1111,9 +1160,7 @@
             </div>
           {/each}
           {#if (tournament.players || []).length === 0}
-            <p
-              class="text-xs text-muted-foreground/60 italic text-center py-6"
-            >
+            <p class="text-xs text-muted-foreground/60 italic text-center py-6">
               暂无选手报名
             </p>
           {/if}
@@ -1399,7 +1446,9 @@
             size="sm"
             onclick={() => {
               if (!userState.qqGroup || !userState.id) {
-                toast.error("此操作需要先验证 QQ 群号与选手 ID。已为您打开配置面板！");
+                toast.error(
+                  "此操作需要先验证 QQ 群号与选手 ID。已为您打开配置面板！",
+                );
                 document.getElementById("header-profile-button")?.click();
                 return;
               }
@@ -1621,7 +1670,7 @@
               </div>
 
               <!-- Admin/Organizer Manual registration -->
-              <div class="space-y-1.5">
+              <div class="space-y-2.5">
                 <label
                   for="reg-id-input"
                   class="text-xs font-bold text-muted-foreground"
@@ -1643,6 +1692,31 @@
                     添加选手
                   </Button>
                 </div>
+
+                {#if unregisteredPlayers.length > 0}
+                  <div class="space-y-1.5 pt-1">
+                    <span
+                      class="text-[10px] font-bold text-muted-foreground block"
+                      >快捷选择已有选手报名：</span
+                    >
+                    <div
+                      class="flex flex-wrap gap-1.5 max-h-[100px] overflow-y-auto pr-1"
+                    >
+                      {#each unregisteredPlayers as p}
+                        <button
+                          type="button"
+                          onclick={() => (regInput = p.id)}
+                          class="text-[10px] px-2 py-0.5 rounded bg-muted hover:bg-primary hover:text-primary-foreground border border-border/80 transition-colors cursor-pointer {regInput ===
+                          p.id
+                            ? 'bg-primary text-primary-foreground border-primary font-bold'
+                            : 'text-foreground'}"
+                        >
+                          {p.display_name}
+                        </button>
+                      {/each}
+                    </div>
+                  </div>
+                {/if}
               </div>
             </Card.Content>
           </Card.Root>
@@ -1898,133 +1972,151 @@
       <!-- STAGE 3 & 4: BRACKET & RESULT -->
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div class="lg:col-span-2 space-y-6">
-        <!-- Winner Podium for Completed stage -->
-        {#if tournament.status === "completed" && podium}
-          <div
-            class="bg-gradient-to-r from-amber-500/10 via-background to-amber-500/10 border border-primary/20 rounded-2xl p-6 text-center max-w-2xl mx-auto space-y-4 shadow-lg shadow-primary/5"
-          >
-            <TrophyIcon class="w-12 h-12 text-primary mx-auto animate-bounce" />
-            <div>
-              <h2
-                class="text-xl font-extrabold tracking-tight bg-gradient-to-r from-amber-400 to-amber-200 bg-clip-text text-transparent"
-              >
-                冠军诞生！恭喜 {playerName(podium.champion)}
-              </h2>
-              <p class="text-xs text-muted-foreground mt-1">
-                SUCK 赛事已完美收官
-              </p>
-            </div>
-
-            <div class="grid grid-cols-2 gap-4 max-w-md mx-auto pt-2">
-              <div class="p-3 bg-card/60 border border-primary/20 rounded-xl">
-                <CrownIcon class="w-5 h-5 text-amber-400 mx-auto mb-1" />
-                <p
-                  class="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold"
+          <!-- Winner Podium for Completed stage -->
+          {#if tournament.status === "completed" && podium}
+            <div
+              class="bg-gradient-to-r from-amber-500/10 via-background to-amber-500/10 border border-primary/20 rounded-2xl p-6 text-center max-w-2xl mx-auto space-y-4 shadow-lg shadow-primary/5"
+            >
+              <TrophyIcon
+                class="w-12 h-12 text-primary mx-auto animate-bounce"
+              />
+              <div>
+                <h2
+                  class="text-xl font-extrabold tracking-tight bg-gradient-to-r from-amber-400 to-amber-200 bg-clip-text text-transparent"
                 >
-                  冠军 (Gold)
-                </p>
-                <p class="text-sm font-bold text-foreground mt-0.5">
-                  {playerName(podium.champion)}
+                  冠军诞生！恭喜 {playerName(podium.champion)}
+                </h2>
+                <p class="text-xs text-muted-foreground mt-1">
+                  SUCK 赛事已完美收官
                 </p>
               </div>
-              <div class="p-3 bg-card/60 border border-border rounded-xl">
-                <div
-                  class="w-5 h-5 rounded-full bg-zinc-400 text-black text-[10px] font-bold mx-auto mb-1 flex items-center justify-center"
-                >
-                  2
+
+              <div class="grid grid-cols-2 gap-4 max-w-md mx-auto pt-2">
+                <div class="p-3 bg-card/60 border border-primary/20 rounded-xl">
+                  <CrownIcon class="w-5 h-5 text-amber-400 mx-auto mb-1" />
+                  <p
+                    class="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold"
+                  >
+                    冠军 (Gold)
+                  </p>
+                  <p class="text-sm font-bold text-foreground mt-0.5">
+                    {playerName(podium.champion)}
+                  </p>
                 </div>
-                <p
-                  class="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold"
+                <div class="p-3 bg-card/60 border border-border rounded-xl">
+                  <div
+                    class="w-5 h-5 rounded-full bg-zinc-400 text-black text-[10px] font-bold mx-auto mb-1 flex items-center justify-center"
+                  >
+                    2
+                  </div>
+                  <p
+                    class="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold"
+                  >
+                    亚军 (Silver)
+                  </p>
+                  <p class="text-sm font-bold text-foreground mt-0.5">
+                    {playerName(podium.runnerUp)}
+                  </p>
+                </div>
+              </div>
+
+              <!-- Export data for SUCK Utilities -->
+              <div class="pt-2 flex justify-center gap-3">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onclick={triggerJsonDownload}
+                  class="text-xs gap-1.5 h-8 hover:bg-primary hover:text-black cursor-pointer border-primary/20"
                 >
-                  亚军 (Silver)
-                </p>
-                <p class="text-sm font-bold text-foreground mt-0.5">
-                  {playerName(podium.runnerUp)}
-                </p>
+                  <DownloadIcon class="w-3.5 h-3.5" />
+                  导出赛事数据 (JSON)
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onclick={openWikiExport}
+                  class="text-xs gap-1.5 h-8 hover:bg-primary hover:text-black cursor-pointer border-primary/20"
+                >
+                  <FileTextIcon class="w-3.5 h-3.5" />
+                  生成 Liquipedia Wiki 脚本
+                </Button>
               </div>
             </div>
+          {/if}
 
-            <!-- Export data for SUCK Utilities -->
-            <div class="pt-2 flex justify-center gap-3">
-              <Button
-                variant="outline"
-                size="sm"
-                onclick={triggerJsonDownload}
-                class="text-xs gap-1.5 h-8 hover:bg-primary hover:text-black cursor-pointer border-primary/20"
-              >
-                <DownloadIcon class="w-3.5 h-3.5" />
-                导出赛事数据 (JSON)
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onclick={openWikiExport}
-                class="text-xs gap-1.5 h-8 hover:bg-primary hover:text-black cursor-pointer border-primary/20"
-              >
-                <FileTextIcon class="w-3.5 h-3.5" />
-                生成 Liquipedia Wiki 脚本
-              </Button>
-            </div>
-          </div>
-        {/if}
-
-        <!-- Standings / Rankings Table for Completed stage -->
-        {#if tournament.status === "completed" && standings.length > 0}
-          <Card.Root class="border-border bg-card/40 max-w-2xl mx-auto mt-6">
-            <Card.Header class="p-6 pb-3">
-              <Card.Title class="text-base font-bold flex items-center gap-2">
-                <ListOrderedIcon class="w-5 h-5 text-primary" />
-                赛事最终名次排行 (Standings)
-              </Card.Title>
-              <Card.Description class="text-xs">
-                基于淘汰赛各轮次淘汰情况计算得出的选手最终名次。
-              </Card.Description>
-            </Card.Header>
-            <Card.Content class="p-6 pt-0">
-              <div class="overflow-x-auto border border-border/50 rounded-xl bg-background/25">
-                <table class="w-full border-collapse text-left text-xs text-foreground/95">
-                  <thead>
-                    <tr class="border-b border-border/50 bg-muted/20 text-[10px] uppercase font-bold text-muted-foreground">
-                      <th class="py-2.5 px-4 w-40">名次</th>
-                      <th class="py-2.5 px-4">选手 (Player)</th>
-                      <th class="py-2.5 px-4 text-center w-24">胜场/总场</th>
-                    </tr>
-                  </thead>
-                  <tbody class="divide-y divide-border/30">
-                    {#each standings as item}
-                      <tr class="hover:bg-background/40 transition-colors">
-                        <td class="py-3 px-4 font-bold text-primary">
-                          {item.rank}
-                        </td>
-                        <td class="py-3 px-4">
-                          <span class="flex items-center gap-1.5 font-semibold">
-                            {#if item.team}
-                              <span class="text-[10px] text-muted-foreground font-mono">[{item.team}]</span>
-                            {/if}
-                            <span>{item.display_name || item.id}</span>
-                            {#if item.flag}
-                              <span class="text-[9px] font-bold px-1 rounded bg-muted text-muted-foreground uppercase font-mono">{item.flag}</span>
-                            {/if}
-                          </span>
-                        </td>
-                        <td class="py-3 px-4 text-center font-mono font-medium text-muted-foreground">
-                          {item.matchesWon} / {item.matchesPlayed}
-                        </td>
+          <!-- Standings / Rankings Table for Completed stage -->
+          {#if tournament.status === "completed" && standings.length > 0}
+            <Card.Root class="border-border bg-card/40 max-w-2xl mx-auto mt-6">
+              <Card.Header class="p-6 pb-3">
+                <Card.Title class="text-base font-bold flex items-center gap-2">
+                  <ListOrderedIcon class="w-5 h-5 text-primary" />
+                  赛事最终名次排行 (Standings)
+                </Card.Title>
+                <Card.Description class="text-xs">
+                  基于淘汰赛各轮次淘汰情况计算得出的选手最终名次。
+                </Card.Description>
+              </Card.Header>
+              <Card.Content class="p-6 pt-0">
+                <div
+                  class="overflow-x-auto border border-border/50 rounded-xl bg-background/25"
+                >
+                  <table
+                    class="w-full border-collapse text-left text-xs text-foreground/95"
+                  >
+                    <thead>
+                      <tr
+                        class="border-b border-border/50 bg-muted/20 text-[10px] uppercase font-bold text-muted-foreground"
+                      >
+                        <th class="py-2.5 px-4 w-40">名次</th>
+                        <th class="py-2.5 px-4">选手 (Player)</th>
+                        <th class="py-2.5 px-4 text-center w-24">胜场/总场</th>
                       </tr>
-                    {/each}
-                  </tbody>
-                </table>
-              </div>
-            </Card.Content>
-          </Card.Root>
-        {/if}
+                    </thead>
+                    <tbody class="divide-y divide-border/30">
+                      {#each standings as item}
+                        <tr class="hover:bg-background/40 transition-colors">
+                          <td class="py-3 px-4 font-bold text-primary">
+                            {item.rank}
+                          </td>
+                          <td class="py-3 px-4">
+                            <span
+                              class="flex items-center gap-1.5 font-semibold"
+                            >
+                              {#if item.team}
+                                <span
+                                  class="text-[10px] text-muted-foreground font-mono"
+                                  >[{item.team}]</span
+                                >
+                              {/if}
+                              <span>{item.display_name || item.id}</span>
+                              {#if item.flag}
+                                <span
+                                  class="text-[9px] font-bold px-1 rounded bg-muted text-muted-foreground uppercase font-mono"
+                                  >{item.flag}</span
+                                >
+                              {/if}
+                            </span>
+                          </td>
+                          <td
+                            class="py-3 px-4 text-center font-mono font-medium text-muted-foreground"
+                          >
+                            {item.matchesWon} / {item.matchesPlayed}
+                          </td>
+                        </tr>
+                      {/each}
+                    </tbody>
+                  </table>
+                </div>
+              </Card.Content>
+            </Card.Root>
+          {/if}
 
-        {@render bracketView()}
+          {@render bracketView()}
+        </div>
+        <div class="space-y-6">
+          {@render rosterSidebar()}
+        </div>
       </div>
-      <div class="space-y-6">
-        {@render rosterSidebar()}
-      </div>
-    </div>
     {/if}
   </div>
 {/if}
@@ -2657,7 +2749,9 @@
       </div>
     {/if}
 
-    <Dialog.Footer class="mt-2 border-t border-border pt-3 flex flex-row items-center justify-between gap-3">
+    <Dialog.Footer
+      class="mt-2 border-t border-border pt-3 flex flex-row items-center justify-between gap-3"
+    >
       {#if tournament.status === "in_progress"}
         <Button
           variant="outline"
@@ -2749,9 +2843,13 @@
 
 <!-- Participant Profile Edit Dialog -->
 <Dialog.Root bind:open={showPlayerEditDialog}>
-  <Dialog.Content class="max-w-[420px] bg-card border border-border p-6 flex flex-col gap-4">
+  <Dialog.Content
+    class="max-w-[420px] bg-card border border-border p-6 flex flex-col gap-4"
+  >
     <Dialog.Header>
-      <Dialog.Title class="text-base font-bold text-foreground flex items-center gap-2">
+      <Dialog.Title
+        class="text-base font-bold text-foreground flex items-center gap-2"
+      >
         <SettingsIcon class="w-5 h-5 text-primary" />
         编辑选手资料
       </Dialog.Title>
@@ -2762,7 +2860,11 @@
 
     <div class="space-y-4 py-2">
       <div class="space-y-1.5">
-        <label for="edit-player-id" class="text-xs font-bold text-muted-foreground">选手唯一 ID (Player ID)</label>
+        <label
+          for="edit-player-id"
+          class="text-xs font-bold text-muted-foreground"
+          >选手唯一 ID (Player ID)</label
+        >
         <Input
           id="edit-player-id"
           bind:value={editPlayerNewId}
@@ -2772,7 +2874,11 @@
       </div>
 
       <div class="space-y-1.5">
-        <label for="edit-display-name" class="text-xs font-bold text-muted-foreground">显示名称 (Display Name)</label>
+        <label
+          for="edit-display-name"
+          class="text-xs font-bold text-muted-foreground"
+          >显示名称 (Display Name)</label
+        >
         <Input
           id="edit-display-name"
           bind:value={editPlayerDisplayName}
@@ -2783,7 +2889,9 @@
 
       <div class="grid grid-cols-2 gap-3">
         <div class="space-y-1.5">
-          <label for="edit-flag" class="text-xs font-bold text-muted-foreground">国籍/地区 (Flag)</label>
+          <label for="edit-flag" class="text-xs font-bold text-muted-foreground"
+            >国籍/地区 (Flag)</label
+          >
           <Input
             id="edit-flag"
             bind:value={editPlayerFlag}
@@ -2792,7 +2900,9 @@
           />
         </div>
         <div class="space-y-1.5">
-          <label for="edit-team" class="text-xs font-bold text-muted-foreground">战队前缀 (Team Tag)</label>
+          <label for="edit-team" class="text-xs font-bold text-muted-foreground"
+            >战队前缀 (Team Tag)</label
+          >
           <Input
             id="edit-team"
             bind:value={editPlayerTeam}
@@ -2803,7 +2913,9 @@
       </div>
 
       <div class="space-y-1.5">
-        <label for="edit-alias" class="text-xs font-bold text-muted-foreground">Wiki 别名 (Alias / Liquipedia ID)</label>
+        <label for="edit-alias" class="text-xs font-bold text-muted-foreground"
+          >Wiki 别名 (Alias / Liquipedia ID)</label
+        >
         <Input
           id="edit-alias"
           bind:value={editPlayerAlias}
@@ -2813,10 +2925,17 @@
       </div>
 
       <div class="space-y-1.5">
-        <span class="text-xs font-bold text-muted-foreground block">已关联游戏账号 (Battle.net IDs)</span>
-        <div class="flex flex-wrap gap-1.5 min-h-[40px] p-2 rounded-xl border border-border bg-background/30">
+        <span class="text-xs font-bold text-muted-foreground block"
+          >已关联游戏账号 (Battle.net IDs)</span
+        >
+        <div
+          class="flex flex-wrap gap-1.5 min-h-[40px] p-2 rounded-xl border border-border bg-background/30"
+        >
           {#each editPlayerBnetIds as account, idx}
-            <Badge variant="secondary" class="gap-1 text-xs py-0.5 pl-2.5 pr-1.5 bg-muted/65 border border-border/60 hover:bg-muted text-foreground">
+            <Badge
+              variant="secondary"
+              class="gap-1 text-xs py-0.5 pl-2.5 pr-1.5 bg-muted/65 border border-border/60 hover:bg-muted text-foreground"
+            >
               <span>{account.id}</span>
               <button
                 type="button"
@@ -2829,13 +2948,18 @@
             </Badge>
           {/each}
           {#if editPlayerBnetIds.length === 0}
-            <span class="text-[10px] text-muted-foreground/60 italic self-center px-1">暂无关联的游戏账号（将通过录像上传自动匹配并关联）</span>
+            <span
+              class="text-[10px] text-muted-foreground/60 italic self-center px-1"
+              >暂无关联的游戏账号（将通过录像上传自动匹配并关联）</span
+            >
           {/if}
         </div>
       </div>
 
       <div class="space-y-1.5">
-        <label for="edit-link" class="text-xs font-bold text-muted-foreground">Wiki 个人页链接 (Link)</label>
+        <label for="edit-link" class="text-xs font-bold text-muted-foreground"
+          >Wiki 个人页链接 (Link)</label
+        >
         <Input
           id="edit-link"
           bind:value={editPlayerLink}
@@ -2867,23 +2991,34 @@
 
 <!-- Dialog for manual mapping of unmapped replays -->
 <Dialog.Root bind:open={showUnmappedDialog}>
-  <Dialog.Content class="max-w-[550px] bg-card border border-border p-6 flex flex-col gap-4">
+  <Dialog.Content
+    class="max-w-[550px] bg-card border border-border p-6 flex flex-col gap-4"
+  >
     <Dialog.Header>
-      <Dialog.Title class="text-lg font-bold text-foreground flex items-center gap-2">
+      <Dialog.Title
+        class="text-lg font-bold text-foreground flex items-center gap-2"
+      >
         <UsersIcon class="w-5 h-5 text-amber-500" />
         手动关联录像账号
       </Dialog.Title>
       <Dialog.Description class="text-xs text-muted-foreground">
-        以下为录像解析中未识别的 Battle.net ID。请将它们绑定至对应的参赛选手，绑定后系统将自动重新解析并导入受影响的录像。
+        以下为录像解析中未识别的 Battle.net
+        ID。请将它们绑定至对应的参赛选手，绑定后系统将自动重新解析并导入受影响的录像。
       </Dialog.Description>
     </Dialog.Header>
 
     <div class="space-y-4 max-h-[350px] overflow-y-auto pr-1 py-1">
       {#each getUnrecognizedIds(unmappedReplays) as bnetId}
-        <div class="flex items-center justify-between gap-3 p-3 rounded-xl border border-border bg-background/30">
-          <span class="font-mono text-sm font-bold text-amber-500 break-all">{bnetId}</span>
+        <div
+          class="flex items-center justify-between gap-3 p-3 rounded-xl border border-border bg-background/30"
+        >
+          <span class="font-mono text-sm font-bold text-amber-500 break-all"
+            >{bnetId}</span
+          >
           <div class="flex items-center gap-2">
-            <span class="text-[10px] text-muted-foreground shrink-0">对应选手:</span>
+            <span class="text-[10px] text-muted-foreground shrink-0"
+              >对应选手:</span
+            >
             <select
               bind:value={tempBnetMappings[bnetId]}
               class="bg-background border border-border text-foreground text-xs rounded-lg p-2 focus-visible:outline-none min-w-[200px]"
@@ -2898,7 +3033,9 @@
       {/each}
     </div>
 
-    <Dialog.Footer class="mt-2 border-t border-border pt-3 flex flex-row items-center justify-between gap-3">
+    <Dialog.Footer
+      class="mt-2 border-t border-border pt-3 flex flex-row items-center justify-between gap-3"
+    >
       <Button
         variant="ghost"
         size="sm"
