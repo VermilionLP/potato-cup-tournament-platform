@@ -9,21 +9,49 @@ import { MatchRepo } from '../repositories/match-repo.js';
 
 const execPromise = util.promisify(exec);
 const __dirname = dirname(fileURLToPath(import.meta.url));
+const PYTHON_COMMANDS = process.env.PYTHON_BIN
+  ? [process.env.PYTHON_BIN]
+  : ['python3', 'python'];
 
 // Configuration for QQ Groups
 const ALLOWED_QQ_GROUPS = (process.env.ALLOWED_QQ_GROUPS || '460309159,1002072430')
   .split(',')
   .map(g => g.trim());
 
+function quoteShellArg(value) {
+  return `"${value.replace(/(["\\$`])/g, '\\$1')}"`;
+}
+
+async function getPythonCommand() {
+  const errors = [];
+
+  for (const command of PYTHON_COMMANDS) {
+    try {
+      await execPromise(`${quoteShellArg(command)} -c "import sc2reader, spawningtool, json"`);
+      return { ok: true, command };
+    } catch (err) {
+      errors.push(`${command}: ${err.message}`);
+    }
+  }
+
+  return { ok: false, error: errors.join('\n') };
+}
+
+async function parseReplay(scriptPath, replayPath) {
+  const envCheck = await getPythonCommand();
+  if (!envCheck.ok) {
+    return envCheck;
+  }
+
+  const { stdout } = await execPromise(
+    `${quoteShellArg(envCheck.command)} ${quoteShellArg(scriptPath)} ${quoteShellArg(replayPath)}`
+  );
+  return { ok: true, stdout };
+}
+
 // Helper to check python dependencies
 export async function checkPythonEnvironment() {
-  try {
-    // Try executing python with importing required libraries
-    await execPromise('python -c "import sc2reader, spawningtool, json"');
-    return { ok: true };
-  } catch (err) {
-    return { ok: false, error: err.message };
-  }
+  return getPythonCommand();
 }
 
 export default async function replaysRoutes(fastify) {
@@ -94,7 +122,11 @@ export default async function replaysRoutes(fastify) {
         writeFileSync(tempFilePath, buffer);
 
         // 2. Call python script to parse
-        const { stdout } = await execPromise(`python "${scriptPath}" "${tempFilePath}"`);
+        const parseResult = await parseReplay(scriptPath, tempFilePath);
+        if (!parseResult.ok) {
+          throw new Error(parseResult.error);
+        }
+        const { stdout } = parseResult;
         const parsedData = JSON.parse(stdout);
 
         // 3. Compress raw replay buffer with Gzip
@@ -238,7 +270,11 @@ export default async function replaysRoutes(fastify) {
 
       try {
         writeFileSync(tempFilePath, buffer);
-        const { stdout } = await execPromise(`python "${scriptPath}" "${tempFilePath}"`);
+        const parseResult = await parseReplay(scriptPath, tempFilePath);
+        if (!parseResult.ok) {
+          throw new Error(parseResult.error);
+        }
+        const { stdout } = parseResult;
         const parsedData = JSON.parse(stdout);
         const compressed = zlib.gzipSync(buffer);
 

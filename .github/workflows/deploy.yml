@@ -46,7 +46,7 @@ jobs:
         uses: easingthemes/ssh-deploy@main
         with:
           SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
-          ARGS: "-avz --delete --exclude=.env --exclude=.env.production --exclude=node_modules --exclude=data"
+          ARGS: "-avz --delete --exclude=.env --exclude=.env.production --exclude=node_modules --exclude=data --exclude=.venv"
           SOURCE: "apps/api/"
           REMOTE_HOST: ${{ secrets.VPS_HOST }}
           REMOTE_PORT: ${{ secrets.VPS_PORT || 22 }}
@@ -61,20 +61,18 @@ jobs:
           key: ${{ secrets.VPS_SSH_KEY }}
           port: ${{ secrets.VPS_PORT || 22 }}
           script: |
-            # Load NVM and shell profiles to bring node, pnpm, and pm2 into PATH
+            # Load NVM and shell profiles to bring node, pnpm, and pm2 into PATH.
             export NVM_DIR="$HOME/.nvm"
             [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
             source ~/.bashrc || source ~/.profile || echo "No profile sourced"
             export CI=true
-            
-            echo "Navigating to ${{ secrets.VPS_PROJECT_PATH }}/apps/api"
-            cd ${{ secrets.VPS_PROJECT_PATH }}/apps/api || { echo "Failed to cd"; exit 1; }
-            
+
+            echo "Navigating to /var/www/suck-utilities/apps/api"
+            cd /var/www/suck-utilities/apps/api || { echo "Failed to cd to /var/www/suck-utilities/apps/api"; exit 1; }
             echo "Running pnpm install"
             pnpm install --prod || { echo "pnpm install failed"; exit 1; }
-            
             echo "Restarting PM2 service"
-            pm2 restart suck-tournament --update-env || pm2 start app.js --name suck-tournament --cwd ${{ secrets.VPS_PROJECT_PATH }}/apps/api || { echo "PM2 restart failed"; exit 1; }
+            pm2 restart suck-tournament --update-env || pm2 start app.js --name suck-tournament --cwd /var/www/suck-utilities/apps/api || { echo "PM2 command failed"; exit 1; }
             echo "Deployment completed"
 
   deploy-web:
