@@ -24,7 +24,8 @@ export default async function votesRoutes(fastify) {
       throw fastify.httpErrors.badRequest('Voting is not open');
     }
     const existingPlayer = playerRepo.getById(player_id);
-    const requesterId = req.headers['x-player-id'];
+    const requesterIdRaw = req.headers['x-player-id'];
+    const requesterId = requesterIdRaw ? decodeURIComponent(requesterIdRaw) : undefined;
     const lastIp = (requesterId === player_id) ? req.ip : null;
 
     if (!existingPlayer) {

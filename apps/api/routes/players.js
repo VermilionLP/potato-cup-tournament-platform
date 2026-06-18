@@ -163,7 +163,8 @@ export default async function playersRoutes(fastify) {
       battleTagsStr = typeof battle_tags === 'string' ? battle_tags : JSON.stringify(battle_tags);
     }
 
-    const requesterId = req.headers['x-player-id'];
+    const requesterIdRaw = req.headers['x-player-id'];
+    const requesterId = requesterIdRaw ? decodeURIComponent(requesterIdRaw) : undefined;
     const lastIp = (requesterId === id) ? req.ip : null;
     const updatedPlayer = repo.upsert(id, flag, team, link, battleTagsStr, lastIp);
 
@@ -202,7 +203,8 @@ export default async function playersRoutes(fastify) {
     if (t.status !== 'registration') throw fastify.httpErrors.badRequest('Registration is closed');
 
     const existingPlayer = repo.getById(player_id);
-    const requesterId = req.headers['x-player-id'];
+    const requesterIdRaw = req.headers['x-player-id'];
+    const requesterId = requesterIdRaw ? decodeURIComponent(requesterIdRaw) : undefined;
     const lastIp = (requesterId === player_id) ? req.ip : null;
 
     if (!existingPlayer) {

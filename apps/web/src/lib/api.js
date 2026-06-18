@@ -10,11 +10,11 @@ async function request(path, options = {}) {
   if (typeof window !== 'undefined') {
     const qqGroup = localStorage.getItem('suck_qq_group');
     if (qqGroup) {
-      headers['x-qq-group'] = qqGroup;
+      headers['x-qq-group'] = encodeURIComponent(qqGroup);
     }
     const playerId = localStorage.getItem('suck_player_id');
     if (playerId) {
-      headers['x-player-id'] = playerId;
+      headers['x-player-id'] = encodeURIComponent(playerId);
     }
   }
 
