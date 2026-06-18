@@ -5,6 +5,15 @@ async function request(path, options = {}) {
   if (options.body) {
     headers['Content-Type'] = 'application/json';
   }
+  
+  // Auto-inject QQ group from localStorage if present
+  if (typeof window !== 'undefined') {
+    const qqGroup = localStorage.getItem('suck_qq_group');
+    if (qqGroup) {
+      headers['x-qq-group'] = qqGroup;
+    }
+  }
+
   const res = await fetch(`${BASE}${path}`, {
     ...options,
     headers
@@ -31,6 +40,8 @@ export const API = {
   // Players / Registration
   listPlayers: () => request('/players'),
   getPlayer: (id) => request(`/players/${enc(id)}`),
+  updatePlayer: (id, data) => request('/players', { method: 'POST', body: JSON.stringify({ id, ...data }) }),
+  renamePlayer: (oldId, newId) => request(`/players/${enc(oldId)}/change-id`, { method: 'POST', body: JSON.stringify({ newId }) }),
   register: (tournamentId, player_id) => request(`/tournaments/${enc(tournamentId)}/register`, { method: 'POST', body: JSON.stringify({ player_id }) }),
   unregister: (tournamentId, player_id) => request(`/tournaments/${enc(tournamentId)}/register`, { method: 'DELETE', body: JSON.stringify({ player_id }) }),
 
@@ -45,5 +56,18 @@ export const API = {
   submitVote: (tournamentId, player_id, proposed_time) =>
     request(`/tournaments/${enc(tournamentId)}/vote`, { method: 'POST', body: JSON.stringify({ player_id, proposed_time }) }),
   removeVote: (tournamentId, player_id, proposed_time) =>
-    request(`/tournaments/${enc(tournamentId)}/vote`, { method: 'DELETE', body: JSON.stringify({ player_id, proposed_time }) })
+    request(`/tournaments/${enc(tournamentId)}/vote`, { method: 'DELETE', body: JSON.stringify({ player_id, proposed_time }) }),
+
+  // Replays
+  verifyQQ: (qqGroup) =>
+    request('/verify-qq', { method: 'POST', body: JSON.stringify({ qqGroup }) }),
+  uploadReplays: (matchId, replays, qqGroup) =>
+    request(`/matches/${matchId}/replays`, { method: 'POST', body: JSON.stringify({ replays, qqGroup }) }),
+  uploadBatchReplays: (tournamentId, replays, qqGroup) =>
+    request(`/tournaments/${enc(tournamentId)}/replays/batch`, { method: 'POST', body: JSON.stringify({ replays, qqGroup }) }),
+  getReplays: (matchId) => request(`/matches/${matchId}/replays`),
+  deleteReplay: (replayId) => request(`/replays/${replayId}`, { method: 'DELETE' }),
+
+  // Wiki Generation
+  getWikiScript: (tournamentId) => request(`/tournaments/${enc(tournamentId)}/wiki`)
 };

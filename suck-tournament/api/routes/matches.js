@@ -15,6 +15,9 @@ export default async function matchesRoutes(fastify) {
 
     const advanced = repo.advanceWinner(req.params.id, match.id);
 
+    // Trigger real-time broadcast
+    fastify.tournamentEvents.emit(`update:${req.params.id}`, { type: 'match_result_submitted', matchId: match.id });
+
     return { match: updated, advanced };
   });
 
@@ -33,6 +36,10 @@ export default async function matchesRoutes(fastify) {
 
     const updated = repo.getById(match.id);
     const advanced = repo.advanceWinner(req.params.id, match.id);
+
+    // Trigger real-time broadcast
+    fastify.tournamentEvents.emit(`update:${req.params.id}`, { type: 'match_walkover_submitted', matchId: match.id });
+
     return { match: updated, advanced };
   });
 
@@ -48,11 +55,19 @@ export default async function matchesRoutes(fastify) {
       player1_id,
       player2_id
     });
+
+    // Trigger real-time broadcast
+    fastify.tournamentEvents.emit(`update:${req.params.id}`, { type: 'match_created', matchId: match.id });
+
     return match;
   });
 
   fastify.delete('/tournaments/:id/matches', async (req) => {
     repo.clearMatches(req.params.id);
+
+    // Trigger real-time broadcast
+    fastify.tournamentEvents.emit(`update:${req.params.id}`, { type: 'matches_cleared' });
+
     return { success: true };
   });
 }

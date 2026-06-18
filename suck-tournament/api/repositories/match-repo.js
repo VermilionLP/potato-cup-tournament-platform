@@ -29,7 +29,6 @@ export function MatchRepo(db) {
   function submitResult(id, score1, score2) {
     const match = getById(id);
     if (!match) throw new Error('Match not found');
-    if (match.status === 'completed') throw new Error('Match already completed');
 
     let winnerId = null;
     if (score1 > score2) winnerId = match.player2_id; // the 0 side (player2) advances

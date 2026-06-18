@@ -20,6 +20,32 @@ export default async function tournamentsRoutes(fastify) {
     };
   });
 
+  fastify.get('/tournaments/:id/stream', (req, reply) => {
+    const { id: tournamentId } = req.params;
+    
+    reply.raw.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+      'Access-Control-Allow-Origin': '*'
+    });
+    
+    const heartbeat = setInterval(() => {
+      reply.raw.write(': heartbeat\n\n');
+    }, 20000);
+
+    const listener = (data) => {
+      reply.raw.write(`data: ${JSON.stringify(data)}\n\n`);
+    };
+
+    fastify.tournamentEvents.on(`update:${tournamentId}`, listener);
+
+    req.raw.on('close', () => {
+      clearInterval(heartbeat);
+      fastify.tournamentEvents.off(`update:${tournamentId}`, listener);
+    });
+  });
+
   fastify.post('/tournaments', async (req) => {
     const { id, name, description, player_capacity, hold_third_place } = req.body;
     if (!id || !name) throw fastify.httpErrors.badRequest('id and name are required');
@@ -34,7 +60,12 @@ export default async function tournamentsRoutes(fastify) {
     if (!valid.includes(status)) throw fastify.httpErrors.badRequest('Invalid status');
     const t = repo.getById(req.params.id);
     if (!t) throw fastify.httpErrors.notFound('Tournament not found');
-    return repo.updateStatus(req.params.id, status, scheduled_time);
+    const updated = repo.updateStatus(req.params.id, status, scheduled_time);
+    
+    // Trigger real-time broadcast
+    fastify.tournamentEvents.emit(`update:${req.params.id}`, { type: 'status_changed', status });
+    
+    return updated;
   });
 
   fastify.post('/tournaments/:id/seeds', async (req) => {
@@ -43,6 +74,10 @@ export default async function tournamentsRoutes(fastify) {
     const t = repo.getById(req.params.id);
     if (!t) throw fastify.httpErrors.notFound('Tournament not found');
     repo.setSeeds(req.params.id, player_ids);
+    
+    // Trigger real-time broadcast
+    fastify.tournamentEvents.emit(`update:${req.params.id}`, { type: 'seeds_updated' });
+    
     return repo.getPlayers(req.params.id);
   });
 
@@ -50,6 +85,10 @@ export default async function tournamentsRoutes(fastify) {
     const t = repo.getById(req.params.id);
     if (!t) throw fastify.httpErrors.notFound('Tournament not found');
     const bracket = matches.generateBracket(req.params.id);
+    
+    // Trigger real-time broadcast
+    fastify.tournamentEvents.emit(`update:${req.params.id}`, { type: 'bracket_generated' });
+    
     return bracket;
   });
 

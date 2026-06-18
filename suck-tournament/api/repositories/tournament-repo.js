@@ -30,7 +30,16 @@ export function TournamentRepo(db) {
 
   function getPlayers(tournamentId) {
     return db.prepare(`
-      SELECT p.id, p.display_name, tp.seed, tp.registered_at
+      SELECT 
+        p.id, 
+        p.display_name, 
+        p.flag, 
+        COALESCE(tp.team, p.team) AS team, 
+        p.alias, 
+        p.link, 
+        p.bnet_ids,
+        tp.seed, 
+        tp.registered_at
       FROM tournament_players tp
       JOIN players p ON p.id = tp.player_id
       WHERE tp.tournament_id = ?
@@ -59,9 +68,12 @@ export function TournamentRepo(db) {
       INSERT OR IGNORE INTO players (id, display_name) VALUES (?, ?)
     `).run(playerId, playerId);
 
+    const p = db.prepare('SELECT team FROM players WHERE id = ?').get(playerId);
+
     db.prepare(`
-      INSERT INTO tournament_players (tournament_id, player_id, seed) VALUES (?, ?, ?)
-    `).run(tournamentId, playerId, count + 1);
+      INSERT INTO tournament_players (tournament_id, player_id, seed, team) 
+      VALUES (?, ?, ?, ?)
+    `).run(tournamentId, playerId, count + 1, p?.team || '');
 
     return true;
   }

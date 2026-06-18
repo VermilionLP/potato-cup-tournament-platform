@@ -7,17 +7,21 @@ import fastifyStatic from '@fastify/static';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { readFileSync } from 'fs';
+import { EventEmitter } from 'events';
 
 import databasePlugin from './plugins/database.js';
 import tournamentsRoutes from './routes/tournaments.js';
 import playersRoutes from './routes/players.js';
 import matchesRoutes from './routes/matches.js';
 import votesRoutes from './routes/votes.js';
+import replaysRoutes, { checkPythonEnvironment } from './routes/replays.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(readFileSync(join(__dirname, 'package.json'), 'utf-8'));
 
 const fastify = Fastify({ logger: true });
+const tournamentEvents = new EventEmitter();
+fastify.decorate('tournamentEvents', tournamentEvents);
 
 await fastify.register(cors, { origin: true, credentials: true });
 await fastify.register(sensible);
@@ -30,6 +34,17 @@ await fastify.register(tournamentsRoutes, { prefix: '/api' });
 await fastify.register(playersRoutes, { prefix: '/api' });
 await fastify.register(matchesRoutes, { prefix: '/api' });
 await fastify.register(votesRoutes, { prefix: '/api' });
+await fastify.register(replaysRoutes, { prefix: '/api' });
+
+// Runtime Python check on startup
+checkPythonEnvironment().then((status) => {
+  if (status.ok) {
+    console.log('✅ Python environment verified: sc2reader and spawningtool are available.');
+  } else {
+    console.warn('⚠️ WARNING: Server Python environment check failed. SC2 replay parsing will not be available.');
+    console.warn(`Reason: ${status.error}`);
+  }
+});
 
 fastify.get('/api/ping', async () => ({ pong: true }));
 

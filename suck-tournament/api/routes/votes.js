@@ -24,13 +24,22 @@ export default async function votesRoutes(fastify) {
       throw fastify.httpErrors.badRequest('Voting is not open');
     }
     playerRepo.upsert(player_id, player_id);
-    return repo.upsert(req.params.id, player_id, proposed_time);
+    const result = repo.upsert(req.params.id, player_id, proposed_time);
+
+    // Trigger real-time broadcast
+    fastify.tournamentEvents.emit(`update:${req.params.id}`, { type: 'vote_submitted', player_id, proposed_time });
+
+    return result;
   });
 
   fastify.delete('/tournaments/:id/vote', async (req) => {
     const { player_id, proposed_time } = req.body;
     if (!player_id) throw fastify.httpErrors.badRequest('player_id is required');
     repo.removeVote(req.params.id, player_id, proposed_time || null);
+
+    // Trigger real-time broadcast
+    fastify.tournamentEvents.emit(`update:${req.params.id}`, { type: 'vote_removed', player_id });
+
     return repo.getByTournament(req.params.id);
   });
 }
