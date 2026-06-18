@@ -71,9 +71,6 @@ jobs:
             cd /var/www/suck-utilities/apps/api || { echo "Failed to cd to /var/www/suck-utilities/apps/api"; exit 1; }
             echo "Running pnpm install"
             pnpm install --prod || { echo "pnpm install failed"; exit 1; }
-            echo "Restarting PM2 service"
-            pm2 restart suck-tournament --update-env || pm2 start app.js --name suck-tournament --cwd /var/www/suck-utilities/apps/api || { echo "PM2 command failed"; exit 1; }
-            echo "Deployment completed"
 
   deploy-web:
     needs: changes
@@ -118,3 +115,32 @@ jobs:
           REMOTE_PORT: ${{ secrets.VPS_PORT || 22 }}
           REMOTE_USER: ${{ secrets.VPS_USER }}
           TARGET: "${{ secrets.VPS_PROJECT_PATH }}/apps/web/build"
+
+  restart-pm2:
+    needs: [changes, deploy-api, deploy-web]
+    if: |
+      always() &&
+      (needs.changes.outputs.api == 'true' || needs.changes.outputs.web == 'true') &&
+      (needs.deploy-api.result == 'success' || needs.deploy-api.result == 'skipped') &&
+      (needs.deploy-web.result == 'success' || needs.deploy-web.result == 'skipped')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Restart PM2 Service
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT || 22 }}
+          script: |
+            # Load NVM and shell profiles to bring node, pnpm, and pm2 into PATH.
+            export NVM_DIR="$HOME/.nvm"
+            [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+            source ~/.bashrc || source ~/.profile || echo "No profile sourced"
+            export CI=true
+
+            echo "Navigating to /var/www/suck-utilities/apps/api"
+            cd /var/www/suck-utilities/apps/api || { echo "Failed to cd to /var/www/suck-utilities/apps/api"; exit 1; }
+            echo "Restarting PM2 service"
+            pm2 restart suck-tournament --update-env || pm2 start app.js --name suck-tournament --cwd /var/www/suck-utilities/apps/api || { echo "PM2 command failed"; exit 1; }
+            echo "PM2 service restarted successfully"
