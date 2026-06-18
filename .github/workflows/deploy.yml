@@ -61,12 +61,19 @@ jobs:
           key: ${{ secrets.VPS_SSH_KEY }}
           port: ${{ secrets.VPS_PORT || 22 }}
           script: |
+            # Load NVM and shell profiles to bring node, pnpm, and pm2 into PATH
+            export NVM_DIR="$HOME/.nvm"
+            [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+            source ~/.bashrc || source ~/.profile || echo "No profile sourced"
+            
             echo "Navigating to ${{ secrets.VPS_PROJECT_PATH }}/apps/api"
             cd ${{ secrets.VPS_PROJECT_PATH }}/apps/api || { echo "Failed to cd"; exit 1; }
+            
             echo "Running pnpm install"
             pnpm install --prod || { echo "pnpm install failed"; exit 1; }
+            
             echo "Restarting PM2 service"
-            pm2 restart suck-tournament || pm2 start app.js --name suck-tournament || { echo "PM2 restart failed"; exit 1; }
+            pm2 restart suck-tournament --update-env || pm2 start app.js --name suck-tournament --cwd ${{ secrets.VPS_PROJECT_PATH }}/apps/api || { echo "PM2 restart failed"; exit 1; }
             echo "Deployment completed"
 
   deploy-web:
