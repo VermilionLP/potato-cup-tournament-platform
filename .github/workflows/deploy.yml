@@ -38,6 +38,7 @@ jobs:
           ARGS: "-avz --delete --exclude=.env --exclude=.env.production --exclude=node_modules --exclude=data"
           SOURCE: "apps/api/"
           REMOTE_HOST: ${{ secrets.VPS_HOST }}
+          REMOTE_PORT: ${{ secrets.VPS_PORT || 22 }}
           REMOTE_USER: ${{ secrets.VPS_USER }}
           TARGET: "${{ secrets.VPS_PROJECT_PATH }}/apps/api"
 
@@ -47,6 +48,7 @@ jobs:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT || 22 }}
           script: |
             echo "Navigating to ${{ secrets.VPS_PROJECT_PATH }}/apps/api"
             cd ${{ secrets.VPS_PROJECT_PATH }}/apps/api || { echo "Failed to cd"; exit 1; }
@@ -87,5 +89,6 @@ jobs:
           ARGS: "-avz --delete --exclude=.env --exclude=.env.production"
           SOURCE: "apps/web/build/"
           REMOTE_HOST: ${{ secrets.VPS_HOST }}
+          REMOTE_PORT: ${{ secrets.VPS_PORT || 22 }}
           REMOTE_USER: ${{ secrets.VPS_USER }}
           TARGET: "${{ secrets.VPS_PROJECT_PATH }}/apps/web/build"
