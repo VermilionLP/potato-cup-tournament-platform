@@ -163,7 +163,7 @@ export default async function playersRoutes(fastify) {
       bnetIdsStr = typeof bnet_ids === 'string' ? bnet_ids : JSON.stringify(bnet_ids);
     }
 
-    const updatedPlayer = repo.upsert(id, display_name || id, flag, team, alias, link, bnetIdsStr);
+    const updatedPlayer = repo.upsert(id, display_name || id, flag, team, alias, link, bnetIdsStr, req.ip);
 
     if (tournament_id) {
       fastify.db.prepare(`
@@ -193,7 +193,7 @@ export default async function playersRoutes(fastify) {
     if (!t) throw fastify.httpErrors.notFound('Tournament not found');
     if (t.status !== 'registration') throw fastify.httpErrors.badRequest('Registration is closed');
 
-    repo.upsert(player_id, player_id);
+    repo.upsert(player_id, player_id, undefined, undefined, undefined, undefined, undefined, req.ip);
     const added = tourneyRepo.addPlayer(req.params.id, player_id);
     if (!added) throw fastify.httpErrors.conflict('Already registered');
 

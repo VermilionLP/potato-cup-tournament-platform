@@ -113,6 +113,13 @@ export default fp(async function databasePlugin(fastify) {
       try {
         db.prepare("ALTER TABLE players ADD COLUMN bnet_ids TEXT DEFAULT '[]'").run();
       } catch (e) {}
+    },
+    // Migration 5: Add last_ip column to players
+    () => {
+      console.log('Running database migration v5: adding last_ip column to players...');
+      try {
+        db.prepare("ALTER TABLE players ADD COLUMN last_ip TEXT").run();
+      } catch (e) {}
     }
   ];
 

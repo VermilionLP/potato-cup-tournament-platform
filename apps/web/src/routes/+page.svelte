@@ -643,6 +643,12 @@
                       <span class="truncate block max-w-[200px]" title={p.link}>{p.link}</span>
                     </div>
                   {/if}
+                  {#if p.last_ip}
+                    <div class="flex items-center gap-1.5 text-muted-foreground/80">
+                      <span class="font-bold">Last IP:</span>
+                      <span class="font-mono bg-muted/40 px-1.5 py-0.2 rounded text-[10px]">{p.last_ip}</span>
+                    </div>
+                  {/if}
                 </div>
               </Card.Header>
 

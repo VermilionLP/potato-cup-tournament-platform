@@ -3,17 +3,18 @@ export function PlayerRepo(db) {
     return db.prepare(`SELECT * FROM players WHERE id = ?`).get(id);
   }
 
-  function upsert(id, displayName, flag = 'cn', team = '', alias = '', link = '', bnet_ids = '[]') {
+  function upsert(id, displayName, flag = 'cn', team = '', alias = '', link = '', bnet_ids = '[]', lastIp = null) {
     db.prepare(`
-      INSERT INTO players (id, display_name, flag, team, alias, link, bnet_ids) VALUES (?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO players (id, display_name, flag, team, alias, link, bnet_ids, last_ip) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(id) DO UPDATE SET 
         display_name = excluded.display_name,
         flag = excluded.flag,
         team = excluded.team,
         alias = excluded.alias,
         link = excluded.link,
-        bnet_ids = excluded.bnet_ids
-    `).run(id, displayName || id, flag || 'cn', team || '', alias || '', link || '', bnet_ids || '[]');
+        bnet_ids = excluded.bnet_ids,
+        last_ip = COALESCE(excluded.last_ip, players.last_ip)
+    `).run(id, displayName || id, flag || 'cn', team || '', alias || '', link || '', bnet_ids || '[]', lastIp);
     return getById(id);
   }
 

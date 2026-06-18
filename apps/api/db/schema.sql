@@ -14,6 +14,12 @@ CREATE TABLE IF NOT EXISTS tournaments (
 CREATE TABLE IF NOT EXISTS players (
   id TEXT PRIMARY KEY,
   display_name TEXT NOT NULL,
+  flag TEXT DEFAULT 'cn',
+  team TEXT DEFAULT '',
+  alias TEXT DEFAULT '',
+  link TEXT DEFAULT '',
+  bnet_ids TEXT DEFAULT '[]',
+  last_ip TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 

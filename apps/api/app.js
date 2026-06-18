@@ -19,7 +19,7 @@ import replaysRoutes, { checkPythonEnvironment } from './routes/replays.js';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(readFileSync(join(__dirname, 'package.json'), 'utf-8'));
 
-const fastify = Fastify({ logger: true });
+const fastify = Fastify({ logger: true, trustProxy: true });
 const tournamentEvents = new EventEmitter();
 fastify.decorate('tournamentEvents', tournamentEvents);
 

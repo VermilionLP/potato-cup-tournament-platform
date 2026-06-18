@@ -23,7 +23,7 @@ export default async function votesRoutes(fastify) {
     if (t.status !== 'voting' && t.status !== 'registration') {
       throw fastify.httpErrors.badRequest('Voting is not open');
     }
-    playerRepo.upsert(player_id, player_id);
+    playerRepo.upsert(player_id, player_id, undefined, undefined, undefined, undefined, undefined, req.ip);
     const result = repo.upsert(req.params.id, player_id, proposed_time);
 
     // Trigger real-time broadcast
