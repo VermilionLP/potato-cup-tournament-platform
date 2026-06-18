@@ -163,7 +163,9 @@ export default async function playersRoutes(fastify) {
       battleTagsStr = typeof battle_tags === 'string' ? battle_tags : JSON.stringify(battle_tags);
     }
 
-    const updatedPlayer = repo.upsert(id, flag, team, link, battleTagsStr, req.ip);
+    const requesterId = req.headers['x-player-id'];
+    const lastIp = (requesterId === id) ? req.ip : null;
+    const updatedPlayer = repo.upsert(id, flag, team, link, battleTagsStr, lastIp);
 
     if (bnet_ids !== undefined) {
       const bnetIdsStr = typeof bnet_ids === 'string' ? bnet_ids : JSON.stringify(bnet_ids);
@@ -200,10 +202,15 @@ export default async function playersRoutes(fastify) {
     if (t.status !== 'registration') throw fastify.httpErrors.badRequest('Registration is closed');
 
     const existingPlayer = repo.getById(player_id);
+    const requesterId = req.headers['x-player-id'];
+    const lastIp = (requesterId === player_id) ? req.ip : null;
+
     if (!existingPlayer) {
-      repo.upsert(player_id, 'cn', '', '', '{}', req.ip);
+      repo.upsert(player_id, 'cn', '', '', '{}', lastIp);
     } else {
-      fastify.db.prepare('UPDATE players SET last_ip = ? WHERE id = ?').run(req.ip, player_id);
+      if (requesterId === player_id) {
+        fastify.db.prepare('UPDATE players SET last_ip = ? WHERE id = ?').run(req.ip, player_id);
+      }
     }
     const added = tourneyRepo.addPlayer(req.params.id, player_id);
     if (!added) throw fastify.httpErrors.conflict('Already registered');

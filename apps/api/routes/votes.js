@@ -23,7 +23,17 @@ export default async function votesRoutes(fastify) {
     if (t.status !== 'voting' && t.status !== 'registration') {
       throw fastify.httpErrors.badRequest('Voting is not open');
     }
-    playerRepo.upsert(player_id, player_id, undefined, undefined, undefined, undefined, undefined, req.ip);
+    const existingPlayer = playerRepo.getById(player_id);
+    const requesterId = req.headers['x-player-id'];
+    const lastIp = (requesterId === player_id) ? req.ip : null;
+
+    if (!existingPlayer) {
+      playerRepo.upsert(player_id, 'cn', '', '', '{}', lastIp);
+    } else {
+      if (requesterId === player_id) {
+        fastify.db.prepare('UPDATE players SET last_ip = ? WHERE id = ?').run(req.ip, player_id);
+      }
+    }
     const result = repo.upsert(req.params.id, player_id, proposed_time);
 
     // Trigger real-time broadcast

@@ -6,11 +6,15 @@ async function request(path, options = {}) {
     headers['Content-Type'] = 'application/json';
   }
   
-  // Auto-inject QQ group from localStorage if present
+  // Auto-inject QQ group and player ID from localStorage if present
   if (typeof window !== 'undefined') {
     const qqGroup = localStorage.getItem('suck_qq_group');
     if (qqGroup) {
       headers['x-qq-group'] = qqGroup;
+    }
+    const playerId = localStorage.getItem('suck_player_id');
+    if (playerId) {
+      headers['x-player-id'] = playerId;
     }
   }
 
