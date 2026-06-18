@@ -36,6 +36,7 @@
   let editPlayerAlias = $state("");
   let editPlayerLink = $state("");
   let editPlayerBnetIds = $state([]);
+  let mergeTargetId = $state("");
 
   let filteredPlayers = $derived(
     players.filter(p => 
@@ -53,6 +54,7 @@
     editPlayerTeam = p.team || "";
     editPlayerAlias = p.alias || "";
     editPlayerLink = p.link || "";
+    mergeTargetId = "";
     
     if (p.bnet_ids) {
       try {
@@ -81,6 +83,7 @@
     editPlayerAlias = "";
     editPlayerLink = "";
     editPlayerBnetIds = [];
+    mergeTargetId = "";
     showPlayerEditDialog = true;
   }
 
@@ -135,6 +138,59 @@
     } catch (e) {
       toast.dismiss("player-save");
       toast.error("操作失败: " + e.message);
+    }
+  }
+
+  async function handleDeletePlayer() {
+    if (!userState.qqGroup || !userState.id) {
+      toast.error("此操作需要先验证 QQ 群号与选手 ID。已为您打开配置面板！");
+      document.getElementById("header-profile-button")?.click();
+      return;
+    }
+
+    if (!confirm(`您确定要彻底删除选手 ${editingPlayerId} 吗？\n该操作会同步清除其在所有赛事的报名与投票记录，且不可撤销。`)) {
+      return;
+    }
+
+    try {
+      toast.loading("正在删除选手...", { id: "player-delete" });
+      await API.deletePlayer(editingPlayerId);
+      toast.dismiss("player-delete");
+      toast.success("选手已成功删除");
+      showPlayerEditDialog = false;
+      await load();
+    } catch (e) {
+      toast.dismiss("player-delete");
+      toast.error("删除失败: " + e.message);
+    }
+  }
+
+  async function handleMergePlayer() {
+    if (!userState.qqGroup || !userState.id) {
+      toast.error("此操作需要先验证 QQ 群号与选手 ID。已为您打开配置面板！");
+      document.getElementById("header-profile-button")?.click();
+      return;
+    }
+
+    if (!mergeTargetId) {
+      toast.error("请选择要合并的目标选手");
+      return;
+    }
+
+    if (!confirm(`确定将选手 ${editingPlayerId} 合并到 ${mergeTargetId} 吗？\n合并后，${editingPlayerId} 的所有赛事报名、投票、对阵战绩将转移给 ${mergeTargetId}，并且 ${editingPlayerId} 将被删除！`)) {
+      return;
+    }
+
+    try {
+      toast.loading("正在合并选手数据...", { id: "player-merge" });
+      await API.mergePlayer(editingPlayerId, mergeTargetId);
+      toast.dismiss("player-merge");
+      toast.success("选手合并成功");
+      showPlayerEditDialog = false;
+      await load();
+    } catch (e) {
+      toast.dismiss("player-merge");
+      toast.error("合并失败: " + e.message);
     }
   }
 
@@ -696,7 +752,7 @@
 
 <!-- Participant Profile Edit/Create Dialog -->
 <Dialog.Root bind:open={showPlayerEditDialog}>
-  <Dialog.Content class="max-w-[420px] bg-card border border-border p-6 flex flex-col gap-4">
+  <Dialog.Content class="max-w-[480px] bg-card border border-border p-6 flex flex-col gap-4">
     <Dialog.Header>
       <Dialog.Title class="text-base font-bold text-foreground flex items-center gap-2">
         <SettingsIcon class="w-5 h-5 text-primary" />
@@ -790,6 +846,59 @@
           class="bg-background border-border text-foreground text-xs"
         />
       </div>
+
+      {#if !isCreatingPlayer}
+        <div class="border-t border-border/60 pt-4 mt-2 space-y-2">
+          <h4 class="text-xs font-extrabold text-destructive flex items-center gap-1.5">
+            危险操作 (Dangerous Actions)
+          </h4>
+          <div class="flex flex-col gap-3 bg-destructive/5 border border-destructive/20 p-3 rounded-xl">
+            <div class="space-y-1.5">
+              <span class="text-xs font-bold block text-foreground">合并选手 (Merge Player)</span>
+              <span class="text-[10px] text-muted-foreground block leading-relaxed">
+                将此选手的所有比赛记录、报名与投票合并到另一个已存在的选手，合并后该选手将被自动删除。
+              </span>
+              <div class="flex flex-wrap gap-2 mt-2">
+                <select
+                  bind:value={mergeTargetId}
+                  class="bg-background border border-border rounded px-2 py-1 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary flex-1 min-w-[150px]"
+                >
+                  <option value="">-- 选择目标选手 --</option>
+                  {#each players.filter(p => p.id !== editingPlayerId) as p}
+                    <option value={p.id}>{p.display_name || p.id} ({p.id})</option>
+                  {/each}
+                </select>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  disabled={!mergeTargetId}
+                  onclick={handleMergePlayer}
+                  class="text-xs font-bold h-7 px-3 cursor-pointer"
+                >
+                  确认合并
+                </Button>
+              </div>
+            </div>
+            
+            <div class="border-t border-border/40 pt-2.5 flex items-center justify-between gap-4">
+              <div class="space-y-0.5">
+                <span class="text-xs font-bold block text-foreground">删除选手 (Delete Player)</span>
+                <span class="text-[10px] text-muted-foreground block">
+                  直接将该选手从数据库中彻底抹除。
+                </span>
+              </div>
+              <Button
+                variant="destructive"
+                size="sm"
+                onclick={handleDeletePlayer}
+                class="text-xs font-bold h-7 px-3 shrink-0 cursor-pointer"
+              >
+                删除选手
+              </Button>
+            </div>
+          </div>
+        </div>
+      {/if}
     </div>
 
     <Dialog.Footer class="flex flex-col sm:flex-row gap-2 mt-2">
