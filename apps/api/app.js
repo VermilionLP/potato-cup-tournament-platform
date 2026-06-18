@@ -15,6 +15,7 @@ import playersRoutes from './routes/players.js';
 import matchesRoutes from './routes/matches.js';
 import votesRoutes from './routes/votes.js';
 import replaysRoutes, { checkPythonEnvironment } from './routes/replays.js';
+import fastifySse from '@fastify/sse';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(readFileSync(join(__dirname, 'package.json'), 'utf-8'));
@@ -25,6 +26,7 @@ fastify.decorate('tournamentEvents', tournamentEvents);
 
 await fastify.register(cors, { origin: true, credentials: true });
 await fastify.register(sensible);
+await fastify.register(fastifySse, { heartbeatInterval: 20000 });
 await fastify.register(swagger, {
   openapi: { info: { title: 'S.U.C.K Tournament API', version: pkg.version } }
 });

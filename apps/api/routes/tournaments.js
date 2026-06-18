@@ -1,5 +1,6 @@
 import { TournamentRepo } from '../repositories/tournament-repo.js';
 import { MatchRepo } from '../repositories/match-repo.js';
+import { Readable } from 'stream';
 
 export default async function tournamentsRoutes(fastify) {
   const repo = TournamentRepo(fastify.db);
@@ -20,33 +21,31 @@ export default async function tournamentsRoutes(fastify) {
     };
   });
 
-  fastify.get('/tournaments/:id/stream', (req, reply) => {
+  fastify.get('/tournaments/:id/stream', { sse: 'only' }, async (req, reply) => {
     const { id: tournamentId } = req.params;
     
-    reply.hijack();
-    
-    reply.raw.writeHead(200, {
-      'Content-Type': 'text/event-stream',
+    reply.headers({
       'Cache-Control': 'no-cache, no-transform',
-      'Connection': 'keep-alive',
-      'Access-Control-Allow-Origin': '*',
       'X-Accel-Buffering': 'no'
     });
-    
-    const heartbeat = setInterval(() => {
-      reply.raw.write(': heartbeat\n\n');
-    }, 20000);
+
+    const stream = new Readable({
+      objectMode: true,
+      read() {}
+    });
 
     const listener = (data) => {
-      reply.raw.write(`data: ${JSON.stringify(data)}\n\n`);
+      stream.push({ data });
     };
 
     fastify.tournamentEvents.on(`update:${tournamentId}`, listener);
 
     req.raw.on('close', () => {
-      clearInterval(heartbeat);
       fastify.tournamentEvents.off(`update:${tournamentId}`, listener);
+      stream.push(null);
     });
+
+    await reply.sse.send(stream);
   });
 
   fastify.post('/tournaments', async (req) => {
