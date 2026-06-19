@@ -40,6 +40,8 @@ export const API = {
   setSeeds: (id, player_ids) => request(`/tournaments/${enc(id)}/seeds`, { method: 'POST', body: JSON.stringify({ player_ids }) }),
   generateBracket: (id) => request(`/tournaments/${enc(id)}/bracket`, { method: 'POST' }),
   getBracket: (id) => request(`/tournaments/${enc(id)}/bracket`),
+  setActiveMatch: (id, active_match_id) => request(`/tournaments/${enc(id)}/active-match`, { method: 'POST', body: JSON.stringify({ active_match_id }) }),
+  setOverlayState: (id, overlay_scene, overlay_round) => request(`/tournaments/${enc(id)}/overlay-state`, { method: 'POST', body: JSON.stringify({ overlay_scene, overlay_round }) }),
 
   // Players / Registration
   listPlayers: () => request('/players'),
@@ -56,6 +58,8 @@ export const API = {
     request(`/tournaments/${enc(tournamentId)}/matches/${matchId}/result`, { method: 'POST', body: JSON.stringify({ score1, score2 }) }),
   submitWalkover: (tournamentId, matchId, winner_id) =>
     request(`/tournaments/${enc(tournamentId)}/matches/${matchId}/walkover`, { method: 'POST', body: JSON.stringify({ winner_id }) }),
+  rollbackResult: (tournamentId, matchId) =>
+    request(`/tournaments/${enc(tournamentId)}/matches/${matchId}/rollback`, { method: 'POST' }),
 
   // Votes
   getVotes: (id) => request(`/tournaments/${enc(id)}/votes`),

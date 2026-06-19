@@ -81,6 +81,7 @@
   // Registration states
   let regInput = $state("");
   let seedOrder = $state([]);
+  let obsIntroRound = $state(1);
 
   // Time voting states
   const today = new Date();
@@ -183,6 +184,10 @@
       allPlayers = await API.listPlayers();
       initializeSeedOrder();
 
+      if (tournament?.matches?.length) {
+        obsIntroRound = Math.max(...tournament.matches.map((m) => m.round));
+      }
+
       // Auto-generate/refresh bracket preview on page load in registration phase
       if (
         tournament.status === "registration" &&
@@ -190,6 +195,9 @@
       ) {
         const matches = await API.generateBracket(tid);
         tournament = { ...tournament, matches };
+        if (matches?.length) {
+          obsIntroRound = Math.max(...matches.map((m) => m.round));
+        }
       }
     } catch (e) {
       toast.error("加载赛事详情失败: " + e.message);
@@ -719,6 +727,31 @@
       .join(" ");
   }
 
+  function checkHasDependentMatchPlayed(match) {
+    if (!match || !tournament?.matches) return false;
+    let hasPlayed = false;
+    
+    function check(m) {
+      const nextRound = m.round - 1;
+      if (nextRound >= 1) {
+        const nextPosition = Math.ceil(m.position / 2);
+        const nextMatch = tournament.matches.find(
+          (x) => x.round === nextRound && x.position === nextPosition
+        );
+        if (nextMatch) {
+          if (nextMatch.status === "completed" || nextMatch.status === "walkover") {
+            hasPlayed = true;
+            return;
+          }
+          check(nextMatch);
+        }
+      }
+    }
+    
+    check(match);
+    return hasPlayed;
+  }
+
   async function selectGameWinner(winnerId) {
     if (!userState.qqGroup || !userState.id) {
       toast.error("此操作需要先验证 QQ 群号与选手 ID。已为您打开配置面板！");
@@ -726,6 +759,19 @@
       return;
     }
     if (!selectedMatch) return;
+
+    if (checkHasDependentMatchPlayed(selectedMatch)) {
+      const confirmMsg = "【警告】该场比赛的晋级选手已在后续轮次进行了比赛！\n修改此场比赛将导致后续所有相关比赛的比分与晋级状态都被清空重置。\n\n确定要继续修改并重置后续比赛吗？";
+      if (!confirm(confirmMsg)) return;
+      
+      try {
+        await API.rollbackResult(tid, selectedMatch.id);
+      } catch (err) {
+        toast.error("重置后续比赛失败: " + err.message);
+        return;
+      }
+    }
+
     submittingResult = true;
 
     const isPlayer1 = winnerId === selectedMatch.player1_id;
@@ -740,6 +786,9 @@
       toast.success(
         `已判定游戏获胜者为 ${playerName(winnerId)}，败者 ${playerName(advancerId)} 晋级`,
       );
+      if (tournament && tournament.active_match_id === selectedMatch.id) {
+        await API.setActiveMatch(tid, null);
+      }
       showMatchDialog = false;
       selectedMatch = null;
       await load();
@@ -757,15 +806,60 @@
       return;
     }
     if (!selectedMatch) return;
+
+    if (checkHasDependentMatchPlayed(selectedMatch)) {
+      const confirmMsg = "【警告】该场比赛的晋级选手已在后续轮次进行了比赛！\n判定弃权将导致后续所有相关比赛的比分与晋级状态都被清空重置。\n\n确定要继续修改并重置后续比赛吗？";
+      if (!confirm(confirmMsg)) return;
+      
+      try {
+        await API.rollbackResult(tid, selectedMatch.id);
+      } catch (err) {
+        toast.error("重置后续比赛失败: " + err.message);
+        return;
+      }
+    }
+
     submittingResult = true;
     try {
       await API.submitWalkover(tid, selectedMatch.id, winnerId);
       toast.success("已记录弃权并晋级胜者");
+      if (tournament && tournament.active_match_id === selectedMatch.id) {
+        await API.setActiveMatch(tid, null);
+      }
       showMatchDialog = false;
       selectedMatch = null;
       await load();
     } catch (e) {
       toast.error(e.message);
+    } finally {
+      submittingResult = false;
+    }
+  }
+
+  async function doRollback() {
+    if (!userState.qqGroup || !userState.id) {
+      toast.error("此操作需要先验证 QQ 群号与选手 ID。已为您打开配置面板！");
+      document.getElementById("header-profile-button")?.click();
+      return;
+    }
+    if (!selectedMatch) return;
+
+    let confirmMsg = "确定要回滚这场比赛的比分并将其重设为未开始状态吗？";
+    if (checkHasDependentMatchPlayed(selectedMatch)) {
+      confirmMsg = "【警告】该场比赛的晋级选手已在后续轮次进行了比赛！\n如果确认回滚，后续所有相关的比赛比分与晋级状态都将被清空重置。\n\n确定要继续回滚并重置后续比赛吗？";
+    }
+
+    if (!confirm(confirmMsg)) return;
+
+    submittingResult = true;
+    try {
+      await API.rollbackResult(tid, selectedMatch.id);
+      toast.success("比赛已成功回滚并重设");
+      showMatchDialog = false;
+      selectedMatch = null;
+      await load();
+    } catch (e) {
+      toast.error("回滚失败: " + e.message);
     } finally {
       submittingResult = false;
     }
@@ -1201,6 +1295,240 @@
     </Card.Root>
   {/snippet}
 
+  {#snippet obsControl()}
+    <Card.Root class="border-border bg-card/40">
+      <Card.Header class="p-5 pb-3">
+        <Card.Title class="text-sm font-bold flex items-center gap-2">
+          <SettingsIcon class="w-4 h-4 text-primary" />
+          <span>OBS 直播大屏控制</span>
+        </Card.Title>
+      </Card.Header>
+      <Card.Content class="p-5 pt-0 space-y-4 text-xs">
+        <div class="space-y-2">
+          <span class="font-semibold text-muted-foreground block">当前直播对局:</span>
+          {#if tournament?.matches?.length > 0}
+            <div class="flex gap-2">
+              <select
+                class="flex h-8 w-full rounded-md border border-input bg-background px-3 py-1 text-xs shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                value={tournament.active_match_id || ""}
+                onchange={async (e) => {
+                  const val = e.target.value;
+                  try {
+                    await API.setActiveMatch(tid, val ? parseInt(val) : null);
+                    toast.success("当前直播对局已更新");
+                  } catch (err) {
+                    toast.error("更新直播对局失败: " + err.message);
+                  }
+                }}
+              >
+                <option value="">-- 未选择对局 --</option>
+                {#each (tournament.matches || []).filter(m => m.player1_id && m.player2_id) as m}
+                  <option value={m.id}>
+                    场次 {m.position} (R{m.round}): {playerName(m.player1_id)} vs {playerName(m.player2_id)} [{m.status === 'completed' ? '完赛' : m.status === 'walkover' ? '弃权' : '待赛'}]
+                  </option>
+                {/each}
+              </select>
+            </div>
+            {#if tournament.active_match_id}
+              {@const currentActive = tournament.matches.find(m => m.id === tournament.active_match_id)}
+              {#if currentActive}
+                <div class="p-2 rounded bg-primary/5 border border-primary/20 text-[11px] text-primary flex items-center justify-between">
+                  <span class="font-medium">直播中: {playerName(currentActive.player1_id)} vs {playerName(currentActive.player2_id)}</span>
+                  <button
+                    onclick={async () => {
+                      try {
+                        await API.setActiveMatch(tid, null);
+                        toast.success("已清除直播对局");
+                      } catch (err) {
+                        toast.error(err.message);
+                      }
+                    }}
+                    class="hover:text-destructive font-bold text-xs shrink-0 cursor-pointer"
+                  >
+                    清除
+                  </button>
+                </div>
+              {/if}
+            {/if}
+          {:else}
+            <p class="text-muted-foreground text-[11px]">暂无对局，请先生成 Bracket</p>
+          {/if}
+        </div>
+
+        <div class="border-t border-border/40 pt-3 space-y-3">
+          <span class="font-semibold text-muted-foreground block">直播大屏控制 (Overlay Control):</span>
+          <div class="flex flex-col gap-2.5 bg-primary/5 p-3 rounded-xl border border-primary/20">
+            <!-- Scene selector -->
+            <div class="flex items-center justify-between gap-2">
+              <span class="font-bold text-primary block text-[11px] shrink-0">当前显示大屏:</span>
+              <select
+                class="flex h-8 rounded border border-primary/30 bg-background px-2 py-1 text-[10px] text-primary font-bold shadow-sm focus-visible:outline-none cursor-pointer"
+                value={tournament.overlay_scene || "auto"}
+                onchange={async (e) => {
+                  const val = e.target.value;
+                  try {
+                    await API.setOverlayState(tid, val, tournament.overlay_round || Math.max(...(tournament?.matches?.map(m => m.round) || [1])));
+                    toast.success("大屏显示场景已切换为: " + val.toUpperCase());
+                  } catch (err) {
+                    toast.error("切换大屏场景失败: " + err.message);
+                  }
+                }}
+              >
+                <option value="auto">Auto (智能自动模式)</option>
+                <option value="intro">Intro (开场对阵轮次列表)</option>
+                <option value="hybrid">Hybrid (场间树状对阵图)</option>
+                <option value="intermission">Intermission (场间可打预告)</option>
+                <option value="ingame">HUD (游戏内选手面板)</option>
+              </select>
+            </div>
+
+            <!-- Round selector (Visible if intro is selected) -->
+            {#if tournament.overlay_scene === "intro"}
+              <div class="flex items-center justify-between gap-2 pt-2 border-t border-primary/10">
+                <span class="text-[11px] font-semibold text-muted-foreground shrink-0">展示轮次:</span>
+                <select
+                  class="h-7 rounded border border-input bg-background px-2 text-[10px] cursor-pointer"
+                  value={tournament.overlay_round || Math.max(...(tournament?.matches?.map(m => m.round) || [1]))}
+                  onchange={async (e) => {
+                    const val = parseInt(e.target.value);
+                    try {
+                      await API.setOverlayState(tid, tournament.overlay_scene || "intro", val);
+                      toast.success("大屏展示轮次已更改为: R" + val);
+                    } catch (err) {
+                      toast.error("更改大屏轮次失败: " + err.message);
+                    }
+                  }}
+                >
+                  {#each Array.from({length: Math.max(...(tournament?.matches?.map(m => m.round) || [1]))}, (_, i) => i + 1).reverse() as r}
+                    <option value={r}>R{r} ({roundLabel(r, Math.max(...(tournament?.matches?.map(m => m.round) || [1])))})</option>
+                  {/each}
+                </select>
+              </div>
+            {/if}
+          </div>
+        </div>
+
+        <div class="border-t border-border/40 pt-3 space-y-3">
+          <span class="font-semibold text-muted-foreground block">OBS 浏览器源链接:</span>
+          
+          <div class="space-y-2.5">
+            <!-- Unified Auto link -->
+            <div class="space-y-1.5 p-2.5 rounded-xl border border-primary/20 bg-primary/5">
+              <span class="font-bold text-primary block text-[11px]">✨ 推荐：全自动智能切换直播源 (Unified Auto)</span>
+              <span class="text-[10px] text-muted-foreground block leading-normal mb-1">
+                放入 OBS 浏览器源即可。有直播中比赛时自动渲染游戏 HUD（透明底），无直播对局时自动渲染场间统计大屏（深色底，显示待开打对局和本轮详情）。
+              </span>
+              <div class="flex items-center gap-1.5">
+                <input
+                  type="text"
+                  readonly
+                  class="flex-1 h-7 px-2 border border-primary/25 rounded bg-background text-[10px] select-all cursor-default text-primary font-mono"
+                  value={window.location.origin + `/tournament/${tid}/overlay`}
+                />
+                <Button
+                  size="icon-xs"
+                  class="h-7 w-7 cursor-pointer shrink-0 bg-primary text-black hover:bg-primary/90"
+                  onclick={() => {
+                    navigator.clipboard.writeText(window.location.origin + `/tournament/${tid}/overlay`);
+                    toast.success("已复制全自动智能直播源链接");
+                  }}
+                >
+                  <CopyIcon class="w-3.5 h-3.5" />
+                </Button>
+              </div>
+            </div>
+
+            <div class="h-px bg-border/40 my-2"></div>
+            <span class="text-[10px] font-bold text-muted-foreground block">特定单场景链接 (如有需要手动配置):</span>
+
+            <div class="space-y-1">
+              <div class="flex justify-between items-center">
+                <span class="font-medium">1. 开场对阵 (Intro / 比赛列表)</span>
+                <!-- Round selector for URL -->
+                <div class="flex items-center gap-1">
+                  <span class="text-[10px] text-muted-foreground">轮次:</span>
+                  <select
+                    class="h-5 rounded border border-input bg-background px-1 text-[10px]"
+                    bind:value={obsIntroRound}
+                  >
+                    {#each Array.from({length: Math.max(...(tournament?.matches?.map(m => m.round) || [1]))}, (_, i) => i + 1).reverse() as r}
+                      <option value={r}>R{r} ({roundLabel(r, Math.max(...(tournament?.matches?.map(m => m.round) || [1])))})</option>
+                    {/each}
+                  </select>
+                </div>
+              </div>
+              <div class="flex items-center gap-1.5">
+                <input
+                  type="text"
+                  readonly
+                  class="flex-1 h-7 px-2 border border-input rounded bg-muted/30 text-[10px] select-all cursor-default"
+                  value={window.location.origin + `/tournament/${tid}/overlay?scene=intro&round=${obsIntroRound}`}
+                />
+                <Button
+                  size="icon-xs"
+                  variant="outline"
+                  class="h-7 w-7 cursor-pointer shrink-0"
+                  onclick={() => {
+                    navigator.clipboard.writeText(window.location.origin + `/tournament/${tid}/overlay?scene=intro&round=${obsIntroRound}`);
+                    toast.success("已复制开场对阵链接");
+                  }}
+                >
+                  <CopyIcon class="w-3.5 h-3.5" />
+                </Button>
+              </div>
+            </div>
+
+            <div class="space-y-1">
+              <span class="font-medium block">2. 游戏内 HUD (右上角选手+滚动比分)</span>
+              <div class="flex items-center gap-1.5">
+                <input
+                  type="text"
+                  readonly
+                  class="flex-1 h-7 px-2 border border-input rounded bg-muted/30 text-[10px] select-all cursor-default"
+                  value={window.location.origin + `/tournament/${tid}/overlay?scene=ingame`}
+                />
+                <Button
+                  size="icon-xs"
+                  variant="outline"
+                  class="h-7 w-7 cursor-pointer shrink-0"
+                  onclick={() => {
+                    navigator.clipboard.writeText(window.location.origin + `/tournament/${tid}/overlay?scene=ingame`);
+                    toast.success("已复制游戏内 HUD 链接");
+                  }}
+                >
+                  <CopyIcon class="w-3.5 h-3.5" />
+                </Button>
+              </div>
+            </div>
+
+            <div class="space-y-1">
+              <span class="font-medium block">3. 场间 Coming Up (可打比赛)</span>
+              <div class="flex items-center gap-1.5">
+                <input
+                  type="text"
+                  readonly
+                  class="flex-1 h-7 px-2 border border-input rounded bg-muted/30 text-[10px] select-all cursor-default"
+                  value={window.location.origin + `/tournament/${tid}/overlay?scene=intermission`}
+                />
+                <Button
+                  size="icon-xs"
+                  variant="outline"
+                  class="h-7 w-7 cursor-pointer shrink-0"
+                  onclick={() => {
+                    navigator.clipboard.writeText(window.location.origin + `/tournament/${tid}/overlay?scene=intermission`);
+                    toast.success("已复制场间 Coming Up 链接");
+                  }}
+                >
+                  <CopyIcon class="w-3.5 h-3.5" />
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Card.Content>
+    </Card.Root>
+  {/snippet}
+
   {#snippet bracketView()}
     <Card.Root class="border-border bg-card/40">
       <Card.Header
@@ -1297,9 +1625,12 @@
                     {@const isClickable =
                       bothPlayersReady &&
                       ["in_progress", "completed"].includes(tournament.status)}
-                    <button
-                      disabled={!isClickable}
-                      onclick={() => openMatchDetails(m)}
+                    <!-- svelte-ignore a11y_click_events_have_key_events -->
+                    <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+                    <div
+                      role="button"
+                      tabindex="0"
+                      onclick={() => { if (isClickable) openMatchDetails(m); }}
                       class="w-full text-left p-3.5 rounded-xl border bg-background/50 transition-all flex flex-col gap-2 group/match shadow-sm text-xs cursor-default
                       {isClickable
                         ? 'hover:border-primary hover:bg-background/80 hover:shadow-md cursor-pointer'
@@ -1317,7 +1648,30 @@
                       <div
                         class="flex items-center justify-between text-[9px] text-muted-foreground w-full font-mono"
                       >
-                        <span>场次 {m.position}</span>
+                        <div class="flex items-center gap-1.5">
+                          <span>场次 {m.position}</span>
+                          {#if isPlayable}
+                            {@const isActive = tournament.active_match_id === m.id}
+                            <button
+                              onclick={async (e) => {
+                                e.stopPropagation();
+                                try {
+                                  await API.setActiveMatch(tid, isActive ? null : m.id);
+                                  toast.success(isActive ? "已取消直播该场次" : "已开启该场次直播！");
+                                } catch (err) {
+                                  toast.error("更新直播状态失败: " + err.message);
+                                }
+                              }}
+                              class="px-1.5 py-0.5 rounded font-bold text-[8px] flex items-center gap-0.5 cursor-pointer transition-all
+                                {isActive 
+                                  ? 'bg-amber-500 text-black hover:bg-amber-400' 
+                                  : 'bg-primary text-primary-foreground hover:bg-primary/80'}"
+                            >
+                              <PlayIcon class="w-2.5 h-2.5" />
+                              {isActive ? "直播中" : "推流直播"}
+                            </button>
+                          {/if}
+                        </div>
                         {#if userInMatch && isPending}
                           <span class="text-primary font-bold animate-pulse"
                             >我的比赛</span
@@ -1362,8 +1716,10 @@
                             class="font-mono font-bold {m.winner_id ===
                             m.player1_id
                               ? 'text-primary'
-                              : 'text-muted-foreground'}">{m.score1}</span
+                              : 'text-muted-foreground'}"
                           >
+                            {m.status === 'walkover' ? (m.winner_id === m.player1_id ? 'W' : 'FF') : m.score1}
+                          </span>
                         {/if}
                       </div>
 
@@ -1396,8 +1752,10 @@
                             class="font-mono font-bold {m.winner_id ===
                             m.player2_id
                               ? 'text-primary'
-                              : 'text-muted-foreground'}">{m.score2}</span
+                              : 'text-muted-foreground'}"
                           >
+                            {m.status === 'walkover' ? (m.winner_id === m.player2_id ? 'W' : 'FF') : m.score2}
+                          </span>
                         {/if}
                       </div>
 
@@ -1409,7 +1767,7 @@
                           点击登记结果
                         </div>
                       {/if}
-                    </button>
+                    </div>
                   {/if}
                 {/each}
               </div>
@@ -1810,6 +2168,7 @@
 
         <!-- Sidebar Player List -->
         <div class="space-y-6">
+          {@render obsControl()}
           {@render rosterSidebar()}
         </div>
       </div>
@@ -1997,6 +2356,7 @@
               {/if}
             </Card.Content>
           </Card.Root>
+          {@render obsControl()}
           {@render rosterSidebar()}
         </div>
       </div>
@@ -2146,6 +2506,7 @@
           {@render bracketView()}
         </div>
         <div class="space-y-6">
+          {@render obsControl()}
           {@render rosterSidebar()}
         </div>
       </div>
@@ -2233,6 +2594,31 @@
             </Button>
           </div>
         </div>
+
+        <!-- Rollback / Reset match result -->
+        {#if selectedMatch.status === 'completed' || selectedMatch.status === 'walkover'}
+          <div
+            class="space-y-2.5 p-4 rounded-xl border border-amber-500/20 bg-amber-500/5 text-center"
+          >
+            <h4
+              class="text-xs font-bold text-amber-500 uppercase tracking-widest"
+            >
+              回滚比赛结果
+            </h4>
+            <p class="text-[10px] text-muted-foreground leading-normal">
+              完全清除此场比赛的比分及晋级关系，将其状态重设为“未开始”。
+            </p>
+            <Button
+              variant="destructive"
+              size="sm"
+              onclick={doRollback}
+              disabled={submittingResult}
+              class="w-full text-xs font-bold h-9 cursor-pointer justify-center"
+            >
+              回滚本场比赛成绩
+            </Button>
+          </div>
+        {/if}
       </div>
     {/if}
 

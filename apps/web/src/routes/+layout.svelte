@@ -291,111 +291,117 @@
 
 <ModeWatcher defaultMode="dark" />
 
-<div
-  class="min-h-screen flex flex-col bg-background text-foreground selection:bg-primary/30"
->
-  <!-- Top Bar -->
-  <header
-    class="sticky top-0 z-40 w-full border-b border-border/60 bg-background/90 backdrop-blur-sm"
+{#if $page.url.pathname.includes('/overlay')}
+  {#if children}
+    {@render children()}
+  {/if}
+{:else}
+  <div
+    class="min-h-screen flex flex-col bg-background text-foreground selection:bg-primary/30"
   >
-    <div
-      class="max-w-7xl mx-auto px-3 sm:px-4 h-14 flex items-center justify-between gap-2 sm:gap-6"
+    <!-- Top Bar -->
+    <header
+      class="sticky top-0 z-40 w-full border-b border-border/60 bg-background/90 backdrop-blur-sm"
     >
-      <!-- Left: Logo -->
-      <a href="/" class="flex items-center gap-1.5 sm:gap-2.5 shrink-0 group">
-        <img src="/favicon.svg" alt="SUCK" class="w-7 h-7 object-contain group-hover:scale-105 transition-transform" />
-        <span
-          class="font-bold text-sm sm:text-base tracking-tight text-foreground group-hover:text-primary transition-colors"
-        >
-          SUCK
+      <div
+        class="max-w-7xl mx-auto px-3 sm:px-4 h-14 flex items-center justify-between gap-2 sm:gap-6"
+      >
+        <!-- Left: Logo -->
+        <a href="/" class="flex items-center gap-1.5 sm:gap-2.5 shrink-0 group">
+          <img src="/favicon.svg" alt="SUCK" class="w-7 h-7 object-contain group-hover:scale-105 transition-transform" />
           <span
-            class="hidden sm:inline font-normal text-muted-foreground text-sm ml-1"
-            >Tournament</span
+            class="font-bold text-sm sm:text-base tracking-tight text-foreground group-hover:text-primary transition-colors"
           >
-        </span>
-      </a>
-
-      <!-- Center-left: Nav links -->
-      <nav class="flex items-center gap-0.5">
-        <a
-          href="/"
-          class="flex items-center gap-1 px-2 sm:px-3 h-8 rounded-md text-xs sm:text-sm font-medium transition-colors
-            {$page.url.pathname === '/'
-            ? 'text-primary font-semibold bg-primary/8'
-            : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'}"
-        >
-          <TrophyIcon class="w-3.5 h-3.5" />
-          赛事大厅
-        </a>
-        <a
-          href="/players"
-          class="flex items-center gap-1 px-2 sm:px-3 h-8 rounded-md text-xs sm:text-sm font-medium transition-colors
-            {$page.url.pathname.startsWith('/players')
-            ? 'text-primary font-semibold bg-primary/8'
-            : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'}"
-        >
-          <UsersIcon class="w-3.5 h-3.5" />
-          选手列表
-        </a>
-      </nav>
-
-      <!-- Spacer -->
-      <div class="flex-1"></div>
-
-      <!-- Right: Dark mode toggle + Profile -->
-      <div class="flex items-center gap-2">
-        <!-- Mode toggle (mode-watcher style) -->
-        <button
-          id="header-darkmode-toggle"
-          onclick={toggleMode}
-          title="切换亮/暗色模式"
-          class="relative w-8 h-8 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors cursor-pointer"
-        >
-          <SunIcon
-            class="h-4 w-4 scale-100 rotate-0 transition-all duration-300 dark:scale-0 dark:-rotate-90"
-          />
-          <MoonIcon
-            class="absolute h-4 w-4 scale-0 rotate-90 transition-all duration-300 dark:scale-100 dark:rotate-0"
-          />
-          <span class="sr-only">Toggle theme</span>
-        </button>
-
-        <!-- Divider -->
-        <div class="w-px h-5 bg-border"></div>
-
-        <!-- Profile button -->
-        <button
-          id="header-profile-button"
-          onclick={handleOpenDialog}
-          class="flex items-center gap-2 px-2.5 py-1.5 rounded-md hover:bg-muted/60 transition-colors text-sm cursor-pointer group"
-        >
-          <div
-            class="w-6 h-6 rounded-full bg-linear-to-br {avatarGradient} flex items-center justify-center text-[10px] font-bold text-white uppercase shrink-0"
-          >
-            {userState.id ? userState.id.slice(0, 2) : "?"}
-          </div>
-          <div class="hidden sm:block text-left">
-            <div
-              class="text-xs font-semibold text-foreground leading-tight group-hover:text-primary transition-colors"
+            SUCK
+            <span
+              class="hidden sm:inline font-normal text-muted-foreground text-sm ml-1"
+              >Tournament</span
             >
-              {userState.id || "游客模式"}
-            </div>
-            <div class="text-[10px] text-muted-foreground leading-none">
-              {userState.qqGroup ? `群: ${userState.qqGroup}` : "未登录"}
-            </div>
-          </div>
-        </button>
-      </div>
-    </div>
-  </header>
+          </span>
+        </a>
 
-  <!-- Main Content -->
-  <main class="flex-1 p-6 max-w-7xl mx-auto w-full flex flex-col">
-    {#if children}
-      {@render children()}
-    {/if}
-  </main>
-</div>
+        <!-- Center-left: Nav links -->
+        <nav class="flex items-center gap-0.5">
+          <a
+            href="/"
+            class="flex items-center gap-1 px-2 sm:px-3 h-8 rounded-md text-xs sm:text-sm font-medium transition-colors
+              {$page.url.pathname === '/'
+              ? 'text-primary font-semibold bg-primary/8'
+              : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'}"
+          >
+            <TrophyIcon class="w-3.5 h-3.5" />
+            赛事大厅
+          </a>
+          <a
+            href="/players"
+            class="flex items-center gap-1 px-2 sm:px-3 h-8 rounded-md text-xs sm:text-sm font-medium transition-colors
+              {$page.url.pathname.startsWith('/players')
+              ? 'text-primary font-semibold bg-primary/8'
+              : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'}"
+          >
+            <UsersIcon class="w-3.5 h-3.5" />
+            选手列表
+          </a>
+        </nav>
+
+        <!-- Spacer -->
+        <div class="flex-1"></div>
+
+        <!-- Right: Dark mode toggle + Profile -->
+        <div class="flex items-center gap-2">
+          <!-- Mode toggle (mode-watcher style) -->
+          <button
+            id="header-darkmode-toggle"
+            onclick={toggleMode}
+            title="切换亮/暗色模式"
+            class="relative w-8 h-8 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors cursor-pointer"
+          >
+            <SunIcon
+              class="h-4 w-4 scale-100 rotate-0 transition-all duration-300 dark:scale-0 dark:-rotate-90"
+            />
+            <MoonIcon
+              class="absolute h-4 w-4 scale-0 rotate-90 transition-all duration-300 dark:scale-100 dark:rotate-0"
+            />
+            <span class="sr-only">Toggle theme</span>
+          </button>
+
+          <!-- Divider -->
+          <div class="w-px h-5 bg-border"></div>
+
+          <!-- Profile button -->
+          <button
+            id="header-profile-button"
+            onclick={handleOpenDialog}
+            class="flex items-center gap-2 px-2.5 py-1.5 rounded-md hover:bg-muted/60 transition-colors text-sm cursor-pointer group"
+          >
+            <div
+              class="w-6 h-6 rounded-full bg-linear-to-br {avatarGradient} flex items-center justify-center text-[10px] font-bold text-white uppercase shrink-0"
+            >
+              {userState.id ? userState.id.slice(0, 2) : "?"}
+            </div>
+            <div class="hidden sm:block text-left">
+              <div
+                class="text-xs font-semibold text-foreground leading-tight group-hover:text-primary transition-colors"
+              >
+                {userState.id || "游客模式"}
+              </div>
+              <div class="text-[10px] text-muted-foreground leading-none">
+                {userState.qqGroup ? `群: ${userState.qqGroup}` : "未登录"}
+              </div>
+            </div>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-1 p-6 max-w-7xl mx-auto w-full flex flex-col">
+      {#if children}
+        {@render children()}
+      {/if}
+    </main>
+  </div>
+{/if}
 
 <!-- Global Toaster -->
 <Toaster position="bottom-right" />

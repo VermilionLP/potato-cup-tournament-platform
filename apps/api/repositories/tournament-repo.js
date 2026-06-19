@@ -165,5 +165,12 @@ export function TournamentRepo(db) {
     }));
   }
 
-  return { list, getById, create, updateStatus, getPlayers, addPlayer, removePlayer, setSeeds, getMatches, getVotes };
+  function updateOverlayState(id, overlay_scene, overlay_round) {
+    db.prepare(`
+      UPDATE tournaments SET overlay_scene = ?, overlay_round = ?, updated_at = datetime('now') WHERE id = ?
+    `).run(overlay_scene, overlay_round || null, id);
+    return getById(id);
+  }
+
+  return { list, getById, create, updateStatus, updateOverlayState, getPlayers, addPlayer, removePlayer, setSeeds, getMatches, getVotes };
 }

@@ -62,11 +62,38 @@ export default async function tournamentsRoutes(fastify) {
     if (!valid.includes(status)) throw fastify.httpErrors.badRequest('Invalid status');
     const t = repo.getById(req.params.id);
     if (!t) throw fastify.httpErrors.notFound('Tournament not found');
-    const updated = repo.updateStatus(req.params.id, status, scheduled_time);
+
+    const db = fastify.db;
+    const tx = db.transaction(() => {
+      if (status === 'registration' || status === 'voting') {
+        db.prepare('UPDATE tournaments SET active_match_id = NULL WHERE id = ?').run(req.params.id);
+        db.prepare('DELETE FROM matches WHERE tournament_id = ?').run(req.params.id);
+      }
+      repo.updateStatus(req.params.id, status, scheduled_time);
+    });
+    tx();
+
+    const updated = repo.getById(req.params.id);
     
     // Trigger real-time broadcast
     fastify.tournamentEvents.emit(`update:${req.params.id}`, { type: 'status_changed', status });
     
+    return updated;
+  });
+
+  fastify.post('/tournaments/:id/overlay-state', async (req) => {
+    const { overlay_scene, overlay_round } = req.body;
+    const valid = ['auto', 'intro', 'ingame', 'intermission', 'hybrid'];
+    if (overlay_scene && !valid.includes(overlay_scene)) throw fastify.httpErrors.badRequest('Invalid overlay_scene');
+    
+    const t = repo.getById(req.params.id);
+    if (!t) throw fastify.httpErrors.notFound('Tournament not found');
+
+    const updated = repo.updateOverlayState(req.params.id, overlay_scene, overlay_round);
+
+    // Trigger real-time broadcast
+    fastify.tournamentEvents.emit(`update:${req.params.id}`, { type: 'overlay_state_updated', overlay_scene, overlay_round });
+
     return updated;
   });
 
@@ -98,5 +125,20 @@ export default async function tournamentsRoutes(fastify) {
     const t = repo.getById(req.params.id);
     if (!t) throw fastify.httpErrors.notFound('Tournament not found');
     return matches.getByTournament(req.params.id);
+  });
+
+  fastify.post('/tournaments/:id/active-match', async (req) => {
+    const { active_match_id } = req.body;
+    const t = repo.getById(req.params.id);
+    if (!t) throw fastify.httpErrors.notFound('Tournament not found');
+    
+    fastify.db.prepare(`
+      UPDATE tournaments SET active_match_id = ? WHERE id = ?
+    `).run(active_match_id || null, req.params.id);
+
+    // Trigger real-time broadcast
+    fastify.tournamentEvents.emit(`update:${req.params.id}`, { type: 'active_match_updated', active_match_id });
+
+    return repo.getById(req.params.id);
   });
 }

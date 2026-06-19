@@ -70,4 +70,53 @@ export default async function matchesRoutes(fastify) {
 
     return { success: true };
   });
+
+  fastify.post('/tournaments/:id/matches/:matchId/rollback', async (req) => {
+    const matchId = parseInt(req.params.matchId);
+    const match = repo.getById(matchId);
+    if (!match) throw fastify.httpErrors.notFound('Match not found');
+
+    const db = fastify.db;
+    const tx = db.transaction(() => {
+      function recursiveRollback(mId) {
+        const m = repo.getById(mId);
+        if (!m) return;
+
+        db.prepare(`
+          UPDATE matches SET score1 = 0, score2 = 0, winner_id = NULL, status = 'pending'
+          WHERE id = ?
+        `).run(mId);
+
+        const nextRound = m.round - 1;
+        if (nextRound >= 1) {
+          const nextPosition = Math.ceil(m.position / 2);
+          const nextMatch = db.prepare(`
+            SELECT * FROM matches WHERE tournament_id = ? AND round = ? AND position = ?
+          `).get(m.tournament_id, nextRound, nextPosition);
+
+          if (nextMatch) {
+            const isPlayer1 = m.position % 2 === 1;
+            if (isPlayer1) {
+              db.prepare(`UPDATE matches SET player1_id = NULL WHERE id = ?`).run(nextMatch.id);
+            } else {
+              db.prepare(`UPDATE matches SET player2_id = NULL WHERE id = ?`).run(nextMatch.id);
+            }
+
+            if (nextMatch.status === 'completed' || nextMatch.status === 'walkover' || nextMatch.winner_id) {
+              recursiveRollback(nextMatch.id);
+            }
+          }
+        }
+      }
+
+      recursiveRollback(matchId);
+    });
+
+    tx();
+
+    // Trigger real-time broadcast
+    fastify.tournamentEvents.emit(`update:${req.params.id}`, { type: 'match_rolled_back', matchId });
+
+    return { success: true };
+  });
 }

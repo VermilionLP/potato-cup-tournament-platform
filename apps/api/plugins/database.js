@@ -150,6 +150,33 @@ export default fp(async function databasePlugin(fastify) {
       } catch (e) {
         console.error("Migration v7 tournament_players table failed:", e);
       }
+    },
+    // Migration 8: Add active_match_id column to tournaments
+    () => {
+      console.log('Running database migration v8: adding active_match_id column to tournaments...');
+      try {
+        const columnsTournaments = db.prepare(`PRAGMA table_info(tournaments)`).all().map(c => c.name);
+        if (!columnsTournaments.includes('active_match_id')) {
+          db.prepare("ALTER TABLE tournaments ADD COLUMN active_match_id INTEGER REFERENCES matches(id)").run();
+        }
+      } catch (e) {
+        console.error("Migration v8 tournaments table failed:", e);
+      }
+    },
+    // Migration 9: Add overlay_scene and overlay_round columns to tournaments
+    () => {
+      console.log('Running database migration v9: adding overlay_scene and overlay_round columns to tournaments...');
+      try {
+        const columnsTournaments = db.prepare(`PRAGMA table_info(tournaments)`).all().map(c => c.name);
+        if (!columnsTournaments.includes('overlay_scene')) {
+          db.prepare("ALTER TABLE tournaments ADD COLUMN overlay_scene TEXT DEFAULT 'auto'").run();
+        }
+        if (!columnsTournaments.includes('overlay_round')) {
+          db.prepare("ALTER TABLE tournaments ADD COLUMN overlay_round INTEGER").run();
+        }
+      } catch (e) {
+        console.error("Migration v9 tournaments table failed:", e);
+      }
     }
   ];
 

@@ -7,6 +7,9 @@ CREATE TABLE IF NOT EXISTS tournaments (
   player_capacity INTEGER NOT NULL DEFAULT 16,
   hold_third_place INTEGER NOT NULL DEFAULT 0,
   scheduled_time TEXT DEFAULT '',
+  active_match_id INTEGER REFERENCES matches(id),
+  overlay_scene TEXT DEFAULT 'auto',
+  overlay_round INTEGER,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
