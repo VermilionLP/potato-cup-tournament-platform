@@ -121,6 +121,55 @@
       .sort((a, b) => a.position - b.position)
   );
 
+  // Calculate match counts and dynamic sizes
+  let maxRoundNum = $derived(
+    overlayRounds.length ? Math.max(...overlayRounds.map(r => r.round)) : 1
+  );
+  let firstRound = $derived(overlayRounds.find(r => r.round === maxRoundNum));
+  let firstRoundMatchCount = $derived(firstRound?.matches?.length || 0);
+
+  // Dynamic layout variables based on bracket size
+  let bracketSpecs = $derived.by(() => {
+    const count = firstRoundMatchCount;
+    if (count >= 8) {
+      // 16 players or more
+      return {
+        H: 76,
+        g: 14,
+        G: 24,
+        cardWidth: "w-72",
+        textClass: "text-lg md:text-xl font-bold",
+        scoreClass: "text-lg md:text-xl px-2.5 py-0.5 min-w-[2.2rem]",
+        gapClass: "gap-1.5",
+        paddingClass: "py-1.5 px-6",
+        dividerClass: "w-full h-px bg-slate-800 shrink-0",
+        colGap: "gap-6",
+        slotOffset: 19,
+        connMid: 12,
+        connWidth: 12,
+        connGap: 24
+      };
+    } else {
+      // 8 players or fewer
+      return {
+        H: 144,
+        g: 32,
+        G: 96,
+        cardWidth: "w-96",
+        textClass: "text-2xl md:text-3xl lg:text-[2.1rem] font-black",
+        scoreClass: "text-2xl md:text-3xl lg:text-[2.1rem] px-3 py-1 min-w-[3.5rem]",
+        gapClass: "gap-2.5",
+        paddingClass: "p-4 px-5",
+        dividerClass: "w-full h-px bg-slate-800 shrink-0",
+        colGap: "gap-8",
+        slotOffset: 40,
+        connMid: 16,
+        connWidth: 16,
+        connGap: 32
+      };
+    }
+  });
+
   // Calculate match positions dynamically for perfect vertical alignment
   let alivePlayerIds = $derived.by(() => {
     if (!tournament?.players) return new Set();
@@ -144,9 +193,9 @@
   let matchPositions = $derived.by(() => {
     if (!overlayRounds?.length) return { positions: {}, centers: {}, totalHeight: 600 };
     
-    const H = 144; // Card height
-    const g = 32;  // Intra-pair gap
-    const G = 96;  // Inter-pair gap
+    const H = bracketSpecs.H; // Card height
+    const g = bracketSpecs.g;  // Intra-pair gap
+    const G = bracketSpecs.G;  // Inter-pair gap
     
     const positions = {}; // map of matchId -> { top, height }
     const centers = {}; // map of matchId -> center px
@@ -253,6 +302,23 @@
       console.error("Refresh failed:", e);
     }
   }
+
+  let scale = $state(1);
+
+  function handleResize() {
+    if (typeof window === 'undefined') return;
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    const scaleX = w / 1920;
+    const scaleY = h / 1080;
+    scale = Math.min(scaleX, scaleY);
+  }
+
+  onMount(() => {
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  });
 </script>
 
 <svelte:head>
@@ -260,10 +326,12 @@
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&family=Orbitron:wght@600;800;900&family=Noto+Sans+SC:wght@505;700;900&display=swap" rel="stylesheet" />
 </svelte:head>
 
-<div
-  class="overlay-container font-outfit text-white h-screen w-screen overflow-hidden flex flex-col relative select-none
-    {isTransparent ? 'bg-transparent' : 'bg-radial-gradient'}"
->
+<div class="w-screen h-screen overflow-hidden relative flex items-center justify-center {isTransparent ? 'bg-transparent' : 'bg-black'}">
+  <div
+    class="overlay-container font-outfit text-white overflow-hidden flex flex-col relative select-none shrink-0
+      {isTransparent ? 'bg-transparent' : 'bg-radial-gradient'}"
+    style="width: 1920px; height: 1080px; transform: scale({scale}); transform-origin: center center;"
+  >
   <!-- Beautiful ambient neon background glow nodes (only when background is enabled) -->
   {#if !isTransparent}
     <div class="glow-orb glow-cyan"></div>
@@ -561,9 +629,9 @@
 
         <!-- Horizontal visual bracket view exactly like Playoffs UI (Massive scaled cards, tight gaps, no flags, no teams) -->
         <div class="flex-1 flex items-center justify-start overflow-x-auto py-4 px-2 w-full min-h-0 select-none scroll-container">
-          <div class="flex gap-8 justify-center items-stretch min-w-max mx-auto h-full py-1">
+          <div class="flex justify-center items-stretch min-w-max mx-auto h-full py-1 {bracketSpecs.colGap}">
             {#each overlayRounds as r, colIdx (r.round)}
-              <div class="flex-shrink-0 w-96 flex flex-col justify-center h-full">
+              <div class="flex-shrink-0 flex flex-col justify-center h-full {bracketSpecs.cardWidth}">
                 <!-- Round Header (Large bold neon label) -->
                 <div class="text-base md:text-lg text-cyan-400 font-extrabold text-center border-b-2 border-cyan-500/20 pb-2 mb-4 font-orbitron tracking-widest shrink-0 uppercase">
                   {getRoundLabel(r.round, maxRound).toUpperCase()}
@@ -583,7 +651,8 @@
                         <div class="w-full h-full border-2 border-transparent bg-transparent select-none pointer-events-none opacity-0"></div>
                       {:else}
                         <!-- Normal Match Card -->
-                        <div class="w-full h-full p-4 px-5 rounded-xl border-2 flex flex-col justify-center gap-2.5 relative shadow-2xl transition-all duration-300
+                        <div class="w-full h-full rounded-xl border-2 flex flex-col relative shadow-2xl transition-all duration-300
+                          {bracketSpecs.paddingClass}
                           {isCurrentActive
                             ? 'border-amber-500 bg-slate-950 shadow-[0_0_25px_rgba(245,158,11,0.35)] ring-2 ring-amber-500/35 scale-102'
                             : isCompleted
@@ -593,13 +662,15 @@
                                 : 'border-slate-800/60 bg-slate-950'}"
                         >
                           <!-- Player 1 Row -->
-                          <div class="flex items-center justify-between gap-4 py-0.5">
-                            <span class="truncate flex-1 font-sans text-2xl md:text-3xl lg:text-[2.1rem] leading-none
+                          <div class="flex-1 flex items-center justify-between gap-4 min-h-0">
+                            <span class="truncate flex-1 font-sans
+                              {bracketSpecs.textClass}
                               {isAlive(m.player1_id) ? 'text-slate-100 font-black' : 'text-slate-500 font-normal opacity-50'}">
                               {getPlayerName(m.player1_id)}
                             </span>
                             {#if isCompleted}
-                              <span class="font-orbitron px-3 py-1 rounded bg-slate-900/90 shrink-0 min-w-[3.5rem] text-center text-2xl md:text-3xl lg:text-[2.1rem]
+                              <span class="font-orbitron rounded bg-slate-900/90 shrink-0 text-center
+                                {bracketSpecs.scoreClass}
                                 {isAlive(m.player1_id) ? 'text-cyan-400 font-black' : 'text-slate-600 font-normal opacity-40'}">
                                 {m.status === 'walkover' ? (m.winner_id === m.player1_id ? 'W' : 'FF') : m.score1}
                               </span>
@@ -607,16 +678,18 @@
                           </div>
 
                           <!-- Divider -->
-                          <div class="h-[2px] bg-gradient-to-r from-cyan-500/5 via-cyan-500/25 to-cyan-500/5"></div>
+                          <div class="{bracketSpecs.dividerClass}"></div>
 
                           <!-- Player 2 Row -->
-                          <div class="flex items-center justify-between gap-4 py-0.5">
-                            <span class="truncate flex-1 font-sans text-2xl md:text-3xl lg:text-[2.1rem] leading-none
+                          <div class="flex-1 flex items-center justify-between gap-4 min-h-0">
+                            <span class="truncate flex-1 font-sans
+                              {bracketSpecs.textClass}
                               {isAlive(m.player2_id) ? 'text-slate-100 font-black' : 'text-slate-500 font-normal opacity-50'}">
                               {getPlayerName(m.player2_id)}
                             </span>
                             {#if isCompleted}
-                              <span class="font-orbitron px-3 py-1 rounded bg-slate-900/90 shrink-0 min-w-[3.5rem] text-center text-2xl md:text-3xl lg:text-[2.1rem]
+                              <span class="font-orbitron rounded bg-slate-900/90 shrink-0 text-center
+                                {bracketSpecs.scoreClass}
                                 {isAlive(m.player2_id) ? 'text-cyan-400 font-black' : 'text-slate-600 font-normal opacity-40'}">
                                 {m.status === 'walkover' ? (m.winner_id === m.player2_id ? 'W' : 'FF') : m.score2}
                               </span>
@@ -643,48 +716,44 @@
                             
                             <!-- Top card horizontal right line -->
                             {#if !isMBye}
-                              <div class="absolute right-[-16px] top-[72px] -translate-y-1/2 w-4 h-[2px] z-0
-                                {isWinner1Alive ? 'line-horizontal-active' : 'line-horizontal-inactive'}"></div>
+                              <div class="absolute -translate-y-1/2 z-0
+                                {isWinner1Alive ? 'line-horizontal-active' : 'line-horizontal-inactive'}"
+                                style="right: -{bracketSpecs.connMid}px; width: {bracketSpecs.connWidth}px; top: {bracketSpecs.H / 2}px;"></div>
                             {/if}
                             
                             <!-- Bottom card horizontal right line -->
                             {#if !isSiblingBye}
-                              <div class="absolute right-[-16px] top-[72px] -translate-y-1/2 w-4 h-[2px] z-0" 
-                                style="transform: translateY(calc(-50% + {vHeight}px))" 
-                                class:line-horizontal-active={isWinner2Alive} 
-                                class:line-horizontal-inactive={!isWinner2Alive}></div>
+                              <div class="absolute z-0
+                                {isWinner2Alive ? 'line-horizontal-active' : 'line-horizontal-inactive'}" 
+                                style="right: -{bracketSpecs.connMid}px; width: {bracketSpecs.connWidth}px; top: {bracketSpecs.H / 2}px; transform: translateY(calc(-50% + {vHeight}px));"></div>
                             {/if}
                             
                             <!-- Vertical segment 1 (top half, connects Card 1 center to Branch 1) -->
                             {#if !isMBye}
-                              <div class="absolute right-[-16px] top-[72px] w-[2px] z-0" 
-                                style="height: {vHeight / 2 - 40}px" 
-                                class:line-vertical-active={isWinner1Alive} 
-                                class:line-vertical-inactive={!isWinner1Alive}></div>
+                              <div class="absolute w-[2px] z-0
+                                {isWinner1Alive ? 'line-vertical-active' : 'line-vertical-inactive'}" 
+                                style="right: -{bracketSpecs.connMid}px; top: {bracketSpecs.H / 2}px; height: {vHeight / 2 - bracketSpecs.slotOffset}px;"></div>
                             {/if}
                               
                             <!-- Vertical segment 3 (bottom half, connects Card 2 center to Branch 2) -->
                             {#if !isSiblingBye}
-                              <div class="absolute right-[-16px] w-[2px] z-0" 
-                                style="top: calc(72px + {vHeight / 2 + 40}px); height: {vHeight / 2 - 40}px" 
-                                class:line-vertical-active={isWinner2Alive} 
-                                class:line-vertical-inactive={!isWinner2Alive}></div>
+                              <div class="absolute w-[2px] z-0
+                                {isWinner2Alive ? 'line-vertical-active' : 'line-vertical-inactive'}" 
+                                style="right: -{bracketSpecs.connMid}px; top: calc({bracketSpecs.H / 2}px + {vHeight / 2 + bracketSpecs.slotOffset}px); height: {vHeight / 2 - bracketSpecs.slotOffset}px;"></div>
                             {/if}
                             
                             <!-- Outgoing Branch 1 to next round (top player slot) -->
                             {#if !isMBye}
-                              <div class="absolute right-[-32px] w-4 h-[2px] z-0" 
-                                style="top: calc(72px + {vHeight / 2 - 40}px); transform: translateY(-50%)" 
-                                class:line-horizontal-active={isWinner1Alive} 
-                                class:line-horizontal-inactive={!isWinner1Alive}></div>
+                              <div class="absolute z-0
+                                {isWinner1Alive ? 'line-horizontal-active' : 'line-horizontal-inactive'}" 
+                                style="right: -{bracketSpecs.connGap}px; width: {bracketSpecs.connWidth}px; top: calc({bracketSpecs.H / 2}px + {vHeight / 2 - bracketSpecs.slotOffset}px); transform: translateY(-50%);"></div>
                             {/if}
 
                             <!-- Outgoing Branch 2 to next round (bottom player slot) -->
                             {#if !isSiblingBye}
-                              <div class="absolute right-[-32px] w-4 h-[2px] z-0" 
-                                style="top: calc(72px + {vHeight / 2 + 40}px); transform: translateY(-50%)" 
-                                class:line-horizontal-active={isWinner2Alive} 
-                                class:line-horizontal-inactive={!isWinner2Alive}></div>
+                              <div class="absolute z-0
+                                {isWinner2Alive ? 'line-horizontal-active' : 'line-horizontal-inactive'}" 
+                                style="right: -{bracketSpecs.connGap}px; width: {bracketSpecs.connWidth}px; top: calc({bracketSpecs.H / 2}px + {vHeight / 2 + bracketSpecs.slotOffset}px); transform: translateY(-50%);"></div>
                             {/if}
                           {/if}
                         {/if}
@@ -708,6 +777,7 @@
       </div>
     {/if}
   {/if}
+  </div>
 </div>
 
 <style>
