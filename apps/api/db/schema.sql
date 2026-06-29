@@ -60,3 +60,14 @@ CREATE TABLE IF NOT EXISTS time_votes (
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   UNIQUE (tournament_id, player_id, proposed_time)
 );
+
+CREATE TABLE IF NOT EXISTS custom_votes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  tournament_id TEXT NOT NULL REFERENCES tournaments(id) ON DELETE CASCADE,
+  player_id TEXT NOT NULL REFERENCES players(id),
+  topic TEXT NOT NULL,
+  value TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE (tournament_id, player_id, topic, value)
+);
+

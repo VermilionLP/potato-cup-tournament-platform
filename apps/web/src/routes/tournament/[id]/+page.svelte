@@ -907,6 +907,76 @@
     }
   }
 
+  // Custom voting states
+  let customTopicSelect = $state("服务器");
+  let customTopicInput = $state("");
+  let customOptionInput = $state("");
+
+  let customVoteTopics = $derived.by(() => {
+    if (!tournament?.custom_votes) return [];
+    const topicsMap = {};
+    for (const cv of tournament.custom_votes) {
+      const t = cv.topic;
+      const val = cv.value;
+      if (!topicsMap[t]) {
+        topicsMap[t] = {};
+      }
+      if (!topicsMap[t][val]) {
+        topicsMap[t][val] = { value: val, count: 0, voters: [] };
+      }
+      topicsMap[t][val].count++;
+      topicsMap[t][val].voters.push(cv);
+    }
+    return Object.entries(topicsMap).map(([topic, optsMap]) => {
+      const options = Object.values(optsMap).sort((a, b) => b.count - a.count);
+      return { topic, options };
+    }).sort((a, b) => a.topic.localeCompare(b.topic));
+  });
+
+  async function handleAddCustomVote() {
+    const topic = customTopicSelect === "new" ? customTopicInput : customTopicSelect;
+    await submitCustomVote(topic, customOptionInput);
+  }
+
+  async function submitCustomVote(topic, value) {
+    if (!userState.qqGroup || !userState.id) {
+      toast.error("此操作需要先验证 QQ 群号与选手 ID。已为您打开配置面板！");
+      document.getElementById("header-profile-button")?.click();
+      return;
+    }
+    if (!topic || !topic.trim()) return toast.error("请输入或选择投票主题");
+    if (!value || !value.trim()) return toast.error("请输入选项内容");
+    try {
+      await API.submitCustomVote(tid, userState.id, topic.trim(), value.trim());
+      toast.success("自定义选项已添加并投票");
+      customOptionInput = "";
+      customTopicInput = "";
+      await load();
+    } catch (e) {
+      toast.error(e.message);
+    }
+  }
+
+  async function toggleCustomVote(topic, value, voted) {
+    if (!userState.qqGroup || !userState.id) {
+      toast.error("此操作需要先验证 QQ 群号与选手 ID。已为您打开配置面板！");
+      document.getElementById("header-profile-button")?.click();
+      return;
+    }
+    try {
+      if (voted) {
+        await API.removeCustomVote(tid, userState.id, topic, value);
+        toast.success("已取消该选项的投票");
+      } else {
+        await API.submitCustomVote(tid, userState.id, topic, value);
+        toast.success("已投赞成票");
+      }
+      await load();
+    } catch (e) {
+      toast.error(e.message);
+    }
+  }
+
   function openEditPlayer(p) {
     editingPlayerId = p.id;
     editPlayerNewId = p.id;
@@ -2256,6 +2326,61 @@
               {/if}
             </Card.Content>
           </Card.Root>
+
+          {#each customVoteTopics as topicData}
+            <Card.Root class="border-border bg-card/40">
+              <Card.Header class="p-6">
+                <Card.Title class="text-base font-bold flex items-center gap-2">
+                  <span class="w-2.5 h-2.5 rounded-full bg-purple-500 shadow shadow-purple-500/50"></span>
+                  {topicData.topic} 投票偏好
+                </Card.Title>
+                <Card.Description class="text-xs">
+                  点击对应选项投出赞成票。该投票是多选。
+                </Card.Description>
+              </Card.Header>
+              <Card.Content class="p-6 pt-0 space-y-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {#each topicData.options as opt}
+                    {@const voted = !!(tournament.custom_votes || []).find(
+                      (cv) =>
+                        cv.player_id === userState.id &&
+                        cv.topic === topicData.topic &&
+                        cv.value === opt.value,
+                    )}
+                    <button
+                      onclick={() => toggleCustomVote(topicData.topic, opt.value, voted)}
+                      class="flex flex-col text-left p-4 rounded-xl border transition-all text-xs cursor-pointer group/opt {voted
+                        ? 'bg-purple-950/20 border-purple-500 shadow-md shadow-purple-500/5'
+                        : 'bg-background/40 border-border hover:border-purple-500/40 hover:bg-background/80'}"
+                    >
+                      <div class="flex items-center justify-between w-full">
+                        <span class="font-bold text-foreground group-hover/opt:text-purple-400 transition-colors">
+                          {opt.value}
+                        </span>
+                        <div class="flex items-center gap-1.5">
+                          {#if voted}
+                            <Badge class="bg-purple-500 text-white font-bold hover:bg-purple-500 text-[9px] px-1 py-0 shadow">
+                              已投票
+                            </Badge>
+                          {/if}
+                          <span class="bg-primary text-primary-foreground text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center shadow">
+                            {opt.count}
+                          </span>
+                        </div>
+                      </div>
+                      <div class="flex flex-wrap gap-1 mt-3 border-t border-border/50 pt-2 w-full">
+                        {#each opt.voters as voter}
+                          <span class="text-[9px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border/40 font-medium">
+                            {playerName(voter.player_id)}
+                          </span>
+                        {/each}
+                      </div>
+                    </button>
+                  {/each}
+                </div>
+              </Card.Content>
+            </Card.Root>
+          {/each}
         </div>
 
         <!-- Add Option Sidebar -->
@@ -2356,6 +2481,80 @@
               {/if}
             </Card.Content>
           </Card.Root>
+
+          <Card.Root class="border-border bg-card/40">
+            <Card.Header class="p-5 pb-3">
+              <Card.Title class="text-sm font-bold flex items-center gap-2">
+                <PlusIcon class="w-4 h-4 text-purple-400" />
+                提案自定义选项投票
+              </Card.Title>
+            </Card.Header>
+            <Card.Content class="p-4 pt-0 space-y-4">
+              {#if userState.id}
+                <div class="space-y-3">
+                  <div class="space-y-1">
+                    <label class="text-[10px] font-bold text-muted-foreground">选择投票主题</label>
+                    <select
+                      bind:value={customTopicSelect}
+                      class="flex h-8 w-full rounded-md border border-input bg-background px-3 py-1 text-xs ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <option value="服务器">服务器 (Server)</option>
+                      <option value="游戏版本">游戏版本 (Version)</option>
+                      <option value="比赛地图">比赛地图 (Maps)</option>
+                      <option value="new">新建自定义主题...</option>
+                    </select>
+                  </div>
+
+                  {#if customTopicSelect === "new"}
+                    <div class="space-y-1 animate-in fade-in slide-in-from-top-1 duration-200">
+                      <label class="text-[10px] font-bold text-muted-foreground">自定义主题名称</label>
+                      <Input
+                        bind:value={customTopicInput}
+                        placeholder="例如: 比赛规则, BP赛制"
+                        class="h-8 text-xs bg-background/50"
+                      />
+                    </div>
+                  {/if}
+
+                  <div class="space-y-1">
+                    <label class="text-[10px] font-bold text-muted-foreground">选项内容</label>
+                    <Input
+                      bind:value={customOptionInput}
+                      placeholder="例如: 韩服, BO5双败, Neo Sylphid"
+                      class="h-8 text-xs bg-background/50"
+                    />
+                  </div>
+
+                  <Button
+                    disabled={!customOptionInput || (customTopicSelect === 'new' && !customTopicInput)}
+                    onclick={handleAddCustomVote}
+                    class="w-full text-xs font-bold h-8 cursor-pointer mt-1"
+                  >
+                    添加选项并投票
+                  </Button>
+                </div>
+              {:else}
+                <div
+                  class="p-4 rounded-xl border border-dashed border-border bg-muted/20 text-center space-y-2.5"
+                >
+                  <p class="text-xs text-muted-foreground leading-normal">
+                    您需要先在右上角配置您的 <strong>Gamer ID</strong> 才能添加自定义投票提案。
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onclick={() => {
+                      document.getElementById("header-profile-button")?.click();
+                    }}
+                    class="text-[11px] h-7 cursor-pointer"
+                  >
+                    立即配置游戏ID
+                  </Button>
+                </div>
+              {/if}
+            </Card.Content>
+          </Card.Root>
+
           {@render obsControl()}
           {@render rosterSidebar()}
         </div>

@@ -165,6 +165,21 @@ export function TournamentRepo(db) {
     }));
   }
 
+  function getCustomVotes(tournamentId) {
+    const rows = db.prepare(`
+      SELECT cv.*, p.battle_tags, p.id AS player_id
+      FROM custom_votes cv
+      JOIN players p ON p.id = cv.player_id
+      WHERE cv.tournament_id = ?
+      ORDER BY cv.topic ASC, cv.value ASC, cv.created_at ASC
+    `).all(tournamentId);
+
+    return rows.map(r => ({
+      ...r,
+      display_name: getPlayerDisplayName({ id: r.player_id, battle_tags: r.battle_tags })
+    }));
+  }
+
   function updateOverlayState(id, overlay_scene, overlay_round) {
     db.prepare(`
       UPDATE tournaments SET overlay_scene = ?, overlay_round = ?, updated_at = datetime('now') WHERE id = ?
@@ -172,5 +187,5 @@ export function TournamentRepo(db) {
     return getById(id);
   }
 
-  return { list, getById, create, updateStatus, updateOverlayState, getPlayers, addPlayer, removePlayer, setSeeds, getMatches, getVotes };
+  return { list, getById, create, updateStatus, updateOverlayState, getPlayers, addPlayer, removePlayer, setSeeds, getMatches, getVotes, getCustomVotes };
 }

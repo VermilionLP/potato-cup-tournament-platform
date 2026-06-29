@@ -177,6 +177,22 @@ export default fp(async function databasePlugin(fastify) {
       } catch (e) {
         console.error("Migration v9 tournaments table failed:", e);
       }
+    },
+    // Migration 10: Create custom_votes table
+    () => {
+      console.log('Running database migration v10: creating custom_votes table...');
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS custom_votes (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          tournament_id TEXT NOT NULL REFERENCES tournaments(id) ON DELETE CASCADE,
+          player_id TEXT NOT NULL REFERENCES players(id),
+          topic TEXT NOT NULL,
+          value TEXT NOT NULL,
+          created_at TEXT NOT NULL DEFAULT (datetime('now')),
+          UNIQUE (tournament_id, player_id, topic, value)
+        );
+        CREATE INDEX IF NOT EXISTS idx_custom_votes_tournament ON custom_votes(tournament_id);
+      `);
     }
   ];
 

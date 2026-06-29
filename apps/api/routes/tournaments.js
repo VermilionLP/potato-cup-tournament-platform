@@ -17,7 +17,8 @@ export default async function tournamentsRoutes(fastify) {
       ...t,
       players: repo.getPlayers(req.params.id),
       matches: repo.getMatches(req.params.id),
-      votes: repo.getVotes(req.params.id)
+      votes: repo.getVotes(req.params.id),
+      custom_votes: repo.getCustomVotes(req.params.id)
     };
   });
 

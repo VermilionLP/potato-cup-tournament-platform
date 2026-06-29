@@ -67,6 +67,10 @@ export const API = {
     request(`/tournaments/${enc(tournamentId)}/vote`, { method: 'POST', body: JSON.stringify({ player_id, proposed_time }) }),
   removeVote: (tournamentId, player_id, proposed_time) =>
     request(`/tournaments/${enc(tournamentId)}/vote`, { method: 'DELETE', body: JSON.stringify({ player_id, proposed_time }) }),
+  submitCustomVote: (tournamentId, player_id, topic, value) =>
+    request(`/tournaments/${enc(tournamentId)}/custom-vote`, { method: 'POST', body: JSON.stringify({ player_id, topic, value }) }),
+  removeCustomVote: (tournamentId, player_id, topic, value) =>
+    request(`/tournaments/${enc(tournamentId)}/custom-vote`, { method: 'DELETE', body: JSON.stringify({ player_id, topic, value }) }),
 
   // Replays
   verifyQQ: (qqGroup) =>
