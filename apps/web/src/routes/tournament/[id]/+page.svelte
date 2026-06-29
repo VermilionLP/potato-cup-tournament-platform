@@ -130,7 +130,7 @@
   let showStatusTimeDialog = $state(false);
   let selectedFinalTime = $state("");
 
-  // Compute votes sorted by count
+  // Compute votes sorted chronologically by date
   let voteOptions = $derived.by(() => {
     if (!tournament?.votes) return [];
     const map = {};
@@ -140,8 +140,66 @@
       map[t].count++;
       map[t].voters.push(v);
     }
-    return Object.values(map).sort((a, b) => b.count - a.count);
+    return Object.values(map).sort((a, b) => a.proposed_time.localeCompare(b.proposed_time));
   });
+
+  // Group vote options by date for "Anime Schedule" layout
+  let groupedVoteDates = $derived.by(() => {
+    const datesMap = {};
+    for (const opt of voteOptions) {
+      const parts = opt.proposed_time.split("T");
+      const dateStr = parts[0];
+      const timeStr = parts[1] ? parts[1].substring(0, 5) : "00:00";
+      
+      if (!datesMap[dateStr]) {
+        datesMap[dateStr] = {
+          date: dateStr,
+          formattedDate: formatDateHeader(dateStr),
+          options: []
+        };
+      }
+      datesMap[dateStr].options.push({
+        ...opt,
+        timeOnly: timeStr
+      });
+    }
+    return Object.values(datesMap).sort((a, b) => a.date.localeCompare(b.date));
+  });
+
+  function formatDateHeader(dateStr) {
+    try {
+      const date = new Date(dateStr + "T00:00:00");
+      if (isNaN(date.getTime())) return dateStr;
+      const month = date.getMonth() + 1;
+      const day = date.getDate();
+      const weekdays = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
+      const weekday = weekdays[date.getDay()];
+      return `${month}/${day} ${weekday}`;
+    } catch (e) {
+      return dateStr;
+    }
+  }
+
+  function formatVoteTime(timeStr) {
+    if (!timeStr) return "";
+    try {
+      const date = new Date(timeStr.replace(" ", "T"));
+      if (isNaN(date.getTime())) return timeStr;
+      
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const day = String(date.getDate()).padStart(2, "0");
+      const hours = String(date.getHours()).padStart(2, "0");
+      const minutes = String(date.getMinutes()).padStart(2, "0");
+      
+      const weekdays = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
+      const weekday = weekdays[date.getDay()];
+      
+      return `${year}-${month}-${day} (${weekday}) ${hours}:${minutes}`;
+    } catch (e) {
+      return timeStr;
+    }
+  }
 
   // Derived properties for stages
   let isRegistered = $derived(
@@ -1913,10 +1971,8 @@
                 return;
               }
               if (voteOptions.length > 0) {
-                selectedFinalTime = voteOptions[0].proposed_time.replace(
-                  "T",
-                  " ",
-                );
+                const highestVoted = [...voteOptions].sort((a, b) => b.count - a.count)[0];
+                selectedFinalTime = formatVoteTime(highestVoted.proposed_time);
               } else {
                 selectedFinalTime = "";
               }
@@ -2265,54 +2321,57 @@
               </Card.Description>
             </Card.Header>
             <Card.Content class="p-6 pt-0 space-y-4">
-              {#if voteOptions.length > 0}
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {#each voteOptions as opt}
-                    {@const voted = !!(tournament.votes || []).find(
-                      (v) =>
-                        v.player_id === userState.id &&
-                        v.proposed_time === opt.proposed_time,
-                    )}
-                    <button
-                      onclick={() => toggleVoteOption(opt.proposed_time, voted)}
-                      class="flex flex-col text-left p-4 rounded-xl border transition-all text-xs cursor-pointer group/opt {voted
-                        ? 'bg-purple-950/20 border-purple-500 shadow-md shadow-purple-500/5'
-                        : 'bg-background/40 border-border hover:border-purple-500/40 hover:bg-background/80'}"
-                    >
-                      <div class="flex items-center justify-between w-full">
-                        <span
-                          class="font-bold text-foreground group-hover/opt:text-purple-400 transition-colors"
-                        >
-                          {opt.proposed_time.replace("T", " ")}
+              {#if groupedVoteDates.length > 0}
+                <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                  {#each groupedVoteDates as dayData}
+                    <div class="border border-border/80 bg-background/25 rounded-2xl p-4 space-y-3 flex flex-col">
+                      <!-- Date Header -->
+                      <div class="flex items-center gap-2 pb-2.5 border-b border-border/40 justify-center">
+                        <span class="text-sm font-bold text-foreground">
+                          {dayData.formattedDate}
                         </span>
-                        <div class="flex items-center gap-1.5">
-                          {#if voted}
-                            <Badge
-                              class="bg-purple-500 text-white font-bold hover:bg-purple-500 text-[9px] px-1 py-0 shadow"
-                              >已投票</Badge
-                            >
-                          {/if}
-                          <span
-                            class="bg-primary text-primary-foreground text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center shadow"
-                          >
-                            {opt.count}
-                          </span>
-                        </div>
                       </div>
 
-                      <!-- Voters display -->
-                      <div
-                        class="flex flex-wrap gap-1 mt-3 border-t border-border/50 pt-2 w-full"
-                      >
-                        {#each opt.voters as voter}
-                          <span
-                            class="text-[9px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border/40 font-medium"
+                      <!-- Time slots list under this date -->
+                      <div class="space-y-2 flex-1">
+                        {#each dayData.options as opt}
+                          {@const voted = !!(tournament.votes || []).find(
+                            (v) =>
+                              v.player_id === userState.id &&
+                              v.proposed_time === opt.proposed_time,
+                          )}
+                          <button
+                            onclick={() => toggleVoteOption(opt.proposed_time, voted)}
+                            class="w-full flex flex-col text-left p-3.5 rounded-xl border transition-all text-xs cursor-pointer group/opt {voted
+                              ? 'bg-purple-950/20 border-purple-500 shadow-md shadow-purple-500/5'
+                              : 'bg-background/40 border-border/60 hover:border-purple-500/40 hover:bg-background/80'}"
                           >
-                            {playerName(voter.player_id)}
-                          </span>
+                            <div class="flex items-center justify-between w-full">
+                              <span class="font-bold font-mono text-sm text-foreground group-hover/opt:text-purple-400 transition-colors">
+                                {opt.timeOnly}
+                              </span>
+                              <div class="flex items-center gap-1.5">
+                                {#if voted}
+                                  <Badge class="bg-purple-500 text-white font-bold hover:bg-purple-500 text-[9px] px-1 py-0 shadow">已投</Badge>
+                                {/if}
+                                <span class="bg-primary text-primary-foreground text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center shadow">
+                                  {opt.count}
+                                </span>
+                              </div>
+                            </div>
+
+                            <!-- Voters -->
+                            <div class="flex flex-wrap gap-1 mt-2.5 border-t border-border/40 pt-2 w-full">
+                              {#each opt.voters as voter}
+                                <span class="text-[9px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border/40 font-medium">
+                                  {playerName(voter.player_id)}
+                                </span>
+                              {/each}
+                            </div>
+                          </button>
                         {/each}
                       </div>
-                    </button>
+                    </div>
                   {/each}
                 </div>
               {:else}
@@ -2878,7 +2937,7 @@
             class="grid grid-cols-1 gap-2 max-h-[160px] overflow-y-auto pr-1"
           >
             {#each voteOptions as opt}
-              {@const displayTime = opt.proposed_time.replace("T", " ")}
+              {@const displayTime = formatVoteTime(opt.proposed_time)}
               <button
                 type="button"
                 onclick={() => (selectedFinalTime = displayTime)}
