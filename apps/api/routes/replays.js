@@ -832,8 +832,8 @@ export default async function replaysRoutes(fastify) {
     };
     const matchCount = matches.length;
     const bracketTemplate =
-      bracketTemplates[matchCount + 1] ||
       bracketTemplates[playerCount] ||
+      bracketTemplates[matchCount + 1] ||
       "Bracket/16";
     const tournamentIdStr = tournamentNumber.padStart(4, "0");
 
