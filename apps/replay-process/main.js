@@ -24,6 +24,7 @@ const port = process.env.PORT || 3000;
 const analyzer = new TournamentAnalyzer(API_KEY, BNET_CONFIG, SUB_DOMAIN);
 
 const MAPPINGS_FILE = path.join(__dirname, 'mappings.json');
+const PULLED_TOURNAMENTS_FILE = path.join(__dirname, 'pulled_tournaments.json');
 
 // Helper for exec
 const execPromise = util.promisify(exec);
@@ -77,6 +78,25 @@ fastify.get('/api/replay-files', async (request, reply) => {
 fastify.get('/api/mappings', async (request, reply) => {
     const data = await fs.readFile(MAPPINGS_FILE, 'utf8');
     return JSON.parse(data);
+});
+
+fastify.get('/api/pulled-tournaments', async (request, reply) => {
+    try {
+        const data = await fs.readFile(PULLED_TOURNAMENTS_FILE, 'utf8');
+        return JSON.parse(data);
+    } catch (e) {
+        reply.status(404).send({ error: 'pulled_tournaments.json not found' });
+    }
+});
+
+fastify.post('/api/pulled-tournaments', async (request, reply) => {
+    try {
+        const data = request.body;
+        await fs.writeFile(PULLED_TOURNAMENTS_FILE, JSON.stringify(data, null, 2));
+        return { success: true };
+    } catch (e) {
+        reply.status(500).send({ error: e.message });
+    }
 });
 
 fastify.post('/api/mappings', async (request, reply) => {

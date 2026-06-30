@@ -1,0 +1,5350 @@
+[
+  {
+    "id": "suck42",
+    "name": "SUCK#42",
+    "description": "<h3>About</h3><p style=\"margin-bottom: 10px; color: rgb(255, 255, 255);\"><span style=\"font-weight: 700;\">主办 Organizer:</span> Wayne</p><br><p style=\"margin-bottom: 10px; color: rgb(255, 255, 255);\"><span style=\"font-weight: 700;\">服务器 Server:</span> China</p><br><p style=\"margin-bottom: 10px; color: rgb(255, 255, 255);\"><span style=\"font-weight: 700;\">直播 Streams</span></p><p style=\"margin-bottom: 10px; color: rgb(255, 255, 255);\"><a href=\"http://live.bilibili.com/8250418\" rel=\"nofollow\">Wayne (Bilibili)</a></p><p style=\"display: flex; align-items: center; margin-top: 16px;\"><span style=\"font-weight: bold; font-size: 24px; line-height: 40px; margin-left: 8px;\">Rules</span></p><p style=\"margin-bottom: 10px;\"><span style=\"font-weight: 700;\">赛制 Format</span></p><ul>\n<li>单淘 Single-elimination bracket</li>\n<li>所有比赛均Bo1 All matches are Bo1</li>\n<li>败者晋级 Loser of each match advance to the next round.</li>\n</ul><p style=\"margin-bottom: 10px;\"><span style=\"font-weight: 700;\">地图池 Map Pools</span></p><ul><li>选手可以自由Ban图，不然主办随机选了 Player can specify maps to ban. Otherwise, the organizer will randomly pick from melee map pool.</li></ul>",
+    "status": "completed",
+    "player_capacity": 16,
+    "hold_third_place": 0,
+    "scheduled_time": "2026-06-14",
+    "players": [
+      {
+        "id": "EthanCheung",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 1
+      },
+      {
+        "id": "欧布桑",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 2
+      },
+      {
+        "id": "wayne19980",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 3
+      },
+      {
+        "id": "神奇的马小白",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 4
+      },
+      {
+        "id": "十七者",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 5
+      },
+      {
+        "id": "Buqun",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 6
+      },
+      {
+        "id": "Vermilion",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 7
+      },
+      {
+        "id": "hlq",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 8
+      }
+    ],
+    "matches": [
+      {
+        "round": 3,
+        "position": 1,
+        "player1_id": "EthanCheung",
+        "player2_id": "hlq",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "hlq",
+        "status": "completed"
+      },
+      {
+        "round": 3,
+        "position": 2,
+        "player1_id": "神奇的马小白",
+        "player2_id": "十七者",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "神奇的马小白",
+        "status": "completed"
+      },
+      {
+        "round": 3,
+        "position": 3,
+        "player1_id": "欧布桑",
+        "player2_id": "Vermilion",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "欧布桑",
+        "status": "completed"
+      },
+      {
+        "round": 3,
+        "position": 4,
+        "player1_id": "wayne19980",
+        "player2_id": "Buqun",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "wayne19980",
+        "status": "completed"
+      },
+      {
+        "round": 2,
+        "position": 1,
+        "player1_id": "hlq",
+        "player2_id": "神奇的马小白",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "神奇的马小白",
+        "status": "completed"
+      },
+      {
+        "round": 2,
+        "position": 2,
+        "player1_id": "欧布桑",
+        "player2_id": "wayne19980",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "欧布桑",
+        "status": "completed"
+      },
+      {
+        "round": 1,
+        "position": 1,
+        "player1_id": "神奇的马小白",
+        "player2_id": "欧布桑",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "神奇的马小白",
+        "status": "completed"
+      }
+    ]
+  },
+  {
+    "id": "suck41",
+    "name": "SUCK#41",
+    "description": "<h3>About</h3><p style=\"margin-bottom: 10px; color: rgb(255, 255, 255);\"><span style=\"font-weight: 700;\">主办 Organizer:</span> Wayne</p><br><p style=\"margin-bottom: 10px; color: rgb(255, 255, 255);\"><span style=\"font-weight: 700;\">服务器 Server:</span> China</p><br><p style=\"margin-bottom: 10px; color: rgb(255, 255, 255);\"><span style=\"font-weight: 700;\">直播 Streams</span></p><p style=\"margin-bottom: 10px; color: rgb(255, 255, 255);\"><a href=\"http://live.bilibili.com/8250418\" rel=\"nofollow\">Wayne (Bilibili)</a></p><p style=\"display: flex; align-items: center; margin-top: 16px;\"><span style=\"font-weight: bold; font-size: 24px; line-height: 40px; margin-left: 8px;\">Rules</span></p><p style=\"margin-bottom: 10px;\"><span style=\"font-weight: 700;\">赛制 Format</span></p><ul>\n<li>单淘 Single-elimination bracket</li>\n<li>所有比赛均Bo1 All matches are Bo1</li>\n<li>败者晋级 Loser of each match advance to the next round.</li>\n</ul><p style=\"margin-bottom: 10px;\"><span style=\"font-weight: 700;\">地图池 Map Pools</span></p><ul><li>选手可以自由Ban图，不然主办随机选了 Player can specify maps to ban. Otherwise, the organizer will randomly pick from melee map pool.</li></ul>",
+    "status": "completed",
+    "player_capacity": 16,
+    "hold_third_place": 0,
+    "scheduled_time": "2026-06-06",
+    "players": [
+      {
+        "id": "欧布桑",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 1
+      },
+      {
+        "id": "EthanCheung",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 2
+      },
+      {
+        "id": "神奇的马小白",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 3
+      },
+      {
+        "id": "hlq",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 4
+      },
+      {
+        "id": "十七者",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 5
+      },
+      {
+        "id": "Buqun",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 6
+      },
+      {
+        "id": "Vermilion",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 7
+      },
+      {
+        "id": "wayne19980",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 8
+      }
+    ],
+    "matches": [
+      {
+        "round": 3,
+        "position": 1,
+        "player1_id": "欧布桑",
+        "player2_id": "wayne19980",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "欧布桑",
+        "status": "completed"
+      },
+      {
+        "round": 3,
+        "position": 2,
+        "player1_id": "hlq",
+        "player2_id": "十七者",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "hlq",
+        "status": "completed"
+      },
+      {
+        "round": 3,
+        "position": 3,
+        "player1_id": "EthanCheung",
+        "player2_id": "Vermilion",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "EthanCheung",
+        "status": "completed"
+      },
+      {
+        "round": 3,
+        "position": 4,
+        "player1_id": "神奇的马小白",
+        "player2_id": "Buqun",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "神奇的马小白",
+        "status": "completed"
+      },
+      {
+        "round": 2,
+        "position": 1,
+        "player1_id": "欧布桑",
+        "player2_id": "hlq",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "欧布桑",
+        "status": "completed"
+      },
+      {
+        "round": 2,
+        "position": 2,
+        "player1_id": "EthanCheung",
+        "player2_id": "神奇的马小白",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "EthanCheung",
+        "status": "completed"
+      },
+      {
+        "round": 1,
+        "position": 1,
+        "player1_id": "欧布桑",
+        "player2_id": "EthanCheung",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "EthanCheung",
+        "status": "completed"
+      }
+    ]
+  },
+  {
+    "id": "suck40",
+    "name": "SUCK#40",
+    "description": "<h3>About</h3><p style=\"margin-bottom: 10px; color: rgb(255, 255, 255);\"><span style=\"font-weight: 700;\">主办 Organizer:</span> Wayne</p><br><p style=\"margin-bottom: 10px; color: rgb(255, 255, 255);\"><span style=\"font-weight: 700;\">服务器 Server:</span> China</p><br><p style=\"margin-bottom: 10px; color: rgb(255, 255, 255);\"><span style=\"font-weight: 700;\">直播 Streams</span></p><p style=\"margin-bottom: 10px; color: rgb(255, 255, 255);\"><a href=\"http://live.bilibili.com/8250418\" rel=\"nofollow\">Wayne (Bilibili)</a></p><p style=\"display: flex; align-items: center; margin-top: 16px;\"><span style=\"font-weight: bold; font-size: 24px; line-height: 40px; margin-left: 8px;\">Rules</span></p><p style=\"margin-bottom: 10px;\"><span style=\"font-weight: 700;\">赛制 Format</span></p><ul>\r\n<li>单淘 Single-elimination bracket</li>\r\n<li>所有比赛均Bo1 All matches are Bo1</li>\r\n<li>败者晋级 Loser of each match advance to the next round.</li>\r\n</ul><p style=\"margin-bottom: 10px;\"><span style=\"font-weight: 700;\">地图池 Map Pools</span></p><ul><li>选手可以自由Ban图，不然主办随机选了 Player can specify maps to ban. Otherwise, the organizer will randomly pick from melee map pool.</li></ul>",
+    "status": "completed",
+    "player_capacity": 16,
+    "hold_third_place": 0,
+    "scheduled_time": "2026-05-31",
+    "players": [
+      {
+        "id": "EthanCheung",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 1
+      },
+      {
+        "id": "wayne19980",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 2
+      },
+      {
+        "id": "神奇的马小白",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 3
+      },
+      {
+        "id": "Vermilion",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 4
+      },
+      {
+        "id": "Starshim",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 5
+      },
+      {
+        "id": "hlq",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 6
+      },
+      {
+        "id": "凡道无名",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 7
+      },
+      {
+        "id": "Crepuscule",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 8
+      },
+      {
+        "id": "Sonde5572",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 9
+      },
+      {
+        "id": "Buqun",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 10
+      }
+    ],
+    "matches": [
+      {
+        "round": 4,
+        "position": 1,
+        "player1_id": "Crepuscule",
+        "player2_id": "Sonde5572",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "Crepuscule",
+        "status": "completed"
+      },
+      {
+        "round": 4,
+        "position": 2,
+        "player1_id": "凡道无名",
+        "player2_id": "Buqun",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "凡道无名",
+        "status": "completed"
+      },
+      {
+        "round": 3,
+        "position": 3,
+        "player1_id": "EthanCheung",
+        "player2_id": "Crepuscule",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "EthanCheung",
+        "status": "completed"
+      },
+      {
+        "round": 3,
+        "position": 1,
+        "player1_id": "Vermilion",
+        "player2_id": "Starshim",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "Starshim",
+        "status": "completed"
+      },
+      {
+        "round": 3,
+        "position": 4,
+        "player1_id": "wayne19980",
+        "player2_id": "凡道无名",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "凡道无名",
+        "status": "completed"
+      },
+      {
+        "round": 3,
+        "position": 2,
+        "player1_id": "神奇的马小白",
+        "player2_id": "hlq",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "hlq",
+        "status": "completed"
+      },
+      {
+        "round": 2,
+        "position": 1,
+        "player1_id": "EthanCheung",
+        "player2_id": "Starshim",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "Starshim",
+        "status": "completed"
+      },
+      {
+        "round": 2,
+        "position": 2,
+        "player1_id": "凡道无名",
+        "player2_id": "hlq",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "hlq",
+        "status": "completed"
+      },
+      {
+        "round": 1,
+        "position": 1,
+        "player1_id": "Starshim",
+        "player2_id": "hlq",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "Starshim",
+        "status": "completed"
+      }
+    ]
+  },
+  {
+    "id": "suck39",
+    "name": "SUCK#39",
+    "description": "",
+    "status": "completed",
+    "player_capacity": 16,
+    "hold_third_place": 0,
+    "scheduled_time": "2026-05-17",
+    "players": [
+      {
+        "id": "Sonde5572",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 1
+      },
+      {
+        "id": "十七者",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 2
+      },
+      {
+        "id": "hanson",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 3
+      },
+      {
+        "id": "Vermilion",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 4
+      },
+      {
+        "id": "wayne19980",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 5
+      },
+      {
+        "id": "老刀把子",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 6
+      },
+      {
+        "id": "Crepuscule",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 7
+      },
+      {
+        "id": "EthanCheung",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 8
+      }
+    ],
+    "matches": [
+      {
+        "round": 3,
+        "position": 1,
+        "player1_id": "Sonde5572",
+        "player2_id": "EthanCheung",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "EthanCheung",
+        "status": "completed"
+      },
+      {
+        "round": 3,
+        "position": 2,
+        "player1_id": "Vermilion",
+        "player2_id": "wayne19980",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "wayne19980",
+        "status": "completed"
+      },
+      {
+        "round": 3,
+        "position": 3,
+        "player1_id": "十七者",
+        "player2_id": "Crepuscule",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "Crepuscule",
+        "status": "completed"
+      },
+      {
+        "round": 3,
+        "position": 4,
+        "player1_id": "hanson",
+        "player2_id": "老刀把子",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "老刀把子",
+        "status": "completed"
+      },
+      {
+        "round": 2,
+        "position": 1,
+        "player1_id": "EthanCheung",
+        "player2_id": "wayne19980",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "EthanCheung",
+        "status": "completed"
+      },
+      {
+        "round": 2,
+        "position": 2,
+        "player1_id": "Crepuscule",
+        "player2_id": "老刀把子",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "老刀把子",
+        "status": "completed"
+      },
+      {
+        "round": 1,
+        "position": 1,
+        "player1_id": "EthanCheung",
+        "player2_id": "老刀把子",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "EthanCheung",
+        "status": "completed"
+      }
+    ]
+  },
+  {
+    "id": "suck38",
+    "name": "SUCK#38",
+    "description": "<h3>About</h3><p style=\"margin-bottom: 10px; color: rgb(255, 255, 255);\"><span style=\"font-weight: 700;\">主办 Organizer:</span> Wayne</p><br><p style=\"margin-bottom: 10px; color: rgb(255, 255, 255);\"><span style=\"font-weight: 700;\">服务器 Server:</span> Asia (Korea)</p><br><p style=\"margin-bottom: 10px; color: rgb(255, 255, 255);\"><span style=\"font-weight: 700;\">直播 Streams</span></p><p style=\"margin-bottom: 10px; color: rgb(255, 255, 255);\"><a href=\"http://live.bilibili.com/8250418\" rel=\"nofollow\">Wayne (Bilibili)</a></p><p style=\"display: flex; align-items: center; margin-top: 16px;\"><span style=\"font-weight: bold; font-size: 24px; line-height: 40px; margin-left: 8px;\">Rules</span></p><p style=\"margin-bottom: 10px;\"><span style=\"font-weight: 700;\">赛制 Format</span></p><ul>\n<li>单淘 Single-elimination bracket</li>\n<li>所有比赛均Bo1 All matches are Bo1</li>\n<li>败者晋级 Loser of each match advance to the next round.</li>\n</ul><p style=\"margin-bottom: 10px;\"><span style=\"font-weight: 700;\">地图池 Map Pools</span></p><ul><li>选手可以自由Ban图，不然主办随机选了 Player can specify maps to ban. Otherwise, the organizer will randomly pick from melee map pool.</li></ul>",
+    "status": "completed",
+    "player_capacity": 16,
+    "hold_third_place": 0,
+    "scheduled_time": "2026-02-23",
+    "players": [
+      {
+        "id": "十七者",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 1
+      },
+      {
+        "id": "Starshim",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 2
+      },
+      {
+        "id": "欧布桑",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 3
+      },
+      {
+        "id": "Sonde5572",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 4
+      },
+      {
+        "id": "wayne19980",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 5
+      }
+    ],
+    "matches": [
+      {
+        "round": 3,
+        "position": 1,
+        "player1_id": "Sonde5572",
+        "player2_id": "wayne19980",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "Sonde5572",
+        "status": "completed"
+      },
+      {
+        "round": 2,
+        "position": 2,
+        "player1_id": "十七者",
+        "player2_id": "Sonde5572",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "十七者",
+        "status": "completed"
+      },
+      {
+        "round": 2,
+        "position": 1,
+        "player1_id": "Starshim",
+        "player2_id": "欧布桑",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "Starshim",
+        "status": "completed"
+      },
+      {
+        "round": 1,
+        "position": 1,
+        "player1_id": "十七者",
+        "player2_id": "Starshim",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "Starshim",
+        "status": "completed"
+      }
+    ]
+  },
+  {
+    "id": "suck37",
+    "name": "SUCK#37",
+    "description": "<h3>About</h3><p style=\"margin-bottom: 10px; color: rgb(255, 255, 255);\"><span style=\"font-weight: 700;\">主办 Organizer:</span> Wayne</p><br><p style=\"margin-bottom: 10px; color: rgb(255, 255, 255);\"><span style=\"font-weight: 700;\">服务器 Server:</span> Asia (Korea)</p><br><p style=\"margin-bottom: 10px; color: rgb(255, 255, 255);\"><span style=\"font-weight: 700;\">直播 Streams</span></p><p style=\"margin-bottom: 10px; color: rgb(255, 255, 255);\"><a href=\"http://live.bilibili.com/8250418\" rel=\"nofollow\">Wayne (Bilibili)</a></p><p style=\"display: flex; align-items: center; margin-top: 16px;\"><span style=\"font-weight: bold; font-size: 24px; line-height: 40px; margin-left: 8px;\">Rules</span></p><p style=\"margin-bottom: 10px;\"><span style=\"font-weight: 700;\">赛制 Format</span></p><ul>\r\n<li>单淘 Single-elimination bracket</li>\r\n<li>所有比赛均Bo1 All matches are Bo1</li>\r\n<li>败者晋级 Loser of each match advance to the next round.</li>\r\n</ul><p style=\"margin-bottom: 10px;\"><span style=\"font-weight: 700;\">地图池 Map Pools</span></p><ul><li>选手可以自由Ban图，不然主办随机选了 Player can specify maps to ban. Otherwise, the organizer will randomly pick from melee map pool.</li></ul>",
+    "status": "completed",
+    "player_capacity": 16,
+    "hold_third_place": 0,
+    "scheduled_time": "2025-12-28",
+    "players": [
+      {
+        "id": "青绿",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 1
+      },
+      {
+        "id": "wayne19980",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 2
+      },
+      {
+        "id": "Vermilion",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 3
+      },
+      {
+        "id": "Buqun",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 4
+      },
+      {
+        "id": "Sonde5572",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 5
+      },
+      {
+        "id": "十七者",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 6
+      }
+    ],
+    "matches": [
+      {
+        "round": 3,
+        "position": 1,
+        "player1_id": "Buqun",
+        "player2_id": "Sonde5572",
+        "score1": 2,
+        "score2": 1,
+        "winner_id": "Sonde5572",
+        "status": "completed"
+      },
+      {
+        "round": 3,
+        "position": 2,
+        "player1_id": "Vermilion",
+        "player2_id": "十七者",
+        "score1": 0,
+        "score2": 2,
+        "winner_id": "Vermilion",
+        "status": "completed"
+      },
+      {
+        "round": 2,
+        "position": 1,
+        "player1_id": "青绿",
+        "player2_id": "Sonde5572",
+        "score1": 0,
+        "score2": 2,
+        "winner_id": "青绿",
+        "status": "completed"
+      },
+      {
+        "round": 2,
+        "position": 2,
+        "player1_id": "wayne19980",
+        "player2_id": "Vermilion",
+        "score1": 2,
+        "score2": 0,
+        "winner_id": "Vermilion",
+        "status": "completed"
+      },
+      {
+        "round": 1,
+        "position": 1,
+        "player1_id": "青绿",
+        "player2_id": "Vermilion",
+        "score1": 0,
+        "score2": 2,
+        "winner_id": "青绿",
+        "status": "completed"
+      }
+    ]
+  },
+  {
+    "id": "suck23",
+    "name": "SUCK#23",
+    "description": "<h3>About</h3><p style=\"margin-bottom: 10px; color: rgb(255, 255, 255);\"><span style=\"font-weight: 700;\">主办 Organizer:</span> Wayne</p><br><p style=\"margin-bottom: 10px; color: rgb(255, 255, 255);\"><span style=\"font-weight: 700;\">服务器 Server:</span> Asia (Korea)</p><br><p style=\"margin-bottom: 10px; color: rgb(255, 255, 255);\"><span style=\"font-weight: 700;\">直播 Streams</span></p><p style=\"margin-bottom: 10px; color: rgb(255, 255, 255);\"><a href=\"http://live.bilibili.com/8250418\" rel=\"nofollow\">Wayne (Bilibili)</a></p><p style=\"display: flex; align-items: center; margin-top: 16px;\"><span style=\"font-weight: bold; font-size: 24px; line-height: 40px; margin-left: 8px;\">Rules</span></p><p style=\"margin-bottom: 10px;\"><span style=\"font-weight: 700;\">赛制 Format</span></p><ul>\r\n<li>单淘 Single-elimination bracket</li>\r\n<li>所有比赛均Bo1 All matches are Bo1</li>\r\n<li>败者晋级 Loser of each match advance to the next round.</li>\r\n</ul><p style=\"margin-bottom: 10px;\"><span style=\"font-weight: 700;\">地图池 Map Pools</span></p><ul><li>选手可以自由Ban图，不然主办随机选了 Player can specify maps to ban. Otherwise, the organizer will randomly pick from melee map pool.</li></ul><br>",
+    "status": "completed",
+    "player_capacity": 16,
+    "hold_third_place": 0,
+    "scheduled_time": "2024-02-17",
+    "players": [
+      {
+        "id": "Buqun",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 1
+      },
+      {
+        "id": "wayne19980",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 2
+      },
+      {
+        "id": "永恒帝国",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 3
+      },
+      {
+        "id": "Vermilion",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 4
+      },
+      {
+        "id": "JimmyPiggy",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 5
+      }
+    ],
+    "matches": [
+      {
+        "round": 3,
+        "position": 1,
+        "player1_id": "Vermilion",
+        "player2_id": "JimmyPiggy",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "JimmyPiggy",
+        "status": "completed"
+      },
+      {
+        "round": 2,
+        "position": 2,
+        "player1_id": "Buqun",
+        "player2_id": "JimmyPiggy",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "JimmyPiggy",
+        "status": "completed"
+      },
+      {
+        "round": 2,
+        "position": 1,
+        "player1_id": "wayne19980",
+        "player2_id": "永恒帝国",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "永恒帝国",
+        "status": "completed"
+      },
+      {
+        "round": 1,
+        "position": 1,
+        "player1_id": "JimmyPiggy",
+        "player2_id": "永恒帝国",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "JimmyPiggy",
+        "status": "completed"
+      }
+    ]
+  },
+  {
+    "id": "suck18",
+    "name": "SUCK#18",
+    "description": "<p><strong>主办 Organizer:</strong> AlphaX战队星际水友群<br></p><p><strong><br></strong></p><p><strong>服务器 Server:</strong> Asia (Korea)<br></p><br><p><strong>赛制 Format</strong></p><ul>\r\n<li>单淘 Single-elimination bracket</li>\r\n<li>所有比赛均Bo1 All matches are Bo1</li>\r\n<li>败者晋级 Loser of each match advance to the next round.</li>\r\n</ul><p><strong>地图池 Map Pools</strong></p><ul><li>本次使用與IEM Katowice相同地圖，选手可以Ban图，不然主办随机选了 Player can specify maps to ban. Otherwise, the organizer will randomly pick from Maps of 2023 IEM Katowice.</li></ul><p><strong>直播 Streams(TBD)</strong></p><ul><li><strong><a href=\"https://challonge.com/zh_CN/twitch.tv/starshimada\" target=\"_blank\" rel=\"nofollow\">冰星(Twitch)</a></strong></li></ul>",
+    "status": "completed",
+    "player_capacity": 16,
+    "hold_third_place": 0,
+    "scheduled_time": "2023-02-18",
+    "players": [
+      {
+        "id": "Vermilion",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 1
+      },
+      {
+        "id": "Jerry",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 2
+      },
+      {
+        "id": "wayne19980",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 3
+      },
+      {
+        "id": "Starshim",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 4
+      },
+      {
+        "id": "十七者",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 5
+      },
+      {
+        "id": "凡道无名",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 6
+      },
+      {
+        "id": "永恒帝国",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 7
+      }
+    ],
+    "matches": [
+      {
+        "round": 3,
+        "position": 1,
+        "player1_id": "Starshim",
+        "player2_id": "十七者",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "Starshim",
+        "status": "completed"
+      },
+      {
+        "round": 3,
+        "position": 2,
+        "player1_id": "Jerry",
+        "player2_id": "永恒帝国",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "永恒帝国",
+        "status": "completed"
+      },
+      {
+        "round": 3,
+        "position": 3,
+        "player1_id": "wayne19980",
+        "player2_id": "凡道无名",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "wayne19980",
+        "status": "completed"
+      },
+      {
+        "round": 2,
+        "position": 1,
+        "player1_id": "Vermilion",
+        "player2_id": "Starshim",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "Starshim",
+        "status": "completed"
+      },
+      {
+        "round": 2,
+        "position": 2,
+        "player1_id": "永恒帝国",
+        "player2_id": "wayne19980",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "永恒帝国",
+        "status": "completed"
+      },
+      {
+        "round": 1,
+        "position": 1,
+        "player1_id": "Starshim",
+        "player2_id": "永恒帝国",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "永恒帝国",
+        "status": "completed"
+      }
+    ]
+  },
+  {
+    "id": "suck35",
+    "name": "SUCK#35",
+    "description": "<h3>About</h3><p style=\"margin-bottom: 10px; color: rgb(255, 255, 255);\"><span style=\"font-weight: 700;\">主办 Organizer:</span> Wayne</p><br><p style=\"margin-bottom: 10px; color: rgb(255, 255, 255);\"><span style=\"font-weight: 700;\">服务器 Server:</span> Asia (Korea)</p><br><p style=\"margin-bottom: 10px; color: rgb(255, 255, 255);\"><span style=\"font-weight: 700;\">直播 Streams</span></p><p style=\"margin-bottom: 10px; color: rgb(255, 255, 255);\"><a href=\"http://live.bilibili.com/8250418\" rel=\"nofollow\">Wayne (Bilibili)</a></p><p style=\"display: flex; align-items: center; margin-top: 16px;\"><span style=\"font-weight: bold; font-size: 24px; line-height: 40px; margin-left: 8px;\">Rules</span></p><p style=\"margin-bottom: 10px;\"><span style=\"font-weight: 700;\">赛制 Format</span></p><ul>\n<li>单淘 Single-elimination bracket</li>\n<li>所有比赛均Bo1 All matches are Bo1</li>\n<li>败者晋级 Loser of each match advance to the next round.</li>\n</ul><p style=\"margin-bottom: 10px;\"><span style=\"font-weight: 700;\">地图池 Map Pools</span></p><ul><li>选手可以自由Ban图，不然主办随机选了 Player can specify maps to ban. Otherwise, the organizer will randomly pick from melee map pool.</li></ul>",
+    "status": "completed",
+    "player_capacity": 16,
+    "hold_third_place": 0,
+    "scheduled_time": "2025-08-26",
+    "players": [
+      {
+        "id": "Starshim",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 1
+      },
+      {
+        "id": "悲秋",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 2
+      },
+      {
+        "id": "十七者",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 3
+      },
+      {
+        "id": "照耀你的日光",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 4
+      },
+      {
+        "id": "Vermilion",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 5
+      },
+      {
+        "id": "凡道无名",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 6
+      },
+      {
+        "id": "Sonde",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 7
+      },
+      {
+        "id": "wayne19980",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 8
+      },
+      {
+        "id": "Buqun",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 9
+      },
+      {
+        "id": "老刀把子",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 10
+      }
+    ],
+    "matches": [
+      {
+        "round": 4,
+        "position": 1,
+        "player1_id": "wayne19980",
+        "player2_id": "Buqun",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "wayne19980",
+        "status": "completed"
+      },
+      {
+        "round": 4,
+        "position": 2,
+        "player1_id": "Sonde",
+        "player2_id": "老刀把子",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "老刀把子",
+        "status": "completed"
+      },
+      {
+        "round": 3,
+        "position": 3,
+        "player1_id": "Starshim",
+        "player2_id": "wayne19980",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "Starshim",
+        "status": "completed"
+      },
+      {
+        "round": 3,
+        "position": 1,
+        "player1_id": "照耀你的日光",
+        "player2_id": "Vermilion",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "Vermilion",
+        "status": "completed"
+      },
+      {
+        "round": 3,
+        "position": 4,
+        "player1_id": "悲秋",
+        "player2_id": "老刀把子",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "悲秋",
+        "status": "completed"
+      },
+      {
+        "round": 3,
+        "position": 2,
+        "player1_id": "十七者",
+        "player2_id": "凡道无名",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "凡道无名",
+        "status": "completed"
+      },
+      {
+        "round": 2,
+        "position": 1,
+        "player1_id": "Starshim",
+        "player2_id": "Vermilion",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "Vermilion",
+        "status": "completed"
+      },
+      {
+        "round": 2,
+        "position": 2,
+        "player1_id": "悲秋",
+        "player2_id": "凡道无名",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "悲秋",
+        "status": "completed"
+      },
+      {
+        "round": 1,
+        "position": 1,
+        "player1_id": "Vermilion",
+        "player2_id": "悲秋",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "悲秋",
+        "status": "completed"
+      }
+    ]
+  },
+  {
+    "id": "suck9",
+    "name": "SUCK#9",
+    "description": "<p>系列 Series: AX MageFans-StarCraft Ultra Chicken King</p><p>主办 Organizer: AlphaX战队星际水友群</p><p>赞助 Sponsor(s): 永恒帝国</p><p>服务器 Server: China/ Korea(if needed)<br></p><p>奖品 Prize pool: Pics from 内鬼酱</p><p>级别 Tier: 周赛 Weekly</p><br><p><strong>赛制 Format</strong></p><ul>\r\n<li>单淘 Single-elimination bracket</li>\r\n<li>所有比赛均Bo1 All matches are Bo1</li>\r\n<li>败者晋级 Loser of each match advance to the next round.</li>\r\n</ul><p><strong>地图池 Map Pools</strong></p><ul><li>选手可以Ban图或者限定天梯地图，不然主办随机选了 Player can specify maps to ban, or demad ladder maps. Otherwise the organizer will randomly pick from all Blizzard or GSL maps.</li></ul><p><strong>直播 Streams</strong></p><ul>\r\n<li>\r\n<a href=\"https://www.twitch.tv/starshimada\" target=\"_blank\" rel=\"nofollow\">冰星君</a><br>\r\n</li>\r\n<li>\r\n<a href=\"https://live.bilibili.com/8250418\" target=\"_blank\" rel=\"nofollow\">Wayne19980</a><br>\r\n</li>\r\n<li><a href=\"https://live.bilibili.com/4446669\" target=\"_blank\" rel=\"nofollow\">柳渊Ivy</a></li>\r\n</ul><p><strong>录像 VODS</strong></p><ul><li>赛后放链接 Links will be available after the match</li></ul>",
+    "status": "completed",
+    "player_capacity": 16,
+    "hold_third_place": 0,
+    "scheduled_time": "2022-06-19",
+    "players": [
+      {
+        "id": "wayne19980",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 1
+      },
+      {
+        "id": "Vermilion",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 2
+      },
+      {
+        "id": "Starshim",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 3
+      },
+      {
+        "id": "永恒帝国",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 4
+      },
+      {
+        "id": "Buqun",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 5
+      },
+      {
+        "id": "白羽折风",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 6
+      },
+      {
+        "id": "十七者",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 7
+      }
+    ],
+    "matches": [
+      {
+        "round": 3,
+        "position": 1,
+        "player1_id": "Vermilion",
+        "player2_id": "Starshim",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "Starshim",
+        "status": "completed"
+      },
+      {
+        "round": 3,
+        "position": 2,
+        "player1_id": "永恒帝国",
+        "player2_id": "Buqun",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "永恒帝国",
+        "status": "completed"
+      },
+      {
+        "round": 3,
+        "position": 3,
+        "player1_id": "白羽折风",
+        "player2_id": "十七者",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "白羽折风",
+        "status": "completed"
+      },
+      {
+        "round": 2,
+        "position": 1,
+        "player1_id": "wayne19980",
+        "player2_id": "Starshim",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "wayne19980",
+        "status": "completed"
+      },
+      {
+        "round": 2,
+        "position": 2,
+        "player1_id": "永恒帝国",
+        "player2_id": "白羽折风",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "永恒帝国",
+        "status": "completed"
+      },
+      {
+        "round": 1,
+        "position": 1,
+        "player1_id": "wayne19980",
+        "player2_id": "永恒帝国",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "永恒帝国",
+        "status": "completed"
+      }
+    ]
+  },
+  {
+    "id": "suck24",
+    "name": "SUCK#24",
+    "description": "<h3>About</h3><p style=\"margin-bottom: 10px; color: rgb(255, 255, 255);\"><span style=\"font-weight: 700;\">主办 Organizer:</span> Wayne</p><br><p style=\"margin-bottom: 10px; color: rgb(255, 255, 255);\"><span style=\"font-weight: 700;\">服务器 Server:</span> Asia (Korea)</p><br><p style=\"margin-bottom: 10px; color: rgb(255, 255, 255);\"><span style=\"font-weight: 700;\">直播 Streams</span></p><p style=\"margin-bottom: 10px; color: rgb(255, 255, 255);\"><a href=\"http://live.bilibili.com/8250418\" rel=\"nofollow\">Wayne (Bilibili)</a></p><p style=\"display: flex; align-items: center; margin-top: 16px;\"><span style=\"font-weight: bold; font-size: 24px; line-height: 40px; margin-left: 8px;\">Rules</span></p><p style=\"margin-bottom: 10px;\"><span style=\"font-weight: 700;\">赛制 Format</span></p><ul>\n<li>单淘 Single-elimination bracket</li>\n<li>所有比赛均Bo1 All matches are Bo1</li>\n<li>败者晋级 Loser of each match advance to the next round.</li>\n</ul><p style=\"margin-bottom: 10px;\"><span style=\"font-weight: 700;\">地图池 Map Pools</span></p><ul><li>选手可以自由Ban图，不然主办随机选了 Player can specify maps to ban. Otherwise, the organizer will randomly pick from melee map pool.</li></ul><br><br>",
+    "status": "completed",
+    "player_capacity": 16,
+    "hold_third_place": 0,
+    "scheduled_time": "2024-07-20",
+    "players": [
+      {
+        "id": "Tox1c_zzz",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 1
+      },
+      {
+        "id": "napusi",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 2
+      },
+      {
+        "id": "白羽折风",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 3
+      },
+      {
+        "id": "Starshim",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 4
+      },
+      {
+        "id": "wayne19980",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 5
+      },
+      {
+        "id": "Vermilion",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 6
+      },
+      {
+        "id": "Buqun",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 7
+      },
+      {
+        "id": "永恒帝国",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 8
+      },
+      {
+        "id": "hlq",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 9
+      }
+    ],
+    "matches": [
+      {
+        "round": 4,
+        "position": 1,
+        "player1_id": "永恒帝国",
+        "player2_id": "hlq",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "hlq",
+        "status": "completed"
+      },
+      {
+        "round": 3,
+        "position": 4,
+        "player1_id": "Tox1c_zzz",
+        "player2_id": "hlq",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "hlq",
+        "status": "completed"
+      },
+      {
+        "round": 3,
+        "position": 1,
+        "player1_id": "Starshim",
+        "player2_id": "wayne19980",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "Starshim",
+        "status": "completed"
+      },
+      {
+        "round": 3,
+        "position": 2,
+        "player1_id": "napusi",
+        "player2_id": "Buqun",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "napusi",
+        "status": "completed"
+      },
+      {
+        "round": 3,
+        "position": 3,
+        "player1_id": "白羽折风",
+        "player2_id": "Vermilion",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "白羽折风",
+        "status": "completed"
+      },
+      {
+        "round": 2,
+        "position": 2,
+        "player1_id": "hlq",
+        "player2_id": "Starshim",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "Starshim",
+        "status": "completed"
+      },
+      {
+        "round": 2,
+        "position": 1,
+        "player1_id": "napusi",
+        "player2_id": "白羽折风",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "napusi",
+        "status": "completed"
+      },
+      {
+        "round": 1,
+        "position": 1,
+        "player1_id": "Starshim",
+        "player2_id": "napusi",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "Starshim",
+        "status": "completed"
+      }
+    ]
+  },
+  {
+    "id": "suck6",
+    "name": "SUCK#6",
+    "description": "<p>系列 Series: AX MageFans-Starcraft Ultra Chicken King</p><p>主办 Organizer: AlphaX战队星际水友群</p><p>赞助 Sponsor(s): 永恒帝国</p><p>服务器 Server: China<br></p><p>奖品 Prize pool: Pics from 内鬼酱</p><p>级别 Tier: Prank→Actor</p><p><strong>赛制 Format</strong></p><ul>\r\n<li>单淘 Single-elimination bracket</li>\r\n<li>所有比赛均Bo1 All matches are Bo1</li>\r\n<li>败者晋级 Loser of each match advance to the next round.</li>\r\n</ul><p><strong>地图池 Map Pools</strong></p><ul><li>选手可以Ban图或者限定天梯地图，不然主办随机选了 Player can specify maps to ban, or demad ladder maps. Otherwise the organizer will randomly pick from all Blizzard or GSL maps.</li></ul><p>直播 Streams</p><ul>\r\n<li>\r\n<a href=\"https://www.twitch.tv/starshimada\" rel=\"nofollow\">冰星君</a><br>\r\n</li>\r\n<li>\r\n<a href=\"https://live.bilibili.com/8250418\" rel=\"nofollow\">Wayne19980</a><br>\r\n</li>\r\n</ul><p>录像 VODS</p><ul><li>赛后放链接 Links will be available after the match</li></ul>",
+    "status": "completed",
+    "player_capacity": 16,
+    "hold_third_place": 0,
+    "scheduled_time": "2022-05-01",
+    "players": [
+      {
+        "id": "wayne19980",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 1
+      },
+      {
+        "id": "永恒帝国",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 2
+      },
+      {
+        "id": "欧布桑",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 3
+      },
+      {
+        "id": "凡道无名",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 4
+      },
+      {
+        "id": "Vermilion",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 5
+      },
+      {
+        "id": "Jerry",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 6
+      },
+      {
+        "id": "Sarutobi",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 7
+      }
+    ],
+    "matches": [
+      {
+        "round": 3,
+        "position": 1,
+        "player1_id": "凡道无名",
+        "player2_id": "Vermilion",
+        "score1": 99,
+        "score2": 0,
+        "winner_id": "凡道无名",
+        "status": "completed"
+      },
+      {
+        "round": 3,
+        "position": 2,
+        "player1_id": "永恒帝国",
+        "player2_id": "Sarutobi",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "永恒帝国",
+        "status": "completed"
+      },
+      {
+        "round": 3,
+        "position": 3,
+        "player1_id": "欧布桑",
+        "player2_id": "Jerry",
+        "score1": 99,
+        "score2": 0,
+        "winner_id": "欧布桑",
+        "status": "completed"
+      },
+      {
+        "round": 2,
+        "position": 1,
+        "player1_id": "wayne19980",
+        "player2_id": "凡道无名",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "凡道无名",
+        "status": "completed"
+      },
+      {
+        "round": 2,
+        "position": 2,
+        "player1_id": "永恒帝国",
+        "player2_id": "欧布桑",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "欧布桑",
+        "status": "completed"
+      },
+      {
+        "round": 1,
+        "position": 1,
+        "player1_id": "凡道无名",
+        "player2_id": "欧布桑",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "凡道无名",
+        "status": "completed"
+      }
+    ]
+  },
+  {
+    "id": "suck1",
+    "name": "SUCK##1",
+    "description": "<p>AlphaX群跨年活动，第一次的菜鸡杯！</p><p>国服，1月2日下午3点，GMT+8开始<br></p><p>BO2，平局猜拳决胜，败者晋级！<strike>运气也是实力的一部分</strike></p><p>奖品为内鬼酱提供的色图orGalgame</p>",
+    "status": "completed",
+    "player_capacity": 16,
+    "hold_third_place": 0,
+    "scheduled_time": "2022-01-02",
+    "players": [
+      {
+        "id": "凡道无名",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 1
+      },
+      {
+        "id": "十七者",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 2
+      },
+      {
+        "id": "Starshim",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 3
+      },
+      {
+        "id": "永恒帝国",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 4
+      },
+      {
+        "id": "wayne19980",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 5
+      },
+      {
+        "id": "白羽折风",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 6
+      },
+      {
+        "id": "Alosteros",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 7
+      },
+      {
+        "id": "台北黄先生三比零路上被ax无情击败",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 8
+      }
+    ],
+    "matches": [
+      {
+        "round": 3,
+        "position": 1,
+        "player1_id": "凡道无名",
+        "player2_id": "台北黄先生三比零路上被ax无情击败",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "台北黄先生三比零路上被ax无情击败",
+        "status": "completed"
+      },
+      {
+        "round": 3,
+        "position": 2,
+        "player1_id": "永恒帝国",
+        "player2_id": "wayne19980",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "wayne19980",
+        "status": "completed"
+      },
+      {
+        "round": 3,
+        "position": 3,
+        "player1_id": "十七者",
+        "player2_id": "Alosteros",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "Alosteros",
+        "status": "completed"
+      },
+      {
+        "round": 3,
+        "position": 4,
+        "player1_id": "Starshim",
+        "player2_id": "白羽折风",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "Starshim",
+        "status": "completed"
+      },
+      {
+        "round": 2,
+        "position": 1,
+        "player1_id": "台北黄先生三比零路上被ax无情击败",
+        "player2_id": "wayne19980",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "wayne19980",
+        "status": "completed"
+      },
+      {
+        "round": 2,
+        "position": 2,
+        "player1_id": "Alosteros",
+        "player2_id": "Starshim",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "Alosteros",
+        "status": "completed"
+      },
+      {
+        "round": 1,
+        "position": 1,
+        "player1_id": "wayne19980",
+        "player2_id": "Alosteros",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "wayne19980",
+        "status": "completed"
+      }
+    ]
+  },
+  {
+    "id": "suck5",
+    "name": "SUCK#5",
+    "description": "<p>bo1决胜，败者晋级，开局ban图，如果不ban图则由主办方随机选图（地图池从自由之翼到虚空之遗不限）</p><p>胜者奖励黄油（毕竟只有胜者晋级才会发钱）</p><p>不允许让血，自A基地等消极比赛行为。如果对比赛结果有异议则由主办方猜拳决胜，同样是败者</p><p><br></p>",
+    "status": "completed",
+    "player_capacity": 16,
+    "hold_third_place": 0,
+    "scheduled_time": "2022-03-06",
+    "players": [
+      {
+        "id": "凡道无名",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 1
+      },
+      {
+        "id": "永恒帝国",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 2
+      },
+      {
+        "id": "欧布桑",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 3
+      },
+      {
+        "id": "wayne19980",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 4
+      },
+      {
+        "id": "十七者",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 5
+      },
+      {
+        "id": "Starshim",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 6
+      },
+      {
+        "id": "Vermilion",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 7
+      },
+      {
+        "id": "JimmyPiggy",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 8
+      }
+    ],
+    "matches": [
+      {
+        "round": 3,
+        "position": 1,
+        "player1_id": "凡道无名",
+        "player2_id": "JimmyPiggy",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "凡道无名",
+        "status": "completed"
+      },
+      {
+        "round": 3,
+        "position": 2,
+        "player1_id": "wayne19980",
+        "player2_id": "十七者",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "wayne19980",
+        "status": "completed"
+      },
+      {
+        "round": 3,
+        "position": 3,
+        "player1_id": "永恒帝国",
+        "player2_id": "Vermilion",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "永恒帝国",
+        "status": "completed"
+      },
+      {
+        "round": 3,
+        "position": 4,
+        "player1_id": "欧布桑",
+        "player2_id": "Starshim",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "Starshim",
+        "status": "completed"
+      },
+      {
+        "round": 2,
+        "position": 1,
+        "player1_id": "凡道无名",
+        "player2_id": "wayne19980",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "wayne19980",
+        "status": "completed"
+      },
+      {
+        "round": 2,
+        "position": 2,
+        "player1_id": "永恒帝国",
+        "player2_id": "Starshim",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "Starshim",
+        "status": "completed"
+      },
+      {
+        "round": 1,
+        "position": 1,
+        "player1_id": "wayne19980",
+        "player2_id": "Starshim",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "Starshim",
+        "status": "completed"
+      }
+    ]
+  },
+  {
+    "id": "axsuck7",
+    "name": "SUCK#7",
+    "description": "<p>系列 Series: AX MageFans-SUCK</p><p>主办 Organizer: AlphaX战队星际水友群</p><p>赞助 Sponsor(s): 永恒帝国</p><p>服务器 Server: China<br></p><p>奖品 Prize pool: Pics from 内鬼酱</p><p>级别 Tier: 周赛 Weekly</p><p><strong>赛制 Format</strong></p><ul>\r\n<li>单淘 Single-elimination bracket</li>\r\n<li>所有比赛均Bo1 All matches are Bo1</li>\r\n<li>败者晋级 Loser of each match advance to the next round.</li>\r\n</ul><p><strong>地图池 Map Pools</strong></p><ul><li>选手可以Ban图或者限定天梯地图，不然主办随机选了 Player can specify maps to ban, or demad ladder maps. Otherwise the organizer will randomly pick from all Blizzard or GSL maps.</li></ul><p>直播 Streams</p><ul>\r\n<li>\r\n<a href=\"https://www.twitch.tv/starshimada\" target=\"_blank\" rel=\"nofollow\"><strike>冰星君</strike></a><br>\r\n</li>\r\n<li>\r\n<a href=\"https://live.bilibili.com/8250418\" target=\"_blank\" rel=\"nofollow\">Wayne19980</a><br>\r\n</li>\r\n<li><a href=\"https://live.bilibili.com/4446669\" rel=\"nofollow\">柳渊Ivy</a></li>\r\n</ul><p>录像 VODS</p><ul><li>赛后放链接 Links will be available after the match</li></ul>",
+    "status": "completed",
+    "player_capacity": 16,
+    "hold_third_place": 0,
+    "scheduled_time": "2022-05-13",
+    "players": [
+      {
+        "id": "Starshim",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 1
+      },
+      {
+        "id": "wayne19980",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 2
+      },
+      {
+        "id": "永恒帝国",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 3
+      },
+      {
+        "id": "凡道无名",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 4
+      },
+      {
+        "id": "Jerry",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 5
+      },
+      {
+        "id": "Vermilion",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 6
+      },
+      {
+        "id": "欧布桑",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 7
+      },
+      {
+        "id": "十七者",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 8
+      },
+      {
+        "id": "Buqun",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 9
+      },
+      {
+        "id": "白羽折风",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 10
+      }
+    ],
+    "matches": [
+      {
+        "round": 4,
+        "position": 1,
+        "player1_id": "十七者",
+        "player2_id": "Buqun",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "Buqun",
+        "status": "completed"
+      },
+      {
+        "round": 4,
+        "position": 2,
+        "player1_id": "欧布桑",
+        "player2_id": "白羽折风",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "欧布桑",
+        "status": "completed"
+      },
+      {
+        "round": 3,
+        "position": 3,
+        "player1_id": "Starshim",
+        "player2_id": "Buqun",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "Starshim",
+        "status": "completed"
+      },
+      {
+        "round": 3,
+        "position": 1,
+        "player1_id": "凡道无名",
+        "player2_id": "Jerry",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "凡道无名",
+        "status": "completed"
+      },
+      {
+        "round": 3,
+        "position": 4,
+        "player1_id": "wayne19980",
+        "player2_id": "欧布桑",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "欧布桑",
+        "status": "completed"
+      },
+      {
+        "round": 3,
+        "position": 2,
+        "player1_id": "永恒帝国",
+        "player2_id": "Vermilion",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "永恒帝国",
+        "status": "completed"
+      },
+      {
+        "round": 2,
+        "position": 1,
+        "player1_id": "Starshim",
+        "player2_id": "凡道无名",
+        "score1": 99,
+        "score2": 0,
+        "winner_id": "Starshim",
+        "status": "completed"
+      },
+      {
+        "round": 2,
+        "position": 2,
+        "player1_id": "欧布桑",
+        "player2_id": "永恒帝国",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "欧布桑",
+        "status": "completed"
+      },
+      {
+        "round": 1,
+        "position": 1,
+        "player1_id": "Starshim",
+        "player2_id": "欧布桑",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "Starshim",
+        "status": "completed"
+      }
+    ]
+  },
+  {
+    "id": "suck10",
+    "name": "SUCK#10",
+    "description": "<p>系列 Series: MageFans-StarCraft Ultra Chicken King</p><br><p>主办 Organizer: wayne</p><br><p>赞助 Sponsor(s): 内鬼</p><br><p>服务器 Server: China</p><br><p>奖品 Prize pool: 黑幕</p><br><p>级别 Tier: 周赛 Weekly</p><br><br><p>赛制 Format</p><br><p>败者晋级，said calculation</p><br><p>地图池 Map Pools</p><br><p>选手可以Ban图或者限定天梯地图，不然主办黑幕 Player can specify maps to ban, or demad ladder maps. Otherwise the organizer will randomly pick from all Blizzard or GSL maps.</p>",
+    "status": "completed",
+    "player_capacity": 16,
+    "hold_third_place": 0,
+    "scheduled_time": "2022-07-10",
+    "players": [
+      {
+        "id": "Jerry",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 1
+      },
+      {
+        "id": "永恒帝国",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 2
+      },
+      {
+        "id": "Sarutobi",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 3
+      },
+      {
+        "id": "wayne19980",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 4
+      },
+      {
+        "id": "十七者",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 5
+      },
+      {
+        "id": "noveco",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 6
+      },
+      {
+        "id": "Buqun",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 7
+      },
+      {
+        "id": "JerryYu",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 8
+      },
+      {
+        "id": "Vermilion",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 9
+      },
+      {
+        "id": "凡道无名",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 10
+      }
+    ],
+    "matches": [
+      {
+        "round": 3,
+        "position": 1,
+        "player1_id": null,
+        "player2_id": null,
+        "score1": 0,
+        "score2": 1,
+        "winner_id": null,
+        "status": "completed"
+      },
+      {
+        "round": 3,
+        "position": 3,
+        "player1_id": null,
+        "player2_id": null,
+        "score1": 1,
+        "score2": 0,
+        "winner_id": null,
+        "status": "completed"
+      },
+      {
+        "round": 2,
+        "position": 1,
+        "player1_id": null,
+        "player2_id": null,
+        "score1": 0,
+        "score2": 1,
+        "winner_id": null,
+        "status": "completed"
+      },
+      {
+        "round": 5,
+        "position": 1,
+        "player1_id": null,
+        "player2_id": null,
+        "score1": 0,
+        "score2": 0,
+        "winner_id": null,
+        "status": "pending"
+      },
+      {
+        "round": 6,
+        "position": 1,
+        "player1_id": null,
+        "player2_id": null,
+        "score1": 0,
+        "score2": 0,
+        "winner_id": null,
+        "status": "pending"
+      },
+      {
+        "round": 1,
+        "position": 1,
+        "player1_id": null,
+        "player2_id": null,
+        "score1": 0,
+        "score2": 0,
+        "winner_id": null,
+        "status": "pending"
+      },
+      {
+        "round": 1,
+        "position": 2,
+        "player1_id": null,
+        "player2_id": null,
+        "score1": 0,
+        "score2": 0,
+        "winner_id": null,
+        "status": "pending"
+      },
+      {
+        "round": 3,
+        "position": 2,
+        "player1_id": null,
+        "player2_id": null,
+        "score1": 0,
+        "score2": 0,
+        "winner_id": null,
+        "status": "pending"
+      },
+      {
+        "round": 3,
+        "position": 4,
+        "player1_id": null,
+        "player2_id": null,
+        "score1": 1,
+        "score2": 0,
+        "winner_id": null,
+        "status": "completed"
+      },
+      {
+        "round": 2,
+        "position": 2,
+        "player1_id": null,
+        "player2_id": null,
+        "score1": 0,
+        "score2": 0,
+        "winner_id": null,
+        "status": "pending"
+      },
+      {
+        "round": 5,
+        "position": 2,
+        "player1_id": null,
+        "player2_id": null,
+        "score1": 0,
+        "score2": 0,
+        "winner_id": null,
+        "status": "pending"
+      },
+      {
+        "round": 6,
+        "position": 2,
+        "player1_id": null,
+        "player2_id": null,
+        "score1": 0,
+        "score2": 0,
+        "winner_id": null,
+        "status": "pending"
+      },
+      {
+        "round": 1,
+        "position": 3,
+        "player1_id": null,
+        "player2_id": null,
+        "score1": 0,
+        "score2": 0,
+        "winner_id": null,
+        "status": "pending"
+      },
+      {
+        "round": 1,
+        "position": 4,
+        "player1_id": null,
+        "player2_id": null,
+        "score1": 0,
+        "score2": 0,
+        "winner_id": null,
+        "status": "pending"
+      }
+    ]
+  },
+  {
+    "id": "suck12",
+    "name": "SUCK#12",
+    "description": "<p>主办 Organizer: AlphaX战队星际水友群<br></p><br><p><strong>赛制 Format</strong></p><ul>\r\n<li>单淘 Single-elimination bracket</li>\r\n<li>所有比赛均Bo1 All matches are Bo1</li>\r\n<li>败者晋级 Loser of each match advance to the next round.</li>\r\n</ul><p><strong>地图池 Map Pools</strong></p><ul><li>选手可以Ban图或者限定天梯地图，不然主办随机选了 Player can specify maps to ban, or demad ladder maps. Otherwise the organizer will randomly pick from all Blizzard or GSL maps.</li></ul><p><strong>直播 Streams</strong></p>",
+    "status": "completed",
+    "player_capacity": 16,
+    "hold_third_place": 1,
+    "scheduled_time": "2022-09-12",
+    "players": [
+      {
+        "id": "Vermilion",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 1
+      },
+      {
+        "id": "十七者",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 2
+      },
+      {
+        "id": "凡道无名",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 3
+      },
+      {
+        "id": "Buqun",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 4
+      }
+    ],
+    "matches": [
+      {
+        "round": 2,
+        "position": 1,
+        "player1_id": "Vermilion",
+        "player2_id": "Buqun",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "Vermilion",
+        "status": "completed"
+      },
+      {
+        "round": 2,
+        "position": 2,
+        "player1_id": "十七者",
+        "player2_id": "凡道无名",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "凡道无名",
+        "status": "completed"
+      },
+      {
+        "round": 1,
+        "position": 1,
+        "player1_id": "Vermilion",
+        "player2_id": "凡道无名",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "凡道无名",
+        "status": "completed"
+      },
+      {
+        "round": 0,
+        "position": 1,
+        "player1_id": "Buqun",
+        "player2_id": "十七者",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "Buqun",
+        "status": "completed"
+      }
+    ]
+  },
+  {
+    "id": "suck31",
+    "name": "SUCK#31",
+    "description": "<h3>About</h3><p style=\"margin-bottom: 10px; color: rgb(255, 255, 255);\"><span style=\"font-weight: 700;\">主办 Organizer:</span> Wayne</p><br><p style=\"margin-bottom: 10px; color: rgb(255, 255, 255);\"><span style=\"font-weight: 700;\">服务器 Server:</span> Asia (Korea)</p><br><p style=\"margin-bottom: 10px; color: rgb(255, 255, 255);\"><span style=\"font-weight: 700;\">直播 Streams</span></p><p style=\"margin-bottom: 10px; color: rgb(255, 255, 255);\"><a href=\"http://live.bilibili.com/8250418\" rel=\"nofollow\">Wayne (Bilibili)</a></p><p style=\"display: flex; align-items: center; margin-top: 16px;\"><span style=\"font-weight: bold; font-size: 24px; line-height: 40px; margin-left: 8px;\">Rules</span></p><p style=\"margin-bottom: 10px;\"><span style=\"font-weight: 700;\">赛制 Format</span></p><ul>\n<li>单淘 Single-elimination bracket</li>\n<li>所有比赛均Bo1 All matches are Bo1</li>\n<li>败者晋级 Loser of each match advance to the next round.</li>\n</ul><p style=\"margin-bottom: 10px;\"><span style=\"font-weight: 700;\">地图池 Map Pools</span></p><ul><li>选手可以自由Ban图，不然主办随机选了 Player can specify maps to ban. Otherwise, the organizer will randomly pick from melee map pool.</li></ul>",
+    "status": "completed",
+    "player_capacity": 16,
+    "hold_third_place": 0,
+    "scheduled_time": "2025-06-26",
+    "players": [
+      {
+        "id": "老刀把子",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 1
+      },
+      {
+        "id": "hanson",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 2
+      },
+      {
+        "id": "Starshim",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 3
+      },
+      {
+        "id": "零陵上将军邢道荣",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 4
+      },
+      {
+        "id": "wayne19980",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 5
+      },
+      {
+        "id": "Vermilion",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 6
+      },
+      {
+        "id": "KotJaime1119",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 7
+      },
+      {
+        "id": "Buqun",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 8
+      },
+      {
+        "id": "Sonde5572",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 9
+      },
+      {
+        "id": "Tox1c_zzz",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 10
+      }
+    ],
+    "matches": [
+      {
+        "round": 4,
+        "position": 1,
+        "player1_id": "Buqun",
+        "player2_id": "Sonde5572",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "Buqun",
+        "status": "completed"
+      },
+      {
+        "round": 4,
+        "position": 2,
+        "player1_id": "KotJaime1119",
+        "player2_id": "Tox1c_zzz",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "Tox1c_zzz",
+        "status": "completed"
+      },
+      {
+        "round": 3,
+        "position": 3,
+        "player1_id": "老刀把子",
+        "player2_id": "Buqun",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "老刀把子",
+        "status": "completed"
+      },
+      {
+        "round": 3,
+        "position": 1,
+        "player1_id": "零陵上将军邢道荣",
+        "player2_id": "wayne19980",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "零陵上将军邢道荣",
+        "status": "completed"
+      },
+      {
+        "round": 3,
+        "position": 4,
+        "player1_id": "hanson",
+        "player2_id": "Tox1c_zzz",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "Tox1c_zzz",
+        "status": "completed"
+      },
+      {
+        "round": 3,
+        "position": 2,
+        "player1_id": "Starshim",
+        "player2_id": "Vermilion",
+        "score1": 99,
+        "score2": 0,
+        "winner_id": "Starshim",
+        "status": "completed"
+      },
+      {
+        "round": 2,
+        "position": 1,
+        "player1_id": "老刀把子",
+        "player2_id": "零陵上将军邢道荣",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "零陵上将军邢道荣",
+        "status": "completed"
+      },
+      {
+        "round": 2,
+        "position": 2,
+        "player1_id": "Tox1c_zzz",
+        "player2_id": "Starshim",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "Starshim",
+        "status": "completed"
+      },
+      {
+        "round": 1,
+        "position": 1,
+        "player1_id": "零陵上将军邢道荣",
+        "player2_id": "Starshim",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "Starshim",
+        "status": "completed"
+      }
+    ]
+  },
+  {
+    "id": "suck28",
+    "name": "SUCK#28",
+    "description": "<h3>About</h3><p style=\"margin-bottom: 10px; color: rgb(255, 255, 255);\"><span style=\"font-weight: 700;\">主办 Organizer:</span> Wayne</p><br><p style=\"margin-bottom: 10px; color: rgb(255, 255, 255);\"><span style=\"font-weight: 700;\">服务器 Server:</span> Asia (Korea)</p><br><p style=\"margin-bottom: 10px; color: rgb(255, 255, 255);\"><span style=\"font-weight: 700;\">直播 Streams</span></p><p style=\"margin-bottom: 10px; color: rgb(255, 255, 255);\"><a href=\"http://live.bilibili.com/8250418\" rel=\"nofollow\">Wayne (Bilibili)</a></p><p style=\"display: flex; align-items: center; margin-top: 16px;\"><span style=\"font-weight: bold; font-size: 24px; line-height: 40px; margin-left: 8px;\">Rules</span></p><p style=\"margin-bottom: 10px;\"><span style=\"font-weight: 700;\">赛制 Format</span></p><ul>\r\n<li>单淘 Single-elimination bracket</li>\r\n<li>所有比赛均Bo1 All matches are Bo1</li>\r\n<li>败者晋级 Loser of each match advance to the next round.</li>\r\n</ul><p style=\"margin-bottom: 10px;\"><span style=\"font-weight: 700;\">地图池 Map Pools</span></p><ul><li>选手可以自由Ban图，不然主办随机选了 Player can specify maps to ban. Otherwise, the organizer will randomly pick from melee map pool.</li></ul>",
+    "status": "completed",
+    "player_capacity": 16,
+    "hold_third_place": 0,
+    "scheduled_time": "2025-01-01",
+    "players": [
+      {
+        "id": "十七者",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 1
+      },
+      {
+        "id": "wayne19980",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 2
+      },
+      {
+        "id": "Buqun",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 3
+      },
+      {
+        "id": "Starshim",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 4
+      },
+      {
+        "id": "hlq",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 5
+      },
+      {
+        "id": "Vermilion",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 6
+      }
+    ],
+    "matches": [
+      {
+        "round": 3,
+        "position": 1,
+        "player1_id": "Starshim",
+        "player2_id": "hlq",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "Starshim",
+        "status": "completed"
+      },
+      {
+        "round": 3,
+        "position": 2,
+        "player1_id": "Buqun",
+        "player2_id": "Vermilion",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "Buqun",
+        "status": "completed"
+      },
+      {
+        "round": 2,
+        "position": 1,
+        "player1_id": "十七者",
+        "player2_id": "Starshim",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "Starshim",
+        "status": "completed"
+      },
+      {
+        "round": 2,
+        "position": 2,
+        "player1_id": "wayne19980",
+        "player2_id": "Buqun",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "Buqun",
+        "status": "completed"
+      },
+      {
+        "round": 1,
+        "position": 1,
+        "player1_id": "Starshim",
+        "player2_id": "Buqun",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "Starshim",
+        "status": "completed"
+      }
+    ]
+  },
+  {
+    "id": "suck15",
+    "name": "SUCK##15",
+    "description": "<p>主办 Organizer: AlphaX战队星际水友群<br></p><br><p><strong>赛制 Format</strong></p><ul>\r\n<li>单淘 Single-elimination bracket</li>\r\n<li>所有比赛均Bo1 All matches are Bo1</li>\r\n<li>败者晋级 Loser of each match advance to the next round.</li>\r\n</ul><p><strong>地图池 Map Pools</strong></p><ul><li>选手可以Ban图或者限定天梯地图，不然主办随机选了 Player can specify maps to ban or demand ladder maps. Otherwise, the organizer will randomly pick from all Blizzard or GSL maps.</li></ul><p><strong>直播 Streams(TBD)</strong></p><p></p><ul><li><strong><a href=\"twitch.tv/starshimada\" rel=\"nofollow\">冰星(Twitch)</a></strong></li></ul>",
+    "status": "completed",
+    "player_capacity": 16,
+    "hold_third_place": 0,
+    "scheduled_time": "2022-11-27",
+    "players": [
+      {
+        "id": "Jerry",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 1
+      },
+      {
+        "id": "wayne19980",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 2
+      },
+      {
+        "id": "Starshim",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 3
+      },
+      {
+        "id": "Sarutobi",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 4
+      },
+      {
+        "id": "Buqun",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 5
+      },
+      {
+        "id": "ciwomuli",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 6
+      },
+      {
+        "id": "十七者",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 7
+      },
+      {
+        "id": "Vermilion",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 8
+      }
+    ],
+    "matches": [
+      {
+        "round": 3,
+        "position": 1,
+        "player1_id": "Jerry",
+        "player2_id": "Vermilion",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "Vermilion",
+        "status": "completed"
+      },
+      {
+        "round": 3,
+        "position": 2,
+        "player1_id": "Sarutobi",
+        "player2_id": "Buqun",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "Sarutobi",
+        "status": "completed"
+      },
+      {
+        "round": 3,
+        "position": 3,
+        "player1_id": "wayne19980",
+        "player2_id": "十七者",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "wayne19980",
+        "status": "completed"
+      },
+      {
+        "round": 3,
+        "position": 4,
+        "player1_id": "Starshim",
+        "player2_id": "ciwomuli",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "Starshim",
+        "status": "completed"
+      },
+      {
+        "round": 2,
+        "position": 1,
+        "player1_id": "Vermilion",
+        "player2_id": "Sarutobi",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "Vermilion",
+        "status": "completed"
+      },
+      {
+        "round": 2,
+        "position": 2,
+        "player1_id": "wayne19980",
+        "player2_id": "Starshim",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "Starshim",
+        "status": "completed"
+      },
+      {
+        "round": 1,
+        "position": 1,
+        "player1_id": "Vermilion",
+        "player2_id": "Starshim",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "Vermilion",
+        "status": "completed"
+      }
+    ]
+  },
+  {
+    "id": "suck16",
+    "name": "SUCK##16",
+    "description": "<p>主办 Organizer: AlphaX战队星际水友群<br></p><br><p><strong>赛制 Format</strong></p><ul>\r\n<li>单淘 Single-elimination bracket</li>\r\n<li>所有比赛均Bo1 All matches are Bo1</li>\r\n<li>败者晋级 Loser of each match advance to the next round.</li>\r\n</ul><p><strong>平衡性補丁 Balance Patch</strong></p><ul><li>（待確認）</li></ul><p><strong>地图池 Map Pools</strong></p><ul><li>本次使用與IEM Katowice相同地圖，选手可以Ban图，不然主办随机选了 Player can specify maps to ban. Otherwise, the organizer will randomly pick from Maps of 2023 IEM Katowice.</li></ul><p><strong>直播 Streams(TBD)</strong></p><ul><li><strong><a href=\"https://challonge.com/zh_CN/twitch.tv/starshimada\" target=\"_blank\" rel=\"nofollow\">冰星(Twitch)</a></strong></li></ul>",
+    "status": "completed",
+    "player_capacity": 16,
+    "hold_third_place": 0,
+    "scheduled_time": "2023-01-15",
+    "players": [
+      {
+        "id": "凡道无名",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 1
+      },
+      {
+        "id": "Starshim",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 2
+      },
+      {
+        "id": "欧布桑",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 3
+      },
+      {
+        "id": "Vermilion",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 4
+      },
+      {
+        "id": "Buqun",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 5
+      },
+      {
+        "id": "ByuN小迷弟",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 6
+      },
+      {
+        "id": "平陵",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 7
+      },
+      {
+        "id": "wayne19980",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 8
+      },
+      {
+        "id": "ciwomuli",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 9
+      },
+      {
+        "id": "十七者",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 10
+      }
+    ],
+    "matches": [
+      {
+        "round": 4,
+        "position": 1,
+        "player1_id": "wayne19980",
+        "player2_id": "ciwomuli",
+        "score1": 99,
+        "score2": 0,
+        "winner_id": "wayne19980",
+        "status": "completed"
+      },
+      {
+        "round": 4,
+        "position": 2,
+        "player1_id": "平陵",
+        "player2_id": "十七者",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "平陵",
+        "status": "completed"
+      },
+      {
+        "round": 3,
+        "position": 3,
+        "player1_id": "凡道无名",
+        "player2_id": "wayne19980",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "凡道无名",
+        "status": "completed"
+      },
+      {
+        "round": 3,
+        "position": 1,
+        "player1_id": "Vermilion",
+        "player2_id": "Buqun",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "Buqun",
+        "status": "completed"
+      },
+      {
+        "round": 3,
+        "position": 4,
+        "player1_id": "Starshim",
+        "player2_id": "平陵",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "Starshim",
+        "status": "completed"
+      },
+      {
+        "round": 3,
+        "position": 2,
+        "player1_id": "欧布桑",
+        "player2_id": "ByuN小迷弟",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "欧布桑",
+        "status": "completed"
+      },
+      {
+        "round": 2,
+        "position": 1,
+        "player1_id": "凡道无名",
+        "player2_id": "Buqun",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "凡道无名",
+        "status": "completed"
+      },
+      {
+        "round": 2,
+        "position": 2,
+        "player1_id": "Starshim",
+        "player2_id": "欧布桑",
+        "score1": 99,
+        "score2": 0,
+        "winner_id": "Starshim",
+        "status": "completed"
+      },
+      {
+        "round": 1,
+        "position": 1,
+        "player1_id": "凡道无名",
+        "player2_id": "Starshim",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "Starshim",
+        "status": "completed"
+      }
+    ]
+  },
+  {
+    "id": "suck2",
+    "name": "SUCK#2",
+    "description": "<p>AlphaX群菜鸡杯#2</p><p>时间：1月15日晚8点，GMT+8国服</p><p>赛制：单淘，BO1，败者晋级</p><p>奖品：内鬼酱的色图= =</p><p>BP：双方商定BAN图，剩下的天梯图摇号</p>",
+    "status": "completed",
+    "player_capacity": 16,
+    "hold_third_place": 0,
+    "scheduled_time": "2022-01-15",
+    "players": [
+      {
+        "id": "wayne19980",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 1
+      },
+      {
+        "id": "ByuN小迷弟",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 2
+      },
+      {
+        "id": "十七者",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 3
+      },
+      {
+        "id": "Vermilion",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 4
+      },
+      {
+        "id": "Starshim",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 5
+      },
+      {
+        "id": "永恒帝国",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 6
+      }
+    ],
+    "matches": [
+      {
+        "round": 3,
+        "position": 1,
+        "player1_id": "Vermilion",
+        "player2_id": "Starshim",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "Starshim",
+        "status": "completed"
+      },
+      {
+        "round": 3,
+        "position": 2,
+        "player1_id": "十七者",
+        "player2_id": "永恒帝国",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "永恒帝国",
+        "status": "completed"
+      },
+      {
+        "round": 2,
+        "position": 1,
+        "player1_id": "wayne19980",
+        "player2_id": "Starshim",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "Starshim",
+        "status": "completed"
+      },
+      {
+        "round": 2,
+        "position": 2,
+        "player1_id": "ByuN小迷弟",
+        "player2_id": "永恒帝国",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "永恒帝国",
+        "status": "completed"
+      },
+      {
+        "round": 1,
+        "position": 1,
+        "player1_id": "Starshim",
+        "player2_id": "永恒帝国",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "Starshim",
+        "status": "completed"
+      }
+    ]
+  },
+  {
+    "id": "suck13",
+    "name": "SUCK##13",
+    "description": "<p>主办 Organizer: AlphaX战队星际水友群<br></p><br><p><strong>赛制 Format</strong></p><ul>\r\n<li>单淘 Single-elimination bracket</li>\r\n<li>所有比赛均Bo1 All matches are Bo1</li>\r\n<li>败者晋级 Loser of each match advance to the next round.</li>\r\n</ul><p><strong>地图池 Map Pools</strong></p><ul><li>选手可以Ban图或者限定天梯地图，不然主办随机选了 Player can specify maps to ban, or demad ladder maps. Otherwise the organizer will randomly pick from all Blizzard or GSL maps.</li></ul>",
+    "status": "completed",
+    "player_capacity": 16,
+    "hold_third_place": 0,
+    "scheduled_time": "2022-10-03",
+    "players": [
+      {
+        "id": "Vermilion",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 1
+      },
+      {
+        "id": "Buqun",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 2
+      },
+      {
+        "id": "wayne19980",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 3
+      },
+      {
+        "id": "凡道无名",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 4
+      },
+      {
+        "id": "Jerry",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 5
+      },
+      {
+        "id": "十七者",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 6
+      }
+    ],
+    "matches": [
+      {
+        "round": 3,
+        "position": 1,
+        "player1_id": "凡道无名",
+        "player2_id": "Jerry",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "Jerry",
+        "status": "completed"
+      },
+      {
+        "round": 3,
+        "position": 2,
+        "player1_id": "wayne19980",
+        "player2_id": "十七者",
+        "score1": 0,
+        "score2": 99,
+        "winner_id": "十七者",
+        "status": "completed"
+      },
+      {
+        "round": 2,
+        "position": 1,
+        "player1_id": "Vermilion",
+        "player2_id": "Jerry",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "Vermilion",
+        "status": "completed"
+      },
+      {
+        "round": 2,
+        "position": 2,
+        "player1_id": "Buqun",
+        "player2_id": "十七者",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "Buqun",
+        "status": "completed"
+      },
+      {
+        "round": 1,
+        "position": 1,
+        "player1_id": "Vermilion",
+        "player2_id": "Buqun",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "Vermilion",
+        "status": "completed"
+      }
+    ]
+  },
+  {
+    "id": "suck17",
+    "name": "SUCK##17",
+    "description": "<p><strong>主办 Organizer:</strong> AlphaX战队星际水友群<br></p><p><strong><br></strong></p><p><strong>服务器 Server:</strong> Asia (Korea)<br></p><br><p><strong>赛制 Format</strong></p><ul>\r\n<li>单淘 Single-elimination bracket</li>\r\n<li>所有比赛均Bo1 All matches are Bo1</li>\r\n<li>败者晋级 Loser of each match advance to the next round.</li>\r\n</ul><p><strong>地图池 Map Pools</strong></p><ul><li>本次使用與IEM Katowice相同地圖，选手可以Ban图，不然主办随机选了 Player can specify maps to ban. Otherwise, the organizer will randomly pick from Maps of 2023 IEM Katowice.</li></ul><p><strong>直播 Streams(TBD)</strong></p><ul><li><strong><a href=\"https://challonge.com/zh_CN/twitch.tv/starshimada\" target=\"_blank\" rel=\"nofollow\">冰星(Twitch)</a></strong></li></ul>",
+    "status": "completed",
+    "player_capacity": 16,
+    "hold_third_place": 0,
+    "scheduled_time": "2023-01-26",
+    "players": [
+      {
+        "id": "Starshim",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 1
+      },
+      {
+        "id": "JimmyPiggy",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 2
+      },
+      {
+        "id": "十七者",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 3
+      },
+      {
+        "id": "Buqun",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 4
+      },
+      {
+        "id": "Vermilion",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 5
+      },
+      {
+        "id": "Jerry",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 6
+      },
+      {
+        "id": "Sarutobi",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 7
+      },
+      {
+        "id": "wayne19980",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 8
+      },
+      {
+        "id": "ciwomuli",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 9
+      }
+    ],
+    "matches": [
+      {
+        "round": 4,
+        "position": 1,
+        "player1_id": "wayne19980",
+        "player2_id": "ciwomuli",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "ciwomuli",
+        "status": "completed"
+      },
+      {
+        "round": 3,
+        "position": 4,
+        "player1_id": "Starshim",
+        "player2_id": "ciwomuli",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "Starshim",
+        "status": "completed"
+      },
+      {
+        "round": 3,
+        "position": 1,
+        "player1_id": "Buqun",
+        "player2_id": "Vermilion",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "Vermilion",
+        "status": "completed"
+      },
+      {
+        "round": 3,
+        "position": 2,
+        "player1_id": "JimmyPiggy",
+        "player2_id": "Sarutobi",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "JimmyPiggy",
+        "status": "completed"
+      },
+      {
+        "round": 3,
+        "position": 3,
+        "player1_id": "十七者",
+        "player2_id": "Jerry",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "十七者",
+        "status": "completed"
+      },
+      {
+        "round": 2,
+        "position": 2,
+        "player1_id": "Starshim",
+        "player2_id": "Vermilion",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "Starshim",
+        "status": "completed"
+      },
+      {
+        "round": 2,
+        "position": 1,
+        "player1_id": "JimmyPiggy",
+        "player2_id": "十七者",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "十七者",
+        "status": "completed"
+      },
+      {
+        "round": 1,
+        "position": 1,
+        "player1_id": "Starshim",
+        "player2_id": "十七者",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "Starshim",
+        "status": "completed"
+      }
+    ]
+  },
+  {
+    "id": "suck14",
+    "name": "SUCK##14",
+    "description": "<p>\r\n</p><p>主办 Organizer: AlphaX战队星际水友群<br></p><br><p><strong>赛制 Format</strong></p><ul>\r\n<li>单淘 Single-elimination bracket</li>\r\n<li>所有比赛均Bo1 All matches are Bo1</li>\r\n<li>败者晋级 Loser of each match advance to the next round.</li>\r\n</ul><p><strong>地图池 Map Pools</strong></p><ul><li>选手可以Ban图或者限定天梯地图，不然主办随机选了\r\n Player can specify maps to ban, or demad ladder maps. Otherwise the \r\norganizer will randomly pick from all Blizzard or GSL maps.</li></ul>\r\n",
+    "status": "completed",
+    "player_capacity": 16,
+    "hold_third_place": 0,
+    "scheduled_time": "2022-10-23",
+    "players": [
+      {
+        "id": "Looper",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 1
+      },
+      {
+        "id": "wayne19980",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 2
+      },
+      {
+        "id": "Vermilion",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 3
+      },
+      {
+        "id": "Jerry",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 4
+      },
+      {
+        "id": "Buqun",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 5
+      },
+      {
+        "id": "Starshim",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 6
+      }
+    ],
+    "matches": [
+      {
+        "round": 3,
+        "position": 1,
+        "player1_id": "Jerry",
+        "player2_id": "Buqun",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "Jerry",
+        "status": "completed"
+      },
+      {
+        "round": 3,
+        "position": 2,
+        "player1_id": "Vermilion",
+        "player2_id": "Starshim",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "Vermilion",
+        "status": "completed"
+      },
+      {
+        "round": 2,
+        "position": 1,
+        "player1_id": "Looper",
+        "player2_id": "Jerry",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "Looper",
+        "status": "completed"
+      },
+      {
+        "round": 2,
+        "position": 2,
+        "player1_id": "wayne19980",
+        "player2_id": "Vermilion",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "Vermilion",
+        "status": "completed"
+      },
+      {
+        "round": 1,
+        "position": 1,
+        "player1_id": "Looper",
+        "player2_id": "Vermilion",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "Looper",
+        "status": "completed"
+      }
+    ]
+  },
+  {
+    "id": "suck8",
+    "name": "SUCK#8",
+    "description": "<p>系列 Series: AX MageFans-StarCraft Ultra Chicken King</p><p>主办 Organizer: AlphaX战队星际水友群</p><p>赞助 Sponsor(s): 永恒帝国</p><p>服务器 Server: China/ Korea(if needed)<br></p><p>奖品 Prize pool: Pics from 内鬼酱</p><p>级别 Tier: 周赛 Weekly</p><br><p><strong>赛制 Format</strong></p><ul>\r\n<li>单淘 Single-elimination bracket</li>\r\n<li>所有比赛均Bo1 All matches are Bo1</li>\r\n<li>败者晋级 Loser of each match advance to the next round.</li>\r\n</ul><p><strong>地图池 Map Pools</strong></p><ul><li>选手可以Ban图或者限定天梯地图，不然主办随机选了 Player can specify maps to ban, or demad ladder maps. Otherwise the organizer will randomly pick from all Blizzard or GSL maps.</li></ul><p><strong>直播 Streams</strong></p><ul>\r\n<li>\r\n<a href=\"https://www.twitch.tv/starshimada\" target=\"_blank\" rel=\"nofollow\">冰星君</a><br>\r\n</li>\r\n<li>\r\n<a href=\"https://live.bilibili.com/8250418\" target=\"_blank\" rel=\"nofollow\">Wayne19980</a><br>\r\n</li>\r\n<li><a href=\"https://live.bilibili.com/4446669\" target=\"_blank\" rel=\"nofollow\">柳渊Ivy</a></li>\r\n</ul><p><strong>录像 VODS</strong></p><ul><li>赛后放链接 Links will be available after the match</li></ul>",
+    "status": "completed",
+    "player_capacity": 16,
+    "hold_third_place": 0,
+    "scheduled_time": "2022-05-28",
+    "players": [
+      {
+        "id": "Starshim",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 1
+      },
+      {
+        "id": "wayne19980",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 2
+      },
+      {
+        "id": "欧布桑",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 3
+      },
+      {
+        "id": "十七者",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 4
+      },
+      {
+        "id": "Buqun",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 5
+      },
+      {
+        "id": "Vermilion",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 6
+      },
+      {
+        "id": "凡道无名",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 7
+      },
+      {
+        "id": "EthanCheung",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 8
+      },
+      {
+        "id": "白羽折风",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 9
+      }
+    ],
+    "matches": [
+      {
+        "round": 4,
+        "position": 1,
+        "player1_id": "EthanCheung",
+        "player2_id": "白羽折风",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "EthanCheung",
+        "status": "completed"
+      },
+      {
+        "round": 3,
+        "position": 4,
+        "player1_id": "Starshim",
+        "player2_id": "EthanCheung",
+        "score1": 0,
+        "score2": 99,
+        "winner_id": "EthanCheung",
+        "status": "completed"
+      },
+      {
+        "round": 3,
+        "position": 1,
+        "player1_id": "十七者",
+        "player2_id": "Buqun",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "Buqun",
+        "status": "completed"
+      },
+      {
+        "round": 3,
+        "position": 2,
+        "player1_id": "wayne19980",
+        "player2_id": "凡道无名",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "凡道无名",
+        "status": "completed"
+      },
+      {
+        "round": 3,
+        "position": 3,
+        "player1_id": "欧布桑",
+        "player2_id": "Vermilion",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "欧布桑",
+        "status": "completed"
+      },
+      {
+        "round": 2,
+        "position": 2,
+        "player1_id": "EthanCheung",
+        "player2_id": "Buqun",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "EthanCheung",
+        "status": "completed"
+      },
+      {
+        "round": 2,
+        "position": 1,
+        "player1_id": "凡道无名",
+        "player2_id": "欧布桑",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "凡道无名",
+        "status": "completed"
+      },
+      {
+        "round": 1,
+        "position": 1,
+        "player1_id": "EthanCheung",
+        "player2_id": "凡道无名",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "凡道无名",
+        "status": "completed"
+      }
+    ]
+  },
+  {
+    "id": "suck20",
+    "name": "SUCK#20",
+    "description": "<p><strong>主办 Organizer:</strong> Wayne<br></p><p><strong><br></strong></p><p><strong>服务器 Server:</strong> Asia (Korea)<br></p><br><p><strong>赛制 Format</strong></p><ul>\r\n<li>单淘 Single-elimination bracket</li>\r\n<li>所有比赛均Bo1 All matches are Bo1</li>\r\n<li>败者晋级 Loser of each match advance to the next round.</li>\r\n</ul><p><strong>地图池 Map Pools</strong></p><ul><li>选手可以自由Ban图，不然主办随机选了 Player can specify maps to ban. Otherwise, the organizer will randomly pick from melee map pool.</li></ul><p><strong>直播 Streams</strong></p><ul><li>\r\n<a href=\"http://live.bilibili.com/8250418\" rel=\"nofollow\">Wayne (Bilibili)</a><br>\r\n</li></ul>",
+    "status": "completed",
+    "player_capacity": 16,
+    "hold_third_place": 0,
+    "scheduled_time": "2023-05-05",
+    "players": [
+      {
+        "id": "wayne19980",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 1
+      },
+      {
+        "id": "Vermilion",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 2
+      },
+      {
+        "id": "十七者",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 3
+      },
+      {
+        "id": "Buqun",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 4
+      },
+      {
+        "id": "JimmyPiggy",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 5
+      },
+      {
+        "id": "Looper",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 6
+      }
+    ],
+    "matches": [
+      {
+        "round": 3,
+        "position": 1,
+        "player1_id": "Buqun",
+        "player2_id": "JimmyPiggy",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "JimmyPiggy",
+        "status": "completed"
+      },
+      {
+        "round": 3,
+        "position": 2,
+        "player1_id": "十七者",
+        "player2_id": "Looper",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "Looper",
+        "status": "completed"
+      },
+      {
+        "round": 2,
+        "position": 1,
+        "player1_id": "wayne19980",
+        "player2_id": "JimmyPiggy",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "wayne19980",
+        "status": "completed"
+      },
+      {
+        "round": 2,
+        "position": 2,
+        "player1_id": "Vermilion",
+        "player2_id": "Looper",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "Looper",
+        "status": "completed"
+      },
+      {
+        "round": 1,
+        "position": 1,
+        "player1_id": "wayne19980",
+        "player2_id": "Looper",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "Looper",
+        "status": "completed"
+      }
+    ]
+  },
+  {
+    "id": "suck36",
+    "name": "SUCK#36",
+    "description": "<h3>About</h3><p style=\"margin-bottom: 10px; color: rgb(255, 255, 255);\"><span style=\"font-weight: 700;\">主办 Organizer:</span> Wayne</p><br><p style=\"margin-bottom: 10px; color: rgb(255, 255, 255);\"><span style=\"font-weight: 700;\">服务器 Server:</span> Asia (Korea)</p><br><p style=\"margin-bottom: 10px; color: rgb(255, 255, 255);\"><span style=\"font-weight: 700;\">直播 Streams</span></p><p style=\"margin-bottom: 10px; color: rgb(255, 255, 255);\"><a href=\"http://live.bilibili.com/8250418\" rel=\"nofollow\">Wayne (Bilibili)</a></p><p style=\"display: flex; align-items: center; margin-top: 16px;\"><span style=\"font-weight: bold; font-size: 24px; line-height: 40px; margin-left: 8px;\">Rules</span></p><p style=\"margin-bottom: 10px;\"><span style=\"font-weight: 700;\">赛制 Format</span></p><ul>\r\n<li>单淘 Single-elimination bracket</li>\r\n<li>所有比赛均Bo1 All matches are Bo1</li>\r\n<li>败者晋级 Loser of each match advance to the next round.</li>\r\n</ul><p style=\"margin-bottom: 10px;\"><span style=\"font-weight: 700;\">地图池 Map Pools</span></p><ul><li>选手可以自由Ban图，不然主办随机选了 Player can specify maps to ban. Otherwise, the organizer will randomly pick from melee map pool.</li></ul>",
+    "status": "completed",
+    "player_capacity": 16,
+    "hold_third_place": 0,
+    "scheduled_time": "2025-09-13",
+    "players": [
+      {
+        "id": "wayne19980",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 1
+      },
+      {
+        "id": "老刀把子",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 2
+      },
+      {
+        "id": "Tox1c_zzz",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 3
+      },
+      {
+        "id": "Sonde5572",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 4
+      },
+      {
+        "id": "Buqun",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 5
+      },
+      {
+        "id": "十七者",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 6
+      },
+      {
+        "id": "Starshim",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 7
+      },
+      {
+        "id": "永恒帝国",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 8
+      }
+    ],
+    "matches": [
+      {
+        "round": 3,
+        "position": 1,
+        "player1_id": "wayne19980",
+        "player2_id": "老刀把子",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "老刀把子",
+        "status": "completed"
+      },
+      {
+        "round": 3,
+        "position": 2,
+        "player1_id": "Tox1c_zzz",
+        "player2_id": "Sonde5572",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "Tox1c_zzz",
+        "status": "completed"
+      },
+      {
+        "round": 3,
+        "position": 3,
+        "player1_id": "Buqun",
+        "player2_id": "十七者",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "Buqun",
+        "status": "completed"
+      },
+      {
+        "round": 3,
+        "position": 4,
+        "player1_id": "Starshim",
+        "player2_id": "永恒帝国",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "Starshim",
+        "status": "completed"
+      },
+      {
+        "round": 2,
+        "position": 1,
+        "player1_id": "老刀把子",
+        "player2_id": "Tox1c_zzz",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "Tox1c_zzz",
+        "status": "completed"
+      },
+      {
+        "round": 2,
+        "position": 2,
+        "player1_id": "Buqun",
+        "player2_id": "Starshim",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "Starshim",
+        "status": "completed"
+      },
+      {
+        "round": 1,
+        "position": 1,
+        "player1_id": "Tox1c_zzz",
+        "player2_id": "Starshim",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "Tox1c_zzz",
+        "status": "completed"
+      }
+    ]
+  },
+  {
+    "id": "suck32",
+    "name": "SUCK#32",
+    "description": "<h3>About</h3><p style=\"margin-bottom: 10px; color: rgb(255, 255, 255);\"><span style=\"font-weight: 700;\">主办 Organizer:</span> Wayne</p><br><p style=\"margin-bottom: 10px; color: rgb(255, 255, 255);\"><span style=\"font-weight: 700;\">服务器 Server:</span> Asia (Korea)</p><br><p style=\"margin-bottom: 10px; color: rgb(255, 255, 255);\"><span style=\"font-weight: 700;\">直播 Streams</span></p><p style=\"margin-bottom: 10px; color: rgb(255, 255, 255);\"><a href=\"http://live.bilibili.com/8250418\" rel=\"nofollow\">Wayne (Bilibili)</a></p><p style=\"display: flex; align-items: center; margin-top: 16px;\"><span style=\"font-weight: bold; font-size: 24px; line-height: 40px; margin-left: 8px;\">Rules</span></p><p style=\"margin-bottom: 10px;\"><span style=\"font-weight: 700;\">赛制 Format</span></p><ul>\r\n<li>单淘 Single-elimination bracket</li>\r\n<li>所有比赛均Bo1 All matches are Bo1</li>\r\n<li>败者晋级 Loser of each match advance to the next round.</li>\r\n</ul><p style=\"margin-bottom: 10px;\"><span style=\"font-weight: 700;\">地图池 Map Pools</span></p><ul><li>选手可以自由Ban图，不然主办随机选了 Player can specify maps to ban. Otherwise, the organizer will randomly pick from melee map pool.</li></ul>",
+    "status": "completed",
+    "player_capacity": 16,
+    "hold_third_place": 0,
+    "scheduled_time": "2025-07-06",
+    "players": [
+      {
+        "id": "hanson",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 1
+      },
+      {
+        "id": "wayne19980",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 2
+      },
+      {
+        "id": "Crepuscule",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 3
+      },
+      {
+        "id": "Hsx31915",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 4
+      },
+      {
+        "id": "Vermilion",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 5
+      },
+      {
+        "id": "Sonde5572",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 6
+      },
+      {
+        "id": "老刀把子",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 7
+      },
+      {
+        "id": "零陵上将军邢道荣",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 8
+      },
+      {
+        "id": "Tox1c_zzz",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 9
+      },
+      {
+        "id": "Buqun",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 10
+      },
+      {
+        "id": "凡道无名",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 11
+      }
+    ],
+    "matches": [
+      {
+        "round": 4,
+        "position": 1,
+        "player1_id": "零陵上将军邢道荣",
+        "player2_id": "Tox1c_zzz",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "零陵上将军邢道荣",
+        "status": "completed"
+      },
+      {
+        "round": 4,
+        "position": 2,
+        "player1_id": "老刀把子",
+        "player2_id": "Buqun",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "老刀把子",
+        "status": "completed"
+      },
+      {
+        "round": 4,
+        "position": 3,
+        "player1_id": "Sonde5572",
+        "player2_id": "凡道无名",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "凡道无名",
+        "status": "completed"
+      },
+      {
+        "round": 3,
+        "position": 2,
+        "player1_id": "hanson",
+        "player2_id": "零陵上将军邢道荣",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "零陵上将军邢道荣",
+        "status": "completed"
+      },
+      {
+        "round": 3,
+        "position": 1,
+        "player1_id": "Hsx31915",
+        "player2_id": "Vermilion",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "Vermilion",
+        "status": "completed"
+      },
+      {
+        "round": 3,
+        "position": 3,
+        "player1_id": "wayne19980",
+        "player2_id": "老刀把子",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "老刀把子",
+        "status": "completed"
+      },
+      {
+        "round": 3,
+        "position": 4,
+        "player1_id": "Crepuscule",
+        "player2_id": "凡道无名",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "凡道无名",
+        "status": "completed"
+      },
+      {
+        "round": 2,
+        "position": 1,
+        "player1_id": "零陵上将军邢道荣",
+        "player2_id": "Vermilion",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "零陵上将军邢道荣",
+        "status": "completed"
+      },
+      {
+        "round": 2,
+        "position": 2,
+        "player1_id": "老刀把子",
+        "player2_id": "凡道无名",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "凡道无名",
+        "status": "completed"
+      },
+      {
+        "round": 1,
+        "position": 1,
+        "player1_id": "零陵上将军邢道荣",
+        "player2_id": "凡道无名",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "零陵上将军邢道荣",
+        "status": "completed"
+      }
+    ]
+  },
+  {
+    "id": "suck19",
+    "name": "SUCK#19",
+    "description": "<p><strong>主办 Organizer:</strong> AlphaX战队星际水友群<br></p><p><strong><br></strong></p><p><strong>服务器 Server:</strong> Asia (Korea)<br></p><br><p><strong>赛制 Format</strong></p><ul>\r\n<li>单淘 Single-elimination bracket</li>\r\n<li>所有比赛均Bo1 All matches are Bo1</li>\r\n<li>败者晋级 Loser of each match advance to the next round.</li>\r\n</ul><p><strong>地图池 Map Pools</strong></p><ul><li>选手可以自由Ban图，不然主办随机选了 Player can specify maps to ban. Otherwise, the organizer will randomly pick from Maps of 2023 IEM Katowice.</li></ul><p><strong>直播 Streams(TBD)</strong></p><ul><li><strong><a href=\"https://challonge.com/zh_CN/twitch.tv/starshimada\" target=\"_blank\" rel=\"nofollow\">冰星(Twitch)</a></strong></li></ul>",
+    "status": "completed",
+    "player_capacity": 16,
+    "hold_third_place": 0,
+    "scheduled_time": "2023-03-04",
+    "players": [
+      {
+        "id": "十七者",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 1
+      },
+      {
+        "id": "Starshim",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 2
+      },
+      {
+        "id": "Vermilion",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 3
+      },
+      {
+        "id": "wayne19980",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 4
+      },
+      {
+        "id": "Jerry",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 5
+      },
+      {
+        "id": "凡道无名",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 6
+      },
+      {
+        "id": "noveco",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 7
+      },
+      {
+        "id": "平陵",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 8
+      }
+    ],
+    "matches": [
+      {
+        "round": 3,
+        "position": 1,
+        "player1_id": "十七者",
+        "player2_id": "平陵",
+        "score1": 0,
+        "score2": 0,
+        "winner_id": "平陵",
+        "status": "completed"
+      },
+      {
+        "round": 3,
+        "position": 2,
+        "player1_id": "wayne19980",
+        "player2_id": "Jerry",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "wayne19980",
+        "status": "completed"
+      },
+      {
+        "round": 3,
+        "position": 3,
+        "player1_id": "Starshim",
+        "player2_id": "noveco",
+        "score1": 99,
+        "score2": 0,
+        "winner_id": "Starshim",
+        "status": "completed"
+      },
+      {
+        "round": 3,
+        "position": 4,
+        "player1_id": "Vermilion",
+        "player2_id": "凡道无名",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "Vermilion",
+        "status": "completed"
+      },
+      {
+        "round": 2,
+        "position": 1,
+        "player1_id": "平陵",
+        "player2_id": "wayne19980",
+        "score1": 0,
+        "score2": 99,
+        "winner_id": "wayne19980",
+        "status": "completed"
+      },
+      {
+        "round": 2,
+        "position": 2,
+        "player1_id": "Starshim",
+        "player2_id": "Vermilion",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "Starshim",
+        "status": "completed"
+      },
+      {
+        "round": 1,
+        "position": 1,
+        "player1_id": "wayne19980",
+        "player2_id": "Starshim",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "Starshim",
+        "status": "completed"
+      }
+    ]
+  },
+  {
+    "id": "suck21",
+    "name": "SUCK#21",
+    "description": "<p>#凡道離職sp</p><br><p><strong>主办 Organizer:</strong> ???<br></p><p><strong><br></strong></p><p><strong>服务器 Server:</strong> Asia (Korea)<br></p><br><p><strong>赛制 Format</strong></p><ul>\r\n<li>单淘 Single-elimination bracket</li>\r\n<li>所有比赛均Bo1 All matches are Bo1</li>\r\n<li>败者晋级 Loser of each match advance to the next round.</li>\r\n</ul><p><strong>地图池 Map Pools</strong></p><ul><li>选手可以自由Ban图，不然主办随机选了 Player can specify maps to ban. Otherwise, the organizer will randomly pick from melee map pool.</li></ul><p><strong>直播 Streams</strong></p><ul>\r\n<li><a href=\"http://live.bilibili.com/8250418\" target=\"_blank\" rel=\"nofollow\">Wayne (Bilibili)</a></li>\r\n<li>\r\n<a href=\"https://www.twitch.tv/starshimada\" rel=\"nofollow\">冰星君(Twitch)</a><br>\r\n</li>\r\n</ul>",
+    "status": "completed",
+    "player_capacity": 16,
+    "hold_third_place": 0,
+    "scheduled_time": "2024-01-18",
+    "players": [
+      {
+        "id": "十七者",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 1
+      },
+      {
+        "id": "Buqun",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 2
+      },
+      {
+        "id": "Starshim",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 3
+      },
+      {
+        "id": "Vermilion",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 4
+      },
+      {
+        "id": "wayne19980",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 5
+      }
+    ],
+    "matches": [
+      {
+        "round": 3,
+        "position": 1,
+        "player1_id": "Vermilion",
+        "player2_id": "wayne19980",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "wayne19980",
+        "status": "completed"
+      },
+      {
+        "round": 2,
+        "position": 2,
+        "player1_id": "十七者",
+        "player2_id": "wayne19980",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "wayne19980",
+        "status": "completed"
+      },
+      {
+        "round": 2,
+        "position": 1,
+        "player1_id": "Buqun",
+        "player2_id": "Starshim",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "Starshim",
+        "status": "completed"
+      },
+      {
+        "round": 1,
+        "position": 1,
+        "player1_id": "wayne19980",
+        "player2_id": "Starshim",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "Starshim",
+        "status": "completed"
+      }
+    ]
+  },
+  {
+    "id": "suck33",
+    "name": "SUCK#33",
+    "description": "<h3>About</h3><p style=\"margin-bottom: 10px; color: rgb(255, 255, 255);\"><span style=\"font-weight: 700;\">主办 Organizer:</span> Wayne</p><br><p style=\"margin-bottom: 10px; color: rgb(255, 255, 255);\"><span style=\"font-weight: 700;\">服务器 Server:</span> Asia (Korea)</p><br><p style=\"margin-bottom: 10px; color: rgb(255, 255, 255);\"><span style=\"font-weight: 700;\">直播 Streams</span></p><p style=\"margin-bottom: 10px; color: rgb(255, 255, 255);\"><a href=\"http://live.bilibili.com/8250418\" rel=\"nofollow\">Wayne (Bilibili)</a></p><p style=\"display: flex; align-items: center; margin-top: 16px;\"><span style=\"font-weight: bold; font-size: 24px; line-height: 40px; margin-left: 8px;\">Rules</span></p><p style=\"margin-bottom: 10px;\"><span style=\"font-weight: 700;\">赛制 Format</span></p><ul>\r\n<li>单淘 Single-elimination bracket</li>\r\n<li>所有比赛均Bo1 All matches are Bo1</li>\r\n<li>败者晋级 Loser of each match advance to the next round.</li>\r\n</ul><p style=\"margin-bottom: 10px;\"><span style=\"font-weight: 700;\">地图池 Map Pools</span></p><ul><li>选手可以自由Ban图，不然主办随机选了 Player can specify maps to ban. Otherwise, the organizer will randomly pick from melee map pool.</li></ul>",
+    "status": "completed",
+    "player_capacity": 16,
+    "hold_third_place": 0,
+    "scheduled_time": "2025-07-11",
+    "players": [
+      {
+        "id": "Buqun",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 1
+      },
+      {
+        "id": "老刀把子",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 2
+      },
+      {
+        "id": "hanson",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 3
+      },
+      {
+        "id": "Sonde5572",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 4
+      },
+      {
+        "id": "Crepuscule",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 5
+      },
+      {
+        "id": "wayne19980",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 6
+      },
+      {
+        "id": "Starshim",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 7
+      },
+      {
+        "id": "lh4921",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 8
+      },
+      {
+        "id": "Vermilion",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 9
+      },
+      {
+        "id": "Hsx31915",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 10
+      },
+      {
+        "id": "Tox1c_zzz",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 11
+      }
+    ],
+    "matches": [
+      {
+        "round": 4,
+        "position": 1,
+        "player1_id": "lh4921",
+        "player2_id": "Vermilion",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "Vermilion",
+        "status": "completed"
+      },
+      {
+        "round": 4,
+        "position": 2,
+        "player1_id": "Starshim",
+        "player2_id": "Hsx31915",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "Starshim",
+        "status": "completed"
+      },
+      {
+        "round": 4,
+        "position": 3,
+        "player1_id": "wayne19980",
+        "player2_id": "Tox1c_zzz",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "Tox1c_zzz",
+        "status": "completed"
+      },
+      {
+        "round": 3,
+        "position": 2,
+        "player1_id": "Buqun",
+        "player2_id": "Vermilion",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "Buqun",
+        "status": "completed"
+      },
+      {
+        "round": 3,
+        "position": 1,
+        "player1_id": "Sonde5572",
+        "player2_id": "Crepuscule",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "Sonde5572",
+        "status": "completed"
+      },
+      {
+        "round": 3,
+        "position": 3,
+        "player1_id": "老刀把子",
+        "player2_id": "Starshim",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "Starshim",
+        "status": "completed"
+      },
+      {
+        "round": 3,
+        "position": 4,
+        "player1_id": "hanson",
+        "player2_id": "Tox1c_zzz",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "Tox1c_zzz",
+        "status": "completed"
+      },
+      {
+        "round": 2,
+        "position": 1,
+        "player1_id": "Buqun",
+        "player2_id": "Sonde5572",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "Buqun",
+        "status": "completed"
+      },
+      {
+        "round": 2,
+        "position": 2,
+        "player1_id": "Starshim",
+        "player2_id": "Tox1c_zzz",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "Tox1c_zzz",
+        "status": "completed"
+      },
+      {
+        "round": 1,
+        "position": 1,
+        "player1_id": "Buqun",
+        "player2_id": "Tox1c_zzz",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "Tox1c_zzz",
+        "status": "completed"
+      }
+    ]
+  },
+  {
+    "id": "suck22",
+    "name": "SUCK#22",
+    "description": "<h3>About</h3><p style=\"border-left: 2px solid rgb(27, 33, 58); padding: 0px 16px 16px; word-break: break-word; font-family: Inter; margin-top: 10px !important;\"></p><p></p><p style=\"margin-bottom: 10px; color: rgb(255, 255, 255);\"><span style=\"font-weight: 700;\">主办 Organizer:</span> Wayne</p><br><p style=\"margin-bottom: 10px; color: rgb(255, 255, 255);\"><span style=\"font-weight: 700;\">服务器 Server:</span> Asia (Korea)</p><br><p style=\"margin-bottom: 10px; color: rgb(255, 255, 255);\"><span style=\"font-weight: 700;\">直播 Streams</span></p><p style=\"margin-bottom: 10px; color: rgb(255, 255, 255);\"><a href=\"http://live.bilibili.com/8250418\" rel=\"nofollow\">Wayne (Bilibili)</a></p><p style=\"margin-top: 16px; font-family: Inter;\"></p><p style=\"display: flex; align-items: center; margin-top: 16px;\"><span style=\"font-weight: bold; font-size: 24px; line-height: 40px; margin-left: 8px;\">Rules</span></p><p style=\"padding: 0px 16px 16px; border-left: 2px solid rgb(27, 33, 58); word-break: break-word;\"></p><p></p><p style=\"margin-bottom: 10px;\"><span style=\"font-weight: 700;\">赛制 Format</span></p><ul>\r\n<li>单淘 Single-elimination bracket</li>\r\n<li>所有比赛均Bo1 All matches are Bo1</li>\r\n<li>败者晋级 Loser of each match advance to the next round.</li>\r\n</ul><p style=\"margin-bottom: 10px;\"><span style=\"font-weight: 700;\">地图池 Map Pools</span></p><ul><li>选手可以自由Ban图，不然主办随机选了 Player can specify maps to ban. Otherwise, the organizer will randomly pick from melee map pool.</li></ul><br>",
+    "status": "completed",
+    "player_capacity": 16,
+    "hold_third_place": 0,
+    "scheduled_time": "2023-12-15",
+    "players": [
+      {
+        "id": "Buqun",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 1
+      },
+      {
+        "id": "零陵上将军邢道荣",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 2
+      },
+      {
+        "id": "十七者",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 3
+      },
+      {
+        "id": "wayne19980",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 4
+      },
+      {
+        "id": "Vermilion",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 5
+      },
+      {
+        "id": "Starshim",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 6
+      },
+      {
+        "id": "永恒帝国",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 7
+      },
+      {
+        "id": "凡道无名",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 8
+      }
+    ],
+    "matches": [
+      {
+        "round": 3,
+        "position": 1,
+        "player1_id": "Buqun",
+        "player2_id": "凡道无名",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "凡道无名",
+        "status": "completed"
+      },
+      {
+        "round": 3,
+        "position": 2,
+        "player1_id": "wayne19980",
+        "player2_id": "Vermilion",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "Vermilion",
+        "status": "completed"
+      },
+      {
+        "round": 3,
+        "position": 3,
+        "player1_id": "零陵上将军邢道荣",
+        "player2_id": "永恒帝国",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "零陵上将军邢道荣",
+        "status": "completed"
+      },
+      {
+        "round": 3,
+        "position": 4,
+        "player1_id": "十七者",
+        "player2_id": "Starshim",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "Starshim",
+        "status": "completed"
+      },
+      {
+        "round": 2,
+        "position": 1,
+        "player1_id": "凡道无名",
+        "player2_id": "Vermilion",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "凡道无名",
+        "status": "completed"
+      },
+      {
+        "round": 2,
+        "position": 2,
+        "player1_id": "零陵上将军邢道荣",
+        "player2_id": "Starshim",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "Starshim",
+        "status": "completed"
+      },
+      {
+        "round": 1,
+        "position": 1,
+        "player1_id": "凡道无名",
+        "player2_id": "Starshim",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "Starshim",
+        "status": "completed"
+      }
+    ]
+  },
+  {
+    "id": "suck25",
+    "name": "SUCK#25",
+    "description": "<p style=\"margin-bottom: 10px; background-color: rgb(50, 50, 50); color: rgb(255, 255, 255);\"><span style=\"font-weight: 700;\">主办 Organizer:</span> Wayne, starshim</p><br><p style=\"margin-bottom: 10px; background-color: rgb(50, 50, 50); color: rgb(255, 255, 255);\"><span style=\"font-weight: 700;\">服务器 Server:</span> Asia (Korea)</p><br><p style=\"margin-bottom: 10px; background-color: rgb(50, 50, 50); color: rgb(255, 255, 255);\"><span style=\"font-weight: 700;\">直播 Streams</span></p><p style=\"margin-bottom: 10px; background-color: rgb(50, 50, 50); color: rgb(255, 255, 255);\"><a href=\"http://live.bilibili.com/8250418\" target=\"_blank\" rel=\"nofollow\">Wayne (Bilibili)</a></p><p style=\"margin-bottom: 10px; background-color: rgb(50, 50, 50); color: rgb(255, 255, 255);\"><a href=\"https://www.twitch.tv/starshimada\" rel=\"nofollow\">冰星(Twitch)</a><br></p><p style=\"margin-top: 16px; background-color: rgb(50, 50, 50); display: flex; align-items: center;\"><span style=\"font-weight: bold; font-size: 24px; line-height: 40px; margin-left: 8px;\">Rules</span></p><p style=\"margin-bottom: 10px; background-color: rgb(50, 50, 50);\"><span style=\"font-weight: 700;\">赛制 Format</span></p><ul>\r\n<li>单淘 Single-elimination bracket</li>\r\n<li>所有比赛均Bo1 All matches are Bo1</li>\r\n<li>败者晋级 Loser of each match advance to the next round.</li>\r\n</ul><p style=\"margin-bottom: 10px; background-color: rgb(50, 50, 50);\"><span style=\"font-weight: 700;\">地图池 Map Pools</span></p><ul><li>选手可以自由Ban图，不然主办随机选了 Player can specify maps to ban. Otherwise, the organizer will randomly pick from melee map pool.<br>\r\n</li></ul>",
+    "status": "completed",
+    "player_capacity": 16,
+    "hold_third_place": 0,
+    "scheduled_time": "2024-09-20",
+    "players": [
+      {
+        "id": "Tox1c_zzz",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 1
+      },
+      {
+        "id": "永恒帝国",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 2
+      },
+      {
+        "id": "Buqun",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 3
+      },
+      {
+        "id": "Starshim",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 4
+      },
+      {
+        "id": "十七者",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 5
+      },
+      {
+        "id": "Vermilion",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 6
+      },
+      {
+        "id": "wayne19980",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 7
+      }
+    ],
+    "matches": [
+      {
+        "round": 3,
+        "position": 1,
+        "player1_id": "Starshim",
+        "player2_id": "十七者",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "Starshim",
+        "status": "completed"
+      },
+      {
+        "round": 3,
+        "position": 2,
+        "player1_id": "永恒帝国",
+        "player2_id": "wayne19980",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "永恒帝国",
+        "status": "completed"
+      },
+      {
+        "round": 3,
+        "position": 3,
+        "player1_id": "Buqun",
+        "player2_id": "Vermilion",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "Vermilion",
+        "status": "completed"
+      },
+      {
+        "round": 2,
+        "position": 1,
+        "player1_id": "Tox1c_zzz",
+        "player2_id": "Starshim",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "Starshim",
+        "status": "completed"
+      },
+      {
+        "round": 2,
+        "position": 2,
+        "player1_id": "永恒帝国",
+        "player2_id": "Vermilion",
+        "score1": 99,
+        "score2": 0,
+        "winner_id": "永恒帝国",
+        "status": "completed"
+      },
+      {
+        "round": 1,
+        "position": 1,
+        "player1_id": "Starshim",
+        "player2_id": "永恒帝国",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "Starshim",
+        "status": "completed"
+      }
+    ]
+  },
+  {
+    "id": "suck26",
+    "name": "SUCK#26",
+    "description": "<h3>About</h3><p style=\"margin-bottom: 10px; color: rgb(255, 255, 255);\"><span style=\"font-weight: 700;\">主办 Organizer:</span> Wayne</p><br><p style=\"margin-bottom: 10px; color: rgb(255, 255, 255);\"><span style=\"font-weight: 700;\">服务器 Server:</span> Asia (Korea)</p><br><p style=\"margin-bottom: 10px; color: rgb(255, 255, 255);\"><span style=\"font-weight: 700;\">直播 Streams</span></p><p style=\"margin-bottom: 10px; color: rgb(255, 255, 255);\"><a href=\"http://live.bilibili.com/8250418\" rel=\"nofollow\">Wayne (Bilibili)</a></p><p style=\"display: flex; align-items: center; margin-top: 16px;\"><span style=\"font-weight: bold; font-size: 24px; line-height: 40px; margin-left: 8px;\">Rules</span></p><p style=\"margin-bottom: 10px;\"><span style=\"font-weight: 700;\">赛制 Format</span></p><ul>\n<li>单淘 Single-elimination bracket</li>\n<li>所有比赛均Bo1 All matches are Bo1</li>\n<li>败者晋级 Loser of each match advance to the next round.</li>\n</ul><p style=\"margin-bottom: 10px;\"><span style=\"font-weight: 700;\">地图池 Map Pools</span></p><ul><li>选手可以自由Ban图，不然主办随机选了 Player can specify maps to ban. Otherwise, the organizer will randomly pick from melee map pool.</li></ul><br><br><br>",
+    "status": "completed",
+    "player_capacity": 16,
+    "hold_third_place": 0,
+    "scheduled_time": "2024-09-25",
+    "players": [
+      {
+        "id": "wayne19980",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 1
+      },
+      {
+        "id": "Buqun",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 2
+      },
+      {
+        "id": "hlq",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 3
+      },
+      {
+        "id": "jbk",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 4
+      },
+      {
+        "id": "Vermilion",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 5
+      },
+      {
+        "id": "Starshim",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 6
+      },
+      {
+        "id": "Tox1c_zzz",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 7
+      }
+    ],
+    "matches": [
+      {
+        "round": 3,
+        "position": 1,
+        "player1_id": "jbk",
+        "player2_id": "Vermilion",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "jbk",
+        "status": "completed"
+      },
+      {
+        "round": 3,
+        "position": 2,
+        "player1_id": "Buqun",
+        "player2_id": "Tox1c_zzz",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "Buqun",
+        "status": "completed"
+      },
+      {
+        "round": 3,
+        "position": 3,
+        "player1_id": "hlq",
+        "player2_id": "Starshim",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "Starshim",
+        "status": "completed"
+      },
+      {
+        "round": 2,
+        "position": 1,
+        "player1_id": "wayne19980",
+        "player2_id": "jbk",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "jbk",
+        "status": "completed"
+      },
+      {
+        "round": 2,
+        "position": 2,
+        "player1_id": "Buqun",
+        "player2_id": "Starshim",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "Starshim",
+        "status": "completed"
+      },
+      {
+        "round": 1,
+        "position": 1,
+        "player1_id": "jbk",
+        "player2_id": "Starshim",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "jbk",
+        "status": "completed"
+      }
+    ]
+  },
+  {
+    "id": "suck27",
+    "name": "SUCK#27",
+    "description": "<h3>About</h3><p style=\"margin-bottom: 10px; color: rgb(255, 255, 255);\"><span style=\"font-weight: 700;\">主办 Organizer:</span> Wayne</p><br><p style=\"margin-bottom: 10px; color: rgb(255, 255, 255);\"><span style=\"font-weight: 700;\">服务器 Server:</span> Asia (Korea)</p><br><p style=\"margin-bottom: 10px; color: rgb(255, 255, 255);\"><span style=\"font-weight: 700;\">直播 Streams</span></p><p style=\"margin-bottom: 10px; color: rgb(255, 255, 255);\"><a href=\"http://live.bilibili.com/8250418\" rel=\"nofollow\">Wayne (Bilibili)</a></p><p style=\"display: flex; align-items: center; margin-top: 16px;\"><span style=\"font-weight: bold; font-size: 24px; line-height: 40px; margin-left: 8px;\">Rules</span></p><p style=\"margin-bottom: 10px;\"><span style=\"font-weight: 700;\">赛制 Format</span></p><ul>\n<li>单淘 Single-elimination bracket</li>\n<li>所有比赛均Bo1 All matches are Bo1</li>\n<li>败者晋级 Loser of each match advance to the next round.</li>\n</ul><p style=\"margin-bottom: 10px;\"><span style=\"font-weight: 700;\">地图池 Map Pools</span></p><ul><li>选手可以自由Ban图，不然主办随机选了 Player can specify maps to ban. Otherwise, the organizer will randomly pick from melee map pool.</li></ul>",
+    "status": "completed",
+    "player_capacity": 16,
+    "hold_third_place": 0,
+    "scheduled_time": "2024-09-26",
+    "players": [
+      {
+        "id": "hlq",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 1
+      },
+      {
+        "id": "Vermilion",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 2
+      },
+      {
+        "id": "十七者",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 3
+      },
+      {
+        "id": "Tox1c_zzz",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 4
+      },
+      {
+        "id": "wayne19980",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 5
+      }
+    ],
+    "matches": [
+      {
+        "round": 3,
+        "position": 1,
+        "player1_id": "Tox1c_zzz",
+        "player2_id": "wayne19980",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "Tox1c_zzz",
+        "status": "completed"
+      },
+      {
+        "round": 2,
+        "position": 2,
+        "player1_id": "hlq",
+        "player2_id": "Tox1c_zzz",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "Tox1c_zzz",
+        "status": "completed"
+      },
+      {
+        "round": 2,
+        "position": 1,
+        "player1_id": "Vermilion",
+        "player2_id": "十七者",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "Vermilion",
+        "status": "completed"
+      },
+      {
+        "round": 1,
+        "position": 1,
+        "player1_id": "Tox1c_zzz",
+        "player2_id": "Vermilion",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "Tox1c_zzz",
+        "status": "completed"
+      }
+    ]
+  },
+  {
+    "id": "suck29",
+    "name": "SUCK#29",
+    "description": "<h3>About</h3><p style=\"margin-bottom: 10px; color: rgb(255, 255, 255);\"><span style=\"font-weight: 700;\">主办 Organizer:</span> Wayne</p><br><p style=\"margin-bottom: 10px; color: rgb(255, 255, 255);\"><span style=\"font-weight: 700;\">服务器 Server:</span> Asia (Korea)</p><br><p style=\"margin-bottom: 10px; color: rgb(255, 255, 255);\"><span style=\"font-weight: 700;\">直播 Streams</span></p><p style=\"margin-bottom: 10px; color: rgb(255, 255, 255);\"><a href=\"http://live.bilibili.com/8250418\" rel=\"nofollow\">Wayne (Bilibili)</a></p><p style=\"display: flex; align-items: center; margin-top: 16px;\"><span style=\"font-weight: bold; font-size: 24px; line-height: 40px; margin-left: 8px;\">Rules</span></p><p style=\"margin-bottom: 10px;\"><span style=\"font-weight: 700;\">赛制 Format</span></p><ul>\r\n<li>单淘 Single-elimination bracket</li>\r\n<li>所有比赛均Bo1 All matches are Bo1</li>\r\n<li>败者晋级 Loser of each match advance to the next round.</li>\r\n</ul><p style=\"margin-bottom: 10px;\"><span style=\"font-weight: 700;\">地图池 Map Pools</span></p><ul><li>选手可以自由Ban图，不然主办随机选了 Player can specify maps to ban. Otherwise, the organizer will randomly pick from melee map pool.</li></ul>",
+    "status": "completed",
+    "player_capacity": 16,
+    "hold_third_place": 0,
+    "scheduled_time": "2025-06-05",
+    "players": [
+      {
+        "id": "Starshim",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 1
+      },
+      {
+        "id": "零陵上将军邢道荣",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 2
+      },
+      {
+        "id": "hanson",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 3
+      },
+      {
+        "id": "wayne19980",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 4
+      },
+      {
+        "id": "Buqun",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 5
+      },
+      {
+        "id": "Sonde5572",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 6
+      }
+    ],
+    "matches": [
+      {
+        "round": 3,
+        "position": 1,
+        "player1_id": "wayne19980",
+        "player2_id": "Buqun",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "wayne19980",
+        "status": "completed"
+      },
+      {
+        "round": 3,
+        "position": 2,
+        "player1_id": "hanson",
+        "player2_id": "Sonde5572",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "hanson",
+        "status": "completed"
+      },
+      {
+        "round": 2,
+        "position": 1,
+        "player1_id": "Starshim",
+        "player2_id": "wayne19980",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "Starshim",
+        "status": "completed"
+      },
+      {
+        "round": 2,
+        "position": 2,
+        "player1_id": "零陵上将军邢道荣",
+        "player2_id": "hanson",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "零陵上将军邢道荣",
+        "status": "completed"
+      },
+      {
+        "round": 1,
+        "position": 1,
+        "player1_id": "Starshim",
+        "player2_id": "零陵上将军邢道荣",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "Starshim",
+        "status": "completed"
+      }
+    ]
+  },
+  {
+    "id": "suck11",
+    "name": "SUCK#11",
+    "description": "<p>主办 Organizer: AlphaX战队星际水友群<br></p><br><p><strong>赛制 Format</strong></p><ul>\r\n<li>单淘 Single-elimination bracket</li>\r\n<li>所有比赛均Bo1 All matches are Bo1</li>\r\n<li>败者晋级 Loser of each match advance to the next round.</li>\r\n</ul><p><strong>地图池 Map Pools</strong></p><ul><li>选手可以Ban图或者限定天梯地图，不然主办随机选了 Player can specify maps to ban, or demad ladder maps. Otherwise the organizer will randomly pick from all Blizzard or GSL maps.</li></ul><p><strong>直播 Streams</strong></p><ul>\r\n<li>\r\n<a href=\"https://www.twitch.tv/starshimada\" target=\"_blank\" rel=\"nofollow\">冰星君</a><br>\r\n</li>\r\n<li>\r\n<a href=\"https://live.bilibili.com/8250418\" target=\"_blank\" rel=\"nofollow\">Wayne19980</a><br>\r\n</li>\r\n<li><a href=\"https://live.bilibili.com/4446669\" target=\"_blank\" rel=\"nofollow\">柳渊Ivy</a></li>\r\n</ul><p><strong>录像 VODS</strong></p><ul><li>赛后放链接 Links will be available after the match</li></ul>",
+    "status": "completed",
+    "player_capacity": 16,
+    "hold_third_place": 0,
+    "scheduled_time": "2022-08-21",
+    "players": [
+      {
+        "id": "wayne19980",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 1
+      },
+      {
+        "id": "Starshim",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 2
+      },
+      {
+        "id": "永恒帝国",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 3
+      },
+      {
+        "id": "凡道无名",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 4
+      },
+      {
+        "id": "Buqun",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 5
+      },
+      {
+        "id": "Vermilion",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 6
+      },
+      {
+        "id": "Sarutobi",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 7
+      },
+      {
+        "id": "Jerry",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 8
+      },
+      {
+        "id": "平陵",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 9
+      },
+      {
+        "id": "十七者",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 10
+      }
+    ],
+    "matches": [
+      {
+        "round": 4,
+        "position": 1,
+        "player1_id": "Jerry",
+        "player2_id": "平陵",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "Jerry",
+        "status": "completed"
+      },
+      {
+        "round": 4,
+        "position": 2,
+        "player1_id": "Sarutobi",
+        "player2_id": "十七者",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "Sarutobi",
+        "status": "completed"
+      },
+      {
+        "round": 3,
+        "position": 1,
+        "player1_id": "wayne19980",
+        "player2_id": "Jerry",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "wayne19980",
+        "status": "completed"
+      },
+      {
+        "round": 3,
+        "position": 2,
+        "player1_id": "凡道无名",
+        "player2_id": "Buqun",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "凡道无名",
+        "status": "completed"
+      },
+      {
+        "round": 3,
+        "position": 3,
+        "player1_id": "Starshim",
+        "player2_id": "Sarutobi",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "Starshim",
+        "status": "completed"
+      },
+      {
+        "round": 3,
+        "position": 4,
+        "player1_id": "永恒帝国",
+        "player2_id": "Vermilion",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "永恒帝国",
+        "status": "completed"
+      },
+      {
+        "round": 2,
+        "position": 1,
+        "player1_id": "wayne19980",
+        "player2_id": "凡道无名",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "wayne19980",
+        "status": "completed"
+      },
+      {
+        "round": 2,
+        "position": 2,
+        "player1_id": "Starshim",
+        "player2_id": "永恒帝国",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "Starshim",
+        "status": "completed"
+      },
+      {
+        "round": 1,
+        "position": 1,
+        "player1_id": "wayne19980",
+        "player2_id": "Starshim",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "Starshim",
+        "status": "completed"
+      }
+    ]
+  },
+  {
+    "id": "suck34",
+    "name": "SUCK#34",
+    "description": "<h3>About</h3><p style=\"margin-bottom: 10px; color: rgb(255, 255, 255);\"><span style=\"font-weight: 700;\">主办 Organizer:</span> Wayne</p><br><p style=\"margin-bottom: 10px; color: rgb(255, 255, 255);\"><span style=\"font-weight: 700;\">服务器 Server:</span> Asia (Korea)</p><br><p style=\"margin-bottom: 10px; color: rgb(255, 255, 255);\"><span style=\"font-weight: 700;\">直播 Streams</span></p><p style=\"margin-bottom: 10px; color: rgb(255, 255, 255);\"><a href=\"http://live.bilibili.com/8250418\" rel=\"nofollow\">Wayne (Bilibili)</a></p><p style=\"display: flex; align-items: center; margin-top: 16px;\"><span style=\"font-weight: bold; font-size: 24px; line-height: 40px; margin-left: 8px;\">Rules</span></p><p style=\"margin-bottom: 10px;\"><span style=\"font-weight: 700;\">赛制 Format</span></p><ul>\r\n<li>单淘 Single-elimination bracket</li>\r\n<li>所有比赛均Bo1 All matches are Bo1</li>\r\n<li>败者晋级 Loser of each match advance to the next round.</li>\r\n</ul><p style=\"margin-bottom: 10px;\"><span style=\"font-weight: 700;\">地图池 Map Pools</span></p><ul><li>选手可以自由Ban图，不然主办随机选了 Player can specify maps to ban. Otherwise, the organizer will randomly pick from melee map pool.</li></ul>",
+    "status": "completed",
+    "player_capacity": 16,
+    "hold_third_place": 0,
+    "scheduled_time": "2025-08-03",
+    "players": [
+      {
+        "id": "wayne19980",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 1
+      },
+      {
+        "id": "Sonde5572",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 2
+      },
+      {
+        "id": "Vermilion",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 3
+      },
+      {
+        "id": "hlq",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 4
+      },
+      {
+        "id": "Buqun",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 5
+      }
+    ],
+    "matches": [
+      {
+        "round": 3,
+        "position": 1,
+        "player1_id": "hlq",
+        "player2_id": "Buqun",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "hlq",
+        "status": "completed"
+      },
+      {
+        "round": 2,
+        "position": 2,
+        "player1_id": "wayne19980",
+        "player2_id": "hlq",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "hlq",
+        "status": "completed"
+      },
+      {
+        "round": 2,
+        "position": 1,
+        "player1_id": "Sonde5572",
+        "player2_id": "Vermilion",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "Vermilion",
+        "status": "completed"
+      },
+      {
+        "round": 1,
+        "position": 1,
+        "player1_id": "hlq",
+        "player2_id": "Vermilion",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "hlq",
+        "status": "completed"
+      }
+    ]
+  },
+  {
+    "id": "suck30",
+    "name": "SUCK#30",
+    "description": "<h3>About</h3><p style=\"margin-bottom: 10px; color: rgb(255, 255, 255);\"><span style=\"font-weight: 700;\">主办 Organizer:</span> Wayne</p><br><p style=\"margin-bottom: 10px; color: rgb(255, 255, 255);\"><span style=\"font-weight: 700;\">服务器 Server:</span> Asia (Korea)</p><br><p style=\"margin-bottom: 10px; color: rgb(255, 255, 255);\"><span style=\"font-weight: 700;\">直播 Streams</span></p><p style=\"margin-bottom: 10px; color: rgb(255, 255, 255);\"><a href=\"http://live.bilibili.com/8250418\" rel=\"nofollow\">Wayne (Bilibili)</a></p><p style=\"display: flex; align-items: center; margin-top: 16px;\"><span style=\"font-weight: bold; font-size: 24px; line-height: 40px; margin-left: 8px;\">Rules</span></p><p style=\"margin-bottom: 10px;\"><span style=\"font-weight: 700;\">赛制 Format</span></p><ul>\r\n<li>单淘 Single-elimination bracket</li>\r\n<li>所有比赛均Bo1 All matches are Bo1</li>\r\n<li>败者晋级 Loser of each match advance to the next round.</li>\r\n</ul><p style=\"margin-bottom: 10px;\"><span style=\"font-weight: 700;\">地图池 Map Pools</span></p><ul><li>选手可以自由Ban图，不然主办随机选了 Player can specify maps to ban. Otherwise, the organizer will randomly pick from melee map pool.</li></ul>",
+    "status": "completed",
+    "player_capacity": 16,
+    "hold_third_place": 0,
+    "scheduled_time": "2025-05-10",
+    "players": [
+      {
+        "id": "十七者",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 1
+      },
+      {
+        "id": "Sonde5572",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 2
+      },
+      {
+        "id": "Buqun",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 3
+      },
+      {
+        "id": "hanson",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 4
+      },
+      {
+        "id": "零陵上将军邢道荣",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 5
+      },
+      {
+        "id": "wayne19980",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 6
+      },
+      {
+        "id": "Starshim",
+        "flag": "cn",
+        "team": "",
+        "link": "",
+        "seed": 7
+      }
+    ],
+    "matches": [
+      {
+        "round": 3,
+        "position": 1,
+        "player1_id": "hanson",
+        "player2_id": "零陵上将军邢道荣",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "零陵上将军邢道荣",
+        "status": "completed"
+      },
+      {
+        "round": 3,
+        "position": 2,
+        "player1_id": "Sonde5572",
+        "player2_id": "Starshim",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "Starshim",
+        "status": "completed"
+      },
+      {
+        "round": 3,
+        "position": 3,
+        "player1_id": "Buqun",
+        "player2_id": "wayne19980",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "Buqun",
+        "status": "completed"
+      },
+      {
+        "round": 2,
+        "position": 1,
+        "player1_id": "十七者",
+        "player2_id": "零陵上将军邢道荣",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "零陵上将军邢道荣",
+        "status": "completed"
+      },
+      {
+        "round": 2,
+        "position": 2,
+        "player1_id": "Starshim",
+        "player2_id": "Buqun",
+        "score1": 0,
+        "score2": 1,
+        "winner_id": "Starshim",
+        "status": "completed"
+      },
+      {
+        "round": 1,
+        "position": 1,
+        "player1_id": "零陵上将军邢道荣",
+        "player2_id": "Starshim",
+        "score1": 1,
+        "score2": 0,
+        "winner_id": "Starshim",
+        "status": "completed"
+      }
+    ]
+  }
+]
