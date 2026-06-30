@@ -758,11 +758,53 @@
     toast.success("Wiki 代码已成功复制到剪贴板！");
   }
 
+  let reparsing = $state(false);
+  async function triggerReparseReplays() {
+    if (!confirm("确定要重新对该赛事的所有录像进行一遍底层解析吗？这会覆盖并修复时区等解析字段，整个过程可能耗时数秒。")) return;
+    reparsing = true;
+    try {
+      const res = await API.reparseReplays(tid);
+      toast.success(`成功重新解析并刷新了 ${res.count} 个录像对局数据！`);
+      if (showWikiDialog) {
+        await openWikiExport();
+      } else {
+        await load();
+      }
+    } catch (e) {
+      toast.error("重新解析录像失败: " + e.message);
+    } finally {
+      reparsing = false;
+    }
+  }
+
   function formatDuration(sec) {
     if (!sec) return "00:00";
     const m = Math.floor(sec / 60);
     const s = sec % 60;
     return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+  }
+
+  function formatReplayTime(ts) {
+    if (!ts) return "未知";
+    try {
+      const date = new Date(ts * 1000);
+      if (isNaN(date.getTime())) return "未知";
+      
+      const tzName = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const options = {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+      };
+      const formatted = new Intl.DateTimeFormat(undefined, options).format(date);
+      return `${formatted} (${tzName})`;
+    } catch (e) {
+      return "未知";
+    }
   }
 
   function getSvgPath(
@@ -1179,6 +1221,7 @@
   }
 
   function roundLabel(roundNum, totalRounds) {
+    if (roundNum === 0) return "三四名决赛";
     if (roundNum === 1) return "总决赛";
     if (roundNum === 2) return "半决赛";
     if (roundNum === 3 && totalRounds >= 3) return "四分之一决赛";
@@ -1660,7 +1703,7 @@
   {#snippet bracketView()}
     <Card.Root class="border-border bg-card/40">
       <Card.Header
-        class="p-6 flex flex-row items-center justify-between gap-4 border-b border-border/40 pb-4"
+        class="p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-border/40 pb-4"
       >
         <div>
           <Card.Title class="text-base font-bold flex items-center gap-2">
@@ -1682,9 +1725,9 @@
           </Card.Description>
         </div>
         {#if ["in_progress", "completed"].includes(tournament.status)}
-          <div class="flex items-center gap-2 shrink-0">
+          <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 shrink-0 w-full sm:w-auto">
             <label
-              class="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl border border-primary/30 bg-primary/5 text-primary text-xs font-bold shadow hover:bg-primary hover:text-black transition-all cursor-pointer"
+              class="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl border border-primary/30 bg-primary/5 text-primary text-xs font-bold shadow hover:bg-primary hover:text-black transition-all cursor-pointer w-full sm:w-auto h-8"
             >
               <input
                 type="file"
@@ -1696,6 +1739,16 @@
               <UploadCloudIcon class="w-3.5 h-3.5" />
               <span>批量导入录像</span>
             </label>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={reparsing}
+              onclick={triggerReparseReplays}
+              class="h-8 text-xs font-bold rounded-xl border border-yellow-500/30 bg-yellow-500/5 text-yellow-500 shadow hover:bg-yellow-500 hover:text-black cursor-pointer gap-1.5 w-full sm:w-auto"
+            >
+              <RefreshCwIcon class="w-3.5 h-3.5 {reparsing ? 'animate-spin' : ''}" />
+              <span>{reparsing ? '解析中...' : '重新解析录像'}</span>
+            </Button>
           </div>
         {/if}
       </Card.Header>
@@ -3115,7 +3168,7 @@
             <!-- Tab content: Overview -->
             {#if activeReplayTab === "overview"}
               <div class="space-y-4 pt-1">
-                <div class="grid grid-cols-2 gap-3">
+                 <div class="grid grid-cols-3 gap-3">
                   <div
                     class="p-3 bg-background/50 border border-border rounded-xl"
                   >
@@ -3124,7 +3177,7 @@
                     >
                       地图
                     </p>
-                    <p class="text-sm font-bold mt-0.5 text-foreground">
+                    <p class="text-sm font-bold mt-0.5 text-foreground truncate" title={selectedReplay.map_name || "未知地图"}>
                       {selectedReplay.map_name || "未知地图"}
                     </p>
                   </div>
@@ -3138,6 +3191,18 @@
                     </p>
                     <p class="text-sm font-bold mt-0.5 text-foreground">
                       {formatDuration(selectedReplay.game_length)}
+                    </p>
+                  </div>
+                  <div
+                    class="p-3 bg-background/50 border border-border rounded-xl"
+                  >
+                    <p
+                      class="text-[10px] text-muted-foreground uppercase font-bold tracking-wider"
+                    >
+                      对局时间
+                    </p>
+                    <p class="text-[10px] font-bold mt-1 text-foreground leading-tight truncate" title={formatReplayTime(selectedReplay.parsed_data?.start_time)}>
+                      {formatReplayTime(selectedReplay.parsed_data?.start_time)}
                     </p>
                   </div>
                 </div>

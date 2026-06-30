@@ -83,5 +83,6 @@ export const API = {
   deleteReplay: (replayId) => request(`/replays/${replayId}`, { method: 'DELETE' }),
 
   // Wiki Generation
-  getWikiScript: (tournamentId) => request(`/tournaments/${enc(tournamentId)}/wiki`)
+  getWikiScript: (tournamentId) => request(`/tournaments/${enc(tournamentId)}/wiki`),
+  reparseReplays: (tournamentId) => request(`/tournaments/${enc(tournamentId)}/replays/reparse`, { method: 'POST' })
 };

@@ -26,7 +26,8 @@ def extract_replay_data(replay_path):
     start_time_ts = None
     if hasattr(replay, "start_time"):
         try:
-            start_time_ts = int(replay.start_time.timestamp())
+            from datetime import timezone
+            start_time_ts = int(replay.start_time.replace(tzinfo=timezone.utc).timestamp())
         except Exception:
             pass
 
@@ -276,6 +277,8 @@ def extract_replay_data(replay_path):
             team_data["players"].append({
                 "name": player.name,
                 "race": (player.pick_race or "?")[0],
+                "pick_race": (player.pick_race or "?")[0],
+                "play_race": (player.play_race or "?")[0],
                 "build_order": build_order,
                 "worker_deaths": worker_deaths_by_pid.get(player.pid, []),
                 "workers_curve": workers_curve_by_pid.get(player.pid, []),

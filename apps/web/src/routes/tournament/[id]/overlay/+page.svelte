@@ -31,6 +31,7 @@
 
   // Bracket round name helper
   function getRoundLabel(roundNum, totalRounds) {
+    if (roundNum === 0) return "3rd Place Match (三四名决赛)";
     if (roundNum === 1) return "Finals (决赛)";
     if (roundNum === 2) return "Semifinals (半决赛)";
     if (roundNum === 3) return "Quarterfinals (1/4 决赛)";

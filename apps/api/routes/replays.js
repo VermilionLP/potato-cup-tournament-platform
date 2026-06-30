@@ -516,6 +516,62 @@ export default async function replaysRoutes(fastify) {
     return { success: true };
   });
 
+  // Reparse all replays for a tournament from raw compressed data
+  fastify.post('/tournaments/:id/replays/reparse', async (req) => {
+    const { id: tournamentId } = req.params;
+    const matches = db.prepare('SELECT id FROM matches WHERE tournament_id = ?').all(tournamentId);
+    const matchIds = matches.map(m => m.id);
+    if (matchIds.length === 0) {
+      return { success: true, count: 0 };
+    }
+
+    const replays = db.prepare(`SELECT * FROM match_replays WHERE match_id IN (${matchIds.join(',')})`).all();
+    const envCheck = await checkPythonEnvironment();
+    if (!envCheck.ok) {
+      throw fastify.httpErrors.internalServerError(
+        'Server python environment is not fully configured (missing sc2reader/spawningtool).'
+      );
+    }
+
+    const scriptPath = join(__dirname, '..', 'scripts', 'parse_replay.py');
+    const tempDir = join(os.tmpdir(), 'suck-replays-reparse');
+    if (!existsSync(tempDir)) {
+      mkdirSync(tempDir, { recursive: true });
+    }
+
+    let count = 0;
+    for (const rep of replays) {
+      const tempFilePath = join(tempDir, `${Date.now()}_${rep.filename}`);
+      try {
+        const buffer = zlib.gunzipSync(rep.compressed_data);
+        writeFileSync(tempFilePath, buffer);
+        const parseResult = await parseReplay(scriptPath, tempFilePath);
+        if (parseResult.ok) {
+          const parsedData = JSON.parse(parseResult.stdout);
+          db.prepare(`
+            UPDATE match_replays 
+            SET parsed_data = ?, winner = ?, map_name = ?, game_length = ?
+            WHERE id = ?
+          `).run(JSON.stringify(parsedData), parsedData.winner, parsedData.map_name, parsedData.game_length, rep.id);
+          count++;
+        }
+      } catch (err) {
+        fastify.log.error(`Failed to reparse replay ${rep.filename}: ${err.message}`);
+      } finally {
+        try {
+          if (existsSync(tempFilePath)) {
+            unlinkSync(tempFilePath);
+          }
+        } catch (_) {}
+      }
+    }
+
+    // Trigger real-time broadcast
+    fastify.tournamentEvents.emit(`update:${tournamentId}`, { type: 'replays_updated' });
+
+    return { success: true, count };
+  });
+
   // Generate Liquipedia Wiki Script for a tournament
   fastify.get('/tournaments/:id/wiki', async (req) => {
     const { id: tournamentId } = req.params;
@@ -715,23 +771,10 @@ export default async function replaysRoutes(fastify) {
     wikiScript += `{{ParticipantTable|hidden=true\n`;
     players.forEach((player, index) => {
       const displayName = player.display_name;
-      // Get race from replays or default to 'u'
-      let race = 'u';
-      const playerMatches = matches.filter(m => m.player1_id === player.id || m.player2_id === player.id);
-      for (const pm of playerMatches) {
-        const reps = replaysByMatchId[pm.id] || [];
-        if (reps.length > 0) {
-          const repPlayer = getPlayerInfoFromReplay(player.id, player.display_name, player.battle_tags, player.bnet_ids, reps[0].parsed_data);
-          if (repPlayer && repPlayer.race) {
-            race = repPlayer.race[0].toLowerCase();
-            break;
-          }
-        }
-      }
       const flag = player.flag || "cn";
       const teamStr = player.team ? `|p${index + 1}team=${player.team}` : "";
       const linkStr = player.link ? `|p${index + 1}link=${player.link}` : "";
-      wikiScript += `|p${index + 1}=${displayName}|p${index + 1}race=${race}|p${index + 1}flag=${flag}${teamStr}${linkStr}\n`;
+      wikiScript += `|p${index + 1}=${displayName}|p${index + 1}flag=${flag}${teamStr}${linkStr}\n`;
     });
     wikiScript += `}}\n`;
 
@@ -772,11 +815,26 @@ export default async function replaysRoutes(fastify) {
 
     const bracketTemplates = {
       2: "Bracket/2",
+      3: "Bracket/2L1D",
       4: "Bracket/4",
+      5: "Bracket/2L1DH2L",
+      6: "Bracket/4L2DS",
+      7: "Bracket/2L1DH4L",
       8: "Bracket/8",
+      9: "Bracket/2L1DH2LH4L",
+      10: "Bracket/4L2DH4LS",
+      11: "Bracket/2L1DH2LH4L2DSL",
+      12: "Bracket/8L4DSS",
+      13: "Bracket/2L1DH4LH4L2DSL",
+      14: "Bracket/4L2DH8LS",
+      15: "Bracket/4L2DH8LS",
       16: "Bracket/16",
     };
-    const bracketTemplate = bracketTemplates[playerCount] || "Bracket/16";
+    const matchCount = matches.length;
+    const bracketTemplate =
+      bracketTemplates[matchCount + 1] ||
+      bracketTemplates[playerCount] ||
+      "Bracket/16";
     const tournamentIdStr = tournamentNumber.padStart(4, "0");
 
     wikiScript += `{{Bracket|${bracketTemplate}|id=AXsuck${tournamentIdStr}\n`;
@@ -785,6 +843,10 @@ export default async function replaysRoutes(fastify) {
     const maxDbRound = Math.max(...matches.map(m => m.round), 1);
     const rounds = {};
     matches.forEach(m => {
+      // Skip bye rounds (where one opponent is null/TBD and the match was skipped/walkover/never played)
+      const isBye = (!m.player1_id && m.player2_id) || (m.player1_id && !m.player2_id);
+      if (isBye) return;
+
       const lpRound = maxDbRound - m.round + 1;
       rounds[lpRound] = rounds[lpRound] || [];
       rounds[lpRound].push(m);
@@ -793,7 +855,6 @@ export default async function replaysRoutes(fastify) {
     const roundKeys = Object.keys(rounds).sort((a, b) => parseInt(a) - parseInt(b));
     roundKeys.forEach(rKey => {
       const roundMatches = rounds[rKey];
-      wikiScript += `|R${rKey}Name=Round ${rKey}\n`;
       roundMatches.forEach((m, idx) => {
         const matchReplays = replaysByMatchId[m.id] || [];
         const numGames = matchReplays.length;
@@ -804,7 +865,7 @@ export default async function replaysRoutes(fastify) {
         const p2Name = m.player2_name || 'TBD';
 
         const matchIdx = idx + 1;
-        wikiScript += `|R${rKey}M${matchIdx} = {{Match\n`;
+        wikiScript += `|R${rKey}M${matchIdx}={{Match\n`;
 
         if (isWalkover) {
           wikiScript += `    |winner=${winner}\n`;
@@ -815,19 +876,28 @@ export default async function replaysRoutes(fastify) {
         } else {
           const bestOf = numGames > 0 ? (numGames % 2 === 0 ? numGames + 1 : numGames) : 1;
           wikiScript += `    |bestof=${bestOf}\n`;
-          wikiScript += `    |winner=${winner || ''}\n`;
+          wikiScript += `    |winner=${winner}\n`;
 
-          let matchDateStr = `${formattedDate} 20:00 {{abbr/CST}}`;
+          let matchDateStr = `${formattedDate} 20:00:00 {{abbr/CST}}`;
           if (matchReplays.length > 0 && matchReplays[0].parsed_data?.start_time) {
-            const dateObj = new Date(matchReplays[0].parsed_data.start_time * 1000);
-            const year = dateObj.getFullYear();
-            const month = String(dateObj.getMonth() + 1).padStart(2, '0');
-            const day = String(dateObj.getDate()).padStart(2, '0');
-            const hours = String(dateObj.getHours()).padStart(2, '0');
-            const minutes = String(dateObj.getMinutes()).padStart(2, '0');
-            matchDateStr = `${year}-${month}-${day} ${hours}:${minutes} {{abbr/CST}}`;
+            const timestamp = matchReplays[0].parsed_data.start_time;
+            const dateObj = new Date(timestamp * 1000);
+            const formatter = new Intl.DateTimeFormat('en-US', {
+              timeZone: 'Asia/Shanghai',
+              year: 'numeric',
+              month: '2-digit',
+              day: '2-digit',
+              hour: '2-digit',
+              minute: '2-digit',
+              second: '2-digit',
+              hour12: false
+            });
+            const parts = formatter.formatToParts(dateObj);
+            const partMap = {};
+            parts.forEach(p => { partMap[p.type] = p.value; });
+            matchDateStr = `${partMap.year}-${partMap.month}-${partMap.day} ${partMap.hour}:${partMap.minute}:${partMap.second} {{abbr/CST}}`;
           }
-          wikiScript += `    |date=${matchDateStr}\n`;
+          wikiScript += `    |date=${matchDateStr} \n`;
 
           const p1Bnet = m.player1_bnet_ids;
           const p2Bnet = m.player2_bnet_ids;
@@ -837,12 +907,20 @@ export default async function replaysRoutes(fastify) {
           if (matchReplays.length > 0) {
             const repP1 = getPlayerInfoFromReplay(m.player1_id, m.player1_name, m.player1_battle_tags, p1Bnet, matchReplays[0].parsed_data);
             const repP2 = getPlayerInfoFromReplay(m.player2_id, m.player2_name, m.player2_battle_tags, p2Bnet, matchReplays[0].parsed_data);
-            if (repP1 && repP1.race) race1 = repP1.race[0].toLowerCase();
-            if (repP2 && repP2.race) race2 = repP2.race[0].toLowerCase();
+            if (repP1) {
+              const r = (repP1.pick_race || repP1.race || 'u').toLowerCase();
+              if (r !== '?') race1 = r;
+            }
+            if (repP2) {
+              const r = (repP2.pick_race || repP2.race || 'u').toLowerCase();
+              if (r !== '?') race2 = r;
+            }
           }
 
-          wikiScript += `    |opponent1={{1Opponent|${p1Name}|race=${race1}}}\n`;
-          wikiScript += `    |opponent2={{1Opponent|${p2Name}|race=${race2}}}\n`;
+          const opp1RaceStr = race1 && race1 !== 'u' ? `|race=${race1}` : '';
+          const opp2RaceStr = race2 && race2 !== 'u' ? `|race=${race2}` : '';
+          wikiScript += `    |opponent1={{1Opponent|${p1Name}${opp1RaceStr}}}\n`;
+          wikiScript += `    |opponent2={{1Opponent|${p2Name}${opp2RaceStr}}}\n`;
 
           if (numGames > 0) {
             matchReplays.forEach((rep, gIdx) => {
@@ -851,8 +929,16 @@ export default async function replaysRoutes(fastify) {
               const repP1 = getPlayerInfoFromReplay(m.player1_id, m.player1_name, m.player1_battle_tags, p1Bnet, rep.parsed_data);
               const repP2 = getPlayerInfoFromReplay(m.player2_id, m.player2_name, m.player2_battle_tags, p2Bnet, rep.parsed_data);
 
-              const gRace1 = (repP1 && repP1.race ? repP1.race : 'u')[0].toLowerCase();
-              const gRace2 = (repP2 && repP2.race ? repP2.race : 'u')[0].toLowerCase();
+              let gRace1 = 'u';
+              let gRace2 = 'u';
+              if (repP1) {
+                const r = (repP1.play_race || repP1.race || 'u').toLowerCase();
+                if (r !== '?') gRace1 = r;
+              }
+              if (repP2) {
+                const r = (repP2.play_race || repP2.race || 'u').toLowerCase();
+                if (r !== '?') gRace2 = r;
+              }
               
               let gWinner = '0';
               if (rep.winner) {
@@ -863,16 +949,27 @@ export default async function replaysRoutes(fastify) {
                 else if (p2MatchesWinner) gWinner = '2';
               }
 
-              wikiScript += `    |map${gIdx + 1}={{Map|map=${mapName}|race1=${gRace1}|race2=${gRace2}|winner=${gWinner}}}\n`;
+              const gRace1Str = gRace1 && gRace1 !== 'u' ? `|race1=${gRace1}` : '';
+              const gRace2Str = gRace2 && gRace2 !== 'u' ? `|race2=${gRace2}` : '';
+              wikiScript += `    |map${gIdx + 1}={{Map|map=${mapName}${gRace1Str}${gRace2Str}|winner=${gWinner}}}\n`;
             });
           } else {
-            wikiScript += `    |map1={{Map|map=TBD|race1=${race1}|race2=${race2}|winner=${winner || '0'}}}\n`;
+            const mapRace1Str = race1 && race1 !== 'u' ? `|race1=${race1}` : '';
+            const mapRace2Str = race2 && race2 !== 'u' ? `|race2=${race2}` : '';
+            wikiScript += `    |map1={{Map|map=TBD${mapRace1Str}${mapRace2Str}|winner=${winner}}}\n`;
           }
         }
         wikiScript += `}}\n`;
       });
     });
-    wikiScript += `}}\n`;
+    wikiScript += `}}\n\n`;
+
+    wikiScript += `==Racial Distribution==\n`;
+    wikiScript += `{{RaceDist|last=1}}\n\n`;
+
+    wikiScript += `==View Games==\n`;
+    wikiScript += `===VODs===\n`;
+    wikiScript += `*[https://space.bilibili.com/10130071/lists/5654276?type=season VODs on Bilibili]\n`;
 
     return { wikiScript };
   });
