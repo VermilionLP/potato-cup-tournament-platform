@@ -143,6 +143,7 @@
           return;
         }
         toast.loading("正在创建选手...", { id: "ps" });
+        editingId = cleanNewId;
       } else {
         if (cleanNewId !== editingId) {
           const isMe = editingId === userState.id;
