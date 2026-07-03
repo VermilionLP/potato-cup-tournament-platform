@@ -50,6 +50,47 @@ async function parseReplay(scriptPath, replayPath) {
   return { ok: true, stdout };
 }
 
+export function getPlayerInfoFromReplay(playerId, playerDisplayName, playerBattleTags, playerBnetIds, parsedData) {
+  const repPlayers = parsedData.teams?.flatMap((t, tIdx) => (t.players || []).map(p => ({ ...p, teamIdx: tIdx }))) || [];
+  const pIdLower = playerId.toLowerCase().trim();
+  const pDispLower = (playerDisplayName || '').toLowerCase().trim();
+  
+  let tags = {};
+  if (playerBattleTags) {
+    try {
+      tags = typeof playerBattleTags === 'string' ? JSON.parse(playerBattleTags) : playerBattleTags;
+    } catch (_) {}
+  }
+  const tagList = [];
+  if (tags) {
+    for (const key of Object.keys(tags)) {
+      const val = tags[key];
+      if (Array.isArray(val)) {
+        tagList.push(...val.filter(Boolean).map(t => t.toLowerCase().trim()));
+      } else if (typeof val === 'string' && val) {
+        tagList.push(val.toLowerCase().trim());
+      }
+    }
+  }
+
+  let bnetIds = [];
+  if (playerBnetIds) {
+    try {
+      bnetIds = typeof playerBnetIds === 'string' ? JSON.parse(playerBnetIds) : playerBnetIds;
+    } catch (_) {}
+  }
+  const bnetNames = bnetIds.map(b => (typeof b === 'string' ? b : b.id).toLowerCase().trim());
+
+  return repPlayers.find(p => {
+    if (!p.name) return false;
+    const nameLower = p.name.toLowerCase().trim();
+    return nameLower === pIdLower || 
+           nameLower === pDispLower || 
+           tagList.some(tag => tag === nameLower || tag.split('#')[0] === nameLower) ||
+           bnetNames.includes(nameLower);
+  });
+}
+
 // Helper to check python dependencies
 export async function checkPythonEnvironment() {
   return getPythonCommand();
@@ -580,46 +621,7 @@ export default async function replaysRoutes(fastify) {
       throw fastify.httpErrors.notFound('Tournament not found.');
     }
 
-    function getPlayerInfoFromReplay(playerId, playerDisplayName, playerBattleTags, playerBnetIds, parsedData) {
-      const repPlayers = parsedData.teams?.flatMap((t, tIdx) => (t.players || []).map(p => ({ ...p, teamIdx: tIdx }))) || [];
-      const pIdLower = playerId.toLowerCase().trim();
-      const pDispLower = (playerDisplayName || '').toLowerCase().trim();
-      
-      let tags = {};
-      if (playerBattleTags) {
-        try {
-          tags = typeof playerBattleTags === 'string' ? JSON.parse(playerBattleTags) : playerBattleTags;
-        } catch (_) {}
-      }
-      const tagList = [];
-      if (tags) {
-        for (const key of Object.keys(tags)) {
-          const val = tags[key];
-          if (Array.isArray(val)) {
-            tagList.push(...val.filter(Boolean).map(t => t.toLowerCase().trim()));
-          } else if (typeof val === 'string' && val) {
-            tagList.push(val.toLowerCase().trim());
-          }
-        }
-      }
 
-      let bnetIds = [];
-      if (playerBnetIds) {
-        try {
-          bnetIds = typeof playerBnetIds === 'string' ? JSON.parse(playerBnetIds) : playerBnetIds;
-        } catch (_) {}
-      }
-      const bnetNames = bnetIds.map(b => (typeof b === 'string' ? b : b.id).toLowerCase().trim());
-
-      return repPlayers.find(p => {
-        if (!p.name) return false;
-        const nameLower = p.name.toLowerCase().trim();
-        return nameLower === pIdLower || 
-               nameLower === pDispLower || 
-               tagList.some(tag => tag === nameLower || tag.split('#')[0] === nameLower) ||
-               bnetNames.includes(nameLower);
-      });
-    }
 
     const players = db.prepare(`
       SELECT 

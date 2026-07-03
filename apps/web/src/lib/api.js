@@ -45,6 +45,7 @@ export const API = {
 
   // Players / Registration
   listPlayers: () => request('/players'),
+  getPlayerStatistics: () => request('/players/statistics'),
   getPlayer: (id) => request(`/players/${enc(id)}`),
   updatePlayer: (id, data) => request('/players', { method: 'POST', body: JSON.stringify({ id, ...data }) }),
   renamePlayer: (oldId, newId) => request(`/players/${enc(oldId)}/change-id`, { method: 'POST', body: JSON.stringify({ newId }) }),

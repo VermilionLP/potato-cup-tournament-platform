@@ -16,6 +16,7 @@
   import SunIcon from "@lucide/svelte/icons/sun";
   import MoonIcon from "@lucide/svelte/icons/moon";
   import PlusIcon from "@lucide/svelte/icons/plus";
+  import TrendingUpIcon from "@lucide/svelte/icons/trending-up";
 
   let { children } = $props();
 
@@ -335,12 +336,22 @@
           <a
             href="/players"
             class="flex items-center gap-1 px-2 sm:px-3 h-8 rounded-md text-xs sm:text-sm font-medium transition-colors
-              {$page.url.pathname.startsWith('/players')
+              {$page.url.pathname === '/players'
               ? 'text-primary font-semibold bg-primary/8'
               : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'}"
           >
             <UsersIcon class="w-3.5 h-3.5" />
             选手列表
+          </a>
+          <a
+            href="/stats"
+            class="flex items-center gap-1 px-2 sm:px-3 h-8 rounded-md text-xs sm:text-sm font-medium transition-colors
+              {$page.url.pathname === '/stats'
+              ? 'text-primary font-semibold bg-primary/8'
+              : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'}"
+          >
+            <TrendingUpIcon class="w-3.5 h-3.5" />
+            数据统计
           </a>
         </nav>
 

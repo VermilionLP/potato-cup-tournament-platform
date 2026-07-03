@@ -30,9 +30,15 @@ export function MatchRepo(db) {
     const match = getById(id);
     if (!match) throw new Error('Match not found');
 
+    const tournament = db.prepare('SELECT loser_advances FROM tournaments WHERE id = ?').get(match.tournament_id);
+    const loserAdvances = tournament ? (tournament.loser_advances !== 0) : true;
+
     let winnerId = null;
-    if (score1 > score2) winnerId = match.player2_id; // the 0 side (player2) advances
-    else if (score2 > score1) winnerId = match.player1_id; // the 0 side (player1) advances
+    if (score1 > score2) {
+      winnerId = loserAdvances ? match.player2_id : match.player1_id;
+    } else if (score2 > score1) {
+      winnerId = loserAdvances ? match.player1_id : match.player2_id;
+    }
 
     db.prepare(`
       UPDATE matches SET score1 = ?, score2 = ?, winner_id = ?, status = 'completed'

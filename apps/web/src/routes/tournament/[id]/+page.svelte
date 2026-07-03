@@ -1209,6 +1209,7 @@
     if (!tournament?.matches?.length) return [];
     const map = {};
     tournament.matches.forEach((m) => {
+      if (m.round === 0) return; // Exclude Third Place Match from main columns
       if (!map[m.round]) map[m.round] = [];
       map[m.round].push(m);
     });
@@ -1350,6 +1351,143 @@
     });
   });
 
+  // Dynamic layout variables based on bracket size (exactly like overlay/+page.svelte)
+  let firstRoundMatchCount = $derived.by(() => {
+    const rs = rounds();
+    if (!rs.length) return 0;
+    return rs[0].matches?.length || 0;
+  });
+
+  let bracketSpecs = $derived.by(() => {
+    const count = firstRoundMatchCount;
+    if (count >= 8) {
+      // 16 players or more
+      return {
+        H: 64,
+        g: 12,
+        G: 24,
+        cardWidth: "w-40",
+        colGap: "gap-6",
+        slotOffset: 16,
+        connMid: 12,
+        connWidth: 12,
+        connGap: 24,
+      };
+    } else {
+      // 8 players or fewer
+      return {
+        H: 64,
+        g: 20,
+        G: 40,
+        cardWidth: "w-40",
+        colGap: "gap-8",
+        slotOffset: 16,
+        connMid: 16,
+        connWidth: 16,
+        connGap: 32,
+      };
+    }
+  });
+
+  let matchPositions = $derived.by(() => {
+    const rs = rounds();
+    if (!rs.length)
+      return { positions: {}, centers: {}, totalHeight: 600 };
+
+    const H = bracketSpecs.H; // Card height
+    const g = bracketSpecs.g; // Intra-pair gap
+    const G = bracketSpecs.G; // Inter-pair gap
+
+    const positions = {}; // map of matchId -> { top, height }
+    const centers = {}; // map of matchId -> center px
+
+    const maxRoundNum = Math.max(...rs.map((r) => r.round));
+    const firstRound = rs.find((r) => r.round === maxRoundNum);
+    if (!firstRound) return { positions: {}, centers: {}, totalHeight: 600 };
+
+    const firstRoundMatches = firstRound.matches;
+    firstRoundMatches.forEach((m, idx) => {
+      const pairIdx = Math.floor(idx / 2);
+      const isEven = idx % 2 === 0;
+      const top = isEven
+        ? pairIdx * (2 * H + g + G)
+        : pairIdx * (2 * H + g + G) + H + g;
+
+      positions[m.id] = { top, height: H };
+      centers[m.id] = top + H / 2;
+    });
+
+    for (let rNum = maxRoundNum - 1; rNum >= 1; rNum--) {
+      const roundData = rs.find((r) => r.round === rNum);
+      const prevRoundData = rs.find((r) => r.round === rNum + 1);
+      if (!roundData || !prevRoundData) continue;
+
+      roundData.matches.forEach((m, idx) => {
+        const parent1 = prevRoundData.matches[idx * 2];
+        const parent2 = prevRoundData.matches[idx * 2 + 1];
+
+        let center = 0;
+        if (parent1 && parent2) {
+          center = (centers[parent1.id] + centers[parent2.id]) / 2;
+        } else if (parent1) {
+          center = centers[parent1.id];
+        } else {
+          center = idx * 300 + 150;
+        }
+
+        const top = center - H / 2;
+        positions[m.id] = { top, height: H };
+        centers[m.id] = center;
+      });
+    }
+
+    const totalHeight =
+      firstRoundMatches.length > 0
+        ? Math.ceil(firstRoundMatches.length / 2) * (2 * H + g + G) - G
+        : 600;
+
+    return { positions, centers, totalHeight };
+  });
+
+  let adjustedTotalHeight = $derived.by(() => {
+    let base = matchPositions.totalHeight;
+    if (tournament.hold_third_place && tournament.matches?.some(m => m.round === 0)) {
+      return Math.max(base, 190);
+    }
+    return base;
+  });
+
+  // Alive player tracking for detailing connector states
+  let alivePlayerIds = $derived.by(() => {
+    if (!tournament?.players) return new Set();
+    const alive = new Set(tournament.players.map((p) => p.id));
+    (tournament.matches || []).forEach((m) => {
+      if (m.status === "completed" || m.status === "walkover") {
+        const loserId =
+          m.winner_id === m.player1_id ? m.player2_id : m.player1_id;
+        if (loserId) {
+          alive.delete(loserId);
+        }
+      }
+    });
+    return alive;
+  });
+
+  function isAlive(playerId) {
+    if (!playerId) return false;
+    return alivePlayerIds.has(playerId);
+  }
+
+  function getRaceColorClass(race) {
+    if (!race) return 'text-muted-foreground';
+    const r = race.toUpperCase();
+    if (r === 'T') return 'text-blue-400 font-bold';
+    if (r === 'Z') return 'text-purple-400 font-bold';
+    if (r === 'P') return 'text-amber-400 font-bold';
+    if (r === 'R') return 'text-emerald-400 font-bold';
+    return 'text-muted-foreground';
+  }
+
   // Direct download export
   function triggerJsonDownload() {
     if (!tournament) return;
@@ -1365,7 +1503,51 @@
     URL.revokeObjectURL(url);
     toast.success("赛事 JSON 导出成功");
   }
+
+  function getPlayerRowBgClass(playerId, race) {
+    if (!playerId) {
+      return 'bg-[#f8f9fa] dark:bg-neutral-900/30 text-neutral-400 dark:text-neutral-500';
+    }
+    const r = race ? race.toUpperCase() : 'U';
+    
+    if (r === 'T') {
+      return 'bg-[#d8e8ff] dark:bg-[#152a4a]/40 hover:bg-[#cbe0ff] dark:hover:bg-[#152a4a]/60 text-blue-900 dark:text-blue-200 border-l border-blue-500/50';
+    }
+    if (r === 'Z') {
+      return 'bg-[#ffe2e2] dark:bg-[#3f1515]/40 hover:bg-[#ffd5d5] dark:hover:bg-[#3f1515]/60 text-red-900 dark:text-red-200 border-l border-red-500/50';
+    }
+    if (r === 'P') {
+      return 'bg-[#e2ffe2] dark:bg-[#1a382a]/40 hover:bg-[#c9ffc9] dark:hover:bg-[#1a382a]/60 text-emerald-900 dark:text-emerald-200 border-l border-emerald-500/50';
+    }
+    if (r === 'R') {
+      return 'bg-[#fff7d8] dark:bg-[#3d331a]/30 hover:bg-[#ffefa8] dark:hover:bg-[#3d331a]/50 text-amber-900 dark:text-amber-200 border-l border-amber-500/50';
+    }
+    return 'bg-[#f8f9fa] dark:bg-neutral-900/60 hover:bg-neutral-200/50 dark:hover:bg-neutral-900/80 text-neutral-800 dark:text-neutral-200 border-l border-neutral-400 dark:border-l-neutral-500';
+  }
 </script>
+
+{#snippet raceIcon(race)}
+  {#if race === 'T'}
+    <svg class="w-3.5 h-3.5 text-blue-400 shrink-0" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M12 2L2 9h4v6H2l10 7 10-7h-4V9h4L12 2zm0 3.8l5 3.5h-2.5v6h-5v-6H7l5-3.5z"/>
+    </svg>
+  {:else if race === 'Z'}
+    <svg class="w-3.5 h-3.5 text-purple-400 shrink-0" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15.5c-3.03 0-5.5-2.47-5.5-5.5s2.47-5.5 5.5-5.5 5.5 2.47 5.5 5.5-2.47 5.5-5.5 5.5zm0-8.5c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
+    </svg>
+  {:else if race === 'P'}
+    <svg class="w-3.5 h-3.5 text-amber-400 shrink-0" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M12 2L3 7v10l9 5 9-5V7L12 2zm0 3.3l6 3.3v6.8l-6 3.3-6-3.3V8.6l6-3.3z"/>
+    </svg>
+  {:else if race === 'R'}
+    <svg class="w-3.5 h-3.5 text-emerald-400 shrink-0" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 16h-2v-2h2v2zm1.07-7.75l-.9.92C12.45 11.9 12 12.5 12 14h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H6c0-3.31 2.69-6 6-6s6 2.69 6 6c0 1.04-.42 1.99-1.07 2.75z"/>
+    </svg>
+  {:else}
+    <div class="w-3.5 h-3.5 rounded-full border border-neutral-700 bg-neutral-800 shrink-0"></div>
+  {/if}
+{/snippet}
+
 
 {#if loading}
   <div
@@ -1407,7 +1589,7 @@
         </Card.Title>
       </Card.Header>
       <Card.Content class="p-5 pt-0">
-        <div class="space-y-1.5 max-h-[400px] overflow-y-auto pr-1">
+        <div class="space-y-1.5 max-h-100 overflow-y-auto pr-1">
           {#each tournament.players || [] as p}
             <div
               class="flex items-center justify-between px-3 py-1.5 rounded-lg bg-background/40 border border-border/60 hover:bg-background/80 transition-colors"
@@ -1752,214 +1934,275 @@
           </div>
         {/if}
       </Card.Header>
-      <Card.Content class="p-6 overflow-x-auto">
+      <Card.Content class="p-6 overflow-x-auto relative min-h-100">
         {#if tournament.matches?.length > 0}
-          <!-- Round flex container -->
-          <div class="flex gap-8 justify-start py-4">
-            {#each rounds() as r (r.round)}
-              <div
-                class="flex-shrink-0 w-56 flex flex-col justify-around gap-6"
-              >
-                <div
-                  class="text-xs text-muted-foreground font-bold text-center border-b border-border/40 pb-1.5 mb-2 tracking-wider"
-                >
+          <div class="flex justify-start items-stretch min-w-max py-4 {bracketSpecs.colGap}">
+            {#each rounds() as r, colIdx (r.round)}
+              <div class="shrink-0 flex flex-col justify-start h-full {bracketSpecs.cardWidth}">
+                <!-- Round Header -->
+                <div class="text-xs text-neutral-200 bg-neutral-800/80 border border-neutral-700/50 py-1.5 px-3 font-bold text-center mb-4 tracking-wider shrink-0 rounded-md shadow-sm">
                   {roundLabel(r.round, rounds().length)}
                 </div>
-                {#each r.matches as m (m.id)}
-                  {@const userInMatch =
-                    userState.id &&
-                    (m.player1_id === userState.id ||
-                      m.player2_id === userState.id)}
-                  {@const bothPlayersReady = m.player1_id && m.player2_id}
-                  {@const isPending = m.status === "pending"}
-                  {@const isPlayable =
-                    bothPlayersReady &&
-                    isPending &&
-                    tournament.status === "in_progress"}
-                  {@const isBye =
-                    m.status === "completed" &&
-                    m.winner_id &&
-                    (!m.player1_id || !m.player2_id)}
 
-                  {#if isBye}
-                    <!-- Bye match: minimal greyed-out card -->
-                    <div
-                      class="w-full p-2.5 rounded-xl border border-border/30 bg-muted/10 text-xs opacity-40"
-                    >
-                      <div
-                        class="flex items-center justify-between text-[9px] text-muted-foreground font-mono mb-1"
-                      >
-                        <span>场次 {m.position}</span>
-                        <span class="italic">轮空</span>
-                      </div>
-                      <div
-                        class="flex items-center gap-1.5 text-muted-foreground"
-                      >
-                        <span class="font-medium"
-                          >{playerName(m.winner_id)}</span
-                        >
-                        <span class="text-[9px] italic">→ 自动晋级</span>
-                      </div>
-                    </div>
-                  {:else}
-                    <!-- Normal match card -->
-                    {@const isClickable =
-                      bothPlayersReady &&
-                      ["in_progress", "completed"].includes(tournament.status)}
-                    <!-- svelte-ignore a11y_click_events_have_key_events -->
-                    <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-                    <div
-                      role="button"
-                      tabindex="0"
-                      onclick={() => { if (isClickable) openMatchDetails(m); }}
-                      class="w-full text-left p-3.5 rounded-xl border bg-background/50 transition-all flex flex-col gap-2 group/match shadow-sm text-xs cursor-default
-                      {isClickable
-                        ? 'hover:border-primary hover:bg-background/80 hover:shadow-md cursor-pointer'
-                        : ''}
-                      {isPlayable
-                        ? userInMatch
-                          ? 'border-primary ring-1 ring-primary/30 shadow shadow-primary/10 bg-primary/5'
-                          : 'border-primary/45 shadow-sm shadow-primary/5'
-                        : bothPlayersReady && !isPending
-                          ? 'border-emerald-500/30 hover:border-emerald-500/60 bg-emerald-500/5'
-                          : 'border-border'}
-                      "
-                    >
-                      <!-- Header slot indicators -->
-                      <div
-                        class="flex items-center justify-between text-[9px] text-muted-foreground w-full font-mono"
-                      >
-                        <div class="flex items-center gap-1.5">
-                          <span>场次 {m.position}</span>
-                          {#if isPlayable}
-                            {@const isActive = tournament.active_match_id === m.id}
-                            <button
-                              onclick={async (e) => {
-                                e.stopPropagation();
-                                try {
-                                  await API.setActiveMatch(tid, isActive ? null : m.id);
-                                  toast.success(isActive ? "已取消直播该场次" : "已开启该场次直播！");
-                                } catch (err) {
-                                  toast.error("更新直播状态失败: " + err.message);
-                                }
-                              }}
-                              class="px-1.5 py-0.5 rounded font-bold text-[8px] flex items-center gap-0.5 cursor-pointer transition-all
-                                {isActive 
-                                  ? 'bg-amber-500 text-black hover:bg-amber-400' 
-                                  : 'bg-primary text-primary-foreground hover:bg-primary/80'}"
-                            >
-                              <PlayIcon class="w-2.5 h-2.5" />
-                              {isActive ? "直播中" : "推流直播"}
-                            </button>
-                          {/if}
-                        </div>
-                        {#if userInMatch && isPending}
-                          <span class="text-primary font-bold animate-pulse"
-                            >我的比赛</span
-                          >
-                        {/if}
-                        {#if m.status === "completed"}
-                          <span
-                            class="text-emerald-400 font-bold bg-emerald-500/10 px-1 py-0.2 rounded border border-emerald-500/20"
-                            >完赛</span
-                          >
-                        {:else if m.status === "walkover"}
-                          <span
-                            class="text-amber-500 font-bold bg-amber-500/10 px-1 py-0.2 rounded border border-amber-500/20"
-                            >弃权</span
-                          >
-                        {/if}
-                      </div>
 
-                      <!-- Player 1 row -->
-                      <div
-                        class="flex items-center justify-between w-full py-0.5"
-                      >
-                        <span
-                          class="truncate font-semibold flex items-center gap-1.5
-                          {m.winner_id === m.player1_id
-                            ? 'text-primary font-extrabold'
-                            : 'text-foreground/80'}
-                          {!m.player1_id
-                            ? 'text-muted-foreground/50 italic font-light'
-                            : ''}
-                        "
-                        >
-                          {#if m.winner_id === m.player1_id && m.winner_id}
-                            <CrownIcon
-                              class="w-3.5 h-3.5 text-primary shrink-0"
-                            />
-                          {/if}
-                          {playerName(m.player1_id, m)}
-                        </span>
-                        {#if m.status !== "pending"}
-                          <span
-                            class="font-mono font-bold {m.winner_id ===
-                            m.player1_id
-                              ? 'text-primary'
-                              : 'text-muted-foreground'}"
-                          >
-                            {m.status === 'walkover' ? (m.winner_id === m.player1_id ? 'W' : 'FF') : m.score1}
-                          </span>
-                        {/if}
-                      </div>
+                <!-- Match cards in round (Absolutely positioned for perfect alignment) -->
+                <div class="relative w-full" style="height: {adjustedTotalHeight}px">
+                  {#each r.matches as m, idx (m.id)}
+                    {@const pos = matchPositions.positions[m.id] || { top: 0, height: 110 }}
+                    {@const userInMatch = userState.id && (m.player1_id === userState.id || m.player2_id === userState.id)}
+                    {@const bothPlayersReady = m.player1_id && m.player2_id}
+                    {@const isPending = m.status === "pending"}
+                    {@const isPlayable = bothPlayersReady && isPending && tournament.status === "in_progress"}
+                    {@const isBye = m.status === "completed" && m.winner_id && (!m.player1_id || !m.player2_id)}
+                    {@const p1 = tournament.players?.find(p => p.id === m.player1_id)}
+                    {@const p2 = tournament.players?.find(p => p.id === m.player2_id)}
 
-                      <!-- VS separator / Line -->
-                      <div class="h-[1px] bg-border/50 w-full"></div>
-
-                      <!-- Player 2 row -->
-                      <div
-                        class="flex items-center justify-between w-full py-0.5"
-                      >
-                        <span
-                          class="truncate font-semibold flex items-center gap-1.5
-                          {m.winner_id === m.player2_id
-                            ? 'text-primary font-extrabold'
-                            : 'text-foreground/80'}
-                          {!m.player2_id
-                            ? 'text-muted-foreground/50 italic font-light'
-                            : ''}
-                        "
-                        >
-                          {#if m.winner_id === m.player2_id && m.winner_id}
-                            <CrownIcon
-                              class="w-3.5 h-3.5 text-primary shrink-0"
-                            />
-                          {/if}
-                          {playerName(m.player2_id, m)}
-                        </span>
-                        {#if m.status !== "pending"}
-                          <span
-                            class="font-mono font-bold {m.winner_id ===
-                            m.player2_id
-                              ? 'text-primary'
-                              : 'text-muted-foreground'}"
-                          >
-                            {m.status === 'walkover' ? (m.winner_id === m.player2_id ? 'W' : 'FF') : m.score2}
-                          </span>
-                        {/if}
-                      </div>
-
-                      <!-- Prompt for pending action -->
-                      {#if bothPlayersReady && isPending && tournament.status === "in_progress"}
+                    <div class="absolute left-0 w-full" style="top: {pos.top}px; height: {pos.height}px;">
+                      {#if isBye}
+                        <!-- Bye Card (Hidden from view but occupies layout space) -->
+                        <div class="w-full h-full border border-transparent bg-transparent select-none pointer-events-none opacity-0"></div>
+                      {:else}
+                        <!-- Normal Match Card -->
+                        {@const isClickable = bothPlayersReady && ["in_progress", "completed"].includes(tournament.status)}
                         <div
-                          class="text-[9.5px] text-muted-foreground/80 text-center w-full mt-1 border-t border-border/40 pt-1.5 group-hover/match:text-primary transition-colors"
+                          role="button"
+                          tabindex="0"
+                          onclick={() => { if (isClickable) openMatchDetails(m); }}
+                          onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { if (isClickable) openMatchDetails(m); } }}
+                          class="w-full h-full text-left bg-white dark:bg-[#1c1c1c] border border-neutral-300 dark:border-neutral-800 rounded-md transition-all flex flex-col justify-between group/match shadow-md text-xs cursor-default overflow-hidden
+                          {isClickable ? 'hover:border-neutral-400 dark:hover:border-neutral-700 hover:shadow-lg cursor-pointer' : ''}
+                          {isPlayable ? 'ring-2 ring-primary/45 border-primary/20' : ''}"
                         >
-                          点击登记结果
+                          <!-- Tiny Header Bar -->
+                          <div class="px-2 py-1 bg-neutral-100 dark:bg-neutral-900 text-[8px] font-mono text-neutral-500 dark:text-neutral-400 flex items-center justify-between border-b border-neutral-200 dark:border-neutral-800/80 shrink-0">
+                            <span>场次 {m.position}</span>
+                            <div class="flex items-center gap-1.5">
+                              {#if isPlayable}
+                                {@const isActive = tournament.active_match_id === m.id}
+                                <button
+                                  onclick={async (e) => {
+                                    e.stopPropagation();
+                                    try {
+                                      await API.setActiveMatch(tid, isActive ? null : m.id);
+                                      toast.success(isActive ? "已取消直播该场次" : "已开启该场次直播！");
+                                    } catch (err) {
+                                      toast.error("更新直播状态失败: " + err.message);
+                                    }
+                                  }}
+                                  class="px-1 py-0.5 rounded font-bold text-[7px] flex items-center gap-0.5 cursor-pointer transition-all
+                                    {isActive ? 'bg-amber-500 text-black hover:bg-amber-400' : 'bg-primary text-primary-foreground hover:bg-primary/85'}"
+                                >
+                                  {isActive ? "直播中" : "推流直播"}
+                                </button>
+                              {/if}
+                              {#if userInMatch && isPending}
+                                <span class="text-primary font-bold animate-pulse">我的比赛</span>
+                              {/if}
+                            </div>
+                          </div>
+
+                          <!-- Player 1 Row -->
+                          <div class="flex items-center justify-between w-full h-6 border-b border-neutral-200/50 dark:border-neutral-900/40 transition-colors
+                            {getPlayerRowBgClass(m.player1_id, p1?.race)}">
+                            <div class="flex items-center gap-1.5 pl-1.5 truncate flex-1 min-w-0 h-full py-0">
+                              <span class="truncate font-semibold flex items-center gap-0.5 text-[10.5px]
+                                {m.winner_id === m.player1_id ? 'text-black dark:text-white font-black' : 'text-neutral-700 dark:text-neutral-300'}
+                                {!m.player1_id ? 'text-neutral-400 dark:text-neutral-500/80' : ''}"
+                              >
+                                {#if m.winner_id === m.player1_id && m.winner_id}
+                                  <CrownIcon class="w-2.5 h-2.5 text-amber-500 dark:text-amber-400 shrink-0" />
+                                {/if}
+                                <span class="truncate">{playerName(m.player1_id, m)}</span>
+                              </span>
+                            </div>
+                            <!-- Score -->
+                            {#if m.status !== "pending"}
+                              <div class="w-6 h-full flex items-center justify-center font-mono font-bold text-[11px] bg-neutral-100/60 dark:bg-black/40 text-center shrink-0 border-l border-neutral-200 dark:border-neutral-900/60
+                                {m.winner_id === m.player1_id ? 'text-primary font-black' : 'text-neutral-400 dark:text-neutral-500'}">
+                                {m.status === 'walkover' ? (m.winner_id === m.player1_id ? 'W' : 'FF') : m.score1}
+                              </div>
+                            {/if}
+                          </div>
+
+                          <!-- Player 2 Row -->
+                          <div class="flex items-center justify-between w-full h-6 transition-colors
+                            {getPlayerRowBgClass(m.player2_id, p2?.race)}">
+                            <div class="flex items-center gap-1.5 pl-1.5 truncate flex-1 min-w-0 h-full py-0">
+                              <span class="truncate font-semibold flex items-center gap-0.5 text-[10.5px]
+                                {m.winner_id === m.player2_id ? 'text-black dark:text-white font-black' : 'text-neutral-700 dark:text-neutral-300'}
+                                {!m.player2_id ? 'text-neutral-400 dark:text-neutral-500/80' : ''}"
+                              >
+                                {#if m.winner_id === m.player2_id && m.winner_id}
+                                  <CrownIcon class="w-2.5 h-2.5 text-amber-500 dark:text-amber-400 shrink-0" />
+                                {/if}
+                                <span class="truncate">{playerName(m.player2_id, m)}</span>
+                              </span>
+                            </div>
+                            <!-- Score -->
+                            {#if m.status !== "pending"}
+                              <div class="w-6 h-full flex items-center justify-center font-mono font-bold text-[11px] bg-neutral-100/60 dark:bg-black/40 text-center shrink-0 border-l border-neutral-200 dark:border-neutral-900/60
+                                {m.winner_id === m.player2_id ? 'text-primary font-black' : 'text-neutral-400 dark:text-neutral-500'}">
+                                {m.status === 'walkover' ? (m.winner_id === m.player2_id ? 'W' : 'FF') : m.score2}
+                              </div>
+                            {/if}
+                          </div>
                         </div>
                       {/if}
+
+                      <!-- Render Connectors to the right (Only if not the last column) -->
+                      {#if colIdx < rounds().length - 1}
+                        {@const nextRound = rounds()[colIdx + 1]}
+                        {@const isEven = idx % 2 === 0}
+
+                        {#if isEven}
+                          {@const sibling = r.matches[idx + 1]}
+                          {#if sibling}
+                            {@const center1 = matchPositions.centers[m.id]}
+                            {@const center2 = matchPositions.centers[sibling.id]}
+                            {@const vHeight = center2 - center1}
+                            {@const isWinner1Alive = m.winner_id && isAlive(m.winner_id)}
+                            {@const isWinner2Alive = sibling.winner_id && isAlive(sibling.winner_id)}
+                            {@const isMBye = m.status === "completed" && m.winner_id && (!m.player1_id || !m.player2_id)}
+                            {@const isSiblingBye = sibling.status === "completed" && sibling.winner_id && (!sibling.player1_id || !sibling.player2_id)}
+
+                            <!-- Top card horizontal right line -->
+                            {#if !isMBye}
+                              <div
+                                class="absolute -translate-y-1/2 z-0 {isWinner1Alive ? 'line-horizontal-active' : 'line-horizontal-inactive'}"
+                                style="right: -{bracketSpecs.connMid}px; width: {bracketSpecs.connWidth}px; top: {bracketSpecs.H / 2}px;"
+                              ></div>
+                            {/if}
+
+                            <!-- Bottom card horizontal right line -->
+                            {#if !isSiblingBye}
+                              <div
+                                class="absolute z-0 {isWinner2Alive ? 'line-horizontal-active' : 'line-horizontal-inactive'}"
+                                style="right: -{bracketSpecs.connMid}px; width: {bracketSpecs.connWidth}px; top: {bracketSpecs.H / 2}px; transform: translateY(calc(-50% + {vHeight}px));"
+                              ></div>
+                            {/if}
+
+                            <!-- Vertical segment 1 (top half) -->
+                            {#if !isMBye}
+                              <div
+                                class="absolute w-0.5 z-0 {isWinner1Alive ? 'line-vertical-active' : 'line-vertical-inactive'}"
+                                style="right: -{bracketSpecs.connMid}px; top: {bracketSpecs.H / 2}px; height: {vHeight / 2 - bracketSpecs.slotOffset}px;"
+                              ></div>
+                            {/if}
+
+                            <!-- Vertical segment 3 (bottom half) -->
+                            {#if !isSiblingBye}
+                              <div
+                                class="absolute w-0.5 z-0 {isWinner2Alive ? 'line-vertical-active' : 'line-vertical-inactive'}"
+                                style="right: -{bracketSpecs.connMid}px; top: calc({bracketSpecs.H / 2}px + {vHeight / 2 + bracketSpecs.slotOffset}px); height: {vHeight / 2 - bracketSpecs.slotOffset}px;"
+                              ></div>
+                            {/if}
+
+                            <!-- Outgoing Branch 1 to next round -->
+                            {#if !isMBye}
+                              <div
+                                class="absolute z-0 {isWinner1Alive ? 'line-horizontal-active' : 'line-horizontal-inactive'}"
+                                style="right: -{bracketSpecs.connGap}px; width: {bracketSpecs.connWidth}px; top: calc({bracketSpecs.H / 2}px + {vHeight / 2 - bracketSpecs.slotOffset}px); transform: translateY(-50%);"
+                              ></div>
+                            {/if}
+
+                            <!-- Outgoing Branch 2 to next round -->
+                            {#if !isSiblingBye}
+                              <div
+                                class="absolute z-0 {isWinner2Alive ? 'line-horizontal-active' : 'line-horizontal-inactive'}"
+                                style="right: -{bracketSpecs.connGap}px; width: {bracketSpecs.connWidth}px; top: calc({bracketSpecs.H / 2}px + {vHeight / 2 + bracketSpecs.slotOffset}px); transform: translateY(-50%);"
+                              ></div>
+                            {/if}
+                          {/if}
+                        {/if}
+                      {/if}
                     </div>
+                  {/each}
+
+                  {#if colIdx === rounds().length - 1}
+                    {@const thirdPlaceMatch = tournament.matches.find(m => m.round === 0)}
+                    {#if thirdPlaceMatch}
+                      {@const tp1 = tournament.players?.find(p => p.id === thirdPlaceMatch.player1_id)}
+                      {@const tp2 = tournament.players?.find(p => p.id === thirdPlaceMatch.player2_id)}
+                      {@const gfMatch = r.matches[0]}
+                      {#if gfMatch}
+                        {@const gfPos = matchPositions.positions[gfMatch.id] || { top: 0, height: 64 }}
+                        {@const tpTop = gfPos.top + gfPos.height + 28}
+                        
+                        <!-- Third Place Match Header -->
+                        <div class="absolute left-0 w-full text-[9px] font-bold text-center text-neutral-500 uppercase tracking-wider h-4 flex items-center justify-center"
+                             style="top: {tpTop - 18}px;">
+                          三四名决赛
+                        </div>
+                        
+                        <!-- Third Place Match Card -->
+                        <div class="absolute left-0 w-full" style="top: {tpTop}px; height: {gfPos.height}px;">
+                          <button
+                            type="button"
+                            onclick={() => { if (thirdPlaceMatch.player1_id && thirdPlaceMatch.player2_id) openMatchDetails(thirdPlaceMatch); }}
+                            class="w-full h-full text-left bg-white dark:bg-[#1c1c1c] border border-neutral-300 dark:border-neutral-800 rounded-md transition-all flex flex-col justify-between group/match shadow-md text-xs cursor-default overflow-hidden
+                            {thirdPlaceMatch.player1_id && thirdPlaceMatch.player2_id ? 'hover:border-neutral-400 dark:hover:border-neutral-700 hover:shadow-lg cursor-pointer' : ''}"
+                          >
+                            <!-- Tiny Header Bar -->
+                            <div class="px-2 py-0.5 bg-neutral-100 dark:bg-neutral-900 text-[8px] font-mono text-neutral-500 dark:text-neutral-400 flex items-center justify-between border-b border-neutral-200 dark:border-neutral-800/80 shrink-0 h-4">
+                              <span>场次 {thirdPlaceMatch.position}</span>
+                            </div>
+
+                            <!-- Player 1 Row -->
+                            <div class="flex items-center justify-between w-full h-6 border-b border-neutral-200/50 dark:border-neutral-900/40 transition-colors
+                              {getPlayerRowBgClass(thirdPlaceMatch.player1_id, tp1?.race)}">
+                              <div class="flex items-center gap-1.5 pl-1.5 truncate flex-1 min-w-0 h-full py-0">
+                                <span class="truncate font-semibold flex items-center gap-0.5 text-[10.5px]
+                                  {thirdPlaceMatch.winner_id === thirdPlaceMatch.player1_id ? 'text-black dark:text-white font-black' : 'text-neutral-700 dark:text-neutral-300'}
+                                  {!thirdPlaceMatch.player1_id ? 'text-neutral-400 dark:text-neutral-500/80' : ''}"
+                                >
+                                  {#if thirdPlaceMatch.winner_id === thirdPlaceMatch.player1_id && thirdPlaceMatch.winner_id}
+                                    <CrownIcon class="w-2.5 h-2.5 text-amber-500 dark:text-amber-400 shrink-0" />
+                                  {/if}
+                                  <span class="truncate">{playerName(thirdPlaceMatch.player1_id, thirdPlaceMatch)}</span>
+                                </span>
+                              </div>
+                              {#if thirdPlaceMatch.status !== "pending"}
+                                <div class="w-6 h-full flex items-center justify-center font-mono font-bold text-[11px] bg-neutral-100/60 dark:bg-black/40 text-center shrink-0 border-l border-neutral-200 dark:border-neutral-900/60
+                                  {thirdPlaceMatch.winner_id === thirdPlaceMatch.player1_id ? 'text-primary font-black' : 'text-neutral-400 dark:text-neutral-500'}">
+                                  {thirdPlaceMatch.status === 'walkover' ? (thirdPlaceMatch.winner_id === thirdPlaceMatch.player1_id ? 'W' : 'FF') : thirdPlaceMatch.score1}
+                                </div>
+                              {/if}
+                            </div>
+
+                            <!-- Player 2 Row -->
+                            <div class="flex items-center justify-between w-full h-6 transition-colors
+                              {getPlayerRowBgClass(thirdPlaceMatch.player2_id, tp2?.race)}">
+                              <div class="flex items-center gap-1.5 pl-1.5 truncate flex-1 min-w-0 h-full py-0">
+                                <span class="truncate font-semibold flex items-center gap-0.5 text-[10.5px]
+                                  {thirdPlaceMatch.winner_id === thirdPlaceMatch.player2_id ? 'text-black dark:text-white font-black' : 'text-neutral-700 dark:text-neutral-300'}
+                                  {!thirdPlaceMatch.player2_id ? 'text-neutral-400 dark:text-neutral-500/80' : ''}"
+                                >
+                                  {#if thirdPlaceMatch.winner_id === thirdPlaceMatch.player2_id && thirdPlaceMatch.winner_id}
+                                    <CrownIcon class="w-2.5 h-2.5 text-amber-500 dark:text-amber-400 shrink-0" />
+                                  {/if}
+                                  <span class="truncate">{playerName(thirdPlaceMatch.player2_id, thirdPlaceMatch)}</span>
+                                </span>
+                              </div>
+                              {#if thirdPlaceMatch.status !== "pending"}
+                                <div class="w-6 h-full flex items-center justify-center font-mono font-bold text-[11px] bg-neutral-100/60 dark:bg-black/40 text-center shrink-0 border-l border-neutral-200 dark:border-neutral-900/60
+                                  {thirdPlaceMatch.winner_id === thirdPlaceMatch.player2_id ? 'text-primary font-black' : 'text-neutral-400 dark:text-neutral-500'}">
+                                  {thirdPlaceMatch.status === 'walkover' ? (thirdPlaceMatch.winner_id === thirdPlaceMatch.player2_id ? 'W' : 'FF') : thirdPlaceMatch.score2}
+                                </div>
+                              {/if}
+                            </div>
+                          </button>
+                        </div>
+                      {/if}
+                    {/if}
                   {/if}
-                {/each}
+                </div>
               </div>
             {/each}
           </div>
         {:else}
           <div class="text-center py-12 text-muted-foreground">
             {#if tournament.status === "registration"}
-              <p class="text-xs italic">
-                暂无对阵预览，调整上面种子顺序后，点击“生成对阵预览”。
-              </p>
+              <p class="text-xs italic">暂无对阵预览，调整上面种子顺序后，点击“生成对阵预览”。</p>
             {:else}
               <p class="text-xs italic">对阵图尚未生成。</p>
             {/if}
@@ -1999,6 +2242,7 @@
             0}/{tournament.player_capacity} 人 • 创建于 {new Date(
             tournament.created_at,
           ).toLocaleDateString("zh-CN")}
+          • 晋级规则: <span class="font-bold text-primary">{tournament.loser_advances ? "败者晋级 (SUCK 经典)" : "胜者晋级 (常规单淘)"}</span>
         </p>
         {#if tournament.scheduled_time}
           <div
@@ -2171,7 +2415,7 @@
                 {#if userState.id}
                   <div class="flex items-center gap-3">
                     <div
-                      class="w-10 h-10 rounded-full bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-xs font-bold text-white uppercase"
+                      class="w-10 h-10 rounded-full bg-linear-to-br from-amber-500 to-orange-600 flex items-center justify-center text-xs font-bold text-white uppercase"
                     >
                       {userState.id.slice(0, 2)}
                     </div>
@@ -2269,7 +2513,7 @@
                       >快捷选择已有选手报名：</span
                     >
                     <div
-                      class="flex flex-wrap gap-1.5 max-h-[100px] overflow-y-auto pr-1"
+                      class="flex flex-wrap gap-1.5 max-h-25 overflow-y-auto pr-1"
                     >
                       {#each unregisteredPlayers as p}
                         <button
@@ -2307,7 +2551,7 @@
                 </div>
               </Card.Header>
               <Card.Content class="p-6 pt-0 space-y-4">
-                <div class="space-y-1.5 max-h-[300px] overflow-y-auto pr-1">
+                <div class="space-y-1.5 max-h-75 overflow-y-auto pr-1">
                   {#each seedOrder as pid, idx}
                     <div
                       class="flex items-center gap-3 bg-background/50 border border-border rounded-xl px-4 py-2 text-xs"
@@ -2527,7 +2771,7 @@
                     </div>
                     <!-- Scrollable slots grid in sidebar -->
                     <div
-                      class="border-t border-border/60 p-3 max-h-[160px] overflow-y-auto"
+                      class="border-t border-border/60 p-3 max-h-40 overflow-y-auto"
                     >
                       <span
                         class="text-[9px] text-muted-foreground font-bold uppercase tracking-wider block mb-2"
@@ -2605,7 +2849,7 @@
               {#if userState.id}
                 <div class="space-y-3">
                   <div class="space-y-1">
-                    <label class="text-[10px] font-bold text-muted-foreground">选择投票主题</label>
+                    <span class="text-[10px] font-bold text-muted-foreground block">选择投票主题</span>
                     <select
                       bind:value={customTopicSelect}
                       class="flex h-8 w-full rounded-md border border-input bg-background px-3 py-1 text-xs ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
@@ -2619,7 +2863,7 @@
 
                   {#if customTopicSelect === "new"}
                     <div class="space-y-1 animate-in fade-in slide-in-from-top-1 duration-200">
-                      <label class="text-[10px] font-bold text-muted-foreground">自定义主题名称</label>
+                      <span class="text-[10px] font-bold text-muted-foreground block">自定义主题名称</span>
                       <Input
                         bind:value={customTopicInput}
                         placeholder="例如: 比赛规则, BP赛制"
@@ -2629,7 +2873,7 @@
                   {/if}
 
                   <div class="space-y-1">
-                    <label class="text-[10px] font-bold text-muted-foreground">选项内容</label>
+                    <span class="text-[10px] font-bold text-muted-foreground block">选项内容</span>
                     <Input
                       bind:value={customOptionInput}
                       placeholder="例如: 韩服, BO5双败, Neo Sylphid"
@@ -2678,14 +2922,14 @@
           <!-- Winner Podium for Completed stage -->
           {#if tournament.status === "completed" && podium}
             <div
-              class="bg-gradient-to-r from-amber-500/10 via-background to-amber-500/10 border border-primary/20 rounded-2xl p-6 text-center max-w-2xl mx-auto space-y-4 shadow-lg shadow-primary/5"
+              class="bg-linear-to-r from-amber-500/10 via-background to-amber-500/10 border border-primary/20 rounded-2xl p-6 text-center max-w-2xl mx-auto space-y-4 shadow-lg shadow-primary/5"
             >
               <TrophyIcon
                 class="w-12 h-12 text-primary mx-auto animate-bounce"
               />
               <div>
                 <h2
-                  class="text-xl font-extrabold tracking-tight bg-gradient-to-r from-amber-400 to-amber-200 bg-clip-text text-transparent"
+                  class="text-xl font-extrabold tracking-tight bg-linear-to-r from-amber-400 to-amber-200 bg-clip-text text-transparent"
                 >
                   冠军诞生！恭喜 {playerName(podium.champion)}
                 </h2>
@@ -2827,7 +3071,7 @@
 
 <!-- Match Result Submission Dialog -->
 <Dialog.Root bind:open={showMatchDialog}>
-  <Dialog.Content class="max-w-[380px] bg-card border border-border">
+  <Dialog.Content class="max-w-95 bg-card border border-border">
     <Dialog.Header>
       <Dialog.Title class="text-base font-bold text-foreground">
         填报比赛结果
@@ -2951,7 +3195,7 @@
 
 <!-- Dialog for ending voting and selecting final time -->
 <Dialog.Root bind:open={showStatusTimeDialog}>
-  <Dialog.Content class="max-w-[400px] bg-card border border-border">
+  <Dialog.Content class="max-w-100 bg-card border border-border">
     <Dialog.Header>
       <Dialog.Title
         class="text-lg font-bold tracking-tight text-foreground flex items-center gap-2"
@@ -2987,7 +3231,7 @@
             >根据投票结果快捷点选：</span
           >
           <div
-            class="grid grid-cols-1 gap-2 max-h-[160px] overflow-y-auto pr-1"
+            class="grid grid-cols-1 gap-2 max-h-40 overflow-y-auto pr-1"
           >
             {#each voteOptions as opt}
               {@const displayTime = formatVoteTime(opt.proposed_time)}
@@ -3036,7 +3280,7 @@
 <!-- Match Replay Details Dialog -->
 <Dialog.Root bind:open={showMatchDetailsDialog}>
   <Dialog.Content
-    class="sm:max-w-[950px] w-[95vw] max-h-[85vh] overflow-y-auto bg-card border border-border p-6 flex flex-col gap-4"
+    class="sm:max-w-237.5 w-[95vw] max-h-[85vh] overflow-y-auto bg-card border border-border p-6 flex flex-col gap-4"
   >
     <Dialog.Header>
       <Dialog.Title
@@ -3079,7 +3323,7 @@
             >
           </div>
 
-          <div class="space-y-1.5 max-h-[220px] overflow-y-auto pr-1">
+          <div class="space-y-1.5 max-h-55 overflow-y-auto pr-1">
             {#each matchReplays as rep, idx}
               <button
                 onclick={() => {
@@ -3145,7 +3389,7 @@
         </div>
 
         <!-- Replay Content Area -->
-        <div class="md:col-span-3 flex flex-col gap-3 min-h-[300px]">
+        <div class="md:col-span-3 flex flex-col gap-3 min-h-75">
           {#if selectedReplay}
             <!-- Mini Tab Bar -->
             <div
@@ -3226,7 +3470,7 @@
                         >
                           <span class="font-semibold flex items-center gap-1.5">
                             <span
-                              class="w-4 h-4 rounded-full bg-gradient-to-br from-primary to-indigo-600 flex items-center justify-center text-[8px] font-bold text-white uppercase"
+                              class="w-4 h-4 rounded-full bg-linear-to-br from-primary to-indigo-600 flex items-center justify-center text-[8px] font-bold text-white uppercase"
                               >{player.name.slice(0, 1)}</span
                             >
                             {player.name}
@@ -3278,7 +3522,7 @@
               <!-- Tab content: Build Order -->
             {:else if activeReplayTab === "build_order"}
               <div
-                class="grid grid-cols-2 gap-4 flex-1 pt-1 max-h-[300px] overflow-y-auto pr-1"
+                class="grid grid-cols-2 gap-4 flex-1 pt-1 max-h-75 overflow-y-auto pr-1"
               >
                 {#each selectedReplay.parsed_data?.teams || [] as team, teamIdx}
                   {@const player = team.players?.[0]}
@@ -3299,7 +3543,7 @@
                       >
                     </div>
                     <div
-                      class="space-y-1.5 overflow-y-auto max-h-[220px] text-[10px] pr-1"
+                      class="space-y-1.5 overflow-y-auto max-h-55 text-[10px] pr-1"
                     >
                       {#each (player?.build_order || []).filter((item) => !item.is_worker) as bo}
                         <div
@@ -3449,7 +3693,7 @@
               <!-- Tab content: Chat -->
             {:else if activeReplayTab === "chat"}
               <div
-                class="border border-border bg-background/40 rounded-xl p-3 flex-1 overflow-y-auto max-h-[300px] text-[11px] space-y-2.5 font-mono"
+                class="border border-border bg-background/40 rounded-xl p-3 flex-1 overflow-y-auto max-h-75 text-[11px] space-y-2.5 font-mono"
               >
                 {#each selectedReplay.parsed_data?.chat || [] as msg}
                   <div class="flex items-start gap-1.5 leading-normal">
@@ -3526,7 +3770,7 @@
 <!-- Liquipedia Wiki Export Dialog -->
 <Dialog.Root bind:open={showWikiDialog}>
   <Dialog.Content
-    class="max-w-[500px] bg-card border border-border p-6 flex flex-col gap-4"
+    class="max-w-125 bg-card border border-border p-6 flex flex-col gap-4"
   >
     <Dialog.Header>
       <Dialog.Title
@@ -3585,7 +3829,7 @@
 <!-- Participant Profile Edit Dialog -->
 <Dialog.Root bind:open={showPlayerEditDialog}>
   <Dialog.Content
-    class="max-w-[420px] bg-card border border-border p-6 flex flex-col gap-4"
+    class="max-w-105 bg-card border border-border p-6 flex flex-col gap-4"
   >
     <Dialog.Header>
       <Dialog.Title
@@ -3634,7 +3878,7 @@
               >
             </span>
             <div
-              class="flex flex-wrap gap-1 min-h-[30px] p-1.5 rounded bg-background/50 border border-border"
+              class="flex flex-wrap gap-1 min-h-7.5 p-1.5 rounded bg-background/50 border border-border"
             >
               {#each editPlayerBattleTags.cn as tag, idx}
                 <Badge
@@ -3710,7 +3954,7 @@
               >
             </span>
             <div
-              class="flex flex-wrap gap-1 min-h-[30px] p-1.5 rounded bg-background/50 border border-border"
+              class="flex flex-wrap gap-1 min-h-7.5 p-1.5 rounded bg-background/50 border border-border"
             >
               {#each editPlayerBattleTags.global as tag, idx}
                 <Badge
@@ -3814,7 +4058,7 @@
           >已关联游戏账号 (Battle.net IDs) (只读，来自录像上传)</span
         >
         <div
-          class="flex flex-wrap gap-1.5 min-h-[40px] p-2 rounded-xl border border-border bg-background/30"
+          class="flex flex-wrap gap-1.5 min-h-10 p-2 rounded-xl border border-border bg-background/30"
         >
           {#each editPlayerBnetIds as account}
             <Badge
@@ -3883,7 +4127,7 @@
 <!-- Dialog for manual mapping of unmapped replays -->
 <Dialog.Root bind:open={showUnmappedDialog}>
   <Dialog.Content
-    class="max-w-[550px] bg-card border border-border p-6 flex flex-col gap-4"
+    class="max-w-137.5 bg-card border border-border p-6 flex flex-col gap-4"
   >
     <Dialog.Header>
       <Dialog.Title
@@ -3898,25 +4142,27 @@
       </Dialog.Description>
     </Dialog.Header>
 
-    <div class="space-y-4 max-h-[350px] overflow-y-auto pr-1 py-1">
+    <div class="space-y-3 max-h-87.5 overflow-y-auto pr-1 py-1">
       {#each getUnrecognizedIds(unmappedReplays) as bnetId}
         <div
-          class="flex items-center justify-between gap-3 p-3 rounded-xl border border-border bg-background/30"
+          class="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-4 p-3.5 rounded-xl border border-border bg-background/30 items-center"
         >
-          <span class="font-mono text-sm font-bold text-amber-500 break-all"
-            >{bnetId}</span
+          <div class="font-mono text-sm font-bold text-amber-500 break-all select-all min-w-0"
+            >{bnetId}</div
           >
-          <div class="flex items-center gap-2">
+          <div class="flex items-center gap-2 justify-between sm:justify-end shrink-0">
             <span class="text-[10px] text-muted-foreground shrink-0"
               >对应选手:</span
             >
             <select
               bind:value={tempBnetMappings[bnetId]}
-              class="bg-background border border-border text-foreground text-xs rounded-lg p-2 focus-visible:outline-none min-w-[200px]"
+              class="bg-background border border-border text-foreground text-xs rounded-lg p-1.5 focus-visible:outline-none w-50 max-w-60 truncate"
             >
               <option value="">-- 选择参赛选手 --</option>
               {#each getAvailablePlayersForBnet(bnetId) as p}
-                <option value={p.id}>{p.display_name} ({p.id})</option>
+                <option value={p.id}>
+                  {p.display_name && p.display_name !== p.id ? `${p.display_name} (${p.id})` : p.id}
+                </option>
               {/each}
             </select>
           </div>
@@ -3949,3 +4195,30 @@
     </Dialog.Footer>
   </Dialog.Content>
 </Dialog.Root>
+
+<style>
+  /* Bracket Connectors */
+  .line-horizontal-active, .line-horizontal-inactive {
+    background: #a2a9b1;
+    opacity: 0.8;
+    height: 1.5px !important;
+  }
+
+  .line-vertical-active, .line-vertical-inactive {
+    background: #a2a9b1;
+    opacity: 0.8;
+    width: 1.5px !important;
+  }
+
+  /* Dark mode overrides for connectors */
+  :global(.dark) .line-horizontal-active, :global(.dark) .line-horizontal-inactive {
+    background: #475569;
+    opacity: 0.4;
+    height: 1.5px !important;
+  }
+  :global(.dark) .line-vertical-active, :global(.dark) .line-vertical-inactive {
+    background: #475569;
+    opacity: 0.4;
+    width: 1.5px !important;
+  }
+</style>

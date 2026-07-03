@@ -49,6 +49,7 @@
   let showCreateDialog = $state(false);
   let newName = $state("");
   let newCapacity = $state(16);
+  let newLoserAdvances = $state(true);
   let creating = $state(false);
 
   // Divide tournaments
@@ -79,6 +80,7 @@
     }
     newName = "";
     newCapacity = 16;
+    newLoserAdvances = true;
     showCreateDialog = true;
   }
 
@@ -102,6 +104,7 @@
         name: trimmedName,
         player_capacity: newCapacity,
         hold_third_place: 0,
+        loser_advances: newLoserAdvances ? 1 : 0
       });
       toast.success(`赛事创建成功！(生成 ID: ${generatedId})`);
       newName = "";
@@ -397,6 +400,20 @@
           max="16"
           class="bg-background border-border text-foreground"
         />
+      </div>
+
+      <div class="space-y-1.5">
+        <label class="text-xs font-bold text-muted-foreground block">晋级规则</label>
+        <div class="flex items-center gap-4 text-xs pt-1">
+          <label class="flex items-center gap-1.5 cursor-pointer text-foreground font-semibold">
+            <input type="radio" bind:group={newLoserAdvances} value={true} class="accent-primary" />
+            <span>败者晋级 (SUCK 经典)</span>
+          </label>
+          <label class="flex items-center gap-1.5 cursor-pointer text-muted-foreground hover:text-foreground">
+            <input type="radio" bind:group={newLoserAdvances} value={false} class="accent-primary" />
+            <span>胜者晋级 (常规单淘)</span>
+          </label>
+        </div>
       </div>
     </div>
     <Dialog.Footer class="flex flex-col sm:flex-row gap-2 mt-2">

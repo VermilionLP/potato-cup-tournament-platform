@@ -193,6 +193,18 @@ export default fp(async function databasePlugin(fastify) {
         );
         CREATE INDEX IF NOT EXISTS idx_custom_votes_tournament ON custom_votes(tournament_id);
       `);
+    },
+    // Migration 11: Add loser_advances column to tournaments
+    () => {
+      console.log('Running database migration v11: adding loser_advances column to tournaments...');
+      try {
+        const columnsTournaments = db.prepare(`PRAGMA table_info(tournaments)`).all().map(c => c.name);
+        if (!columnsTournaments.includes('loser_advances')) {
+          db.prepare("ALTER TABLE tournaments ADD COLUMN loser_advances INTEGER DEFAULT 1").run();
+        }
+      } catch (e) {
+        console.error("Migration v11 tournaments table failed:", e);
+      }
     }
   ];
 

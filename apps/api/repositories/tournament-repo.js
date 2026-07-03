@@ -25,16 +25,20 @@ export function TournamentRepo(db) {
     `).get(id);
   }
 
-  function create({ id, name, description, player_capacity, hold_third_place }) {
+  function create({ id, name, description, player_capacity, hold_third_place, loser_advances }) {
     db.prepare(`
-      INSERT INTO tournaments (id, name, description, status, player_capacity, hold_third_place)
-      VALUES (?, ?, ?, 'voting', ?, ?)
-    `).run(id, name, description || '', player_capacity || 16, hold_third_place ? 1 : 0);
+      INSERT INTO tournaments (id, name, description, status, player_capacity, hold_third_place, loser_advances)
+      VALUES (?, ?, ?, 'voting', ?, ?, ?)
+    `).run(id, name, description || '', player_capacity || 16, hold_third_place ? 1 : 0, loser_advances !== undefined ? (loser_advances ? 1 : 0) : 1);
     return getById(id);
   }
 
-  function updateStatus(id, status, scheduledTime = null) {
-    if (scheduledTime !== null) {
+  function updateStatus(id, status, scheduledTime = null, createdAt = null, updatedAt = null) {
+    if (createdAt && updatedAt) {
+      db.prepare(`
+        UPDATE tournaments SET status = ?, scheduled_time = ?, created_at = ?, updated_at = ? WHERE id = ?
+      `).run(status, scheduledTime || '', createdAt, updatedAt, id);
+    } else if (scheduledTime !== null) {
       db.prepare(`
         UPDATE tournaments SET status = ?, scheduled_time = ?, updated_at = datetime('now') WHERE id = ?
       `).run(status, scheduledTime, id);

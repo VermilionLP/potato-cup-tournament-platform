@@ -20,7 +20,7 @@ import fastifySse from '@fastify/sse';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(readFileSync(join(__dirname, 'package.json'), 'utf-8'));
 
-const fastify = Fastify({ logger: true, trustProxy: true });
+const fastify = Fastify({ logger: true, trustProxy: true, bodyLimit: 104857600 });
 const tournamentEvents = new EventEmitter();
 fastify.decorate('tournamentEvents', tournamentEvents);
 

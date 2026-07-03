@@ -1,9 +1,305 @@
 import { PlayerRepo } from '../repositories/player-repo.js';
 import { TournamentRepo } from '../repositories/tournament-repo.js';
+import { getPlayerInfoFromReplay } from './replays.js';
 
 export default async function playersRoutes(fastify) {
   const repo = PlayerRepo(fastify.db);
   const tourneyRepo = TournamentRepo(fastify.db);
+
+  fastify.get('/players/statistics', async () => {
+    const db = fastify.db;
+    const players = repo.list();
+    const registrations = db.prepare('SELECT * FROM tournament_players').all();
+    const matches = db.prepare("SELECT * FROM matches WHERE status IN ('completed', 'walkover')").all();
+    const replays = db.prepare('SELECT match_id, winner, map_name, game_length, parsed_data FROM match_replays').all();
+    const tournaments = db.prepare('SELECT id, name FROM tournaments').all();
+    const tournamentMap = {};
+    for (const t of tournaments) tournamentMap[t.id] = t.name;
+
+    const stats = {};
+    for (const p of players) {
+      stats[p.id] = {
+        id: p.id,
+        display_name: p.display_name,
+        team: p.team || '',
+        flag: p.flag || 'cn',
+        tournaments_played: 0,
+        matches_played: 0,
+        matches_won: 0,
+        matches_lost: 0,
+        walkover_wins: 0,
+        walkover_losses: 0,
+        replays_count: 0,
+        total_game_time: 0,
+        game_time_count: 0,
+        maps_played: 0,
+        maps_won: 0,
+        maps_lost: 0,
+        races_used: {},
+        vs_race: {
+          Z: { won: 0, total: 0 },
+          T: { won: 0, total: 0 },
+          P: { won: 0, total: 0 },
+          R: { won: 0, total: 0 }
+        },
+        opponents: {},
+        tournament_ids: []
+      };
+    }
+
+    for (const reg of registrations) {
+      if (stats[reg.player_id]) {
+        stats[reg.player_id].tournaments_played++;
+        if (!stats[reg.player_id].tournament_ids.includes(reg.tournament_id)) {
+          stats[reg.player_id].tournament_ids.push(reg.tournament_id);
+        }
+      }
+    }
+
+    for (const m of matches) {
+      const p1 = m.player1_id;
+      const p2 = m.player2_id;
+      const w = m.winner_id;
+      if (!p1 || !p2) continue;
+
+      if (m.status === 'walkover') {
+        if (w === p1) {
+          if (stats[p1]) stats[p1].walkover_wins++;
+          if (stats[p2]) stats[p2].walkover_losses++;
+        } else if (w === p2) {
+          if (stats[p2]) stats[p2].walkover_wins++;
+          if (stats[p1]) stats[p1].walkover_losses++;
+        }
+      } else {
+        const p1Won = m.score1 > m.score2;
+        const s1 = m.score1;
+        const s2 = m.score2;
+        const totalMaps = s1 + s2;
+
+        if (stats[p1]) {
+          stats[p1].matches_played++;
+          if (p1Won) stats[p1].matches_won++;
+          else stats[p1].matches_lost++;
+
+          stats[p1].maps_played += totalMaps;
+          stats[p1].maps_won += s1;
+          stats[p1].maps_lost += s2;
+
+          if (stats[p2]) {
+            if (!stats[p1].opponents[p2]) {
+              stats[p1].opponents[p2] = { won_matches: 0, lost_matches: 0, won_maps: 0, lost_maps: 0 };
+            }
+            if (p1Won) stats[p1].opponents[p2].won_matches++;
+            else stats[p1].opponents[p2].lost_matches++;
+
+            stats[p1].opponents[p2].won_maps += s1;
+            stats[p1].opponents[p2].lost_maps += s2;
+          }
+        }
+
+        if (stats[p2]) {
+          stats[p2].matches_played++;
+          if (!p1Won) stats[p2].matches_won++;
+          else stats[p2].matches_lost++;
+
+          stats[p2].maps_played += totalMaps;
+          stats[p2].maps_won += s2;
+          stats[p2].maps_lost += s1;
+
+          if (stats[p1]) {
+            if (!stats[p2].opponents[p1]) {
+              stats[p2].opponents[p1] = { won_matches: 0, lost_matches: 0, won_maps: 0, lost_maps: 0 };
+            }
+            if (!p1Won) stats[p2].opponents[p1].won_matches++;
+            else stats[p2].opponents[p1].lost_matches++;
+
+            stats[p2].opponents[p1].won_maps += s2;
+            stats[p2].opponents[p1].lost_maps += s1;
+          }
+        }
+      }
+    }
+
+    const replayMap = {};
+    for (const r of replays) {
+      if (!replayMap[r.match_id]) replayMap[r.match_id] = [];
+      replayMap[r.match_id].push(r);
+    }
+
+    const playerLookup = {};
+    for (const p of players) {
+      playerLookup[p.id] = p;
+    }
+
+    const mapUsage = {};
+
+    for (const m of matches) {
+      const p1 = m.player1_id;
+      const p2 = m.player2_id;
+      if (!p1 || !p2) continue;
+
+      const reps = replayMap[m.id] || [];
+      const pl1 = playerLookup[p1];
+      const pl2 = playerLookup[p2];
+
+      for (const r of reps) {
+        let parsedData;
+        try {
+          parsedData = JSON.parse(r.parsed_data);
+        } catch (_) {
+          continue;
+        }
+
+        const repInfo1 = getPlayerInfoFromReplay(p1, pl1.display_name, pl1.battle_tags, pl1.bnet_ids, parsedData);
+        const repInfo2 = getPlayerInfoFromReplay(p2, pl2.display_name, pl2.battle_tags, pl2.bnet_ids, parsedData);
+
+        const race1 = repInfo1?.race ? repInfo1.race[0].toUpperCase() : 'U';
+        const race2 = repInfo2?.race ? repInfo2.race[0].toUpperCase() : 'U';
+
+        if (r.map_name) {
+          mapUsage[r.map_name] = (mapUsage[r.map_name] || 0) + 1;
+        }
+
+        if (stats[p1]) {
+          stats[p1].replays_count++;
+          if (r.game_length) {
+            stats[p1].total_game_time += r.game_length;
+            stats[p1].game_time_count++;
+          }
+          if (race1 !== 'U') {
+            stats[p1].races_used[race1] = (stats[p1].races_used[race1] || 0) + 1;
+          }
+
+          const won = r.winner === repInfo1?.name;
+          if (race2 !== 'U') {
+            if (!stats[p1].vs_race[race2]) {
+              stats[p1].vs_race[race2] = { won: 0, total: 0 };
+            }
+            stats[p1].vs_race[race2].total++;
+            if (won) stats[p1].vs_race[race2].won++;
+          }
+        }
+
+        if (stats[p2]) {
+          stats[p2].replays_count++;
+          if (r.game_length) {
+            stats[p2].total_game_time += r.game_length;
+            stats[p2].game_time_count++;
+          }
+          if (race2 !== 'U') {
+            stats[p2].races_used[race2] = (stats[p2].races_used[race2] || 0) + 1;
+          }
+
+          const won = r.winner === repInfo2?.name;
+          if (race1 !== 'U') {
+            if (!stats[p2].vs_race[race1]) {
+              stats[p2].vs_race[race1] = { won: 0, total: 0 };
+            }
+            stats[p2].vs_race[race1].total++;
+            if (won) stats[p2].vs_race[race1].won++;
+          }
+        }
+      }
+    }
+
+    const playerStats = Object.values(stats).map(s => {
+      let nemesis = null;
+      let maxLostMatches = 0;
+      let nemesisDisp = '';
+
+      let favorite = null;
+      let maxWonMatches = 0;
+      let favoriteDisp = '';
+
+      for (const [oppId, o] of Object.entries(s.opponents)) {
+        if (o.lost_matches > maxLostMatches) {
+          maxLostMatches = o.lost_matches;
+          nemesis = oppId;
+          nemesisDisp = playerLookup[oppId]?.display_name || oppId;
+        }
+        if (o.won_matches > maxWonMatches) {
+          maxWonMatches = o.won_matches;
+          favorite = oppId;
+          favoriteDisp = playerLookup[oppId]?.display_name || oppId;
+        }
+      }
+
+      const sortedRaces = Object.entries(s.races_used).sort((a, b) => b[1] - a[1]);
+      const mainRace = sortedRaces.length > 0 ? sortedRaces[0][0] : 'U';
+
+      return {
+        id: s.id,
+        display_name: s.display_name,
+        team: s.team,
+        flag: s.flag,
+        main_race: mainRace,
+        tournaments_played: s.tournaments_played,
+        matches_played: s.matches_played,
+        matches_won: s.matches_won,
+        matches_lost: s.matches_lost,
+        match_win_rate: s.matches_played > 0 ? (s.matches_won / s.matches_played) : 0,
+        walkover_wins: s.walkover_wins,
+        walkover_losses: s.walkover_losses,
+        replays_count: s.replays_count,
+        maps_played: s.maps_played,
+        maps_won: s.maps_won,
+        maps_lost: s.maps_lost,
+        map_win_rate: s.maps_played > 0 ? (s.maps_won / s.maps_played) : 0,
+        avg_game_length: s.game_time_count > 0 ? Math.round(s.total_game_time / s.game_time_count) : 0,
+        vs_race: s.vs_race,
+        nemesis: nemesis ? { id: nemesis, display_name: nemesisDisp, count: maxLostMatches } : null,
+        favorite: favorite ? { id: favorite, display_name: favoriteDisp, count: maxWonMatches } : null,
+        tournaments: s.tournament_ids.map(tid => ({ id: tid, name: tournamentMap[tid] || tid }))
+      };
+    });
+
+    const totalTournaments = db.prepare('SELECT COUNT(*) as count FROM tournaments').get().count;
+    const totalMatches = db.prepare("SELECT COUNT(*) as count FROM matches WHERE status != 'pending'").get().count;
+    const totalReplays = db.prepare('SELECT COUNT(*) as count FROM match_replays').get().count;
+    const avgReplayLengthObj = db.prepare('SELECT AVG(game_length) as avg FROM match_replays WHERE game_length > 0').get();
+    const globalAvgReplayLength = avgReplayLengthObj ? Math.round(avgReplayLengthObj.avg || 0) : 0;
+
+    const topMaps = Object.entries(mapUsage)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([name, count]) => ({ name, count }));
+
+    const withGames = playerStats.filter(p => p.avg_game_length > 0);
+    const longestPlayer = withGames.length > 0
+      ? withGames.reduce((a, b) => a.avg_game_length > b.avg_game_length ? a : b)
+      : null;
+    const shortestPlayer = withGames.length > 0
+      ? withGames.reduce((a, b) => a.avg_game_length < b.avg_game_length ? a : b)
+      : null;
+
+    const eligibleForRate = playerStats.filter(p => p.matches_played >= 5);
+
+    return {
+      players: playerStats,
+      global: {
+        total_players: players.length,
+        total_tournaments: totalTournaments,
+        total_matches: totalMatches,
+        total_replays: totalReplays,
+        avg_game_length: globalAvgReplayLength,
+        top_maps: topMaps
+      },
+      rankings: {
+        by_win_rate: [...eligibleForRate]
+          .sort((a, b) => b.match_win_rate - a.match_win_rate)
+          .slice(0, 5),
+        by_played: [...playerStats]
+          .sort((a, b) => b.matches_played - a.matches_played)
+          .slice(0, 5),
+        by_walkover: [...playerStats]
+          .filter(p => p.walkover_losses > 0)
+          .sort((a, b) => b.walkover_losses - a.walkover_losses)
+          .slice(0, 5),
+        longest_player: longestPlayer,
+        shortest_player: longestPlayer !== shortestPlayer ? shortestPlayer : null
+      }
+    };
+  });
 
   fastify.get('/players', async () => {
     return repo.list();

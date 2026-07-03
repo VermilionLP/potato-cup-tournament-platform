@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS tournaments (
   active_match_id INTEGER REFERENCES matches(id),
   overlay_scene TEXT DEFAULT 'auto',
   overlay_round INTEGER,
+  loser_advances INTEGER DEFAULT 1,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
