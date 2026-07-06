@@ -1,21 +1,5 @@
 export function getPlayerDisplayName(player) {
   if (!player) return '';
-  let tags = {};
-  if (player.battle_tags) {
-    try {
-      tags = typeof player.battle_tags === 'string' ? JSON.parse(player.battle_tags) : player.battle_tags;
-    } catch (_) {}
-  }
-  const getFirst = (val) => {
-    if (!val) return '';
-    if (Array.isArray(val)) return val.find(Boolean) || '';
-    if (typeof val === 'string') return val;
-    return '';
-  };
-  const firstTag = getFirst(tags.cn) || getFirst(tags.global);
-  if (firstTag) {
-    return firstTag.split('#')[0] || player.id;
-  }
   return player.id;
 }
 
