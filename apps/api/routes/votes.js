@@ -10,9 +10,9 @@ export default async function votesRoutes(fastify) {
   const playerRepo = PlayerRepo(fastify.db);
 
   fastify.get('/tournaments/:id/votes', async (req) => {
-    const t = tourneyRepo.getById(req.params.id);
+    const t = await tourneyRepo.getById(req.params.id);
     if (!t) throw fastify.httpErrors.notFound('Tournament not found');
-    return repo.getByTournament(req.params.id);
+    return await repo.getByTournament(req.params.id);
   });
 
   fastify.post('/tournaments/:id/vote', async (req) => {
@@ -20,24 +20,24 @@ export default async function votesRoutes(fastify) {
     if (!player_id || !proposed_time) {
       throw fastify.httpErrors.badRequest('player_id and proposed_time are required');
     }
-    const t = tourneyRepo.getById(req.params.id);
+    const t = await tourneyRepo.getById(req.params.id);
     if (!t) throw fastify.httpErrors.notFound('Tournament not found');
     if (t.status !== 'voting' && t.status !== 'registration') {
       throw fastify.httpErrors.badRequest('Voting is not open');
     }
-    const existingPlayer = playerRepo.getById(player_id);
+    const existingPlayer = await playerRepo.getById(player_id);
     const requesterIdRaw = req.headers['x-player-id'];
     const requesterId = requesterIdRaw ? decodeURIComponent(requesterIdRaw) : undefined;
     const lastIp = (requesterId === player_id) ? req.ip : null;
 
     if (!existingPlayer) {
-      playerRepo.upsert(player_id, 'cn', '', '', '{}', lastIp);
+      await playerRepo.upsert(player_id, 'cn', '', '', '{}', lastIp);
     } else {
       if (requesterId === player_id) {
-        fastify.db.prepare('UPDATE players SET last_ip = ? WHERE id = ?').run(req.ip, player_id);
+        await fastify.db.query('UPDATE axsuck.players SET last_ip = $1, last_seen_at = NOW() WHERE id = $2', [req.ip, player_id]);
       }
     }
-    const result = repo.upsert(req.params.id, player_id, proposed_time);
+    const result = await repo.upsert(req.params.id, player_id, proposed_time);
 
     // Trigger real-time broadcast
     fastify.tournamentEvents.emit(`update:${req.params.id}`, { type: 'vote_submitted', player_id, proposed_time });
@@ -45,15 +45,25 @@ export default async function votesRoutes(fastify) {
     return result;
   });
 
+  fastify.delete('/tournaments/:id/votes/past', async (req) => {
+    const t = await tourneyRepo.getById(req.params.id);
+    if (!t) throw fastify.httpErrors.notFound('Tournament not found');
+    const deleted = await repo.deletePast(req.params.id);
+    if (deleted > 0) {
+      fastify.tournamentEvents.emit(`update:${req.params.id}`, { type: 'past_votes_removed', deleted });
+    }
+    return { deleted };
+  });
+
   fastify.delete('/tournaments/:id/vote', async (req) => {
     const { player_id, proposed_time } = req.body;
     if (!player_id) throw fastify.httpErrors.badRequest('player_id is required');
-    repo.removeVote(req.params.id, player_id, proposed_time || null);
+    await repo.removeVote(req.params.id, player_id, proposed_time || null);
 
     // Trigger real-time broadcast
     fastify.tournamentEvents.emit(`update:${req.params.id}`, { type: 'vote_removed', player_id });
 
-    return repo.getByTournament(req.params.id);
+    return await repo.getByTournament(req.params.id);
   });
 
   fastify.post('/tournaments/:id/custom-vote', async (req) => {
@@ -61,24 +71,24 @@ export default async function votesRoutes(fastify) {
     if (!player_id || !topic || !value) {
       throw fastify.httpErrors.badRequest('player_id, topic and value are required');
     }
-    const t = tourneyRepo.getById(req.params.id);
+    const t = await tourneyRepo.getById(req.params.id);
     if (!t) throw fastify.httpErrors.notFound('Tournament not found');
     if (t.status !== 'voting' && t.status !== 'registration') {
       throw fastify.httpErrors.badRequest('Voting is not open');
     }
-    const existingPlayer = playerRepo.getById(player_id);
+    const existingPlayer = await playerRepo.getById(player_id);
     const requesterIdRaw = req.headers['x-player-id'];
     const requesterId = requesterIdRaw ? decodeURIComponent(requesterIdRaw) : undefined;
     const lastIp = (requesterId === player_id) ? req.ip : null;
 
     if (!existingPlayer) {
-      playerRepo.upsert(player_id, 'cn', '', '', '{}', lastIp);
+      await playerRepo.upsert(player_id, 'cn', '', '', '{}', lastIp);
     } else {
       if (requesterId === player_id) {
-        fastify.db.prepare('UPDATE players SET last_ip = ? WHERE id = ?').run(req.ip, player_id);
+        await fastify.db.query('UPDATE axsuck.players SET last_ip = $1, last_seen_at = NOW() WHERE id = $2', [req.ip, player_id]);
       }
     }
-    const result = customRepo.upsert(req.params.id, player_id, topic, value);
+    const result = await customRepo.upsert(req.params.id, player_id, topic, value);
 
     // Trigger real-time broadcast
     fastify.tournamentEvents.emit(`update:${req.params.id}`, { type: 'custom_vote_submitted', player_id, topic, value });
@@ -91,7 +101,7 @@ export default async function votesRoutes(fastify) {
     if (!player_id || !topic || !value) {
       throw fastify.httpErrors.badRequest('player_id, topic and value are required');
     }
-    customRepo.removeVote(req.params.id, player_id, topic, value);
+    await customRepo.removeVote(req.params.id, player_id, topic, value);
 
     // Trigger real-time broadcast
     fastify.tournamentEvents.emit(`update:${req.params.id}`, { type: 'custom_vote_removed', player_id, topic, value });

@@ -1,18 +1,85 @@
 import { PlayerRepo } from '../repositories/player-repo.js';
 import { TournamentRepo } from '../repositories/tournament-repo.js';
-import { getPlayerInfoFromReplay } from './replays.js';
+import { LadderRepo } from '../repositories/ladder-repo.js';
+import { getPlayerInfoFromReplay, bnetEntryKey } from './replays.js';
 
 export default async function playersRoutes(fastify) {
   const repo = PlayerRepo(fastify.db);
   const tourneyRepo = TournamentRepo(fastify.db);
+  const ladderRepo = LadderRepo(fastify.db);
+
+  fastify.get('/stats/play-times', async () => {
+    const rows = (await fastify.db.query(`
+      SELECT (parsed_data::jsonb->>'start_time')::bigint AS start_time
+      FROM axsuck.match_replays
+      WHERE parsed_data LIKE '{%'
+        AND parsed_data::jsonb ? 'start_time'
+    `)).rows;
+    const games = rows
+      .map((row) => Number(row.start_time) * 1000)
+      .filter((ms) => Number.isFinite(ms) && ms > 0);
+
+    const weekdays = [0, 0, 0, 0, 0, 0, 0];
+    const nights = new Map();
+    for (const ms of games) {
+      const d = new Date(ms + 8 * 3600 * 1000);
+      const key = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
+      const hour = d.getUTCHours();
+      const minute = d.getUTCMinutes();
+      const weekday = d.getUTCDay();
+      if (!nights.has(key)) {
+        nights.set(key, { date: key, weekday, minutes: hour * 60 + minute });
+      } else {
+        const night = nights.get(key);
+        night.minutes = Math.min(night.minutes, hour * 60 + minute);
+      }
+    }
+
+    const nightHours = {};
+    const slotCounts = new Map();
+    for (const night of nights.values()) {
+      weekdays[night.weekday] += 1;
+      const hh = Math.floor(night.minutes / 60);
+      const hourKey = String(hh).padStart(2, "0");
+      nightHours[hourKey] = (nightHours[hourKey] || 0) + 1;
+      // Bucket to 30 minutes for stable "usual time" suggestions.
+      const bucketMinutes = Math.floor(night.minutes / 30) * 30;
+      const bh = Math.floor(bucketMinutes / 60);
+      const bm = bucketMinutes % 60;
+      const bucketTime = `${String(bh).padStart(2, "0")}:${String(bm).padStart(2, "0")}`;
+      const slotKey = `${night.weekday}|${bucketTime}`;
+      slotCounts.set(slotKey, (slotCounts.get(slotKey) || 0) + 1);
+    }
+
+    const topSlots = [...slotCounts.entries()]
+      .map(([key, count]) => {
+        const [weekday, time] = key.split("|");
+        return { weekday: Number(weekday), time, count };
+      })
+      .sort((a, b) => b.count - a.count || a.weekday - b.weekday)
+      .slice(0, 8);
+
+    return {
+      total_games: games.length,
+      total_nights: nights.size,
+      weekdays,
+      night_hours: nightHours,
+      top_slots: topSlots,
+    };
+  });
 
   fastify.get('/players/statistics', async () => {
-    const db = fastify.db;
-    const players = repo.list();
-    const registrations = db.prepare('SELECT * FROM tournament_players').all();
-    const matches = db.prepare("SELECT * FROM matches WHERE status IN ('completed', 'walkover')").all();
-    const replays = db.prepare('SELECT match_id, winner, map_name, game_length, parsed_data FROM match_replays').all();
-    const tournaments = db.prepare('SELECT id, name FROM tournaments').all();
+    const players = await repo.list();
+    const registrations = (await fastify.db.query('SELECT * FROM axsuck.tournament_players')).rows;
+    const matches = (await fastify.db.query("SELECT * FROM axsuck.matches WHERE status IN ('completed', 'walkover')")).rows;
+    const replays = (await fastify.db.query('SELECT match_id, winner, map_name, game_length, parsed_data FROM axsuck.match_replays')).rows;
+    const tournaments = (await fastify.db.query('SELECT id, name FROM axsuck.tournaments')).rows;
+    const tournamentAccounts = (await fastify.db.query('SELECT * FROM axsuck.tournament_player_accounts')).rows;
+    const accountsByTournamentPlayer = {};
+    for (const a of tournamentAccounts) {
+      const k = `${a.tournament_id}|${a.player_id}`;
+      (accountsByTournamentPlayer[k] = accountsByTournamentPlayer[k] || []).push(a);
+    }
     const tournamentMap = {};
     for (const t of tournaments) tournamentMap[t.id] = t.name;
 
@@ -120,112 +187,92 @@ export default async function playersRoutes(fastify) {
       }
     }
 
-    const replayMap = {};
-    for (const r of replays) {
-      if (!replayMap[r.match_id]) replayMap[r.match_id] = [];
-      replayMap[r.match_id].push(r);
-    }
-
-    const playerLookup = {};
-    for (const p of players) {
-      playerLookup[p.id] = p;
+    const matchPlayerMap = {};
+    for (const m of matches) {
+      matchPlayerMap[m.id] = { p1: m.player1_id, p2: m.player2_id, tid: m.tournament_id };
     }
 
     const mapUsage = {};
 
-    for (const m of matches) {
-      const p1 = m.player1_id;
-      const p2 = m.player2_id;
-      if (!p1 || !p2) continue;
+    for (const r of replays) {
+      const match = matchPlayerMap[r.match_id];
+      if (!match) continue;
 
-      const reps = replayMap[m.id] || [];
-      const pl1 = playerLookup[p1];
-      const pl2 = playerLookup[p2];
+      if (r.map_name) {
+        mapUsage[r.map_name] = (mapUsage[r.map_name] || 0) + 1;
+      }
 
-      for (const r of reps) {
-        let parsedData;
-        try {
-          parsedData = JSON.parse(r.parsed_data);
-        } catch (_) {
-          continue;
+      let parsedData;
+      try {
+        parsedData = typeof r.parsed_data === 'string' ? JSON.parse(r.parsed_data) : r.parsed_data;
+      } catch (_) {
+        continue;
+      }
+
+      const p1 = stats[match.p1];
+      const p2 = stats[match.p2];
+
+      const p1Data = p1 ? getPlayerInfoFromReplay(p1.id, p1.display_name, p1.battle_tags, p1.bnet_ids, parsedData, accountsByTournamentPlayer[`${match.tid}|${p1.id}`] || []) : null;
+      const p2Data = p2 ? getPlayerInfoFromReplay(p2.id, p2.display_name, p2.battle_tags, p2.bnet_ids, parsedData, accountsByTournamentPlayer[`${match.tid}|${p2.id}`] || []) : null;
+
+      if (r.game_length > 0) {
+        if (p1) {
+          p1.total_game_time += r.game_length;
+          p1.game_time_count++;
         }
-
-        const repInfo1 = getPlayerInfoFromReplay(p1, pl1.display_name, pl1.battle_tags, pl1.bnet_ids, parsedData);
-        const repInfo2 = getPlayerInfoFromReplay(p2, pl2.display_name, pl2.battle_tags, pl2.bnet_ids, parsedData);
-
-        const race1 = repInfo1?.race ? repInfo1.race[0].toUpperCase() : 'U';
-        const race2 = repInfo2?.race ? repInfo2.race[0].toUpperCase() : 'U';
-
-        if (r.map_name) {
-          mapUsage[r.map_name] = (mapUsage[r.map_name] || 0) + 1;
+        if (p2) {
+          p2.total_game_time += r.game_length;
+          p2.game_time_count++;
         }
+      }
 
-        if (stats[p1]) {
-          stats[p1].replays_count++;
-          if (r.game_length) {
-            stats[p1].total_game_time += r.game_length;
-            stats[p1].game_time_count++;
-          }
-          if (race1 !== 'U') {
-            stats[p1].races_used[race1] = (stats[p1].races_used[race1] || 0) + 1;
-          }
+      if (p1) p1.replays_count++;
+      if (p2) p2.replays_count++;
 
-          const won = r.winner === repInfo1?.name;
-          if (race2 !== 'U') {
-            if (!stats[p1].vs_race[race2]) {
-              stats[p1].vs_race[race2] = { won: 0, total: 0 };
-            }
-            stats[p1].vs_race[race2].total++;
-            if (won) stats[p1].vs_race[race2].won++;
-          }
-        }
+      const r1 = p1Data && p1Data.race ? p1Data.race[0].toUpperCase() : null;
+      const r2 = p2Data && p2Data.race ? p2Data.race[0].toUpperCase() : null;
 
-        if (stats[p2]) {
-          stats[p2].replays_count++;
-          if (r.game_length) {
-            stats[p2].total_game_time += r.game_length;
-            stats[p2].game_time_count++;
-          }
-          if (race2 !== 'U') {
-            stats[p2].races_used[race2] = (stats[p2].races_used[race2] || 0) + 1;
-          }
+      if (p1 && r1 && r1 !== '?') {
+        p1.races_used[r1] = (p1.races_used[r1] || 0) + 1;
+      }
+      if (p2 && r2 && r2 !== '?') {
+        p2.races_used[r2] = (p2.races_used[r2] || 0) + 1;
+      }
 
-          const won = r.winner === repInfo2?.name;
-          if (race1 !== 'U') {
-            if (!stats[p2].vs_race[race1]) {
-              stats[p2].vs_race[race1] = { won: 0, total: 0 };
-            }
-            stats[p2].vs_race[race1].total++;
-            if (won) stats[p2].vs_race[race1].won++;
-          }
-        }
+      const p1WonReplay = r.winner && p1Data && r.winner.toLowerCase() === p1Data.name.toLowerCase();
+      const p2WonReplay = r.winner && p2Data && r.winner.toLowerCase() === p2Data.name.toLowerCase();
+
+      if (p1 && r2 && ['Z', 'T', 'P', 'R'].includes(r2)) {
+        p1.vs_race[r2].total++;
+        if (p1WonReplay) p1.vs_race[r2].won++;
+      }
+      if (p2 && r1 && ['Z', 'T', 'P', 'R'].includes(r1)) {
+        p2.vs_race[r1].total++;
+        if (p2WonReplay) p2.vs_race[r1].won++;
       }
     }
 
     const playerStats = Object.values(stats).map(s => {
       let nemesis = null;
       let maxLostMatches = 0;
-      let nemesisDisp = '';
-
       let favorite = null;
       let maxWonMatches = 0;
-      let favoriteDisp = '';
 
-      for (const [oppId, o] of Object.entries(s.opponents)) {
-        if (o.lost_matches > maxLostMatches) {
-          maxLostMatches = o.lost_matches;
+      for (const [oppId, rec] of Object.entries(s.opponents)) {
+        if (rec.lost_matches > maxLostMatches) {
+          maxLostMatches = rec.lost_matches;
           nemesis = oppId;
-          nemesisDisp = playerLookup[oppId]?.display_name || oppId;
         }
-        if (o.won_matches > maxWonMatches) {
-          maxWonMatches = o.won_matches;
+        if (rec.won_matches > maxWonMatches) {
+          maxWonMatches = rec.won_matches;
           favorite = oppId;
-          favoriteDisp = playerLookup[oppId]?.display_name || oppId;
         }
       }
 
-      const sortedRaces = Object.entries(s.races_used).sort((a, b) => b[1] - a[1]);
-      const mainRace = sortedRaces.length > 0 ? sortedRaces[0][0] : 'U';
+      const nemesisDisp = nemesis && stats[nemesis] ? stats[nemesis].display_name : nemesis;
+      const favoriteDisp = favorite && stats[favorite] ? stats[favorite].display_name : favorite;
+
+      const mainRace = Object.entries(s.races_used).sort((a, b) => b[1] - a[1])[0]?.[0] || 'U';
 
       return {
         id: s.id,
@@ -253,11 +300,11 @@ export default async function playersRoutes(fastify) {
       };
     });
 
-    const totalTournaments = db.prepare('SELECT COUNT(*) as count FROM tournaments').get().count;
-    const totalMatches = db.prepare("SELECT COUNT(*) as count FROM matches WHERE status != 'pending'").get().count;
-    const totalReplays = db.prepare('SELECT COUNT(*) as count FROM match_replays').get().count;
-    const avgReplayLengthObj = db.prepare('SELECT AVG(game_length) as avg FROM match_replays WHERE game_length > 0').get();
-    const globalAvgReplayLength = avgReplayLengthObj ? Math.round(avgReplayLengthObj.avg || 0) : 0;
+    const totalTournaments = (await fastify.db.query('SELECT COUNT(*)::int as count FROM axsuck.tournaments')).rows[0]?.count || 0;
+    const totalMatches = (await fastify.db.query("SELECT COUNT(*)::int as count FROM axsuck.matches WHERE status != 'pending'")).rows[0]?.count || 0;
+    const totalReplays = (await fastify.db.query('SELECT COUNT(*)::int as count FROM axsuck.match_replays')).rows[0]?.count || 0;
+    const avgReplayLengthObj = (await fastify.db.query('SELECT AVG(game_length) as avg FROM axsuck.match_replays WHERE game_length > 0')).rows[0];
+    const globalAvgReplayLength = avgReplayLengthObj ? Math.round(Number(avgReplayLengthObj.avg) || 0) : 0;
 
     const topMaps = Object.entries(mapUsage)
       .sort((a, b) => b[1] - a[1])
@@ -302,16 +349,135 @@ export default async function playersRoutes(fastify) {
   });
 
   fastify.get('/players', async () => {
-    return repo.list();
+    return await repo.list();
   });
 
   fastify.get('/players/:id', async (req) => {
-    const p = repo.getById(req.params.id);
+    const p = await repo.getById(req.params.id);
     if (!p) throw fastify.httpErrors.notFound('Player not found');
     return {
       ...p,
-      tournaments: repo.getTournaments(req.params.id)
+      tournaments: await repo.getTournaments(req.params.id)
     };
+  });
+
+  fastify.post('/players/:id/touch', async (req) => {
+    const id = String(req.params.id || '').trim();
+    if (!id) throw fastify.httpErrors.badRequest('id is required');
+    return await repo.touch(id);
+  });
+
+  // ---- Global (permanent) Battle.net account links ----
+  fastify.post('/players/:id/accounts', async (req) => {
+    const { id } = req.params;
+    const { accounts } = req.body;
+    if (!Array.isArray(accounts) || accounts.length === 0) {
+      throw fastify.httpErrors.badRequest('accounts array is required');
+    }
+    const p = await repo.getById(id);
+    if (!p) throw fastify.httpErrors.notFound('Player not found');
+
+    let bnetIds = [];
+    try { bnetIds = typeof p.bnet_ids === 'string' ? JSON.parse(p.bnet_ids || '[]') : (p.bnet_ids || []); } catch (_) {}
+    if (!Array.isArray(bnetIds)) bnetIds = [];
+
+    for (const a of accounts) {
+      const key = a.account_key || bnetEntryKey(a);
+      const name = (a.name || a.account_name || '').trim();
+      if (!key && !name) continue;
+      const idx = bnetIds.findIndex(item => {
+        const iid = (typeof item === 'string' ? item : item?.id) || '';
+        const k = bnetEntryKey(item);
+        return (key && k === key) || (name && iid.toLowerCase().trim() === name.toLowerCase());
+      });
+      const entry = {
+        id: name || key,
+        url: a.url || '',
+        toon_handle: a.toon_handle || null,
+        region: a.region || null,
+        subregion: a.subregion != null ? a.subregion : null
+      };
+      if (idx >= 0) {
+        if (typeof bnetIds[idx] === 'string') bnetIds[idx] = entry;
+        else bnetIds[idx] = {
+          ...bnetIds[idx],
+          ...entry,
+          url: entry.url || bnetIds[idx].url || '',
+          toon_handle: entry.toon_handle || bnetIds[idx].toon_handle || null
+        };
+      } else {
+        bnetIds.push(entry);
+      }
+    }
+
+    await fastify.db.query('UPDATE axsuck.players SET bnet_ids = $1 WHERE id = $2', [JSON.stringify(bnetIds), id]);
+
+    const activeTournaments = (await fastify.db.query("SELECT id FROM axsuck.tournaments WHERE status != 'completed'")).rows;
+    activeTournaments.forEach(t => {
+      fastify.tournamentEvents.emit(`update:${t.id}`, { type: 'player_updated', id });
+    });
+
+    return { ...p, bnet_ids: bnetIds };
+  });
+
+  fastify.delete('/players/:id/accounts', async (req) => {
+    const { id } = req.params;
+    const { account_key, name } = req.body || {};
+    if (!account_key && !name) throw fastify.httpErrors.badRequest('account_key or name is required');
+    const p = await repo.getById(id);
+    if (!p) throw fastify.httpErrors.notFound('Player not found');
+
+    let bnetIds = [];
+    try { bnetIds = typeof p.bnet_ids === 'string' ? JSON.parse(p.bnet_ids || '[]') : (p.bnet_ids || []); } catch (_) {}
+    if (!Array.isArray(bnetIds)) bnetIds = [];
+
+    const target = (name || '').toLowerCase().trim();
+    const filtered = bnetIds.filter(item => {
+      const k = bnetEntryKey(item);
+      const iid = ((typeof item === 'string' ? item : item?.id) || '').toLowerCase().trim();
+      if (account_key && k === account_key) return false;
+      if (target && iid === target) return false;
+      return true;
+    });
+
+    await fastify.db.query('UPDATE axsuck.players SET bnet_ids = $1 WHERE id = $2', [JSON.stringify(filtered), id]);
+
+    const activeTournaments = (await fastify.db.query("SELECT id FROM axsuck.tournaments WHERE status != 'completed'")).rows;
+    activeTournaments.forEach(t => {
+      fastify.tournamentEvents.emit(`update:${t.id}`, { type: 'player_updated', id });
+    });
+
+    return { success: true, removed: bnetIds.length - filtered.length };
+  });
+
+  // Remove account entries that have no resolvable Battle.net URL/toon
+  // (legacy display-name-only aliases that never appear in any replay).
+  fastify.post('/players/cleanup-empty-accounts', async (req) => {
+    const { player_ids } = req.body || {};
+    const rows = Array.isArray(player_ids) && player_ids.length
+      ? (await fastify.db.query('SELECT id, bnet_ids FROM axsuck.players WHERE id = ANY($1)', [player_ids])).rows
+      : (await fastify.db.query('SELECT id, bnet_ids FROM axsuck.players')).rows;
+
+    let removed = 0;
+    let playersChanged = 0;
+    for (const p of rows) {
+      let arr = [];
+      try { arr = p.bnet_ids ? (typeof p.bnet_ids === 'string' ? JSON.parse(p.bnet_ids) : p.bnet_ids) : []; } catch (_) {}
+      if (!Array.isArray(arr) || arr.length === 0) continue;
+      const kept = arr.filter(e => bnetEntryKey(e) !== '');
+      if (kept.length !== arr.length) {
+        await fastify.db.query('UPDATE axsuck.players SET bnet_ids = $1 WHERE id = $2', [JSON.stringify(kept), p.id]);
+        removed += arr.length - kept.length;
+        playersChanged++;
+      }
+    }
+
+    const activeTournaments = (await fastify.db.query("SELECT id FROM axsuck.tournaments WHERE status != 'completed'")).rows;
+    activeTournaments.forEach(t => {
+      fastify.tournamentEvents.emit(`update:${t.id}`, { type: 'accounts_cleaned' });
+    });
+
+    return { success: true, removed, players: playersChanged };
   });
 
   fastify.post('/players/:id/change-id', async (req) => {
@@ -319,27 +485,50 @@ export default async function playersRoutes(fastify) {
     const { newId } = req.body;
     if (!newId) throw fastify.httpErrors.badRequest('newId is required');
 
-    const db = fastify.db;
-    const existing = db.prepare('SELECT 1 FROM players WHERE id = ?').get(newId);
+    const existing = await repo.getById(newId);
     if (existing) throw fastify.httpErrors.conflict('New Player ID already exists');
 
-    // Run rename in a transaction with foreign keys disabled temporarily
-    db.prepare('PRAGMA foreign_keys = OFF').run();
+    const oldPlayer = await repo.getById(oldId);
+    if (!oldPlayer) throw fastify.httpErrors.notFound('Old player not found');
+
+    const client = await fastify.db.connect();
     try {
-      db.transaction(() => {
-        db.prepare('UPDATE players SET id = ? WHERE id = ?').run(newId, oldId);
-        db.prepare('UPDATE tournament_players SET player_id = ? WHERE player_id = ?').run(newId, oldId);
-        db.prepare('UPDATE matches SET player1_id = ? WHERE player1_id = ?').run(newId, oldId);
-        db.prepare('UPDATE matches SET player2_id = ? WHERE player2_id = ?').run(newId, oldId);
-        db.prepare('UPDATE matches SET winner_id = ? WHERE winner_id = ?').run(newId, oldId);
-        db.prepare('UPDATE time_votes SET player_id = ? WHERE player_id = ?').run(newId, oldId);
-      })();
+      await client.query('BEGIN');
+
+      // Create new player record copying profile
+      await client.query(`
+        INSERT INTO axsuck.players (id, flag, team, link, bnet_ids, battle_tags, last_ip)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
+      `, [
+        newId,
+        oldPlayer.flag || 'cn',
+        oldPlayer.team || '',
+        oldPlayer.link || '',
+        oldPlayer.bnet_ids || '[]',
+        oldPlayer.battle_tags || '{}',
+        oldPlayer.last_ip || null
+      ]);
+
+      await client.query('UPDATE axsuck.tournament_players SET player_id = $1 WHERE player_id = $2', [newId, oldId]);
+      await client.query('UPDATE axsuck.matches SET player1_id = $1 WHERE player1_id = $2', [newId, oldId]);
+      await client.query('UPDATE axsuck.matches SET player2_id = $1 WHERE player2_id = $2', [newId, oldId]);
+      await client.query('UPDATE axsuck.matches SET winner_id = $1 WHERE winner_id = $2', [newId, oldId]);
+      await client.query('UPDATE axsuck.time_votes SET player_id = $1 WHERE player_id = $2', [newId, oldId]);
+      await client.query('UPDATE axsuck.custom_votes SET player_id = $1 WHERE player_id = $2', [newId, oldId]);
+
+      // Delete old player record
+      await client.query('DELETE FROM axsuck.players WHERE id = $1', [oldId]);
+
+      await client.query('COMMIT');
+    } catch (e) {
+      await client.query('ROLLBACK');
+      throw e;
     } finally {
-      db.prepare('PRAGMA foreign_keys = ON').run();
+      client.release();
     }
 
     // Trigger global update to all active tournaments
-    const activeTournaments = db.prepare("SELECT id FROM tournaments WHERE status != 'completed'").all();
+    const activeTournaments = (await fastify.db.query("SELECT id FROM axsuck.tournaments WHERE status != 'completed'")).rows;
     activeTournaments.forEach(t => {
       fastify.tournamentEvents.emit(`update:${t.id}`, { type: 'player_id_changed', oldId, newId });
     });
@@ -349,24 +538,36 @@ export default async function playersRoutes(fastify) {
 
   fastify.delete('/players/:id', async (req) => {
     const { id } = req.params;
-    const db = fastify.db;
     
-    const p = repo.getById(id);
+    const p = await repo.getById(id);
     if (!p) throw fastify.httpErrors.notFound('Player not found');
 
     // Check if player has match appearances
-    const matchCountObj = db.prepare('SELECT COUNT(*) as count FROM matches WHERE player1_id = ? OR player2_id = ? OR winner_id = ?').get(id, id, id);
+    const matchCountObj = (await fastify.db.query(
+      'SELECT COUNT(*)::int as count FROM axsuck.matches WHERE player1_id = $1 OR player2_id = $2 OR winner_id = $3',
+      [id, id, id]
+    )).rows[0];
+
     if (matchCountObj && matchCountObj.count > 0) {
       throw fastify.httpErrors.badRequest('该选手已经在对阵比赛中出场，无法直接删除。请使用“合并选手”功能将此选手合并到正确的选手中。');
     }
 
-    db.transaction(() => {
-      db.prepare('DELETE FROM tournament_players WHERE player_id = ?').run(id);
-      db.prepare('DELETE FROM time_votes WHERE player_id = ?').run(id);
-      db.prepare('DELETE FROM players WHERE id = ?').run(id);
-    })();
+    const client = await fastify.db.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query('DELETE FROM axsuck.tournament_players WHERE player_id = $1', [id]);
+      await client.query('DELETE FROM axsuck.time_votes WHERE player_id = $1', [id]);
+      await client.query('DELETE FROM axsuck.custom_votes WHERE player_id = $1', [id]);
+      await client.query('DELETE FROM axsuck.players WHERE id = $1', [id]);
+      await client.query('COMMIT');
+    } catch (e) {
+      await client.query('ROLLBACK');
+      throw e;
+    } finally {
+      client.release();
+    }
 
-    const activeTournaments = db.prepare("SELECT id FROM tournaments WHERE status != 'completed'").all();
+    const activeTournaments = (await fastify.db.query("SELECT id FROM axsuck.tournaments WHERE status != 'completed'")).rows;
     activeTournaments.forEach(t => {
       fastify.tournamentEvents.emit(`update:${t.id}`, { type: 'player_deleted', id });
     });
@@ -378,54 +579,63 @@ export default async function playersRoutes(fastify) {
     const { id: oldId } = req.params;
     const { targetId } = req.body;
     if (!targetId) throw fastify.httpErrors.badRequest('targetId is required');
-
-    const db = fastify.db;
     
-    const oldPlayer = repo.getById(oldId);
-    const targetPlayer = repo.getById(targetId);
+    const oldPlayer = await repo.getById(oldId);
+    const targetPlayer = await repo.getById(targetId);
     if (!oldPlayer) throw fastify.httpErrors.notFound('Source player not found');
     if (!targetPlayer) throw fastify.httpErrors.notFound('Target player not found');
     if (oldId === targetId) throw fastify.httpErrors.badRequest('Cannot merge a player into themselves');
 
-    db.transaction(() => {
+    const client = await fastify.db.connect();
+    try {
+      await client.query('BEGIN');
+
       // 1. Merge tournament_players
-      const oldRegistrations = db.prepare('SELECT tournament_id, seed, registered_at FROM tournament_players WHERE player_id = ?').all(oldId);
+      const oldRegistrations = (await client.query('SELECT tournament_id, seed, registered_at FROM axsuck.tournament_players WHERE player_id = $1', [oldId])).rows;
       for (const reg of oldRegistrations) {
-        const targetExists = db.prepare('SELECT 1 FROM tournament_players WHERE tournament_id = ? AND player_id = ?').get(reg.tournament_id, targetId);
+        const targetExists = (await client.query('SELECT 1 FROM axsuck.tournament_players WHERE tournament_id = $1 AND player_id = $2', [reg.tournament_id, targetId])).rows[0];
         if (!targetExists) {
-          db.prepare('UPDATE tournament_players SET player_id = ? WHERE tournament_id = ? AND player_id = ?').run(targetId, reg.tournament_id, oldId);
+          await client.query('UPDATE axsuck.tournament_players SET player_id = $1 WHERE tournament_id = $2 AND player_id = $3', [targetId, reg.tournament_id, oldId]);
         } else {
-          db.prepare('DELETE FROM tournament_players WHERE tournament_id = ? AND player_id = ?').run(reg.tournament_id, oldId);
+          await client.query('DELETE FROM axsuck.tournament_players WHERE tournament_id = $1 AND player_id = $2', [reg.tournament_id, oldId]);
         }
       }
 
       // 2. Merge time_votes
-      const oldVotes = db.prepare('SELECT tournament_id, proposed_time FROM time_votes WHERE player_id = ?').all(oldId);
+      const oldVotes = (await client.query('SELECT tournament_id, proposed_time FROM axsuck.time_votes WHERE player_id = $1', [oldId])).rows;
       for (const vote of oldVotes) {
-        const targetVoteExists = db.prepare('SELECT 1 FROM time_votes WHERE tournament_id = ? AND player_id = ? AND proposed_time = ?')
-          .get(vote.tournament_id, targetId, vote.proposed_time);
+        const targetVoteExists = (await client.query('SELECT 1 FROM axsuck.time_votes WHERE tournament_id = $1 AND player_id = $2 AND proposed_time = $3', [vote.tournament_id, targetId, vote.proposed_time])).rows[0];
         if (!targetVoteExists) {
-          db.prepare('UPDATE time_votes SET player_id = ? WHERE tournament_id = ? AND player_id = ? AND proposed_time = ?')
-            .run(targetId, vote.tournament_id, oldId, vote.proposed_time);
+          await client.query('UPDATE axsuck.time_votes SET player_id = $1 WHERE tournament_id = $2 AND player_id = $3 AND proposed_time = $4', [targetId, vote.tournament_id, oldId, vote.proposed_time]);
         } else {
-          db.prepare('DELETE FROM time_votes WHERE tournament_id = ? AND player_id = ? AND proposed_time = ?')
-            .run(vote.tournament_id, oldId, vote.proposed_time);
+          await client.query('DELETE FROM axsuck.time_votes WHERE tournament_id = $1 AND player_id = $2 AND proposed_time = $3', [vote.tournament_id, oldId, vote.proposed_time]);
         }
       }
 
-      // 3. Merge matches
-      db.prepare('UPDATE matches SET player1_id = ? WHERE player1_id = ?').run(targetId, oldId);
-      db.prepare('UPDATE matches SET player2_id = ? WHERE player2_id = ?').run(targetId, oldId);
-      db.prepare('UPDATE matches SET winner_id = ? WHERE winner_id = ?').run(targetId, oldId);
+      // 3. Merge custom_votes
+      const oldCustomVotes = (await client.query('SELECT tournament_id, topic, value FROM axsuck.custom_votes WHERE player_id = $1', [oldId])).rows;
+      for (const cv of oldCustomVotes) {
+        const targetCvExists = (await client.query('SELECT 1 FROM axsuck.custom_votes WHERE tournament_id = $1 AND player_id = $2 AND topic = $3 AND value = $4', [cv.tournament_id, targetId, cv.topic, cv.value])).rows[0];
+        if (!targetCvExists) {
+          await client.query('UPDATE axsuck.custom_votes SET player_id = $1 WHERE tournament_id = $2 AND player_id = $3 AND topic = $4 AND value = $5', [targetId, cv.tournament_id, oldId, cv.topic, cv.value]);
+        } else {
+          await client.query('DELETE FROM axsuck.custom_votes WHERE tournament_id = $1 AND player_id = $2 AND topic = $3 AND value = $4', [cv.tournament_id, oldId, cv.topic, cv.value]);
+        }
+      }
 
-      // 4. Merge bnet_ids
+      // 4. Merge matches
+      await client.query('UPDATE axsuck.matches SET player1_id = $1 WHERE player1_id = $2', [targetId, oldId]);
+      await client.query('UPDATE axsuck.matches SET player2_id = $1 WHERE player2_id = $2', [targetId, oldId]);
+      await client.query('UPDATE axsuck.matches SET winner_id = $1 WHERE winner_id = $2', [targetId, oldId]);
+
+      // 5. Merge bnet_ids
       let targetBnet = [];
       try {
-        targetBnet = JSON.parse(targetPlayer.bnet_ids || '[]');
+        targetBnet = typeof targetPlayer.bnet_ids === 'string' ? JSON.parse(targetPlayer.bnet_ids || '[]') : (targetPlayer.bnet_ids || []);
       } catch (e) {}
       let oldBnet = [];
       try {
-        oldBnet = JSON.parse(oldPlayer.bnet_ids || '[]');
+        oldBnet = typeof oldPlayer.bnet_ids === 'string' ? JSON.parse(oldPlayer.bnet_ids || '[]') : (oldPlayer.bnet_ids || []);
       } catch (e) {}
       
       const mergedBnet = [...targetBnet];
@@ -436,13 +646,20 @@ export default async function playersRoutes(fastify) {
           mergedBnet.push(item);
         }
       });
-      db.prepare('UPDATE players SET bnet_ids = ? WHERE id = ?').run(JSON.stringify(mergedBnet), targetId);
+      await client.query('UPDATE axsuck.players SET bnet_ids = $1 WHERE id = $2', [JSON.stringify(mergedBnet), targetId]);
 
-      // 5. Delete old player
-      db.prepare('DELETE FROM players WHERE id = ?').run(oldId);
-    })();
+      // 6. Delete old player
+      await client.query('DELETE FROM axsuck.players WHERE id = $1', [oldId]);
 
-    const activeTournaments = db.prepare("SELECT id FROM tournaments WHERE status != 'completed'").all();
+      await client.query('COMMIT');
+    } catch (e) {
+      await client.query('ROLLBACK');
+      throw e;
+    } finally {
+      client.release();
+    }
+
+    const activeTournaments = (await fastify.db.query("SELECT id FROM axsuck.tournaments WHERE status != 'completed'")).rows;
     activeTournaments.forEach(t => {
       fastify.tournamentEvents.emit(`update:${t.id}`, { type: 'player_merged', oldId, targetId });
     });
@@ -462,26 +679,26 @@ export default async function playersRoutes(fastify) {
     const requesterIdRaw = req.headers['x-player-id'];
     const requesterId = requesterIdRaw ? decodeURIComponent(requesterIdRaw) : undefined;
     const lastIp = (requesterId === id) ? req.ip : null;
-    const updatedPlayer = repo.upsert(id, flag, team, link, battleTagsStr, lastIp);
+    const updatedPlayer = await repo.upsert(id, flag, team, link, battleTagsStr, lastIp);
 
     if (bnet_ids !== undefined) {
       const bnetIdsStr = typeof bnet_ids === 'string' ? bnet_ids : JSON.stringify(bnet_ids);
-      fastify.db.prepare('UPDATE players SET bnet_ids = ? WHERE id = ?').run(bnetIdsStr, id);
+      await fastify.db.query('UPDATE axsuck.players SET bnet_ids = $1 WHERE id = $2', [bnetIdsStr, id]);
       updatedPlayer.bnet_ids = bnetIdsStr;
     }
 
     if (tournament_id) {
-      fastify.db.prepare(`
-        UPDATE tournament_players 
-        SET team = ?
-        WHERE tournament_id = ? AND player_id = ?
-      `).run(team || '', tournament_id, id);
+      await fastify.db.query(`
+        UPDATE axsuck.tournament_players 
+        SET team = $1
+        WHERE tournament_id = $2 AND player_id = $3
+      `, [team || '', tournament_id, id]);
 
       // Trigger real-time broadcast
       fastify.tournamentEvents.emit(`update:${tournament_id}`, { type: 'player_updated', id });
     } else {
       // If global profile edit, broadcast to active tournaments
-      const activeTournaments = fastify.db.prepare("SELECT id FROM tournaments WHERE status != 'completed'").all();
+      const activeTournaments = (await fastify.db.query("SELECT id FROM axsuck.tournaments WHERE status != 'completed'")).rows;
       activeTournaments.forEach(t => {
         fastify.tournamentEvents.emit(`update:${t.id}`, { type: 'player_updated', id });
       });
@@ -494,35 +711,48 @@ export default async function playersRoutes(fastify) {
     const { player_id } = req.body;
     if (!player_id) throw fastify.httpErrors.badRequest('player_id is required');
 
-    const t = tourneyRepo.getById(req.params.id);
+    const t = await tourneyRepo.getById(req.params.id);
     if (!t) throw fastify.httpErrors.notFound('Tournament not found');
     if (t.status !== 'registration') throw fastify.httpErrors.badRequest('Registration is closed');
 
-    const existingPlayer = repo.getById(player_id);
+    const existingPlayer = await repo.getById(player_id);
     const requesterIdRaw = req.headers['x-player-id'];
     const requesterId = requesterIdRaw ? decodeURIComponent(requesterIdRaw) : undefined;
     const lastIp = (requesterId === player_id) ? req.ip : null;
 
     if (!existingPlayer) {
-      repo.upsert(player_id, 'cn', '', '', '{}', lastIp);
+      await repo.upsert(player_id, 'cn', '', '', '{}', lastIp);
     } else {
       if (requesterId === player_id) {
-        fastify.db.prepare('UPDATE players SET last_ip = ? WHERE id = ?').run(req.ip, player_id);
+        await fastify.db.query('UPDATE axsuck.players SET last_ip = $1, last_seen_at = NOW() WHERE id = $2', [req.ip, player_id]);
       }
     }
-    const added = tourneyRepo.addPlayer(req.params.id, player_id);
+    const added = await tourneyRepo.addPlayer(req.params.id, player_id);
     if (!added) throw fastify.httpErrors.conflict('Already registered');
+
+    // Registration defaults to ladder-ordered seeds; manual seed edits opt out.
+    if (t.seed_mode !== 'manual') {
+      await ladderRepo.autoSeeds(req.params.id);
+      fastify.tournamentEvents.emit(`update:${req.params.id}`, { type: 'seeds_updated' });
+    }
 
     // Trigger real-time broadcast
     fastify.tournamentEvents.emit(`update:${req.params.id}`, { type: 'player_registered', player_id });
 
-    return tourneyRepo.getPlayers(req.params.id);
+    return await tourneyRepo.getPlayers(req.params.id);
   });
 
   fastify.delete('/tournaments/:id/register', async (req) => {
     const { player_id } = req.body;
     if (!player_id) throw fastify.httpErrors.badRequest('player_id is required');
-    tourneyRepo.removePlayer(req.params.id, player_id);
+    const t = await tourneyRepo.getById(req.params.id);
+    if (!t) throw fastify.httpErrors.notFound('Tournament not found');
+    await tourneyRepo.removePlayer(req.params.id, player_id);
+
+    if (t.seed_mode !== 'manual') {
+      await ladderRepo.autoSeeds(req.params.id);
+      fastify.tournamentEvents.emit(`update:${req.params.id}`, { type: 'seeds_updated' });
+    }
 
     // Trigger real-time broadcast
     fastify.tournamentEvents.emit(`update:${req.params.id}`, { type: 'player_unregistered', player_id });

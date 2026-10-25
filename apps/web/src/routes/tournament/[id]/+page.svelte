@@ -14,6 +14,10 @@
   import { Button } from "$lib/components/ui/button/index.js";
   import { Input } from "$lib/components/ui/input/index.js";
   import { Badge } from "$lib/components/ui/badge/index.js";
+  import { accountRegionLabel, accountKey } from "$lib/utils.js";
+  import { maxRound, roundLabel, buildMatchOrder } from "$lib/bracket.js";
+  import TierBadge from "$lib/components/TierBadge.svelte";
+  import { isRecentlySeen } from "$lib/players.js";
   import * as Card from "$lib/components/ui/card/index.js";
   import * as Dialog from "$lib/components/ui/dialog/index.js";
   import { CalendarDate } from "@internationalized/date";
@@ -33,17 +37,35 @@
   import DownloadIcon from "@lucide/svelte/icons/download";
   import UploadCloudIcon from "@lucide/svelte/icons/upload-cloud";
   import FileTextIcon from "@lucide/svelte/icons/file-text";
+  import LinkIcon from "@lucide/svelte/icons/link";
+  import UnlinkIcon from "@lucide/svelte/icons/unlink";
+  import XIcon from "@lucide/svelte/icons/x";
   import TrendingUpIcon from "@lucide/svelte/icons/trending-up";
+  import ShuffleIcon from "@lucide/svelte/icons/shuffle";
   import MessageSquareIcon from "@lucide/svelte/icons/message-square";
   import ListOrderedIcon from "@lucide/svelte/icons/list-ordered";
   import CopyIcon from "@lucide/svelte/icons/copy";
   import SettingsIcon from "@lucide/svelte/icons/settings";
   import PlusIcon from "@lucide/svelte/icons/plus";
+  import RadioIcon from "@lucide/svelte/icons/radio";
+  import MicIcon from "@lucide/svelte/icons/mic";
+  import HeadphonesIcon from "@lucide/svelte/icons/headphones";
+  import Volume2Icon from "@lucide/svelte/icons/volume-2";
+  import MonitorIcon from "@lucide/svelte/icons/monitor";
+  import LayoutDashboardIcon from "@lucide/svelte/icons/layout-dashboard";
+  import PencilIcon from "@lucide/svelte/icons/pencil";
 
   let tid = $derived(page.params.id);
   let tournament = $state(null);
+  let totalRounds = $derived(maxRound(tournament?.matches || []));
+  let matchOrder = $derived(buildMatchOrder(tournament?.matches || []));
   let allPlayers = $state([]);
+  let playTimes = $state(null);
+  let voteWeekOffset = $state(0);
   let loading = $state(true);
+  let editingTitle = $state(false);
+  let titleDraft = $state("");
+  let savingTitle = $state(false);
 
   // Derived unregistered players list for quick registration select
   let unregisteredPlayers = $derived(
@@ -51,6 +73,20 @@
       (ap) => !(tournament?.players || []).some((tp) => tp.id === ap.id),
     ),
   );
+  let showInactiveReg = $state(false);
+  let selectedRegIds = $state([]);
+  let activeUnregistered = $derived(
+    unregisteredPlayers.filter((p) => isRecentlySeen(p.last_seen_at)),
+  );
+  let inactiveUnregistered = $derived(
+    unregisteredPlayers.filter((p) => !isRecentlySeen(p.last_seen_at)),
+  );
+
+  function toggleRegSelection(playerId) {
+    selectedRegIds = selectedRegIds.includes(playerId)
+      ? selectedRegIds.filter((id) => id !== playerId)
+      : [...selectedRegIds, playerId];
+  }
 
   // Replays integration states
   let showMatchDetailsDialog = $state(false);
@@ -72,6 +108,161 @@
   let unmappedReplays = $state([]);
   let showUnmappedDialog = $state(false);
   let tempBnetMappings = $state({});
+  let tempBnetTemporary = $state({});
+
+  // Tournament-scoped account links (temporary / borrowed accounts)
+  let showAccountsDialog = $state(false);
+  let accountsBusy = $state(false);
+  let tournamentAccounts = $state([]);
+
+  function parseBnetEntries(raw) {
+    try {
+      const arr = typeof raw === "string" ? JSON.parse(raw || "[]") : raw || [];
+      return Array.isArray(arr)
+        ? arr.map((b) => (typeof b === "string" ? { id: b, url: "" } : b))
+        : [];
+    } catch {
+      return [];
+    }
+  }
+
+  function globalEntryPayload(g) {
+    const isStr = typeof g === "string";
+    return {
+      account_key: accountKey(g),
+      name: (isStr ? g : g.id || "").trim(),
+      url: (isStr ? "" : g.url) || "",
+      toon_handle: (isStr ? "" : g.toon_handle) || "",
+      region: (isStr ? null : g.region) ?? null,
+      subregion: isStr ? null : g.subregion ?? null,
+    };
+  }
+
+  async function loadTournamentAccounts() {
+    try {
+      tournamentAccounts = await API.getTournamentAccounts(tid);
+    } catch (e) {
+      toast.error("加载账号关联失败: " + e.message);
+    }
+  }
+
+  async function refreshAccounts() {
+    await loadTournamentAccounts();
+    await load();
+  }
+
+  async function unlinkTournamentAccount(accountKey) {
+    if (!confirm("解除该账号在本赛事的临时关联？（若该账号也不在该选手全局资料里，本届将退回按名字判断）")) return;
+    try {
+      accountsBusy = true;
+      await API.unlinkTournamentAccount(tid, accountKey);
+      toast.success("已解除临时关联");
+      await refreshAccounts();
+    } catch (e) {
+      toast.error("解除关联失败: " + e.message);
+    } finally {
+      accountsBusy = false;
+    }
+  }
+
+  async function removeGlobalAccount(playerId, g) {
+    if (!confirm("从该选手的全局资料中移除该账号？所有赛事都会受影响。")) return;
+    try {
+      accountsBusy = true;
+      const e = globalEntryPayload(g);
+      await API.unlinkPlayerAccount(playerId, e.account_key, e.name);
+      toast.success("已移除全局账号");
+      await refreshAccounts();
+    } catch (err) {
+      toast.error("移除失败: " + err.message);
+    } finally {
+      accountsBusy = false;
+    }
+  }
+
+  async function makeTemporary(playerId, g) {
+    try {
+      accountsBusy = true;
+      const e = globalEntryPayload(g);
+      await API.linkTournamentAccounts(tid, playerId, [e]);
+      await API.unlinkPlayerAccount(playerId, e.account_key, e.name);
+      toast.success("已转为临时（仅本赛事）");
+      await refreshAccounts();
+    } catch (err) {
+      toast.error("操作失败: " + err.message);
+    } finally {
+      accountsBusy = false;
+    }
+  }
+
+  async function makePermanent(playerId, s) {
+    try {
+      accountsBusy = true;
+      await API.linkPlayerAccounts(playerId, [{
+        account_key: s.account_key,
+        name: s.account_name || s.account_key,
+        url: s.url || "",
+        toon_handle: s.toon_handle || "",
+        region: s.region ?? null,
+        subregion: s.subregion ?? null,
+      }]);
+      await API.unlinkTournamentAccount(tid, s.account_key);
+      toast.success("已转为全局");
+      await refreshAccounts();
+    } catch (err) {
+      toast.error("操作失败: " + err.message);
+    } finally {
+      accountsBusy = false;
+    }
+  }
+
+  async function reparseAndBackfillAccounts() {
+    if (!userState.qqGroup || !userState.id) {
+      toast.error("此操作需要先验证 QQ 群号与选手 ID。");
+      document.getElementById("header-profile-button")?.click();
+      return;
+    }
+    try {
+      accountsBusy = true;
+      toast.loading("正在重新解析并补充账号 URL...", { id: "acct-backfill" });
+      const res = await API.reparseReplays(tid);
+      toast.dismiss("acct-backfill");
+      toast.success(`重新解析完成，补充/更新 ${res.accounts_updated ?? 0} 个账号关联`);
+      if (res.conflicts?.length) {
+        toast.warning(`有 ${res.conflicts.length} 个账号已属于其他选手，未自动关联`);
+      }
+      await refreshAccounts();
+    } catch (e) {
+      toast.dismiss("acct-backfill");
+      toast.error("重新解析失败: " + e.message);
+    } finally {
+      accountsBusy = false;
+    }
+  }
+
+  async function cleanupEmptyAccounts() {
+    const ids = (tournament?.players || []).map((p) => p.id);
+    if (ids.length === 0) return;
+    if (!confirm("移除本赛事选手名下所有「无 URL」旧账号条目？（这些是补不出 URL 的历史名字）")) return;
+    try {
+      accountsBusy = true;
+      const res = await API.cleanupEmptyAccounts(ids);
+      toast.success(`已清理 ${res.removed ?? 0} 个无 URL 账号`);
+      await refreshAccounts();
+    } catch (e) {
+      toast.error("清理失败: " + e.message);
+    } finally {
+      accountsBusy = false;
+    }
+  }
+
+  let accountsByPlayer = $derived.by(() => {
+    const map = {};
+    for (const a of tournamentAccounts || []) {
+      (map[a.player_id] = map[a.player_id] || []).push(a);
+    }
+    return map;
+  });
 
   // Wiki generation states
   let showWikiDialog = $state(false);
@@ -130,18 +321,120 @@
   let showStatusTimeDialog = $state(false);
   let selectedFinalTime = $state("");
 
-  // Compute votes sorted chronologically by date
-  let voteOptions = $derived.by(() => {
-    if (!tournament?.votes) return [];
-    const map = {};
-    for (const v of tournament.votes) {
-      const t = v.proposed_time;
-      if (!map[t]) map[t] = { proposed_time: t, count: 0, voters: [] };
-      map[t].count++;
-      map[t].voters.push(v);
-    }
-    return Object.values(map).sort((a, b) => a.proposed_time.localeCompare(b.proposed_time));
+  // Next-match hand-off enforcement: force choosing the next live match, then auto-switch to ingame HUD
+  let nextMatchModalOpen = $state(false);
+  let autoHudActive = $state(false);
+  let autoHudSeconds = $state(60);
+  let autoHudTimer = null;
+  const AUTO_HUD_DELAY = 60;
+  const AUTO_HUD_EXTEND = 30;
+
+  // "Going live" mode: only this browser forces the next-match flow, so other viewers are unaffected
+  let streamMode = $state(
+    typeof window !== "undefined" &&
+      localStorage.getItem("suck_stream_mode") === "1",
+  );
+  let showStreamChecklist = $state(false);
+  let streamChecks = $state({
+    mic: false,
+    voice: false,
+    gameSound: false,
+    gameScreen: false,
+    overlay: false,
   });
+  const STREAM_CHECKLIST_ITEMS = [
+    { key: "mic", label: "麦克风", desc: "麦克风已连接，收音正常", icon: MicIcon },
+    { key: "voice", label: "语音", desc: "语音 / 开黑频道已就绪", icon: HeadphonesIcon },
+    { key: "gameSound", label: "游戏声音", desc: "游戏音效已进入 OBS 混音", icon: Volume2Icon },
+    { key: "gameScreen", label: "游戏画面", desc: "游戏画面采集正常", icon: MonitorIcon },
+    { key: "overlay", label: "Overlay", desc: "直播大屏叠加已设置完成", icon: LayoutDashboardIcon },
+  ];
+  let streamChecklistAllDone = $derived(
+    STREAM_CHECKLIST_ITEMS.every((item) => streamChecks[item.key]),
+  );
+
+  function nextVoteOccurrence(weekday, hour, minute, now = new Date()) {
+    const d = new Date(now);
+    d.setHours(hour, minute, 0, 0);
+    let delta = (weekday - d.getDay() + 7) % 7;
+    if (delta === 0 && d.getTime() <= now.getTime()) delta = 7;
+    d.setDate(d.getDate() + delta);
+    return d;
+  }
+
+  function voteIso(d) {
+    const pad = (n) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:00`;
+  }
+
+  // Suggested slots are always visible; they double as quick vote buttons.
+  let quickVoteOptions = $derived.by(() => {
+    const fallback = [
+      { weekday: 4, hour: 20, minute: 30 },
+      { weekday: 6, hour: 20, minute: 30 },
+      { weekday: 0, hour: 20, minute: 30 },
+      { weekday: 6, hour: 15, minute: 0 },
+      { weekday: 0, hour: 15, minute: 0 },
+    ];
+    const historical = (playTimes?.top_slots || []).slice(0, 3).map((slot) => {
+      const [hour, minute] = String(slot.time).split(":").map(Number);
+      return { weekday: slot.weekday, hour, minute };
+    });
+    // Keep the usual Thursday 20:30 plus the Saturday/Sunday afternoon slots available.
+    const extra = [
+      { weekday: 4, hour: 20, minute: 30 },
+      { weekday: 6, hour: 15, minute: 0 },
+      { weekday: 0, hour: 15, minute: 0 },
+    ];
+    const specs = [...historical, ...extra, ...fallback];
+    const now = new Date();
+    // Keep the requested time-of-day relative to "now + offset weeks".
+    const anchor = new Date(now.getTime() + voteWeekOffset * 7 * 24 * 3600 * 1000);
+    const seen = new Set();
+    const out = [];
+    for (const spec of specs) {
+      const d = nextVoteOccurrence(spec.weekday, spec.hour, spec.minute, anchor);
+      const iso = voteIso(d);
+      if (seen.has(iso)) continue;
+      seen.add(iso);
+      out.push({ proposed_time: iso, suggested: true });
+      if (out.length >= 6) break;
+    }
+    return out;
+  });
+
+  // Compute votes sorted chronologically by date; merge suggested zero-vote slots.
+  let voteOptions = $derived.by(() => {
+    const map = {};
+    if (tournament?.votes) {
+      for (const v of tournament.votes) {
+        const t = v.proposed_time;
+        if (!map[t]) map[t] = { proposed_time: t, count: 0, voters: [] };
+        map[t].count++;
+        map[t].voters.push(v);
+      }
+    }
+    const suggested = new Set(quickVoteOptions.map((q) => q.proposed_time));
+    for (const q of quickVoteOptions) {
+      if (!map[q.proposed_time]) {
+        map[q.proposed_time] = {
+          proposed_time: q.proposed_time,
+          count: 0,
+          voters: [],
+        };
+      }
+    }
+    return Object.values(map)
+      .map((opt) => ({ ...opt, suggested: suggested.has(opt.proposed_time) }))
+      .sort((a, b) => a.proposed_time.localeCompare(b.proposed_time));
+  });
+
+  let pastVotes = $derived(
+    (tournament?.votes || []).filter((vote) => {
+      const time = new Date(vote.proposed_time).getTime();
+      return Number.isFinite(time) && time < Date.now();
+    }),
+  );
 
   // Group vote options by date for "Anime Schedule" layout
   let groupedVoteDates = $derived.by(() => {
@@ -206,6 +499,140 @@
     tournament?.players?.some((p) => p.id === userState.id),
   );
 
+  // The active match only counts as live if it is still pending
+  let liveActiveMatch = $derived.by(() => {
+    const activeId = tournament?.active_match_id;
+    if (!activeId) return null;
+    const m = tournament?.matches?.find((x) => x.id === activeId);
+    return m && m.status === "pending" ? m : null;
+  });
+
+  // Candidate matches the operator can hand off to
+  let nextMatchCandidates = $derived.by(() => {
+    if (!tournament?.matches?.length) return [];
+    return [...tournament.matches]
+      .filter((m) => m.status === "pending" && m.player1_id && m.player2_id)
+      .sort((a, b) => (matchOrder.get(a.id) ?? 0) - (matchOrder.get(b.id) ?? 0));
+  });
+
+  // In "going live" mode, in progress with no live match => operator must choose the next match
+  let needsNextMatch = $derived(
+    streamMode &&
+      tournament?.status === "in_progress" &&
+      !liveActiveMatch &&
+      nextMatchCandidates.length > 0,
+  );
+
+  function currentOverlayRound() {
+    return (
+      tournament?.overlay_round ||
+      Math.max(...(tournament?.matches?.map((m) => m.round) || [1]))
+    );
+  }
+
+  function clearAutoHudTimer() {
+    if (autoHudTimer) {
+      clearInterval(autoHudTimer);
+      autoHudTimer = null;
+    }
+    autoHudActive = false;
+  }
+
+  async function switchOverlayToHud() {
+    try {
+      await API.setOverlayState(tid, "ingame", currentOverlayRound());
+      toast.success("已自动切换大屏到游戏内 HUD 场景");
+    } catch (e) {
+      toast.error("自动切换大屏场景失败: " + e.message);
+    }
+  }
+
+  // Keep showing the bracket while waiting for the game to start
+  async function showHybridScene() {
+    try {
+      await API.setOverlayState(tid, "hybrid", currentOverlayRound());
+    } catch (e) {
+      toast.error("切换大屏到场间场景失败: " + e.message);
+    }
+  }
+
+  function startAutoHudCountdown() {
+    clearAutoHudTimer();
+    autoHudSeconds = AUTO_HUD_DELAY;
+    autoHudActive = true;
+    autoHudTimer = setInterval(() => {
+      autoHudSeconds -= 1;
+      if (autoHudSeconds <= 0) {
+        clearAutoHudTimer();
+        switchOverlayToHud();
+      }
+    }, 1000);
+  }
+
+  function postponeAutoHud() {
+    if (!autoHudActive) return;
+    autoHudSeconds += AUTO_HUD_EXTEND;
+    toast.info(`已延后 ${AUTO_HUD_EXTEND} 秒切换到大屏 HUD`);
+  }
+
+  async function chooseNextMatch(matchId) {
+    try {
+      // Keep the bracket on screen first, then mark the match live so the overlay never flashes ingame
+      await showHybridScene();
+      await API.setActiveMatch(tid, matchId);
+      nextMatchModalOpen = false;
+      toast.success("已选择当前直播对局，倒计时结束后切换到大屏游戏内 HUD");
+      startAutoHudCountdown();
+      await load();
+    } catch (e) {
+      toast.error("选择直播对局失败: " + e.message);
+    }
+  }
+
+  function requestStreamMode() {
+    streamChecks = {
+      mic: false,
+      voice: false,
+      gameSound: false,
+      gameScreen: false,
+      overlay: false,
+    };
+    showStreamChecklist = true;
+  }
+
+  function confirmStreamMode() {
+    if (!streamChecklistAllDone) return;
+    streamMode = true;
+    if (typeof window !== "undefined") {
+      localStorage.setItem("suck_stream_mode", "1");
+    }
+    showStreamChecklist = false;
+    toast.success("已激活直播状态，将强制选择下一场直播对局");
+  }
+
+  function disableStreamMode() {
+    streamMode = false;
+    if (typeof window !== "undefined") {
+      localStorage.setItem("suck_stream_mode", "0");
+    }
+    clearAutoHudTimer();
+    nextMatchModalOpen = false;
+    toast.info("已结束直播状态");
+  }
+
+  // When a hand-off is required, force the blocking modal open and cancel any stale countdown
+  $effect(() => {
+    if (needsNextMatch) {
+      clearAutoHudTimer();
+      nextMatchModalOpen = true;
+    } else {
+      nextMatchModalOpen = false;
+    }
+  });
+
+  // Clean up the countdown timer when leaving the page
+  $effect(() => () => clearAutoHudTimer());
+
   onMount(load);
 
   let eventSource = null;
@@ -235,10 +662,22 @@
     };
   });
 
+  let loadedTournamentId = null;
+
   async function load() {
-    loading = true;
+    // Only show the full-page loading state on the first load (or when the
+    // route switches to another tournament). Refreshes after a vote,
+    // registration or SSE event must keep the page mounted.
+    const isInitial = !tournament || loadedTournamentId !== tid;
+    if (isInitial) loading = true;
     try {
       tournament = await API.getTournament(tid);
+      loadedTournamentId = tid;
+      if (isInitial && !playTimes) {
+        API.getPlayTimes()
+          .then((times) => (playTimes = times))
+          .catch((e) => console.warn("load play times failed:", e));
+      }
       allPlayers = await API.listPlayers();
       initializeSeedOrder();
 
@@ -259,8 +698,9 @@
       }
     } catch (e) {
       toast.error("加载赛事详情失败: " + e.message);
+    } finally {
+      if (isInitial) loading = false;
     }
-    loading = false;
   }
 
   function initializeSeedOrder() {
@@ -289,6 +729,26 @@
     }
   }
 
+  async function startTitleEdit() {
+    titleDraft = tournament?.name || "";
+    editingTitle = true;
+  }
+
+  async function saveTitle() {
+    const name = titleDraft.trim();
+    if (!name) return toast.error("赛事标题不能为空");
+    savingTitle = true;
+    try {
+      tournament = await API.updateTournament(tid, { name });
+      editingTitle = false;
+      toast.success("赛事标题已更新");
+    } catch (e) {
+      toast.error(e.message);
+    } finally {
+      savingTitle = false;
+    }
+  }
+
   async function confirmEndVoting() {
     if (!userState.qqGroup || !userState.id) {
       toast.error("此操作需要先验证 QQ 群号与选手 ID。已为您打开配置面板！");
@@ -299,12 +759,17 @@
       return toast.error("请选择或输入确定的比赛时间");
     }
     try {
-      tournament = await API.updateStatus(
+      const res = await API.updateStatus(
         tid,
         "registration",
         selectedFinalTime.trim(),
       );
-      toast.success(`赛事已开启报名，比赛时间已定为: ${selectedFinalTime}`);
+      tournament = res;
+      const autoCount = res.auto_registered?.length || 0;
+      toast.success(
+        `赛事已开启报名，比赛时间已定为: ${selectedFinalTime}` +
+          (autoCount > 0 ? `，已自动报名 ${autoCount} 名投票选手` : ""),
+      );
       showStatusTimeDialog = false;
       await load();
     } catch (e) {
@@ -338,6 +803,38 @@
     }
   }
 
+  async function doBatchRegister() {
+    if (!userState.qqGroup || !userState.id) {
+      toast.error("此操作需要先验证 QQ 群号与选手 ID。已为您打开配置面板！");
+      document.getElementById("header-profile-button")?.click();
+      return;
+    }
+    if (selectedRegIds.length === 0) return toast.error("请先选择选手");
+    const ids = [...selectedRegIds];
+    let ok = 0;
+    const errors = [];
+    for (const id of ids) {
+      try {
+        await API.register(tid, id);
+        ok += 1;
+      } catch (e) {
+        errors.push(`${id}: ${e.message}`);
+      }
+    }
+    selectedRegIds = [];
+    await load();
+    if ((tournament.players?.length || 0) >= 2) {
+      try {
+        const matches = await API.generateBracket(tid);
+        tournament = { ...tournament, matches };
+      } catch (e) {
+        console.warn("bracket regeneration failed:", e);
+      }
+    }
+    if (ok > 0) toast.success(`已批量报名 ${ok} 人`);
+    if (errors.length > 0) toast.error(errors[0]);
+  }
+
   async function doUnregister(pid) {
     if (!userState.qqGroup || !userState.id) {
       toast.error("此操作需要先验证 QQ 群号与选手 ID。已为您打开配置面板！");
@@ -362,6 +859,37 @@
   }
 
   // Seeding setup
+  async function autoSeed() {
+    if (!userState.qqGroup || !userState.id) {
+      toast.error("此操作需要先验证 QQ 群号与选手 ID。已为您打开配置面板！");
+      document.getElementById("header-profile-button")?.click();
+      return;
+    }
+    try {
+      await API.autoSeeds(tid);
+      await load();
+      toast.success("已按天梯 MMR 自动重排种子");
+    } catch (e) {
+      toast.error("自动排序失败: " + e.message);
+    }
+  }
+
+  async function randomizeSeed() {
+    if (!userState.qqGroup || !userState.id) {
+      toast.error("此操作需要先验证 QQ 群号与选手 ID。已为您打开配置面板！");
+      document.getElementById("header-profile-button")?.click();
+      return;
+    }
+    if (!confirm("随机微调会打乱 MMR 相近的选手（保留前 2 和后 2 名），继续？")) return;
+    try {
+      await API.randomizeSeeds(tid, { band: 80, keep_top: 2, keep_bottom: 2 });
+      await load();
+      toast.success("已在相近分段内随机微调种子");
+    } catch (e) {
+      toast.error("随机微调失败: " + e.message);
+    }
+  }
+
   async function moveSeed(idx, dir) {
     if (!userState.qqGroup || !userState.id) {
       toast.error("此操作需要先验证 QQ 群号与选手 ID。已为您打开配置面板！");
@@ -374,13 +902,10 @@
     seedOrder = [...seedOrder];
 
     try {
-      const players = await API.setSeeds(tid, seedOrder);
-      tournament = { ...tournament, players };
-
-      if (tournament.players?.length >= 2) {
-        const matches = await API.generateBracket(tid);
-        tournament = { ...tournament, matches };
-      }
+      await API.setSeeds(tid, seedOrder);
+      // Reload so the seed panel keeps the ladder MMR/tier fields and the preview
+      // stays in sync with the server-side seed order.
+      await load();
     } catch (e) {
       toast.error("保存种子排序失败: " + e.message);
     }
@@ -560,9 +1085,20 @@
       if (skippedCount > 0) {
         toast.info(`${skippedCount} 个已存在对局，已自动跳过。`);
       }
+      const conflictReplays = unmapped.filter((r) => r.conflict);
+      if (conflictReplays.length > 0) {
+        const detail = conflictReplays
+          .flatMap((r) => (r.conflicts || []).map((c) => `${c.account_name || c.account_key}: 已属于 ${c.owner}`))
+          .slice(0, 3)
+          .join("；");
+        toast.warning(
+          `有 ${conflictReplays.length} 个录像的账号已关联到其他选手（可能是借号），已转为手动关联。${detail ? "\n" + detail : ""}`,
+        );
+      }
       if (unmapped.length > 0) {
         unmappedReplays = unmapped;
         tempBnetMappings = {};
+        tempBnetTemporary = {};
         showUnmappedDialog = true;
         toast.info(
           `发现 ${unmapped.length} 个无法自动匹配的录像，已为您打开手动关联窗口。`,
@@ -585,19 +1121,35 @@
     }
   }
 
-  function getUnrecognizedIds(replays) {
-    const ids = new Set();
+  function getUnmappedAccounts(replays) {
+    const accounts = new Map();
     replays.forEach((r) => {
-      if (!r.p1Matched && r.repPlayers?.[0]) ids.add(r.repPlayers[0]);
-      if (!r.p2Matched && r.repPlayers?.[1]) ids.add(r.repPlayers[1]);
+      (r.repPlayers || []).forEach((p) => {
+        if (!p || typeof p !== "object") return;
+        if (p.matchedPlayerId) return;
+        const key = p.accountKey || p.toon_handle || p.name;
+        if (!key) return;
+        if (!accounts.has(key)) {
+          accounts.set(key, {
+            key,
+            name: p.name || "",
+            race: p.race || p.pick_race || "",
+            bnet_url: p.bnet_url || "",
+            toon_handle: p.toon_handle || "",
+            region: p.region || null,
+            subregion: p.subregion ?? null,
+            regionLabel: accountRegionLabel(p),
+          });
+        }
+      });
     });
-    return Array.from(ids);
+    return Array.from(accounts.values());
   }
 
-  function getAvailablePlayersForBnet(currentBnetId) {
+  function getAvailablePlayersForBnet(currentKey) {
     const allPlayers = tournament.players || [];
     const selectedPlayerIds = Object.entries(tempBnetMappings)
-      .filter(([bid, pid]) => bid !== currentBnetId && !!pid)
+      .filter(([key, pid]) => key !== currentKey && !!pid)
       .map(([_, pid]) => pid);
     return allPlayers.filter((p) => !selectedPlayerIds.includes(p.id));
   }
@@ -613,47 +1165,38 @@
     try {
       toast.loading("正在保存关联并重新导入对局...", { id: "manual-map" });
 
+      const accountByKey = {};
+      getUnmappedAccounts(unmappedReplays).forEach((a) => {
+        accountByKey[a.key] = a;
+      });
+
       const playerBnetUpdates = {};
-      entries.forEach(([bnetId, pid]) => {
+      entries.forEach(([key, pid]) => {
         if (!playerBnetUpdates[pid]) {
           playerBnetUpdates[pid] = [];
         }
-        playerBnetUpdates[pid].push(bnetId);
+        playerBnetUpdates[pid].push(
+          accountByKey[key] || { key, name: key, bnet_url: "", toon_handle: "" },
+        );
       });
 
-      for (const [pid, newBnetIds] of Object.entries(playerBnetUpdates)) {
-        const playerObj = tournament.players.find((p) => p.id === pid);
-        if (playerObj) {
-          let bnetIds = [];
-          if (playerObj.bnet_ids) {
-            try {
-              bnetIds =
-                typeof playerObj.bnet_ids === "string"
-                  ? JSON.parse(playerObj.bnet_ids)
-                  : playerObj.bnet_ids;
-            } catch (_) {}
-          }
-          if (!Array.isArray(bnetIds)) bnetIds = [];
+      const toPayload = (acct) => ({
+        account_key: acct.key,
+        name: acct.name || acct.key,
+        url: acct.bnet_url || "",
+        toon_handle: acct.toon_handle || "",
+        region: acct.region ?? null,
+        subregion: acct.subregion ?? null,
+      });
 
-          newBnetIds.forEach((newId) => {
-            const hasId = bnetIds.some(
-              (b) =>
-                (typeof b === "string" ? b : b.id).toLowerCase() ===
-                newId.toLowerCase(),
-            );
-            if (!hasId) {
-              bnetIds.push({ id: newId, url: "" });
-            }
-          });
-
-          await API.updatePlayer(playerObj.id, {
-            flag: playerObj.flag,
-            team: playerObj.team,
-            link: playerObj.link,
-            battle_tags: playerObj.battle_tags,
-            bnet_ids: bnetIds,
-            tournament_id: tid,
-          });
+      for (const [pid, accountsToAdd] of Object.entries(playerBnetUpdates)) {
+        const temporary = accountsToAdd.filter((a) => tempBnetTemporary[a.key]);
+        const permanent = accountsToAdd.filter((a) => !tempBnetTemporary[a.key]);
+        if (permanent.length > 0) {
+          await API.linkPlayerAccounts(pid, permanent.map(toPayload));
+        }
+        if (temporary.length > 0) {
+          await API.linkTournamentAccounts(tid, pid, temporary.map(toPayload));
         }
       }
 
@@ -682,6 +1225,7 @@
       if (stillUnmapped.length > 0) {
         unmappedReplays = stillUnmapped;
         tempBnetMappings = {};
+        tempBnetTemporary = {};
         toast.info(
           `导入了部分对局，但仍有 ${stillUnmapped.length} 个录像未关联。`,
         );
@@ -689,6 +1233,7 @@
         showUnmappedDialog = false;
         unmappedReplays = [];
         tempBnetMappings = {};
+        tempBnetTemporary = {};
         toast.success(`所有录像已成功关联并解析！`);
       }
 
@@ -888,6 +1433,7 @@
       );
       if (tournament && tournament.active_match_id === selectedMatch.id) {
         await API.setActiveMatch(tid, null);
+        if (streamMode) await showHybridScene();
       }
       showMatchDialog = false;
       selectedMatch = null;
@@ -925,6 +1471,7 @@
       toast.success("已记录弃权并晋级胜者");
       if (tournament && tournament.active_match_id === selectedMatch.id) {
         await API.setActiveMatch(tid, null);
+        if (streamMode) await showHybridScene();
       }
       showMatchDialog = false;
       selectedMatch = null;
@@ -966,6 +1513,23 @@
   }
 
   // Time voting
+  async function postponeVoteWeek() {
+    try {
+      const res = await API.deletePastVotes(tid);
+      voteWeekOffset += 1;
+      if (res.deleted > 0) {
+        toast.info(
+          `已作废 ${res.deleted} 条过期投票，推荐时间已顺延到下周`,
+        );
+      } else {
+        toast.info(`推荐时间已顺延 ${voteWeekOffset} 周`);
+      }
+      await load();
+    } catch (e) {
+      toast.error(e.message);
+    }
+  }
+
   async function doVote() {
     if (!userState.qqGroup || !userState.id) {
       toast.error("此操作需要先验证 QQ 群号与选手 ID。已为您打开配置面板！");
@@ -978,7 +1542,7 @@
     const iso = `${dateStr}T${timeStr}:00`;
     try {
       await API.submitVote(tid, userState.id, iso);
-      toast.success("时间选项已添加并投票");
+      toast.success("已投票；若该时间最终当选，会自动为你报名");
       voteDate = undefined;
       voteTime = "20:00";
       await load();
@@ -999,7 +1563,7 @@
         toast.success("已取消该时间的投票");
       } else {
         await API.submitVote(tid, userState.id, optionTime);
-        toast.success("已投赞成票");
+        toast.success("已投票；若该时间最终当选，会自动为你报名");
       }
       await load();
     } catch (e) {
@@ -1169,6 +1733,7 @@
         team: editPlayerTeam,
         link: editPlayerLink,
         battle_tags: editPlayerBattleTags,
+        bnet_ids: editPlayerBnetIds,
         tournament_id: tid,
       });
 
@@ -1191,13 +1756,8 @@
   // Helpers
   function playerName(pid, match = null) {
     if (!pid) {
-      if (match) {
-        const maxRound = Math.max(
-          ...(tournament?.matches?.map((m) => m.round) || [1]),
-        );
-        if (match.round === maxRound) {
-          return "BYE (轮空)";
-        }
+      if (match && match.round === totalRounds) {
+        return "BYE (轮空)";
       }
       return "TBD";
     }
@@ -1219,14 +1779,6 @@
         matches: ms.sort((a, b) => a.position - b.position),
       }))
       .sort((a, b) => b.round - a.round);
-  }
-
-  function roundLabel(roundNum, totalRounds) {
-    if (roundNum === 0) return "三四名决赛";
-    if (roundNum === 1) return "总决赛";
-    if (roundNum === 2) return "半决赛";
-    if (roundNum === 3 && totalRounds >= 3) return "四分之一决赛";
-    return `第 ${roundNum} 轮`;
   }
 
   function statusLabel(s) {
@@ -1358,8 +1910,76 @@
     return rs[0].matches?.length || 0;
   });
 
+  // Group the bracket: 32 players per page on desktop, 16 on phones.
+  let isMobileViewport = $state(false);
+  onMount(() => {
+    const mq = window.matchMedia("(max-width: 767px)");
+    const update = () => (isMobileViewport = mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  });
+
+  let sectionFirstMatches = $derived(
+    Math.min(isMobileViewport ? 8 : 16, Math.max(2, firstRoundMatchCount)),
+  );
+  let sectionDepth = $derived(
+    Math.max(1, Math.round(Math.log2(sectionFirstMatches)) + 1),
+  );
+  let sectionCount = $derived(
+    Math.max(1, Math.ceil(firstRoundMatchCount / sectionFirstMatches)),
+  );
+  let maxRoundNumber = $derived.by(() => {
+    const rs = rounds();
+    return rs.length ? Math.max(...rs.map((r) => r.round)) : 1;
+  });
+  let finalStartRound = $derived(
+    Math.max(1, maxRoundNumber - (sectionDepth - 1)),
+  );
+  let autoFinalStage = $derived.by(() => {
+    if (sectionCount <= 1) return false;
+    const finalRound = rounds().find((r) => r.round === finalStartRound);
+    if (!finalRound) return false;
+    return finalRound.matches.some(
+      (m) =>
+        m.player1_id ||
+        m.player2_id ||
+        m.status === "completed" ||
+        m.status === "walkover",
+    );
+  });
+  let bracketViewMode = $state("auto"); // auto | sections | final
+  let bracketSectionIndex = $state(0);
+  let showFinalStage = $derived(
+    sectionCount > 1 &&
+      (bracketViewMode === "final" ||
+        (bracketViewMode === "auto" && autoFinalStage)),
+  );
+
+  $effect(() => {
+    if (bracketSectionIndex >= sectionCount) bracketSectionIndex = 0;
+  });
+
+  let displayRounds = $derived.by(() => {
+    const rs = rounds();
+    if (!rs.length) return [];
+    if (sectionCount <= 1) return rs;
+    if (showFinalStage) return rs.filter((r) => r.round <= finalStartRound);
+
+    return rs
+      .filter((r) => r.round >= finalStartRound)
+      .map((r) => {
+        const size = sectionFirstMatches >> (maxRoundNumber - r.round);
+        const start = bracketSectionIndex * size;
+        return { ...r, matches: r.matches.slice(start, start + size) };
+      });
+  });
+  let displayFirstRoundCount = $derived(
+    displayRounds[0]?.matches?.length || 0,
+  );
+
   let bracketSpecs = $derived.by(() => {
-    const count = firstRoundMatchCount;
+    const count = displayFirstRoundCount;
     if (count >= 8) {
       // 16 players or more
       return {
@@ -1390,7 +2010,7 @@
   });
 
   let matchPositions = $derived.by(() => {
-    const rs = rounds();
+    const rs = displayRounds;
     if (!rs.length)
       return { positions: {}, centers: {}, totalHeight: 600 };
 
@@ -1401,8 +2021,8 @@
     const positions = {}; // map of matchId -> { top, height }
     const centers = {}; // map of matchId -> center px
 
-    const maxRoundNum = Math.max(...rs.map((r) => r.round));
-    const firstRound = rs.find((r) => r.round === maxRoundNum);
+    const localMaxRound = Math.max(...rs.map((r) => r.round));
+    const firstRound = rs.find((r) => r.round === localMaxRound);
     if (!firstRound) return { positions: {}, centers: {}, totalHeight: 600 };
 
     const firstRoundMatches = firstRound.matches;
@@ -1417,7 +2037,7 @@
       centers[m.id] = top + H / 2;
     });
 
-    for (let rNum = maxRoundNum - 1; rNum >= 1; rNum--) {
+    for (let rNum = localMaxRound - 1; rNum >= 1; rNum--) {
       const roundData = rs.find((r) => r.round === rNum);
       const prevRoundData = rs.find((r) => r.round === rNum + 1);
       if (!roundData || !prevRoundData) continue;
@@ -1574,6 +2194,32 @@
     </Button>
   </div>
 {:else}
+  {#if autoHudActive}
+    <div
+      class="fixed bottom-5 left-1/2 -translate-x-1/2 z-[60] flex items-center gap-3 rounded-xl border border-primary/30 bg-card/95 px-4 py-3 shadow-lg backdrop-blur"
+    >
+      <ClockIcon class="w-4 h-4 text-primary shrink-0" />
+      <span class="text-xs font-medium whitespace-nowrap">
+        {autoHudSeconds}s 后自动切换大屏到游戏内 HUD
+      </span>
+      <Button
+        size="sm"
+        class="h-7 text-xs cursor-pointer"
+        onclick={switchOverlayToHud}
+      >
+        立即切换
+      </Button>
+      <Button
+        size="sm"
+        variant="outline"
+        class="h-7 text-xs cursor-pointer"
+        onclick={postponeAutoHud}
+      >
+        延后 +30s
+      </Button>
+    </div>
+  {/if}
+
   {#snippet rosterSidebar()}
     <Card.Root class="border-border bg-card/40">
       <Card.Header class="p-5 pb-3">
@@ -1657,6 +2303,36 @@
         </Card.Title>
       </Card.Header>
       <Card.Content class="p-5 pt-0 space-y-4 text-xs">
+        <div
+          class="flex items-center justify-between gap-3 rounded-xl border p-3 {streamMode
+            ? 'border-red-500/40 bg-red-500/10'
+            : 'border-border bg-background/40'}"
+        >
+          <div class="flex items-center gap-2.5">
+            <RadioIcon
+              class="w-4 h-4 shrink-0 {streamMode
+                ? 'text-red-500 animate-pulse'
+                : 'text-muted-foreground'}"
+            />
+            <div>
+              <div class="text-[11px] font-bold">
+                {streamMode ? "直播状态已激活" : "直播状态未激活"}
+              </div>
+              <div class="text-[10px] text-muted-foreground leading-normal">
+                激活后本页会强制选择下一场对局并自动切换大屏；仅影响本机，不影响其他访问者。
+              </div>
+            </div>
+          </div>
+          <Button
+            size="sm"
+            variant={streamMode ? "destructive" : "default"}
+            class="h-7 text-xs cursor-pointer shrink-0"
+            onclick={streamMode ? disableStreamMode : requestStreamMode}
+          >
+            {streamMode ? "结束直播" : "我要直播"}
+          </Button>
+        </div>
+
         <div class="space-y-2">
           <span class="font-semibold text-muted-foreground block">当前直播对局:</span>
           {#if tournament?.matches?.length > 0}
@@ -1677,7 +2353,7 @@
                 <option value="">-- 未选择对局 --</option>
                 {#each (tournament.matches || []).filter(m => m.player1_id && m.player2_id) as m}
                   <option value={m.id}>
-                    场次 {m.position} (R{m.round}): {playerName(m.player1_id)} vs {playerName(m.player2_id)} [{m.status === 'completed' ? '完赛' : m.status === 'walkover' ? '弃权' : '待赛'}]
+                    #{matchOrder.get(m.id)} 场次 {m.position} ({roundLabel(m.round, totalRounds)}): {playerName(m.player1_id)} vs {playerName(m.player2_id)} [{m.status === 'completed' ? '完赛' : m.status === 'walkover' ? '弃权' : '待赛'}]
                   </option>
                 {/each}
               </select>
@@ -1691,6 +2367,7 @@
                     onclick={async () => {
                       try {
                         await API.setActiveMatch(tid, null);
+                        clearAutoHudTimer();
                         toast.success("已清除直播对局");
                       } catch (err) {
                         toast.error(err.message);
@@ -1721,6 +2398,7 @@
                   const val = e.target.value;
                   try {
                     await API.setOverlayState(tid, val, tournament.overlay_round || Math.max(...(tournament?.matches?.map(m => m.round) || [1])));
+                    clearAutoHudTimer();
                     toast.success("大屏显示场景已切换为: " + val.toUpperCase());
                   } catch (err) {
                     toast.error("切换大屏场景失败: " + err.message);
@@ -1746,14 +2424,14 @@
                     const val = parseInt(e.target.value);
                     try {
                       await API.setOverlayState(tid, tournament.overlay_scene || "intro", val);
-                      toast.success("大屏展示轮次已更改为: R" + val);
+                      toast.success("大屏展示轮次已更改为: " + roundLabel(val, totalRounds));
                     } catch (err) {
                       toast.error("更改大屏轮次失败: " + err.message);
                     }
                   }}
                 >
                   {#each Array.from({length: Math.max(...(tournament?.matches?.map(m => m.round) || [1]))}, (_, i) => i + 1).reverse() as r}
-                    <option value={r}>R{r} ({roundLabel(r, Math.max(...(tournament?.matches?.map(m => m.round) || [1])))})</option>
+                    <option value={r}>{roundLabel(r, totalRounds)}</option>
                   {/each}
                 </select>
               </div>
@@ -1805,7 +2483,7 @@
                     bind:value={obsIntroRound}
                   >
                     {#each Array.from({length: Math.max(...(tournament?.matches?.map(m => m.round) || [1]))}, (_, i) => i + 1).reverse() as r}
-                      <option value={r}>R{r} ({roundLabel(r, Math.max(...(tournament?.matches?.map(m => m.round) || [1])))})</option>
+                      <option value={r}>{roundLabel(r, totalRounds)}</option>
                     {/each}
                   </select>
                 </div>
@@ -1899,6 +2577,7 @@
           <Card.Description class="text-xs">
             {#if tournament.status === "registration"}
               基于当前报名的选手和种子排名实时生成的对阵预览（调整上方种子排序会自动刷新）。
+              <span class="sm:hidden block mt-1 text-muted-foreground/80">左右滑动查看本组对阵；手机每 16 人一组。</span>
             {:else if tournament.status === "in_progress"}
               点击包含两位选手的待赛卡片可以填报比分或进行弃权处理。
             {:else}
@@ -1931,17 +2610,83 @@
               <RefreshCwIcon class="w-3.5 h-3.5 {reparsing ? 'animate-spin' : ''}" />
               <span>{reparsing ? '解析中...' : '重新解析录像'}</span>
             </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onclick={() => {
+                showAccountsDialog = true;
+                loadTournamentAccounts();
+              }}
+              class="h-8 text-xs font-bold rounded-xl border border-sky-500/30 bg-sky-500/5 text-sky-500 shadow hover:bg-sky-500 hover:text-black cursor-pointer gap-1.5 w-full sm:w-auto"
+            >
+              <LinkIcon class="w-3.5 h-3.5" />
+              <span>账号关联</span>
+            </Button>
           </div>
         {/if}
       </Card.Header>
-      <Card.Content class="p-6 overflow-x-auto relative min-h-100">
+
+      {#if sectionCount > 1}
+        <div
+          class="flex flex-wrap items-center gap-2 px-3 sm:px-6 pt-4"
+        >
+          <Badge variant="outline" class="text-[10px] font-mono">
+            第 {bracketSectionIndex + 1} / {sectionCount} 组 · {sectionFirstMatches * 2} 人
+          </Badge>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={showFinalStage || bracketSectionIndex === 0}
+            onclick={() => {
+              bracketViewMode = "sections";
+              bracketSectionIndex = Math.max(0, bracketSectionIndex - 1);
+            }}
+            class="h-7 text-[10px] px-2"
+          >
+            上一组
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={showFinalStage || bracketSectionIndex >= sectionCount - 1}
+            onclick={() => {
+              bracketViewMode = "sections";
+              bracketSectionIndex = Math.min(sectionCount - 1, bracketSectionIndex + 1);
+            }}
+            class="h-7 text-[10px] px-2"
+          >
+            下一组
+          </Button>
+          <Button
+            variant={showFinalStage ? "default" : "outline"}
+            size="sm"
+            onclick={() => (bracketViewMode = "final")}
+            class="h-7 text-[10px] px-2"
+          >
+            决赛阶段
+          </Button>
+          <Button
+            variant={showFinalStage ? "outline" : "default"}
+            size="sm"
+            onclick={() => (bracketViewMode = "sections")}
+            class="h-7 text-[10px] px-2"
+          >
+            分组
+          </Button>
+          <span class="text-[10px] text-muted-foreground/70">
+            手机每 16 人一组，桌面每 32 人一组
+          </span>
+        </div>
+      {/if}
+
+      <Card.Content class="p-3 sm:p-6 overflow-x-auto relative min-h-100">
         {#if tournament.matches?.length > 0}
           <div class="flex justify-start items-stretch min-w-max py-4 {bracketSpecs.colGap}">
-            {#each rounds() as r, colIdx (r.round)}
+            {#each displayRounds as r, colIdx (r.round)}
               <div class="shrink-0 flex flex-col justify-start h-full {bracketSpecs.cardWidth}">
                 <!-- Round Header -->
                 <div class="text-xs text-neutral-200 bg-neutral-800/80 border border-neutral-700/50 py-1.5 px-3 font-bold text-center mb-4 tracking-wider shrink-0 rounded-md shadow-sm">
-                  {roundLabel(r.round, rounds().length)}
+                  {roundLabel(r.round, totalRounds)}
                 </div>
 
 
@@ -1975,7 +2720,7 @@
                         >
                           <!-- Tiny Header Bar -->
                           <div class="px-2 py-1 bg-neutral-100 dark:bg-neutral-900 text-[8px] font-mono text-neutral-500 dark:text-neutral-400 flex items-center justify-between border-b border-neutral-200 dark:border-neutral-800/80 shrink-0">
-                            <span>场次 {m.position}</span>
+                            <span>#{matchOrder.get(m.id)} · 场次 {m.position}</span>
                             <div class="flex items-center gap-1.5">
                               {#if isPlayable}
                                 {@const isActive = tournament.active_match_id === m.id}
@@ -2050,8 +2795,8 @@
                       {/if}
 
                       <!-- Render Connectors to the right (Only if not the last column) -->
-                      {#if colIdx < rounds().length - 1}
-                        {@const nextRound = rounds()[colIdx + 1]}
+                      {#if colIdx < displayRounds.length - 1}
+                        {@const nextRound = displayRounds[colIdx + 1]}
                         {@const isEven = idx % 2 === 0}
 
                         {#if isEven}
@@ -2118,7 +2863,7 @@
                     </div>
                   {/each}
 
-                  {#if colIdx === rounds().length - 1}
+                  {#if colIdx === displayRounds.length - 1}
                     {@const thirdPlaceMatch = tournament.matches.find(m => m.round === 0)}
                     {#if thirdPlaceMatch}
                       {@const tp1 = tournament.players?.find(p => p.id === thirdPlaceMatch.player1_id)}
@@ -2224,12 +2969,47 @@
         >
           <ArrowLeftIcon class="w-3 h-3" /> 返回大厅
         </button>
-        <div class="flex items-center gap-3">
-          <h1
-            class="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground"
-          >
-            {tournament.name}
-          </h1>
+        <div class="flex items-center gap-3 flex-wrap">
+          {#if editingTitle}
+            <div class="flex items-center gap-1.5 flex-wrap">
+              <Input
+                bind:value={titleDraft}
+                class="h-9 text-base font-bold w-64 max-w-full bg-background border-border"
+                onkeydown={(e) => {
+                  if (e.key === "Enter") saveTitle();
+                  if (e.key === "Escape") editingTitle = false;
+                }}
+              />
+              <Button size="sm" onclick={saveTitle} disabled={savingTitle} class="h-9 text-xs">
+                {savingTitle ? "保存中..." : "保存"}
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onclick={() => (editingTitle = false)}
+                class="h-9 text-xs"
+              >
+                取消
+              </Button>
+            </div>
+          {:else}
+            <h1
+              class="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground"
+            >
+              {tournament.name}
+            </h1>
+            {#if userState.id}
+              <button
+                type="button"
+                onclick={startTitleEdit}
+                title="修改赛事标题"
+                aria-label="修改赛事标题"
+                class="text-muted-foreground/60 hover:text-primary transition-colors cursor-pointer"
+              >
+                <PencilIcon class="w-4 h-4" />
+              </button>
+            {/if}
+          {/if}
           <Badge
             variant="outline"
             class="text-[10px] px-2 py-0.5 font-bold uppercase tracking-wider bg-primary/10 text-primary border-primary/20"
@@ -2239,7 +3019,11 @@
         </div>
         <p class="text-xs text-muted-foreground font-medium">
           ID: {tournament.id} • 选手容量: {tournament.player_count ||
-            0}/{tournament.player_capacity} 人 • 创建于 {new Date(
+            0}/{tournament.player_capacity} 人
+          {#if tournament.status === "voting"}
+            • 投票人数: {tournament.voter_count || 0} 人
+          {/if}
+          • 创建于 {new Date(
             tournament.created_at,
           ).toLocaleDateString("zh-CN")}
           • 晋级规则: <span class="font-bold text-primary">{tournament.loser_advances ? "败者晋级 (SUCK 经典)" : "胜者晋级 (常规单淘)"}</span>
@@ -2250,6 +3034,15 @@
           >
             <ClockIcon class="w-4 h-4 text-primary shrink-0 animate-pulse" />
             <span>比赛时间: {tournament.scheduled_time}</span>
+            <a
+              href={`/api/tournaments/${encodeURIComponent(tournament.id)}/calendar.ics`}
+              download={`${tournament.id}.ics`}
+              class="ml-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-lg border border-primary/25 bg-background/50 text-[10px] font-bold text-primary hover:bg-primary hover:text-primary-foreground transition-colors"
+              title="下载 .ics 日历文件，一键导入日历"
+            >
+              <CalendarIcon class="w-3 h-3" />
+              添加到日历
+            </a>
           </div>
         {/if}
       </div>
@@ -2267,8 +3060,11 @@
                 document.getElementById("header-profile-button")?.click();
                 return;
               }
-              if (voteOptions.length > 0) {
-                const highestVoted = [...voteOptions].sort((a, b) => b.count - a.count)[0];
+              const futureOptions = voteOptions.filter(
+                (opt) => new Date(opt.proposed_time).getTime() >= Date.now(),
+              );
+              if (futureOptions.length > 0) {
+                const highestVoted = [...futureOptions].sort((a, b) => b.count - a.count)[0];
                 selectedFinalTime = formatVoteTime(highestVoted.proposed_time);
               } else {
                 selectedFinalTime = "";
@@ -2507,27 +3303,91 @@
                 </div>
 
                 {#if unregisteredPlayers.length > 0}
-                  <div class="space-y-1.5 pt-1">
-                    <span
-                      class="text-[10px] font-bold text-muted-foreground block"
-                      >快捷选择已有选手报名：</span
-                    >
+                  <div class="space-y-2 pt-1">
                     <div
-                      class="flex flex-wrap gap-1.5 max-h-25 overflow-y-auto pr-1"
+                      class="flex flex-wrap items-center justify-between gap-2"
                     >
-                      {#each unregisteredPlayers as p}
+                      <span class="text-[10px] font-bold text-muted-foreground">
+                        多选选手批量报名（默认只显示一年内活跃）
+                      </span>
+                      {#if selectedRegIds.length > 0}
+                        <div class="flex items-center gap-1.5">
+                          <Button
+                            size="sm"
+                            onclick={doBatchRegister}
+                            class="h-7 text-[10px] px-2"
+                          >
+                            批量报名 ({selectedRegIds.length})
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onclick={() => (selectedRegIds = [])}
+                            class="h-7 text-[10px] px-2"
+                          >
+                            清空
+                          </Button>
+                        </div>
+                      {/if}
+                    </div>
+                    <div
+                      class="flex flex-wrap gap-1.5 max-h-30 overflow-y-auto pr-1"
+                    >
+                      {#each activeUnregistered as p}
                         <button
                           type="button"
-                          onclick={() => (regInput = p.id)}
-                          class="text-[10px] px-2 py-0.5 rounded bg-muted hover:bg-primary hover:text-primary-foreground border border-border/80 transition-colors cursor-pointer {regInput ===
-                          p.id
+                          onclick={() => toggleRegSelection(p.id)}
+                          title={p.last_seen_at
+                            ? `最近活跃: ${new Date(p.last_seen_at).toLocaleDateString("zh-CN")}`
+                            : "无登录记录"}
+                          class="text-[10px] px-2 py-0.5 rounded border transition-colors cursor-pointer {selectedRegIds.includes(
+                            p.id,
+                          )
                             ? 'bg-primary text-primary-foreground border-primary font-bold'
-                            : 'text-foreground'}"
+                            : 'bg-muted text-foreground border-border/80 hover:bg-primary/80 hover:text-primary-foreground'}"
                         >
-                          {p.display_name}
+                          {selectedRegIds.includes(p.id) ? "✓ " : ""}{p.display_name}
                         </button>
+                      {:else}
+                        <span
+                          class="text-[10px] text-muted-foreground/60 italic px-1"
+                        >
+                          暂无最近一年活跃的未报名选手
+                        </span>
                       {/each}
                     </div>
+                    {#if inactiveUnregistered.length > 0}
+                      <details
+                        class="rounded-lg border border-border/60 bg-muted/20 px-2 py-1.5"
+                        bind:open={showInactiveReg}
+                      >
+                        <summary
+                          class="text-[10px] text-muted-foreground cursor-pointer select-none"
+                        >
+                          显示一年未登录的选手（{inactiveUnregistered.length}）
+                        </summary>
+                        <div
+                          class="flex flex-wrap gap-1.5 max-h-25 overflow-y-auto pr-1 mt-1.5"
+                        >
+                          {#each inactiveUnregistered as p}
+                            <button
+                              type="button"
+                              onclick={() => toggleRegSelection(p.id)}
+                              title={p.last_seen_at
+                                ? `最近活跃: ${new Date(p.last_seen_at).toLocaleDateString("zh-CN")}`
+                                : "无登录记录"}
+                              class="text-[10px] px-2 py-0.5 rounded border transition-colors cursor-pointer {selectedRegIds.includes(
+                                p.id,
+                              )
+                                ? 'bg-primary text-primary-foreground border-primary font-bold'
+                                : 'bg-muted/70 text-muted-foreground border-border/80 hover:bg-primary/80 hover:text-primary-foreground'}"
+                            >
+                              {selectedRegIds.includes(p.id) ? "✓ " : ""}{p.display_name}
+                            </button>
+                          {/each}
+                        </div>
+                      </details>
+                    {/if}
                   </div>
                 {/if}
               </div>
@@ -2546,21 +3406,63 @@
                     种子排序配置
                   </Card.Title>
                   <Card.Description class="text-xs">
-                    设定首轮对阵种子（高种子选手排在前面，空出的轮次会优先轮空高种子）。调整顺序后将自动刷新预览。
+                    默认按天梯 MMR 自动排序：高种子在前，空出的轮次优先轮空高种子。手动调整或随机微调后会切换为手动模式。
                   </Card.Description>
+                  <div class="mt-2">
+                    <Badge variant="outline" class="text-[9px] px-1.5 py-0 uppercase tracking-wider
+                      {tournament.seed_mode === 'manual'
+                        ? 'border-amber-500/30 bg-amber-500/10 text-amber-500'
+                        : 'border-primary/30 bg-primary/10 text-primary'}">
+                      {tournament.seed_mode === 'manual' ? '手动模式' : '自动按天梯排序'}
+                    </Badge>
+                  </div>
                 </div>
               </Card.Header>
               <Card.Content class="p-6 pt-0 space-y-4">
+                <div class="flex flex-wrap items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onclick={autoSeed}
+                    class="h-7 text-[10px] cursor-pointer gap-1"
+                  >
+                    <RefreshCwIcon class="w-3 h-3" />
+                    按天梯分重排
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onclick={randomizeSeed}
+                    class="h-7 text-[10px] cursor-pointer gap-1"
+                  >
+                    <ShuffleIcon class="w-3 h-3" />
+                    随机微调
+                  </Button>
+                  <span class="text-[10px] text-muted-foreground">
+                    随机只打乱 MMR 相近的选手，前 2 / 后 2 名不动
+                  </span>
+                </div>
                 <div class="space-y-1.5 max-h-75 overflow-y-auto pr-1">
                   {#each seedOrder as pid, idx}
+                    {@const p = tournament.players?.find((x) => x.id === pid)}
                     <div
                       class="flex items-center gap-3 bg-background/50 border border-border rounded-xl px-4 py-2 text-xs"
                     >
                       <span class="text-amber-500 font-bold w-6"
                         >#{idx + 1}</span
                       >
-                      <span class="flex-1 font-semibold">{playerName(pid)}</span
-                      >
+                      <div class="flex-1 min-w-0">
+                        <div class="font-semibold truncate">{playerName(pid)}</div>
+                        <div class="flex items-center gap-1.5 mt-0.5">
+                          <TierBadge tier={p?.ladder_tier} className="text-[9px]" />
+                          <span class="text-[9px] font-mono text-muted-foreground">
+                            {p?.ladder_mmr ?? 3000} MMR · {p?.ladder_games ?? 0} 场
+                          </span>
+                          {#if p?.ladder_active === false}
+                            <span class="text-[9px] text-amber-500/80">不活跃</span>
+                          {/if}
+                        </div>
+                      </div>
                       <div class="flex items-center gap-1.5">
                         <Button
                           variant="ghost"
@@ -2615,9 +3517,43 @@
               </Card.Title>
               <Card.Description class="text-xs">
                 点击对应的时间框来投出赞成票。我们会根据票数最高的时间来安排赛程。
+                投票后，如果该时间最终当选，会自动为你报名；不想参赛可在报名阶段取消。
               </Card.Description>
+              <div class="flex flex-wrap items-center gap-2 mt-3">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onclick={postponeVoteWeek}
+                  class="h-7 text-[10px] px-2"
+                >
+                  顺延一周推荐
+                </Button>
+                {#if voteWeekOffset > 0}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onclick={() => (voteWeekOffset = 0)}
+                    class="h-7 text-[10px] px-2"
+                  >
+                    回到本周
+                  </Button>
+                  <span class="text-[10px] text-amber-500 font-bold">
+                    已顺延 {voteWeekOffset} 周
+                  </span>
+                {/if}
+                <span class="text-[10px] text-muted-foreground/60">
+                  顺延会作废已过期投票；未过期选项保留
+                </span>
+              </div>
             </Card.Header>
             <Card.Content class="p-6 pt-0 space-y-4">
+              {#if pastVotes.length > 0}
+                <div
+                  class="rounded-xl border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-[11px] text-amber-600 dark:text-amber-400"
+                >
+                  有 {pastVotes.length} 条已过期时间投票。点「顺延一周推荐」会作废它们并切到下周。
+                </div>
+              {/if}
               {#if groupedVoteDates.length > 0}
                 <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                   {#each groupedVoteDates as dayData}
@@ -2648,6 +3584,9 @@
                                 {opt.timeOnly}
                               </span>
                               <div class="flex items-center gap-1.5">
+                                {#if opt.suggested}
+                                  <Badge variant="outline" class="text-[8px] px-1 py-0 text-purple-400 border-purple-500/30">推荐</Badge>
+                                {/if}
                                 {#if voted}
                                   <Badge class="bg-purple-500 text-white font-bold hover:bg-purple-500 text-[9px] px-1 py-0 shadow">已投</Badge>
                                 {/if}
@@ -3077,7 +4016,7 @@
         填报比赛结果
       </Dialog.Title>
       <Dialog.Description class="text-xs text-muted-foreground">
-        场次对局: {selectedMatch?.position} • 第 {selectedMatch?.round} 轮
+        场次对局: {selectedMatch?.position} • {selectedMatch ? roundLabel(selectedMatch.round, totalRounds) : ""}
       </Dialog.Description>
     </Dialog.Header>
 
@@ -4052,18 +4991,18 @@
         </div>
       </div>
 
-      <!-- Battle.net IDs (Read-only) -->
+      <!-- Battle.net IDs (from Replay, removable) -->
       <div class="space-y-1.5">
         <span class="text-xs font-bold text-muted-foreground block"
-          >已关联游戏账号 (Battle.net IDs) (只读，来自录像上传)</span
+          >已关联游戏账号 (Battle.net IDs) (来自录像上传，可移除)</span
         >
         <div
           class="flex flex-wrap gap-1.5 min-h-10 p-2 rounded-xl border border-border bg-background/30"
         >
-          {#each editPlayerBnetIds as account}
+          {#each editPlayerBnetIds as account, idx (idx)}
             <Badge
               variant="secondary"
-              class="text-xs py-0.5 px-2 bg-muted/65 border border-border/60 text-foreground font-mono"
+              class="text-xs py-0.5 px-2 bg-muted/65 border border-border/60 text-foreground font-mono gap-1"
             >
               {#if account.url}
                 <a
@@ -4075,6 +5014,19 @@
               {:else}
                 {account.id}
               {/if}
+              {#if accountRegionLabel(account)}
+                <span class="text-muted-foreground/70"
+                  >{accountRegionLabel(account)}</span
+                >
+              {/if}
+              <button
+                type="button"
+                onclick={() => removeBnetId(idx)}
+                title="移除该账号"
+                class="rounded p-0.5 text-muted-foreground hover:bg-destructive/20 hover:text-destructive cursor-pointer"
+              >
+                <XIcon class="w-3 h-3" />
+              </button>
             </Badge>
           {/each}
           {#if editPlayerBnetIds.length === 0}
@@ -4084,6 +5036,9 @@
             >
           {/if}
         </div>
+        <p class="text-[10px] text-muted-foreground/60">
+          此处为全局账号；仅在某届赛事临时使用的账号请到该赛事的「账号关联」里管理。
+        </p>
       </div>
 
       <!-- Wiki Link -->
@@ -4124,6 +5079,175 @@
   </Dialog.Content>
 </Dialog.Root>
 
+<!-- Dialog: tournament-scoped account links -->
+<Dialog.Root bind:open={showAccountsDialog}>
+  <Dialog.Content
+    class="max-w-2xl bg-card border border-border p-6 flex flex-col gap-4"
+  >
+    <Dialog.Header>
+      <Dialog.Title
+        class="text-lg font-bold text-foreground flex items-center gap-2"
+      >
+        <LinkIcon class="w-5 h-5 text-sky-500" />
+        本赛事账号关联
+      </Dialog.Title>
+      <Dialog.Description class="text-xs text-muted-foreground">
+        解析默认把账号写入选手<b>全局资料</b>（所有赛事通用，URL 为空的会在重新解析时补全）。只有个别临时借用的账号才点「解绑全局」，改成仅本赛事生效。「重新解析并补充」也会把历史遗留的临时关联合并回全局。
+      </Dialog.Description>
+    </Dialog.Header>
+
+    <div class="space-y-3 max-h-100 overflow-y-auto pr-1 py-1">
+      {#each tournament.players || [] as p (p.id)}
+        {@const scoped = accountsByPlayer[p.id] || []}
+        {@const scopedKeys = new Set(scoped.map((s) => s.account_key))}
+        {@const scopedNames = new Set(
+          scoped.map((s) => (s.account_name || "").toLowerCase().trim()),
+        )}
+        {@const global = parseBnetEntries(p.bnet_ids).filter((g) => {
+          const name = ((typeof g === "string" ? g : g.id) || "")
+            .toLowerCase()
+            .trim();
+          const key = accountKey(g);
+          return !(name && scopedNames.has(name)) && !(key && scopedKeys.has(key));
+        })}
+        <div class="p-3 rounded-xl border border-border bg-background/30 space-y-2">
+          <div class="flex items-center justify-between gap-2">
+            <div class="text-sm font-bold text-foreground truncate">
+              {p.display_name && p.display_name !== p.id
+                ? `${p.display_name} (${p.id})`
+                : p.id}
+            </div>
+            <Badge variant="secondary" class="text-[10px] font-mono shrink-0"
+              >{p.race || "U"}</Badge
+            >
+          </div>
+          {#if global.length === 0 && scoped.length === 0}
+            <div class="text-[11px] text-muted-foreground/60 italic">
+              暂无关联账号
+            </div>
+          {:else}
+            <div class="flex flex-wrap gap-1.5">
+              {#each global as g, gi (gi)}
+                {@const gName = typeof g === "string" ? g : g.id || ""}
+                {@const gUrl = typeof g === "object" ? g.url : ""}
+                <span
+                  class="inline-flex items-center gap-1 text-[10px] font-mono bg-muted/60 border border-border/60 rounded-md pl-1.5 pr-1 py-0.5"
+                >
+                  <span class="text-[9px] text-emerald-500 font-bold">全局</span>
+                  {#if gUrl}
+                    <a
+                      href={gUrl}
+                      target="_blank"
+                      rel="noopener"
+                      class="text-primary hover:underline">{gName} ↗</a
+                    >
+                  {:else}
+                    <span>{gName}</span>
+                  {/if}
+                  {#if accountRegionLabel(g)}
+                    <span class="text-muted-foreground/70"
+                      >{accountRegionLabel(g)}</span
+                    >
+                  {/if}
+                  <button
+                    type="button"
+                    disabled={accountsBusy}
+                    onclick={() => makeTemporary(p.id, g)}
+                    title="解绑全局（只在本次赛事临时保留该账号）"
+                    class="rounded px-1 py-0.5 text-[9px] hover:bg-sky-500/20 hover:text-sky-500 text-muted-foreground disabled:opacity-50 cursor-pointer"
+                    >解绑全局</button
+                  >
+                  <button
+                    type="button"
+                    disabled={accountsBusy}
+                    onclick={() => removeGlobalAccount(p.id, g)}
+                    title="移除全局账号"
+                    class="rounded p-0.5 hover:bg-destructive/20 hover:text-destructive text-muted-foreground disabled:opacity-50 cursor-pointer"
+                  >
+                    <XIcon class="w-3 h-3" />
+                  </button>
+                </span>
+              {/each}
+              {#each scoped as a (a.account_key)}
+                <span
+                  class="inline-flex items-center gap-1 text-[10px] font-mono bg-sky-500/5 border border-sky-500/30 rounded-md pl-1.5 pr-1 py-0.5"
+                >
+                  <span class="text-[9px] text-sky-500 font-bold">临时</span>
+                  {#if a.url}
+                    <a
+                      href={a.url}
+                      target="_blank"
+                      rel="noopener"
+                      class="text-primary hover:underline"
+                      >{a.account_name || a.account_key} ↗</a
+                    >
+                  {:else}
+                    <span>{a.account_name || a.account_key}</span>
+                  {/if}
+                  {#if accountRegionLabel(a)}
+                    <span class="text-muted-foreground/70"
+                      >{accountRegionLabel(a)}</span
+                    >
+                  {/if}
+                  <button
+                    type="button"
+                    disabled={accountsBusy}
+                    onclick={() => makePermanent(p.id, a)}
+                    title="绑回全局（写入选手全局资料）"
+                    class="rounded px-1 py-0.5 text-[9px] hover:bg-emerald-500/20 hover:text-emerald-500 text-muted-foreground disabled:opacity-50 cursor-pointer"
+                    >绑回全局</button
+                  >
+                  <button
+                    type="button"
+                    disabled={accountsBusy}
+                    onclick={() => unlinkTournamentAccount(a.account_key)}
+                    title="解除临时关联"
+                    class="rounded p-0.5 hover:bg-destructive/20 hover:text-destructive text-muted-foreground disabled:opacity-50 cursor-pointer"
+                  >
+                    <XIcon class="w-3 h-3" />
+                  </button>
+                </span>
+              {/each}
+            </div>
+          {/if}
+        </div>
+      {/each}
+    </div>
+
+    <Dialog.Footer
+      class="mt-2 border-t border-border pt-3 flex flex-row items-center justify-between gap-3"
+    >
+      <Button
+        variant="ghost"
+        size="sm"
+        onclick={() => (showAccountsDialog = false)}
+        class="text-xs h-8 cursor-pointer">关闭</Button
+      >
+      <div class="flex items-center gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={accountsBusy}
+          onclick={cleanupEmptyAccounts}
+          class="text-xs h-8 cursor-pointer gap-1.5"
+        >
+          <TrashIcon class="w-3.5 h-3.5" />
+          清理无 URL 账号
+        </Button>
+        <Button
+          size="sm"
+          disabled={accountsBusy}
+          onclick={reparseAndBackfillAccounts}
+          class="text-xs font-bold px-4 h-8 cursor-pointer gap-1.5"
+        >
+          <RefreshCwIcon class="w-3.5 h-3.5 {accountsBusy ? 'animate-spin' : ''}" />
+          重新解析并补充
+        </Button>
+      </div>
+    </Dialog.Footer>
+  </Dialog.Content>
+</Dialog.Root>
+
 <!-- Dialog for manual mapping of unmapped replays -->
 <Dialog.Root bind:open={showUnmappedDialog}>
   <Dialog.Content
@@ -4137,35 +5261,78 @@
         手动关联录像账号
       </Dialog.Title>
       <Dialog.Description class="text-xs text-muted-foreground">
-        以下为录像解析中未识别的 Battle.net
-        ID。请将它们绑定至对应的参赛选手，绑定后系统将自动重新解析并导入受影响的录像。
+        以下为录像中未识别的游戏账号（按战网账号区分，同名账号会分别列出）。默认把账号写入选手的**全局资料**；勾选「临时」则只在本赛事生效、不写入全局。绑定后会重新解析并导入受影响的录像。
       </Dialog.Description>
     </Dialog.Header>
 
     <div class="space-y-3 max-h-87.5 overflow-y-auto pr-1 py-1">
-      {#each getUnrecognizedIds(unmappedReplays) as bnetId}
+      {#each getUnmappedAccounts(unmappedReplays) as acct (acct.key)}
         <div
           class="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-4 p-3.5 rounded-xl border border-border bg-background/30 items-center"
         >
-          <div class="font-mono text-sm font-bold text-amber-500 break-all select-all min-w-0"
-            >{bnetId}</div
-          >
-          <div class="flex items-center gap-2 justify-between sm:justify-end shrink-0">
-            <span class="text-[10px] text-muted-foreground shrink-0"
-              >对应选手:</span
-            >
-            <select
-              bind:value={tempBnetMappings[bnetId]}
-              class="bg-background border border-border text-foreground text-xs rounded-lg p-1.5 focus-visible:outline-none w-50 max-w-60 truncate"
-            >
-              <option value="">-- 选择参赛选手 --</option>
-              {#each getAvailablePlayersForBnet(bnetId) as p}
-                <option value={p.id}>
-                  {p.display_name && p.display_name !== p.id ? `${p.display_name} (${p.id})` : p.id}
-                </option>
-              {/each}
-            </select>
+          <div class="min-w-0 space-y-1">
+            <div class="flex items-center gap-2 min-w-0">
+              <span class="font-mono text-sm font-bold text-amber-500 break-all select-all"
+                >{acct.name || acct.key}</span
+              >
+              {#if acct.race && acct.race !== "?"}
+                <Badge
+                  variant="secondary"
+                  class="text-[10px] font-mono bg-muted/65 border border-border/60 px-1.5 py-0 shrink-0"
+                  >{acct.race}</Badge
+                >
+              {/if}
+              {#if acct.regionLabel}
+                <Badge
+                  variant="secondary"
+                  class="text-[10px] bg-sky-500/10 border border-sky-500/30 text-sky-500 px-1.5 py-0 shrink-0"
+                  >{acct.regionLabel}</Badge
+                >
+              {/if}
+            </div>
+            {#if acct.bnet_url}
+              <a
+                href={acct.bnet_url}
+                target="_blank"
+                rel="noopener"
+                class="block font-mono text-[10px] text-primary/80 hover:underline break-all"
+                >{acct.toon_handle || acct.bnet_url} ↗</a
+              >
+            {:else if acct.toon_handle}
+              <span class="block font-mono text-[10px] text-muted-foreground break-all"
+                >{acct.toon_handle}</span
+              >
+            {/if}
           </div>
+          <div class="flex flex-col items-stretch sm:items-end gap-1.5 shrink-0">
+            <div class="flex items-center gap-2 justify-between sm:justify-end">
+              <span class="text-[10px] text-muted-foreground shrink-0"
+                >对应选手:</span
+              >
+              <select
+                bind:value={tempBnetMappings[acct.key]}
+                class="bg-background border border-border text-foreground text-xs rounded-lg p-1.5 focus-visible:outline-none w-50 max-w-60 truncate"
+              >
+                <option value="">-- 选择参赛选手 --</option>
+                {#each getAvailablePlayersForBnet(acct.key) as p}
+                  <option value={p.id}>
+                    {p.display_name && p.display_name !== p.id ? `${p.display_name} (${p.id})` : p.id}
+                  </option>
+                {/each}
+              </select>
+            </div>
+            <label
+              class="inline-flex items-center gap-1.5 text-[10px] text-muted-foreground cursor-pointer select-none justify-end"
+            >
+              <input
+                type="checkbox"
+                bind:checked={tempBnetTemporary[acct.key]}
+                class="accent-sky-500"
+              />
+              <span>临时（仅本赛事，不写入选手全局资料）</span>
+            </label>
+          </div>
+
         </div>
       {/each}
     </div>
@@ -4180,6 +5347,7 @@
           showUnmappedDialog = false;
           unmappedReplays = [];
           tempBnetMappings = {};
+          tempBnetTemporary = {};
         }}
         class="text-xs h-8 cursor-pointer"
       >
@@ -4191,6 +5359,100 @@
         class="text-xs font-bold px-4 h-8 cursor-pointer"
       >
         保存并重新解析
+      </Button>
+    </Dialog.Footer>
+  </Dialog.Content>
+</Dialog.Root>
+
+<!-- Next Match Hand-off Dialog (blocking while in progress with no live match) -->
+<Dialog.Root bind:open={nextMatchModalOpen}>
+  <Dialog.Content
+    showCloseButton={false}
+    escapeKeydownBehavior="ignore"
+    interactOutsideBehavior="ignore"
+    class="max-w-2xl bg-card border border-primary/30"
+  >
+    <Dialog.Header>
+      <Dialog.Title class="text-base font-bold text-primary flex items-center gap-2">
+        <PlayIcon class="w-4 h-4" /> 请选择下一场直播对局
+      </Dialog.Title>
+      <Dialog.Description class="text-xs text-muted-foreground">
+        赛事进行中，但当前没有正在直播的对局。请从下方候选对局中选择一场；选定后将开始
+        60 秒倒计时，超时自动把大屏切换到游戏内 HUD。
+      </Dialog.Description>
+    </Dialog.Header>
+
+    <div class="max-h-[60vh] overflow-y-auto space-y-2 py-2">
+      {#each nextMatchCandidates as m (m.id)}
+        <button
+          onclick={() => chooseNextMatch(m.id)}
+          class="w-full text-left p-3 rounded-lg border border-border bg-background/40 hover:border-primary/50 hover:bg-primary/5 transition-colors cursor-pointer"
+        >
+          <div class="flex items-center justify-between gap-3">
+            <span class="text-xs font-semibold text-foreground">
+              #{matchOrder.get(m.id)} · {roundLabel(m.round, totalRounds)} · 场次 {m.position}
+            </span>
+            <Badge variant="outline" class="text-[10px]">待赛</Badge>
+          </div>
+          <div class="mt-1 text-xs text-foreground/90">
+            {playerName(m.player1_id)}
+            <span class="text-muted-foreground"> vs </span>
+            {playerName(m.player2_id)}
+          </div>
+        </button>
+      {/each}
+    </div>
+  </Dialog.Content>
+</Dialog.Root>
+
+<!-- Going-live pre-flight checklist -->
+<Dialog.Root bind:open={showStreamChecklist}>
+  <Dialog.Content class="max-w-lg bg-card border border-primary/30">
+    <Dialog.Header>
+      <Dialog.Title class="text-base font-bold text-primary flex items-center gap-2">
+        <RadioIcon class="w-4 h-4" /> 开播前检查
+      </Dialog.Title>
+      <Dialog.Description class="text-xs text-muted-foreground">
+        请确认以下各项均已设置完成；全部勾选后才能激活直播状态。
+      </Dialog.Description>
+    </Dialog.Header>
+
+    <div class="space-y-2 py-2">
+      {#each STREAM_CHECKLIST_ITEMS as item (item.key)}
+        {@const ItemIcon = item.icon}
+        <label
+          class="flex items-center gap-3 p-3 rounded-lg border border-border bg-background/40 cursor-pointer select-none"
+        >
+          <input
+            type="checkbox"
+            bind:checked={streamChecks[item.key]}
+            class="h-4 w-4 accent-primary cursor-pointer"
+          />
+          <ItemIcon class="w-4 h-4 text-muted-foreground shrink-0" />
+          <div class="min-w-0">
+            <div class="text-xs font-semibold text-foreground">{item.label}</div>
+            <div class="text-[10px] text-muted-foreground">{item.desc}</div>
+          </div>
+        </label>
+      {/each}
+    </div>
+
+    <Dialog.Footer class="flex flex-row justify-end gap-2">
+      <Button
+        variant="ghost"
+        size="sm"
+        class="h-8 text-xs cursor-pointer"
+        onclick={() => (showStreamChecklist = false)}
+      >
+        取消
+      </Button>
+      <Button
+        size="sm"
+        class="h-8 text-xs cursor-pointer"
+        disabled={!streamChecklistAllDone}
+        onclick={confirmStreamMode}
+      >
+        开始直播
       </Button>
     </Dialog.Footer>
   </Dialog.Content>

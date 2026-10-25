@@ -7,6 +7,7 @@
   import { Button } from "$lib/components/ui/button/index.js";
   import { Input } from "$lib/components/ui/input/index.js";
   import { Badge } from "$lib/components/ui/badge/index.js";
+  import { accountRegionLabel } from "$lib/utils.js";
   import PlusIcon from "@lucide/svelte/icons/plus";
   import SearchIcon from "@lucide/svelte/icons/search";
   import Edit2Icon from "@lucide/svelte/icons/pencil";
@@ -65,6 +66,10 @@
     } catch {
       return [];
     }
+  }
+
+  function removeBnetId(index) {
+    editBnetIds = editBnetIds.filter((_, i) => i !== index);
   }
 
   function openCreate() {
@@ -169,6 +174,7 @@
         team: editTeam,
         link: editLink,
         battle_tags: editBattleTags,
+        bnet_ids: editBnetIds,
       });
 
       toast.dismiss("ps");
@@ -591,8 +597,8 @@
           </div>
 
           <!-- Footer: BattleTags & IP -->
-          <div class="grid grid-cols-2 gap-3 pt-1">
-            <div class="space-y-1">
+          <div class="grid grid-cols-2 gap-3 pt-1 min-w-0">
+            <div class="space-y-1 min-w-0">
               <span class="text-[10px] text-muted-foreground block"
                 >BattleTags</span
               >
@@ -620,11 +626,13 @@
                 {/if}
               </div>
             </div>
-            <div class="space-y-1">
+            <div class="space-y-1 min-w-0">
               <span class="text-[10px] text-muted-foreground block"
                 >上次活跃 IP</span
               >
-              <span class="text-[10px] font-mono text-muted-foreground/80 block"
+              <span
+                class="text-[10px] font-mono text-muted-foreground/80 block truncate"
+                title={p.last_ip || "—"}
                 >{p.last_ip || "—"}</span
               >
             </div>
@@ -893,18 +901,18 @@
         </p>
       </div>
 
-      <!-- Battle.net IDs (Read-only from Replay) -->
+      <!-- Battle.net IDs (from Replay, editable) -->
       <div class="space-y-2 pt-2 border-t border-border/60">
         <span class="text-xs font-bold text-muted-foreground block"
-          >自动解析的游戏账号 (只读，来自录像上传)</span
+          >自动解析的游戏账号 (来自录像上传，可移除)</span
         >
         <div
           class="flex flex-wrap gap-1.5 min-h-[40px] p-2 rounded-lg border border-border/80 bg-muted/10"
         >
-          {#each editBnetIds as b}
+          {#each editBnetIds as b, i (i)}
             <Badge
               variant="secondary"
-              class="text-[10px] font-mono bg-muted/65 border border-border/60 px-2 py-0.5"
+              class="text-[10px] font-mono bg-muted/65 border border-border/60 px-2 py-0.5 gap-1"
             >
               {#if b.url}
                 <a
@@ -916,6 +924,19 @@
               {:else}
                 {b.id}
               {/if}
+              {#if accountRegionLabel(b)}
+                <span class="text-muted-foreground/70"
+                  >{accountRegionLabel(b)}</span
+                >
+              {/if}
+              <button
+                type="button"
+                onclick={() => removeBnetId(i)}
+                title="移除该账号关联"
+                class="rounded p-0.5 text-muted-foreground hover:bg-destructive/20 hover:text-destructive cursor-pointer"
+              >
+                <XIcon class="w-3 h-3" />
+              </button>
             </Badge>
           {/each}
           {#if editBnetIds.length === 0}
@@ -925,6 +946,9 @@
             >
           {/if}
         </div>
+        <p class="text-[10px] text-muted-foreground/60">
+          此处为全局账号；仅在某届赛事临时使用的账号请到该赛事的「账号关联」里管理。
+        </p>
       </div>
 
       <!-- Merge section (edit only) -->

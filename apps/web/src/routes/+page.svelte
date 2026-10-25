@@ -9,7 +9,6 @@
   import { Button } from "$lib/components/ui/button/index.js";
   import { Input } from "$lib/components/ui/input/index.js";
   import { Badge } from "$lib/components/ui/badge/index.js";
-  import CalendarIcon from "@lucide/svelte/icons/calendar";
   import ClockIcon from "@lucide/svelte/icons/clock";
   import UsersIcon from "@lucide/svelte/icons/users";
   import PlusIcon from "@lucide/svelte/icons/plus";
@@ -20,13 +19,98 @@
   let tournaments = $state([]);
   let loading = $state(true);
 
-  // Relative time helper
-  function daysAgo(dateStr) {
-    const d = new Date(dateStr);
-    const diff = Math.floor((Date.now() - d.getTime()) / 86400000);
+  // Relative day helper (past and future).
+  function relativeDay(value) {
+    if (value == null) return "未知时间";
+    const d = value instanceof Date ? value : new Date(value);
+    if (isNaN(d.getTime())) return "未知时间";
+    const target = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const diff = Math.round((target.getTime() - today.getTime()) / 86400000);
     if (diff === 0) return "今天";
-    if (diff === 1) return "昨天";
-    return `${diff} 天前`;
+    if (diff === 1) return "明天";
+    if (diff === -1) return "昨天";
+    if (diff > 0) return `${diff} 天后`;
+    return `${-diff} 天前`;
+  }
+
+  function startTimeLabel(raw) {
+    if (!raw) return "";
+    const m = String(raw).match(
+      /(\d{4})[-/](\d{1,2})[-/](\d{1,2})[^\d]*(\d{1,2}):(\d{2})/,
+    );
+    const weekdays = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
+    if (m) {
+      const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+      const hh = String(m[4]).padStart(2, "0");
+      const mm = String(m[5]).padStart(2, "0");
+      return `${m[1]}/${String(m[2]).padStart(2, "0")}/${String(m[3]).padStart(2, "0")} ${weekdays[d.getDay()]} ${hh}:${mm}`;
+    }
+    const dm = String(raw).match(/(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
+    if (dm) {
+      const d = new Date(Number(dm[1]), Number(dm[2]) - 1, Number(dm[3]));
+      return `${dm[1]}/${String(dm[2]).padStart(2, "0")}/${String(dm[3]).padStart(2, "0")} ${weekdays[d.getDay()]}`;
+    }
+    return String(raw);
+  }
+
+  function ruleLabel(t) {
+    return t?.loser_advances ? "败者晋级" : "胜者晋级";
+  }
+
+  function scheduledDateTime(t) {
+    const raw = t?.scheduled_time;
+    if (!raw) return null;
+    const m = String(raw).match(
+      /(\d{4})[-/](\d{1,2})[-/](\d{1,2})(?:[^\d]*(\d{1,2}):(\d{2}))?/,
+    );
+    if (!m) return null;
+    return new Date(
+      Number(m[1]),
+      Number(m[2]) - 1,
+      Number(m[3]),
+      m[4] == null ? 20 : Number(m[4]),
+      m[5] == null ? 0 : Number(m[5]),
+    );
+  }
+
+  function countdownLabel(t) {
+    const d = scheduledDateTime(t);
+    if (!d) return "";
+    const diff = d.getTime() - Date.now();
+    if (diff <= 0) return "已开赛";
+    const mins = Math.ceil(diff / 60000);
+    if (mins < 60) return `${mins} 分钟后`;
+    const hours = Math.ceil(mins / 60);
+    if (hours < 24) return `${hours} 小时后`;
+    return `${Math.ceil(hours / 24)} 天后`;
+  }
+
+  function actionLabel(t) {
+    if (t.status === "voting") return "去投票";
+    if (t.status === "registration") return "去报名";
+    if (t.status === "in_progress") return "看对阵";
+    return "查看";
+  }
+
+  function displayCapacity(t) {
+    const count = t?.player_count || 0;
+    const tiers = [8, 16, 32, 64, 128];
+    const tier = tiers.find((value) => value > count) ?? 128;
+    return Math.min(Number(t?.player_capacity) || 128, tier);
+  }
+
+  // Best-known match date: prefer the scheduled match time, fall back to creation time.
+  function getTournamentDate(t) {
+    const raw = t?.scheduled_time;
+    if (raw) {
+      const m = String(raw).match(/(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
+      if (m) return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+      const parsed = new Date(raw);
+      if (!isNaN(parsed.getTime())) return parsed;
+    }
+    return t?.created_at ? new Date(t.created_at) : null;
   }
 
   const avatarColors = [
@@ -48,7 +132,7 @@
   // Modal creation states
   let showCreateDialog = $state(false);
   let newName = $state("");
-  let newCapacity = $state(16);
+  let newCapacity = $state(128);
   let newLoserAdvances = $state(true);
   let creating = $state(false);
 
@@ -79,7 +163,7 @@
       return;
     }
     newName = "";
-    newCapacity = 16;
+    newCapacity = 128;
     newLoserAdvances = true;
     showCreateDialog = true;
   }
@@ -93,8 +177,8 @@
       return toast.error("无法根据赛事名称生成合法的赛事 ID，请确保包含英文或数字");
     }
 
-    if (newCapacity < 2 || newCapacity > 16) {
-      return toast.error("选手容量必须在 2 至 16 人之间");
+    if (newCapacity < 2 || newCapacity > 128) {
+      return toast.error("选手容量必须在 2 至 128 人之间");
     }
 
     creating = true;
@@ -108,7 +192,7 @@
       });
       toast.success(`赛事创建成功！(生成 ID: ${generatedId})`);
       newName = "";
-      newCapacity = 16;
+      newCapacity = 128;
       showCreateDialog = false;
       await load();
     } catch (e) {
@@ -174,13 +258,15 @@
         管理并投票单淘汰赛事的首选工具
       </p>
     </div>
-    <Button
-      onclick={openCreateDialog}
-      class="gap-1.5 font-bold hover:scale-[1.02] transition-transform text-xs"
-    >
-      <PlusIcon class="w-4 h-4" />
-      创建赛事
-    </Button>
+    <div class="flex items-center gap-2 shrink-0">
+      <Button
+        onclick={openCreateDialog}
+        class="gap-1.5 font-bold hover:scale-[1.02] transition-transform text-xs"
+      >
+        <PlusIcon class="w-4 h-4" />
+        创建赛事
+      </Button>
+    </div>
   </div>
 
   {#if loading}
@@ -195,18 +281,31 @@
   {:else}
     <!-- ── Active Tournaments ──────────────────────────────── -->
     {#if activeTournaments.length === 0}
-      <div class="text-center py-16 border border-dashed border-border rounded-2xl bg-card/20 flex flex-col items-center justify-center gap-3">
-        <UsersIcon class="w-10 h-10 text-muted-foreground/40" />
-        <div>
+      <div
+        class="py-5 px-4 border border-dashed border-border rounded-2xl bg-card/20 flex flex-col sm:flex-row items-center justify-center gap-4 text-center sm:text-left"
+      >
+        <div class="w-9 h-9 rounded-full bg-muted/60 border border-border/70 flex items-center justify-center shrink-0">
+          <TrophyIcon class="w-4.5 h-4.5 text-muted-foreground/50" />
+        </div>
+        <div class="min-w-0">
           <p class="text-sm font-semibold text-foreground">暂无活跃赛事</p>
-          <p class="text-xs text-muted-foreground mt-1">点击右上角按钮创建一场新的 StarCraft 锦标赛</p>
+          <p class="text-xs text-muted-foreground mt-0.5">
+            可以直接发起下一届的时间投票，或创建一场新的 StarCraft 锦标赛。
+          </p>
           {#if historyTournaments.length > 0}
-            <div class="mt-3.5 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-secondary/60 border border-border/80 text-xs text-muted-foreground font-semibold shadow-sm">
-              <ClockIcon class="w-3.5 h-3.5 text-muted-foreground/75 shrink-0" />
-              <span>上次比赛：{daysAgo(historyTournaments[0].created_at)}</span>
+            <div class="mt-2 inline-flex items-center gap-1.5 text-[10px] text-muted-foreground/70">
+              <ClockIcon class="w-3 h-3 shrink-0" />
+              <span>上次比赛：{relativeDay(getTournamentDate(historyTournaments[0]))}</span>
             </div>
           {/if}
         </div>
+        <Button
+          onclick={openCreateDialog}
+          class="gap-1.5 font-bold text-xs shrink-0"
+        >
+          <PlusIcon class="w-4 h-4" />
+          发起下一届时间投票
+        </Button>
       </div>
     {:else}
       <div class="divide-y divide-border border border-border bg-card/30 rounded-2xl overflow-hidden shadow-sm">
@@ -236,7 +335,7 @@
                 <p class="text-xs text-muted-foreground mt-1 flex items-center gap-1.5 flex-wrap">
                   <span>StarCraft II 单败淘汰赛</span>
                   <span>·</span>
-                  <span>创建于 {new Date(t.created_at).toLocaleDateString("zh-CN")}</span>
+                  <span>{ruleLabel(t)}</span>
                 </p>
               </div>
             </div>
@@ -244,11 +343,11 @@
             <!-- Right: Time + Players + Action -->
             <div class="flex items-center justify-between md:justify-end gap-6 shrink-0 flex-wrap md:flex-nowrap border-t md:border-t-0 border-border/40 pt-3 md:pt-0">
               <!-- Time Info -->
-              <div class="min-w-[150px]">
+              <div class="min-w-[205px]">
                 {#if t.scheduled_time}
-                  <div class="flex items-center gap-1.5 text-primary text-xs font-bold">
+                  <div class="flex items-center gap-1.5 text-primary text-xs font-bold whitespace-nowrap tabular-nums">
                     <ClockIcon class="w-4 h-4 shrink-0 animate-pulse" />
-                    <span>{t.scheduled_time}</span>
+                    <span>{startTimeLabel(t.scheduled_time)}</span>
                   </div>
                 {:else if t.status === "voting"}
                   <div class="flex items-center gap-1.5 text-purple-400 text-xs font-semibold italic">
@@ -261,23 +360,40 @@
                     <span>比赛时间待定...</span>
                   </div>
                 {/if}
+                <div class="text-[10px] text-muted-foreground/50 mt-1 font-mono">
+                  {#if t.scheduled_time}
+                    <span class="text-primary/80 font-bold">{countdownLabel(t)}</span>
+                    <span class="mx-1">·</span>
+                  {/if}
+                  创建于 {new Date(t.created_at).toLocaleDateString("zh-CN")}
+                </div>
               </div>
 
               <!-- Players Progress Bar -->
-              <div class="flex items-center gap-3 w-[160px]">
-                <div class="flex items-center gap-1 text-xs text-muted-foreground font-semibold shrink-0">
+              <div class="flex items-center gap-3 w-[170px]">
+                <div
+                  class="flex items-center gap-1 text-xs text-muted-foreground font-semibold shrink-0"
+                  title={`报名上限 ${t.player_capacity} 人`}
+                >
                   <UsersIcon class="w-3.5 h-3.5" />
-                  <span>{t.player_count || 0} / {t.player_capacity}</span>
+                  {#if t.status === "voting"}
+                    <span>{t.voter_count || 0} 人投票</span>
+                  {:else}
+                    <span>{t.player_count || 0} / {displayCapacity(t)}</span>
+                  {/if}
                 </div>
                 <div class="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
                   <div class="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full transition-all duration-500"
-                    style="width: {Math.min(100, ((t.player_count || 0) / t.player_capacity) * 100)}%"></div>
+                    style="width: {Math.min(100, ((t.status === 'voting' ? (t.voter_count || 0) : (t.player_count || 0)) / displayCapacity(t)) * 100)}%"></div>
                 </div>
               </div>
 
-              <!-- Action Arrow -->
-              <div class="hidden md:flex items-center justify-center w-8 h-8 rounded-full bg-muted/40 group-hover:bg-primary group-hover:text-primary-foreground transition-all duration-300">
-                <ArrowRightIcon class="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
+              <!-- Action -->
+              <div class="flex items-center gap-1.5 text-[10px] font-bold text-muted-foreground/70 group-hover:text-primary transition-colors">
+                <span>{actionLabel(t)}</span>
+                <div class="flex items-center justify-center w-8 h-8 rounded-full bg-muted/40 group-hover:bg-primary group-hover:text-primary-foreground transition-all duration-300">
+                  <ArrowRightIcon class="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
+                </div>
               </div>
             </div>
           </div>
@@ -315,25 +431,32 @@
                     <span class="text-[10px] text-muted-foreground font-mono bg-muted/60 px-1.5 py-0.25 rounded shrink-0">ID: {t.id}</span>
                   </div>
                   <p class="text-[11px] text-muted-foreground mt-0.5 flex items-center gap-1.5 flex-wrap">
-                    <span>已于 {daysAgo(t.created_at)} 完结</span>
+                    <span>StarCraft II 单败淘汰赛</span>
                     <span>·</span>
-                    <span>创建于 {new Date(t.created_at).toLocaleDateString("zh-CN")}</span>
+                    <span>{ruleLabel(t)}</span>
                   </p>
                 </div>
               </div>
 
               <!-- Right: Meta + Buttons -->
               <div class="flex items-center justify-between sm:justify-end gap-4 shrink-0 flex-wrap sm:flex-nowrap border-t sm:border-t-0 border-border/40 pt-2.5 sm:pt-0">
-                <div class="flex items-center gap-3 text-xs text-muted-foreground/80">
-                  <!-- Player count -->
-                  <div class="flex items-center gap-1 bg-muted/40 border border-border/60 px-2 py-0.5 rounded-full font-medium">
-                    <UsersIcon class="w-3 h-3 text-muted-foreground/50" />
-                    <span>{t.player_count || 0} 人参赛</span>
+                <div class="text-right sm:text-left">
+                  <div class="grid grid-cols-1 sm:grid-cols-[205px_105px_110px] items-center gap-x-3 gap-y-1 text-xs text-muted-foreground/80">
+                    <div class="flex items-center sm:justify-start justify-end gap-1 text-primary font-bold whitespace-nowrap tabular-nums">
+                      <ClockIcon class="w-3.5 h-3.5 shrink-0" />
+                      <span>{startTimeLabel(t.scheduled_time) || "时间未记录"}</span>
+                    </div>
+                    <div class="flex items-center sm:justify-start justify-end gap-1 bg-muted/40 border border-border/60 px-2 py-0.5 rounded-full font-medium whitespace-nowrap">
+                      <UsersIcon class="w-3 h-3 text-muted-foreground/50 shrink-0" />
+                      <span>{t.player_count || 0} 人参赛</span>
+                    </div>
+                    <div class="flex items-center sm:justify-start justify-end gap-1 font-semibold text-zinc-400 whitespace-nowrap">
+                      <span class="text-xs">✓</span>
+                      <span>{relativeDay(getTournamentDate(t))}完赛</span>
+                    </div>
                   </div>
-                  <!-- Completed date -->
-                  <div class="flex items-center gap-1 font-semibold text-zinc-400">
-                    <span class="text-xs">✓</span>
-                    <span>{new Date(t.created_at).toLocaleDateString("zh-CN", { month: "short", year: "numeric" })}</span>
+                  <div class="text-[10px] text-muted-foreground/50 mt-1 font-mono">
+                    创建于 {new Date(t.created_at).toLocaleDateString("zh-CN")}
                   </div>
                 </div>
 
@@ -397,7 +520,7 @@
           type="number"
           bind:value={newCapacity}
           min="2"
-          max="16"
+          max="128"
           class="bg-background border-border text-foreground"
         />
       </div>

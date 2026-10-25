@@ -1,16 +1,15 @@
 {
-  "name": "suck-utilities-monorepo",
+  "name": "suck-utilities",
   "private": true,
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "better-sqlite3"
-    ]
-  },
+  "packageManager": "pnpm@12.5.1",
   "scripts": {
+    "dev": "pnpm --filter suck-tournament-api --filter suck-tournament-web --parallel dev",
+    "dev:suck": "pnpm --filter suck-tournament-api --filter suck-tournament-web --parallel dev",
     "dev:api": "pnpm --filter suck-tournament-api dev",
     "dev:web": "pnpm --filter suck-tournament-web dev",
-    "dev": "pnpm --filter suck-tournament-api --filter suck-tournament-web --parallel dev",
     "build:web": "pnpm --filter suck-tournament-web build",
-    "build:all": "pnpm -r build"
+    "build:all": "pnpm -r build",
+    "migrate": "pnpm --filter suck-tournament-api migrate",
+    "test": "pnpm --filter suck-tournament-web test && pnpm --filter suck-tournament-api test"
   }
 }

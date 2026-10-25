@@ -2,6 +2,7 @@
   import { onMount } from "svelte";
   import { toast } from "svelte-sonner";
   import { API } from "$lib/api.js";
+  import RaceIcon from "$lib/components/RaceIcon.svelte";
   import { Badge } from "$lib/components/ui/badge/index.js";
   import SearchIcon from "@lucide/svelte/icons/search";
   import UsersIcon from "@lucide/svelte/icons/users";
@@ -16,7 +17,11 @@
 
   // Stats Data States
   let statsData = $state(null);
+  let playTimes = $state(null);
   let statsLoading = $state(true);
+  let playTimeMax = $derived(
+    playTimes ? Math.max(1, ...playTimes.weekdays) : 1,
+  );
   let selectedStatPlayer = $state(null);
   let statsSearchQuery = $state("");
   let minMatchesFilter = $state(0); // 0 = all, 2, 5, 10
@@ -64,7 +69,12 @@
   async function loadStats() {
     statsLoading = true;
     try {
-      statsData = await API.getPlayerStatistics();
+      const [stats, times] = await Promise.all([
+        API.getPlayerStatistics(),
+        API.getPlayTimes().catch(() => null),
+      ]);
+      statsData = stats;
+      playTimes = times;
       if (statsData?.players?.length > 0) {
         const sorted = [...statsData.players].sort((a, b) => {
           if (a.matches_played < 2 && b.matches_played >= 2) return 1;
@@ -209,6 +219,51 @@
         </div>
       </div>
 
+      {#if playTimes && playTimes.total_nights > 0}
+        <div class="bg-card border border-border rounded-xl p-4 shadow-sm">
+          <div class="flex items-center justify-between gap-3 flex-wrap">
+            <div>
+              <h3 class="text-sm font-bold text-foreground flex items-center gap-2">
+                <ClockIcon class="w-4 h-4 text-purple-400" />
+                大家一般什么时候打
+              </h3>
+              <p class="text-[11px] text-muted-foreground mt-0.5">
+                基于 {playTimes.total_nights} 个比赛夜 / {playTimes.total_games} 场录像的实际开始时间
+              </p>
+            </div>
+            <div class="text-[10px] text-muted-foreground/60 font-mono">
+              最常开打：{playTimes.top_slots[0]
+                ? `${["周日", "周一", "周二", "周三", "周四", "周五", "周六"][playTimes.top_slots[0].weekday]} ${playTimes.top_slots[0].time}`
+                : "暂无"}
+            </div>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mt-4">
+            <div class="space-y-1.5">
+              {#each ["周日", "周一", "周二", "周三", "周四", "周五", "周六"] as label, idx}
+                <div class="flex items-center gap-2 text-[11px]">
+                  <span class="w-8 text-muted-foreground shrink-0">{label}</span>
+                  <div class="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+                    <div
+                      class="h-full bg-gradient-to-r from-purple-500 to-cyan-400 rounded-full"
+                      style="width: {Math.round(((playTimes.weekdays[idx] || 0) / playTimeMax) * 100)}%"
+                    ></div>
+                  </div>
+                  <span class="w-7 text-right font-mono text-muted-foreground">{playTimes.weekdays[idx] || 0}</span>
+                </div>
+              {/each}
+            </div>
+            <div class="flex flex-wrap content-start gap-1.5">
+              {#each playTimes.top_slots.slice(0, 6) as slot}
+                <span class="text-[10px] px-2 py-1 rounded-full border border-border/70 bg-muted/30 font-mono text-muted-foreground">
+                  {["周日", "周一", "周二", "周三", "周四", "周五", "周六"][slot.weekday]} {slot.time}
+                  <span class="text-primary font-bold ml-1">{slot.count}</span>
+                </span>
+              {/each}
+            </div>
+          </div>
+        </div>
+      {/if}
+
       <!-- Main statistics layout -->
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <!-- Left + Mid: Roster Statistics Table and Detailed Profile -->
@@ -243,8 +298,8 @@
               </div>
             </div>
 
-            <!-- Table -->
-            <div class="overflow-x-auto">
+            <!-- Table (desktop) -->
+            <div class="hidden sm:block overflow-x-auto">
               <table class="w-full text-left border-collapse text-xs">
                 <thead>
                   <tr class="bg-muted/10 border-b border-border text-muted-foreground text-[10px] uppercase font-bold tracking-wider select-none">
@@ -330,7 +385,8 @@
                         </div>
                       </td>
                       <td class="py-2 px-2 text-center">
-                        <Badge variant="outline" class="text-[9px] px-1 py-0 uppercase tracking-wider {getRaceColorClass(p.main_race)}">
+                        <Badge variant="outline" class="gap-1 text-[9px] px-1 py-0 uppercase tracking-wider {getRaceColorClass(p.main_race)}">
+                          <RaceIcon race={p.main_race} />
                           {p.main_race}
                         </Badge>
                       </td>
@@ -369,6 +425,48 @@
                 </tbody>
               </table>
             </div>
+
+            <!-- Mobile player list -->
+            <div class="sm:hidden divide-y divide-border/60">
+              {#each sortedStatsPlayers as p}
+                <button
+                  type="button"
+                  onclick={() => (selectedStatPlayer = p)}
+                  class="w-full text-left px-3 py-2.5 flex items-center gap-3 transition-colors cursor-pointer
+                    {selectedStatPlayer?.id === p.id ? 'bg-primary/5 border-l-2 border-l-primary' : 'hover:bg-muted/20'}"
+                >
+                  <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-1.5 min-w-0">
+                      <span class="text-sm shrink-0">{flagEmoji(p.flag)}</span>
+                      {#if p.team}
+                        <span class="text-[9px] text-muted-foreground font-bold font-mono shrink-0">[{p.team}]</span>
+                      {/if}
+                      <span class="truncate font-semibold text-sm">{p.display_name}</span>
+                      <Badge variant="outline" class="gap-1 text-[9px] px-1 py-0 uppercase tracking-wider shrink-0 {getRaceColorClass(p.main_race)}">
+                        <RaceIcon race={p.main_race} />
+                        {p.main_race}
+                      </Badge>
+                    </div>
+                    <div class="text-[10px] text-muted-foreground mt-1 font-mono truncate">
+                      {Math.round(p.match_win_rate * 100)}% / {Math.round(p.map_win_rate * 100)}%
+                      · 大场 {p.matches_won}-{p.matches_lost}
+                      · 单局 {p.maps_won}-{p.maps_lost}
+                      · {p.tournaments_played} 届
+                    </div>
+                  </div>
+                  <div class="text-right shrink-0">
+                    <div class="font-mono font-black text-sm
+                      {p.match_win_rate >= 0.6 ? 'text-emerald-500' : p.match_win_rate <= 0.4 ? 'text-rose-500/80' : 'text-foreground'}">
+                      {Math.round(p.match_win_rate * 100)}%
+                    </div>
+                    <div class="text-[9px] text-muted-foreground">胜率</div>
+                  </div>
+                </button>
+              {/each}
+              {#if sortedStatsPlayers.length === 0}
+                <div class="py-10 text-center text-xs text-muted-foreground italic">没有匹配的选手。</div>
+              {/if}
+            </div>
           </div>
 
           <!-- Selected Player Detail Card -->
@@ -385,7 +483,8 @@
                     <div class="flex items-center gap-2">
                       <h3 class="text-base font-extrabold text-foreground">{selectedStatPlayer.display_name}</h3>
                       <span class="text-sm shrink-0">{flagEmoji(selectedStatPlayer.flag)}</span>
-                      <Badge variant="outline" class="text-[9px] px-1.5 py-0 uppercase tracking-wider {getRaceColorClass(selectedStatPlayer.main_race)}">
+                      <Badge variant="outline" class="gap-1 text-[9px] px-1.5 py-0 uppercase tracking-wider {getRaceColorClass(selectedStatPlayer.main_race)}">
+                        <RaceIcon race={selectedStatPlayer.main_race} size={14} />
                         {getRaceName(selectedStatPlayer.main_race)}
                       </Badge>
                     </div>

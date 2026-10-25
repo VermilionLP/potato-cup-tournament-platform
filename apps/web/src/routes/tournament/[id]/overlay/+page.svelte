@@ -2,6 +2,7 @@
   import { onMount } from "svelte";
   import { page } from "$app/state";
   import { API } from "$lib/api.js";
+  import { roundLabel, roundShortLabel, buildMatchOrder } from "$lib/bracket.js";
   import { fade, fly } from "svelte/transition";
 
   // URL Params & Derived States
@@ -29,17 +30,6 @@
     return p ? p.display_name : id;
   }
 
-  // Bracket round name helper
-  function getRoundLabel(roundNum, totalRounds) {
-    if (roundNum === 0) return "3rd Place Match (三四名决赛)";
-    if (roundNum === 1) return "Finals (决赛)";
-    if (roundNum === 2) return "Semifinals (半决赛)";
-    if (roundNum === 3) return "Quarterfinals (1/4 决赛)";
-    if (roundNum === 4) return "Round of 16 (16强)";
-    if (roundNum === 5) return "Round of 32 (32强)";
-    return `Round ${roundNum}`;
-  }
-
   // Ticker completed matches
   let completedMatches = $derived(
     (tournament?.matches || []).filter(
@@ -50,12 +40,40 @@
     ),
   );
 
-  // Playable matches for intermission scene
-  let playableMatches = $derived(
-    (tournament?.matches || []).filter(
-      (m) => m.status === "pending" && m.player1_id && m.player2_id,
+  function getPlayerSeed(id) {
+    return playerMap.get(id)?.seed ?? null;
+  }
+
+  // Real matches exclude byes; used for progress and the side panel.
+  let realMatches = $derived(
+    (tournament?.matches || []).filter((m) => {
+      const completed = m.status === "completed" || m.status === "walkover";
+      const bye = completed && m.winner_id && (!m.player1_id || !m.player2_id);
+      return !bye;
+    }),
+  );
+  let completedRealMatches = $derived(
+    realMatches.filter(
+      (m) => m.status === "completed" || m.status === "walkover",
     ),
   );
+  let bracketProgress = $derived(
+    realMatches.length
+      ? Math.round((completedRealMatches.length / realMatches.length) * 100)
+      : 0,
+  );
+
+  // Playable matches for intermission scene, in recommended bracket order
+  let playableMatches = $derived.by(() => {
+    const matches = tournament?.matches || [];
+    const order = buildMatchOrder(matches);
+    return matches
+      .filter(
+        (m) => m.status === "pending" && m.player1_id && m.player2_id,
+      )
+      .sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
+  });
+  let nextMatch = $derived(playableMatches[0] || null);
 
   // Group completed matches by round for ticker display
   let tickerRounds = $derived.by(() => {
@@ -113,6 +131,7 @@
   let maxRound = $derived(
     overlayRounds.length ? Math.max(...overlayRounds.map((r) => r.round)) : 1,
   );
+  let matchOrder = $derived(buildMatchOrder(tournament?.matches || []));
 
   // Selected round: URL round param takes highest precedence, then tournament.overlay_round, then maxRound
   let selectedRound = $derived.by(() => {
@@ -133,6 +152,25 @@
       .sort((a, b) => a.position - b.position),
   );
 
+  // The intro match list is paged in groups of 8 (16 players) for 128-player fields.
+  let introPage = $state(0);
+  let introPageCount = $derived(Math.max(1, Math.ceil(introMatches.length / 8)));
+  let visibleIntroMatches = $derived(
+    introMatches.slice(introPage * 8, introPage * 8 + 8),
+  );
+
+  $effect(() => {
+    if (introPage >= introPageCount) introPage = 0;
+  });
+
+  $effect(() => {
+    if (introPageCount <= 1) return;
+    const timer = setInterval(() => {
+      introPage = (introPage + 1) % introPageCount;
+    }, 10000);
+    return () => clearInterval(timer);
+  });
+
   // Calculate match counts and dynamic sizes
   let maxRoundNum = $derived(
     overlayRounds.length ? Math.max(...overlayRounds.map((r) => r.round)) : 1,
@@ -140,9 +178,66 @@
   let firstRound = $derived(overlayRounds.find((r) => r.round === maxRoundNum));
   let firstRoundMatchCount = $derived(firstRound?.matches?.length || 0);
 
+  // Large brackets: show 16-player sections (8 first-round matches) in a carousel.
+  // The final stage is the last four rounds (16 players for a 128 bracket).
+  let isLargeBracket = $derived(firstRoundMatchCount >= 16);
+  let sectionCount = $derived(Math.max(1, Math.ceil(firstRoundMatchCount / 8)));
+  let finalStartRound = $derived(Math.max(1, maxRoundNum - 3));
+  let sectionIndex = $state(0);
+
+  let finalStageStarted = $derived.by(() => {
+    if (!isLargeBracket) return true;
+    const finalRound = overlayRounds.find((r) => r.round === finalStartRound);
+    if (!finalRound) return true;
+    return finalRound.matches.some(
+      (m) =>
+        m.player1_id ||
+        m.player2_id ||
+        m.status === "completed" ||
+        m.status === "walkover",
+    );
+  });
+
+  let showFinalStage = $derived(
+    !isLargeBracket ||
+      finalStageStarted ||
+      (activeMatch && activeMatch.round <= finalStartRound) ||
+      selectedRound <= finalStartRound,
+  );
+
+  let displayRounds = $derived.by(() => {
+    if (!overlayRounds.length) return [];
+    if (!isLargeBracket) return overlayRounds;
+    if (showFinalStage) {
+      return overlayRounds.filter((r) => r.round <= finalStartRound);
+    }
+    const sectionRounds = overlayRounds.filter(
+      (r) => r.round >= finalStartRound && r.round <= maxRoundNum,
+    );
+    return sectionRounds.map((r) => {
+      const size = 8 >> (maxRoundNum - r.round);
+      const start = sectionIndex * size;
+      return { ...r, matches: r.matches.slice(start, start + size) };
+    });
+  });
+
+  let displayFirstRoundCount = $derived(displayRounds[0]?.matches.length || 0);
+
+  $effect(() => {
+    if (sectionIndex >= sectionCount) sectionIndex = 0;
+  });
+
+  $effect(() => {
+    if (!isLargeBracket || showFinalStage || sectionCount <= 1) return;
+    const timer = setInterval(() => {
+      sectionIndex = (sectionIndex + 1) % sectionCount;
+    }, 10000);
+    return () => clearInterval(timer);
+  });
+
   // Dynamic layout variables based on bracket size
   let bracketSpecs = $derived.by(() => {
-    const count = firstRoundMatchCount;
+    const count = displayFirstRoundCount;
     if (count >= 8) {
       // 16 players or more
       return {
@@ -205,7 +300,7 @@
   }
 
   let matchPositions = $derived.by(() => {
-    if (!overlayRounds?.length)
+    if (!displayRounds?.length)
       return { positions: {}, centers: {}, totalHeight: 600 };
 
     const H = bracketSpecs.H; // Card height
@@ -215,8 +310,8 @@
     const positions = {}; // map of matchId -> { top, height }
     const centers = {}; // map of matchId -> center px
 
-    const maxRoundNum = Math.max(...overlayRounds.map((r) => r.round));
-    const firstRound = overlayRounds.find((r) => r.round === maxRoundNum);
+    const localMaxRound = Math.max(...displayRounds.map((r) => r.round));
+    const firstRound = displayRounds.find((r) => r.round === localMaxRound);
     if (!firstRound) return { positions: {}, centers: {}, totalHeight: 600 };
 
     const firstRoundMatches = firstRound.matches;
@@ -231,9 +326,9 @@
       centers[m.id] = top + H / 2;
     });
 
-    for (let rNum = maxRoundNum - 1; rNum >= 1; rNum--) {
-      const roundData = overlayRounds.find((r) => r.round === rNum);
-      const prevRoundData = overlayRounds.find((r) => r.round === rNum + 1);
+    for (let rNum = localMaxRound - 1; rNum >= 1; rNum--) {
+      const roundData = displayRounds.find((r) => r.round === rNum);
+      const prevRoundData = displayRounds.find((r) => r.round === rNum + 1);
       if (!roundData || !prevRoundData) continue;
 
       roundData.matches.forEach((m, idx) => {
@@ -262,6 +357,11 @@
 
     return { positions, centers, totalHeight };
   });
+
+  // Very tall 17..31 fields have no sections; scale the whole tree to fit.
+  let bracketScale = $derived(
+    matchPositions.totalHeight > 860 ? 860 / matchPositions.totalHeight : 1,
+  );
 
   // Dynamic vertical spacing class builder based on match count in the round
   function getRoundGapClass(matchCount) {
@@ -420,8 +520,27 @@
                 >CURRENT STAGE</span
               >
               <span class="text-2xl font-black text-cyan-400 tracking-wider">
-                {getRoundLabel(selectedRound, maxRound).toUpperCase()}
+                {roundLabel(selectedRound, maxRound).toUpperCase()}
               </span>
+              {#if introPageCount > 1}
+                <div
+                  class="text-[10px] font-mono tracking-wider text-slate-500 mt-1"
+                >
+                  SECTION {introPage + 1} / {introPageCount}
+                </div>
+                <div class="flex justify-end gap-1 mt-2">
+                  {#each Array(introPageCount) as _, i}
+                    <button
+                      type="button"
+                      onclick={() => (introPage = i)}
+                      aria-label={`Show intro page ${i + 1}`}
+                      class="h-1.5 rounded-full transition-all {i === introPage
+                        ? 'w-7 bg-cyan-400'
+                        : 'w-2.5 bg-slate-700 hover:bg-slate-500'}"
+                    ></button>
+                  {/each}
+                </div>
+              {/if}
             </div>
           </header>
 
@@ -439,7 +558,7 @@
               <div
                 class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 w-full max-w-7xl"
               >
-                {#each introMatches as m}
+                {#each visibleIntroMatches as m}
                   {@const isCurrentActive = m.id === tournament.active_match_id}
                   <div
                     class="match-card relative rounded-2xl border-2 transition-all flex flex-col justify-between overflow-hidden shadow-lg p-4 min-h-32.5
@@ -468,7 +587,7 @@
                     <div
                       class="text-[9px] font-mono text-slate-500 uppercase tracking-widest mb-2"
                     >
-                      MATCH POSITION {m.position}
+                      #{matchOrder.get(m.id)} · MATCH {m.position}
                     </div>
 
                     <!-- Players -->
@@ -594,11 +713,11 @@
                     <div
                       class="flex justify-between items-center text-[9px] font-mono text-slate-500 tracking-wider mb-2"
                     >
-                      <span>MATCH {m.position}</span>
+                      <span>#{matchOrder.get(m.id)} · MATCH {m.position}</span>
                       <span
                         class="text-cyan-400 font-bold px-2 py-0.5 rounded bg-cyan-950/20 border border-cyan-800/20 uppercase"
                       >
-                        {getRoundLabel(m.round, maxRound).split(" ")[0]}
+                        {roundShortLabel(m.round, maxRound)}
                       </span>
                     </div>
 
@@ -683,7 +802,7 @@
                           <span
                             class="font-orbitron font-black text-[11px] bg-cyan-950/80 border border-cyan-500/30 text-cyan-400 px-2 py-0.5 rounded uppercase tracking-wider"
                           >
-                            {getRoundLabel(tr.round, maxRound).split(" ")[0]}
+                            {roundShortLabel(tr.round, maxRound)}
                           </span>
 
                           <!-- List of matches in this round -->
@@ -753,9 +872,7 @@
                 >
                   <span>{tournament.name}</span>
                   <span class="text-amber-400"
-                    >{getRoundLabel(activeMatch.round, maxRound).split(
-                      " ",
-                    )[0]}</span
+                    >{roundShortLabel(activeMatch.round, maxRound)}</span
                   >
                 </div>
 
@@ -802,18 +919,51 @@
           class="absolute inset-0 w-full h-full flex flex-col p-6 md:p-8 justify-between z-10"
           transition:fade={{ duration: 400 }}
         >
-          <!-- Header (Compact, shrunken to give max layout space to the bracket tree) -->
+          <!-- Header -->
           <header
-            class="flex justify-between items-end border-b border-cyan-500/10 pb-2 mb-2 shrink-0"
+            class="flex justify-between items-start gap-6 border-b border-cyan-500/10 pb-3 mb-2 shrink-0"
           >
-            <div>
+            <div class="min-w-0">
+              <div
+                class="flex items-center gap-2 text-[10px] font-mono font-bold tracking-[0.25em] text-cyan-400/80 uppercase"
+              >
+                <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
+                SUCK • SINGLE ELIMINATION
+              </div>
               <h1
-                class="text-3xl md:text-5xl font-black bg-linear-to-r from-white to-cyan-400 bg-clip-text text-transparent uppercase font-orbitron leading-none tracking-wider"
+                class="text-3xl md:text-5xl font-black bg-linear-to-r from-white to-cyan-400 bg-clip-text text-transparent uppercase font-orbitron leading-none tracking-wider mt-1"
               >
                 {tournament.name}
               </h1>
+              <div
+                class="flex items-center gap-3 mt-2 text-[10px] font-mono tracking-wider text-slate-500 uppercase"
+              >
+                <span>{tournament.players?.length || 0} PLAYERS</span>
+                <span class="text-slate-700">/</span>
+                <span>{roundLabel(displayRounds[0]?.round || maxRound, maxRound)}</span>
+                {#if isLargeBracket}
+                  <span class="text-slate-700">/</span>
+                  <span class="text-amber-400 font-bold">
+                    {showFinalStage ? "FINAL STAGE" : `SECTION ${sectionIndex + 1} / ${sectionCount}`}
+                  </span>
+                {/if}
+              </div>
+              {#if isLargeBracket && !showFinalStage}
+                <div class="flex items-center gap-1.5 mt-3">
+                  {#each Array(sectionCount) as _, i}
+                    <button
+                      type="button"
+                      onclick={() => (sectionIndex = i)}
+                      aria-label={`Show section ${i + 1}`}
+                      class="h-1.5 rounded-full transition-all {i === sectionIndex
+                        ? 'w-8 bg-cyan-400'
+                        : 'w-3 bg-slate-700 hover:bg-slate-500'}"
+                    ></button>
+                  {/each}
+                </div>
+              {/if}
             </div>
-            <div class="text-right font-orbitron">
+            <div class="text-right font-orbitron shrink-0">
               <span
                 class="text-xs text-slate-400 tracking-wider block font-sans font-bold leading-none mb-1"
                 >STATUS</span
@@ -825,21 +975,41 @@
                   IN PROGRESS (进行中)
                 {:else if tournament.status === "completed"}
                   COMPLETED (已结束)
+                {:else if tournament.status === "registration"}
+                  BRACKET PREVIEW (预览)
+                {:else if tournament.status === "voting"}
+                  VOTING (投票中)
                 {:else}
                   {tournament.status.toUpperCase()}
                 {/if}
               </span>
+              <div class="mt-3 w-44 ml-auto">
+                <div
+                  class="flex justify-between text-[9px] font-mono tracking-wider text-slate-500"
+                >
+                  <span>BRACKET</span><span>{bracketProgress}%</span>
+                </div>
+                <div class="h-1 bg-slate-800 rounded-full mt-1 overflow-hidden">
+                  <div
+                    class="h-full bg-linear-to-r from-cyan-500 to-amber-400"
+                    style="width: {bracketProgress}%"
+                  ></div>
+                </div>
+              </div>
             </div>
           </header>
 
-          <!-- Horizontal visual bracket view exactly like Playoffs UI (Massive scaled cards, tight gaps, no flags, no teams) -->
+          <!-- Bracket + side panel -->
+          <div class="flex-1 flex items-stretch gap-6 min-h-0 w-full">
+          <!-- Horizontal visual bracket view -->
           <div
-            class="flex-1 flex items-center justify-start overflow-x-auto py-4 px-2 w-full min-h-0 select-none scroll-container"
+            class="flex-1 flex items-center justify-start overflow-x-auto py-4 px-2 min-h-0 select-none scroll-container"
           >
             <div
               class="flex justify-center items-stretch min-w-max mx-auto h-full py-1 {bracketSpecs.colGap}"
+              style="transform: scale({bracketScale}); transform-origin: top center;"
             >
-              {#each overlayRounds as r, colIdx (r.round)}
+              {#each displayRounds as r, colIdx (r.round)}
                 <div
                   class="shrink-0 flex flex-col justify-center h-full {bracketSpecs.cardWidth}"
                 >
@@ -847,7 +1017,7 @@
                   <div
                     class="text-base md:text-lg text-cyan-400 font-extrabold text-center border-b-2 border-cyan-500/20 pb-2 mb-4 font-orbitron tracking-widest shrink-0 uppercase"
                   >
-                    {getRoundLabel(r.round, maxRound).toUpperCase()}
+                    {roundLabel(r.round, maxRound).toUpperCase()}
                   </div>
 
                   <!-- Match cards in round (Absolutely positioned for perfect alignment) -->
@@ -896,6 +1066,10 @@
                               class="flex-1 flex items-center justify-between gap-4 min-h-0"
                             >
                               <span
+                                class="text-[9px] font-mono text-slate-600 shrink-0 w-5 text-right"
+                                >{getPlayerSeed(m.player1_id) ?? "-"}</span
+                              >
+                              <span
                                 class="truncate flex-1 font-sans
                               {bracketSpecs.textClass}
                               {isAlive(m.player1_id)
@@ -922,12 +1096,23 @@
                             </div>
 
                             <!-- Divider -->
-                            <div class={bracketSpecs.dividerClass}></div>
+                            <div class="w-full flex items-center gap-2 shrink-0">
+                              <div class="h-px flex-1 bg-slate-800"></div>
+                              <span
+                                class="text-[8px] font-black tracking-[0.2em] text-slate-600 font-orbitron"
+                                >VS</span
+                              >
+                              <div class="h-px flex-1 bg-slate-800"></div>
+                            </div>
 
                             <!-- Player 2 Row -->
                             <div
                               class="flex-1 flex items-center justify-between gap-4 min-h-0"
                             >
+                              <span
+                                class="text-[9px] font-mono text-slate-600 shrink-0 w-5 text-right"
+                                >{getPlayerSeed(m.player2_id) ?? "-"}</span
+                              >
                               <span
                                 class="truncate flex-1 font-sans
                               {bracketSpecs.textClass}
@@ -957,8 +1142,8 @@
                         {/if}
 
                         <!-- Render Connectors to the right (Only if not the last column) -->
-                        {#if colIdx < overlayRounds.length - 1}
-                          {@const nextRound = overlayRounds[colIdx + 1]}
+                        {#if colIdx < displayRounds.length - 1}
+                          {@const nextRound = displayRounds[colIdx + 1]}
                           {@const isEven = idx % 2 === 0}
 
                           {#if isEven}
@@ -1069,6 +1254,105 @@
                 </div>
               {/each}
             </div>
+          </div>
+
+          <aside class="w-80 shrink-0 flex flex-col justify-center gap-4 py-4">
+            <div
+              class="rounded-2xl border border-cyan-500/25 bg-slate-950/80 p-5 shadow-2xl backdrop-blur"
+            >
+              <div class="flex items-center justify-between mb-3">
+                <span
+                  class="text-[10px] font-mono font-bold tracking-[0.2em] text-cyan-400 uppercase"
+                  >NEXT MATCH</span
+                >
+                <span class="text-[9px] font-mono text-slate-500">
+                  {isLargeBracket
+                    ? showFinalStage
+                      ? "FINAL STAGE"
+                      : `SECTION ${sectionIndex + 1}`
+                    : "16-PLAYER BRACKET"}
+                </span>
+              </div>
+              {#if nextMatch}
+                <div class="space-y-2">
+                  <div class="flex items-center justify-between gap-2">
+                    <div class="flex items-center gap-2 min-w-0">
+                      <span class="text-[9px] font-mono text-slate-500 shrink-0"
+                        >#{getPlayerSeed(nextMatch.player1_id) ?? "-"}</span
+                      >
+                      <span class="text-sm font-black text-white truncate"
+                        >{getPlayerName(nextMatch.player1_id)}</span
+                      >
+                    </div>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <div class="h-px flex-1 bg-slate-800"></div>
+                    <span
+                      class="text-[8px] font-black tracking-[0.2em] text-slate-600 font-orbitron"
+                      >VS</span
+                    >
+                    <div class="h-px flex-1 bg-slate-800"></div>
+                  </div>
+                  <div class="flex items-center justify-between gap-2">
+                    <div class="flex items-center gap-2 min-w-0">
+                      <span class="text-[9px] font-mono text-slate-500 shrink-0"
+                        >#{getPlayerSeed(nextMatch.player2_id) ?? "-"}</span
+                      >
+                      <span class="text-sm font-black text-white truncate"
+                        >{getPlayerName(nextMatch.player2_id)}</span
+                      >
+                    </div>
+                  </div>
+                </div>
+                <div
+                  class="mt-3 pt-3 border-t border-slate-800/80 flex items-center justify-between text-[9px] font-mono text-slate-500 uppercase"
+                >
+                  <span>{roundLabel(nextMatch.round, maxRound)}</span>
+                  <span>#{matchOrder.get(nextMatch.id)}</span>
+                </div>
+              {:else if activeMatch}
+                <div class="text-sm font-black text-amber-400">LIVE</div>
+                <div class="text-xs text-slate-400 mt-1">
+                  {getPlayerName(activeMatch.player1_id)} vs
+                  {getPlayerName(activeMatch.player2_id)}
+                </div>
+              {:else}
+                <div class="text-sm text-slate-500 italic">
+                  No playable match right now.
+                </div>
+              {/if}
+            </div>
+
+            <div
+              class="rounded-2xl border border-slate-800/80 bg-slate-950/60 p-5"
+            >
+              <div
+                class="text-[10px] font-mono font-bold tracking-[0.2em] text-slate-500 uppercase"
+              >
+                {!isLargeBracket
+                  ? "BRACKET PROGRESS"
+                  : showFinalStage
+                    ? "FINAL STAGE"
+                    : "SECTION PROGRESS"}
+              </div>
+              <div class="text-3xl font-black text-white font-orbitron mt-1">
+                {!isLargeBracket
+                  ? `${completedRealMatches.length} / ${realMatches.length}`
+                  : showFinalStage
+                    ? "FINAL"
+                    : `${sectionIndex + 1} / ${sectionCount}`}
+              </div>
+              <div class="text-[10px] font-mono text-slate-500 mt-2">
+                {completedRealMatches.length} / {realMatches.length} MATCHES
+              </div>
+              <div class="h-1 bg-slate-800 rounded-full mt-2 overflow-hidden">
+                <div
+                  class="h-full bg-cyan-400"
+                  style="width: {bracketProgress}%"
+                ></div>
+              </div>
+            </div>
+          </aside>
           </div>
 
           <!-- Footer -->

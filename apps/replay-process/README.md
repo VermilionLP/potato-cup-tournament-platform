@@ -26,9 +26,11 @@
   ```
 
 ### 2. 配置
-在 `config.js` 中填入你的：
-- `API_KEY`: Challonge API Key。
-- `SUB_DOMAIN`: Challonge 组织子域名（如有）。
+复制 `.env.example` 为 `.env`，填入：
+- `CHALLONGE_API_KEY`: Challonge API Key。
+- `CHALLONGE_SUBDOMAIN`: Challonge 组织子域名（如有）。
+
+也可以直接设置同名环境变量；`config.js` 只读取环境变量，不会保存凭证。
 
 ### 3. 运行
 ```bash

@@ -8,12 +8,11 @@ export default async function matchesRoutes(fastify) {
     if (score1 == null || score2 == null) {
       throw fastify.httpErrors.badRequest('score1 and score2 are required');
     }
-    const match = repo.getById(parseInt(req.params.matchId));
+    const match = await repo.getById(parseInt(req.params.matchId));
     if (!match) throw fastify.httpErrors.notFound('Match not found');
 
-    const updated = repo.submitResult(match.id, score1, score2);
-
-    const advanced = repo.advanceWinner(req.params.id, match.id);
+    const updated = await repo.submitResult(match.id, score1, score2);
+    const advanced = await repo.advanceWinner(req.params.id, match.id);
 
     // Trigger real-time broadcast
     fastify.tournamentEvents.emit(`update:${req.params.id}`, { type: 'match_result_submitted', matchId: match.id });
@@ -25,17 +24,16 @@ export default async function matchesRoutes(fastify) {
     const { winner_id } = req.body;
     if (!winner_id) throw fastify.httpErrors.badRequest('winner_id is required');
 
-    const match = repo.getById(parseInt(req.params.matchId));
+    const match = await repo.getById(parseInt(req.params.matchId));
     if (!match) throw fastify.httpErrors.notFound('Match not found');
 
-    const db = fastify.db;
-    db.prepare(`
-      UPDATE matches SET status = 'walkover', winner_id = ?, score1 = 0, score2 = 0
-      WHERE id = ?
-    `).run(winner_id, match.id);
+    await fastify.db.query(`
+      UPDATE axsuck.matches SET status = 'walkover', winner_id = $1, score1 = 0, score2 = 0
+      WHERE id = $2
+    `, [winner_id, match.id]);
 
-    const updated = repo.getById(match.id);
-    const advanced = repo.advanceWinner(req.params.id, match.id);
+    const updated = await repo.getById(match.id);
+    const advanced = await repo.advanceWinner(req.params.id, match.id);
 
     // Trigger real-time broadcast
     fastify.tournamentEvents.emit(`update:${req.params.id}`, { type: 'match_walkover_submitted', matchId: match.id });
@@ -48,7 +46,7 @@ export default async function matchesRoutes(fastify) {
     if (round == null || position == null) {
       throw fastify.httpErrors.badRequest('round and position are required');
     }
-    const match = repo.create({
+    const match = await repo.create({
       tournament_id: req.params.id,
       round,
       position,
@@ -63,7 +61,7 @@ export default async function matchesRoutes(fastify) {
   });
 
   fastify.delete('/tournaments/:id/matches', async (req) => {
-    repo.clearMatches(req.params.id);
+    await repo.clearMatches(req.params.id);
 
     // Trigger real-time broadcast
     fastify.tournamentEvents.emit(`update:${req.params.id}`, { type: 'matches_cleared' });
@@ -73,46 +71,54 @@ export default async function matchesRoutes(fastify) {
 
   fastify.post('/tournaments/:id/matches/:matchId/rollback', async (req) => {
     const matchId = parseInt(req.params.matchId);
-    const match = repo.getById(matchId);
+    const match = await repo.getById(matchId);
     if (!match) throw fastify.httpErrors.notFound('Match not found');
 
-    const db = fastify.db;
-    const tx = db.transaction(() => {
-      function recursiveRollback(mId) {
-        const m = repo.getById(mId);
+    const client = await fastify.db.connect();
+    try {
+      await client.query('BEGIN');
+
+      async function recursiveRollback(mId) {
+        const mRes = await client.query('SELECT * FROM axsuck.matches WHERE id = $1', [mId]);
+        const m = mRes.rows[0];
         if (!m) return;
 
-        db.prepare(`
-          UPDATE matches SET score1 = 0, score2 = 0, winner_id = NULL, status = 'pending'
-          WHERE id = ?
-        `).run(mId);
+        await client.query(`
+          UPDATE axsuck.matches SET score1 = 0, score2 = 0, winner_id = NULL, status = 'pending'
+          WHERE id = $1
+        `, [mId]);
 
         const nextRound = m.round - 1;
         if (nextRound >= 1) {
           const nextPosition = Math.ceil(m.position / 2);
-          const nextMatch = db.prepare(`
-            SELECT * FROM matches WHERE tournament_id = ? AND round = ? AND position = ?
-          `).get(m.tournament_id, nextRound, nextPosition);
+          const nextRes = await client.query(`
+            SELECT * FROM axsuck.matches WHERE tournament_id = $1 AND round = $2 AND position = $3
+          `, [m.tournament_id, nextRound, nextPosition]);
+          const nextMatch = nextRes.rows[0];
 
           if (nextMatch) {
             const isPlayer1 = m.position % 2 === 1;
             if (isPlayer1) {
-              db.prepare(`UPDATE matches SET player1_id = NULL WHERE id = ?`).run(nextMatch.id);
+              await client.query('UPDATE axsuck.matches SET player1_id = NULL WHERE id = $1', [nextMatch.id]);
             } else {
-              db.prepare(`UPDATE matches SET player2_id = NULL WHERE id = ?`).run(nextMatch.id);
+              await client.query('UPDATE axsuck.matches SET player2_id = NULL WHERE id = $1', [nextMatch.id]);
             }
 
             if (nextMatch.status === 'completed' || nextMatch.status === 'walkover' || nextMatch.winner_id) {
-              recursiveRollback(nextMatch.id);
+              await recursiveRollback(nextMatch.id);
             }
           }
         }
       }
 
-      recursiveRollback(matchId);
-    });
-
-    tx();
+      await recursiveRollback(matchId);
+      await client.query('COMMIT');
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
 
     // Trigger real-time broadcast
     fastify.tournamentEvents.emit(`update:${req.params.id}`, { type: 'match_rolled_back', matchId });

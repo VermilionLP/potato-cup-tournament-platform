@@ -4,6 +4,7 @@
   import { Toaster, toast } from "svelte-sonner";
   import { userState } from "$lib/user.svelte.js";
   import { API } from "$lib/api.js";
+  import { isRecentlySeen } from "$lib/players.js";
   import { page } from "$app/stores";
   import { ModeWatcher, toggleMode } from "mode-watcher";
   import * as Dialog from "$lib/components/ui/dialog/index.js";
@@ -17,15 +18,104 @@
   import MoonIcon from "@lucide/svelte/icons/moon";
   import PlusIcon from "@lucide/svelte/icons/plus";
   import TrendingUpIcon from "@lucide/svelte/icons/trending-up";
+  import SwordsIcon from "@lucide/svelte/icons/swords";
+  import BellIcon from "@lucide/svelte/icons/bell";
+  import BellOffIcon from "@lucide/svelte/icons/bell-off";
 
   let { children } = $props();
 
   let openIdDialog = $state(false);
   let idInput = $state("");
   let existingPlayers = $state([]);
+  let showInactiveExisting = $state(false);
+  let activeExistingPlayers = $derived(
+    existingPlayers.filter((p) => isRecentlySeen(p.last_seen_at)),
+  );
+  let inactiveExistingPlayers = $derived(
+    existingPlayers.filter((p) => !isRecentlySeen(p.last_seen_at)),
+  );
   let qqInput = $state("");
   let qqError = $state("");
   let verifying = $state(false);
+  let pushEnabled = $state(false);
+  let pushBusy = $state(false);
+
+  function urlBase64ToUint8Array(base64String) {
+    const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+    const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+    const raw = atob(base64);
+    const output = new Uint8Array(raw.length);
+    for (let i = 0; i < raw.length; i += 1) output[i] = raw.charCodeAt(i);
+    return output;
+  }
+
+  async function refreshPushState() {
+    if (
+      typeof window === "undefined" ||
+      !("serviceWorker" in navigator) ||
+      !("PushManager" in window) ||
+      !("Notification" in window) ||
+      Notification.permission !== "granted"
+    ) {
+      pushEnabled = false;
+      return;
+    }
+    try {
+      const registration = await navigator.serviceWorker.ready;
+      const subscription = await registration.pushManager.getSubscription();
+      pushEnabled = !!subscription;
+      // Make sure the backend still has this subscription after a DB reset.
+      if (subscription) {
+        await API.subscribePush(subscription.toJSON()).catch(() => {});
+      }
+    } catch (e) {
+      pushEnabled = false;
+    }
+  }
+
+  async function togglePush() {
+    if (pushBusy) return;
+    if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) {
+      toast.error("当前浏览器不支持比赛提醒");
+      return;
+    }
+    pushBusy = true;
+    try {
+      if (pushEnabled) {
+        const registration = await navigator.serviceWorker.ready;
+        const subscription = await registration.pushManager.getSubscription();
+        if (subscription) {
+          await API.unsubscribePush(subscription.endpoint).catch(() => {});
+          await subscription.unsubscribe();
+        }
+        pushEnabled = false;
+        toast.info("已关闭比赛提醒");
+        return;
+      }
+
+      const permission = await Notification.requestPermission();
+      if (permission !== "granted") {
+        toast.error("通知权限被拒绝，请在浏览器设置里允许通知");
+        return;
+      }
+      const registration = await navigator.serviceWorker.ready;
+      const { publicKey } = await API.getPushPublicKey();
+      let subscription = await registration.pushManager.getSubscription();
+      if (!subscription) {
+        subscription = await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(publicKey),
+        });
+      }
+      await API.subscribePush(subscription.toJSON());
+      pushEnabled = true;
+      toast.success("比赛提醒已开启，开赛前 1 小时会通知你");
+    } catch (e) {
+      toast.error("开启比赛提醒失败: " + e.message);
+    } finally {
+      pushBusy = false;
+    }
+  }
 
   // Profile fields state
   let editFlag = $state("cn");
@@ -55,7 +145,16 @@
 
   onMount(() => {
     if (userState.id) {
+      API.touchPlayer(userState.id).catch((e) => {
+        console.warn("touch player failed:", e);
+      });
       checkProfileCompleteness(userState.id);
+    }
+    if (typeof navigator !== "undefined" && "serviceWorker" in navigator) {
+      navigator.serviceWorker
+        .register("/sw.js")
+        .then(() => refreshPushState())
+        .catch((e) => console.warn("service worker registration failed:", e));
     }
   });
 
@@ -173,6 +272,11 @@
     try {
       const res = await API.verifyQQ(trimmedQQ);
       if (res.valid) {
+        try {
+          await API.touchPlayer(trimmedId);
+        } catch (e) {
+          console.warn("touch player failed:", e);
+        }
         userState.setQQGroup(trimmedQQ);
         userState.setId(trimmedId);
         openIdDialog = false;
@@ -311,7 +415,7 @@
         <a href="/" class="flex items-center gap-1.5 sm:gap-2.5 shrink-0 group">
           <img src="/favicon.svg" alt="SUCK" class="w-7 h-7 object-contain group-hover:scale-105 transition-transform" />
           <span
-            class="font-bold text-sm sm:text-base tracking-tight text-foreground group-hover:text-primary transition-colors"
+            class="hidden sm:inline font-bold text-sm sm:text-base tracking-tight text-foreground group-hover:text-primary transition-colors"
           >
             SUCK
             <span
@@ -325,41 +429,74 @@
         <nav class="flex items-center gap-0.5">
           <a
             href="/"
-            class="flex items-center gap-1 px-2 sm:px-3 h-8 rounded-md text-xs sm:text-sm font-medium transition-colors
+            title="赛事大厅"
+            class="flex items-center gap-1 px-2 sm:px-3 h-8 rounded-md text-xs sm:text-sm font-medium transition-colors shrink-0 whitespace-nowrap
               {$page.url.pathname === '/'
               ? 'text-primary font-semibold bg-primary/8'
               : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'}"
           >
             <TrophyIcon class="w-3.5 h-3.5" />
-            赛事大厅
+            <span class="hidden md:inline">赛事大厅</span>
           </a>
           <a
             href="/players"
-            class="flex items-center gap-1 px-2 sm:px-3 h-8 rounded-md text-xs sm:text-sm font-medium transition-colors
+            title="选手列表"
+            class="flex items-center gap-1 px-2 sm:px-3 h-8 rounded-md text-xs sm:text-sm font-medium transition-colors shrink-0 whitespace-nowrap
               {$page.url.pathname === '/players'
               ? 'text-primary font-semibold bg-primary/8'
               : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'}"
           >
             <UsersIcon class="w-3.5 h-3.5" />
-            选手列表
+            <span class="hidden md:inline">选手列表</span>
           </a>
           <a
             href="/stats"
-            class="flex items-center gap-1 px-2 sm:px-3 h-8 rounded-md text-xs sm:text-sm font-medium transition-colors
+            title="数据统计"
+            class="flex items-center gap-1 px-2 sm:px-3 h-8 rounded-md text-xs sm:text-sm font-medium transition-colors shrink-0 whitespace-nowrap
               {$page.url.pathname === '/stats'
               ? 'text-primary font-semibold bg-primary/8'
               : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'}"
           >
             <TrendingUpIcon class="w-3.5 h-3.5" />
-            数据统计
+            <span class="hidden md:inline">数据统计</span>
+          </a>
+          <a
+            href="/ladder"
+            title="天梯"
+            class="flex items-center gap-1 px-2 sm:px-3 h-8 rounded-md text-xs sm:text-sm font-medium transition-colors shrink-0 whitespace-nowrap
+              {$page.url.pathname === '/ladder'
+              ? 'text-primary font-semibold bg-primary/8'
+              : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'}"
+          >
+            <SwordsIcon class="w-3.5 h-3.5" />
+            <span class="hidden md:inline">天梯</span>
           </a>
         </nav>
 
         <!-- Spacer -->
         <div class="flex-1"></div>
 
-        <!-- Right: Dark mode toggle + Profile -->
+        <!-- Right: Notifications + Dark mode + Profile -->
         <div class="flex items-center gap-2">
+          <!-- Match reminder toggle -->
+          <button
+            id="header-push-toggle"
+            onclick={togglePush}
+            disabled={pushBusy}
+            title={pushEnabled ? "关闭比赛提醒" : "开启比赛提醒（开赛前 1 小时）"}
+            aria-label={pushEnabled ? "关闭比赛提醒" : "开启比赛提醒"}
+            class="relative w-8 h-8 flex items-center justify-center rounded-md transition-colors cursor-pointer disabled:opacity-50
+              {pushEnabled
+                ? 'text-primary bg-primary/10 hover:bg-primary/15'
+                : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'}"
+          >
+            {#if pushEnabled}
+              <BellIcon class="h-4 w-4" />
+            {:else}
+              <BellOffIcon class="h-4 w-4" />
+            {/if}
+          </button>
+
           <!-- Mode toggle (mode-watcher style) -->
           <button
             id="header-darkmode-toggle"
@@ -406,7 +543,7 @@
     </header>
 
     <!-- Main Content -->
-    <main class="flex-1 p-6 max-w-7xl mx-auto w-full flex flex-col">
+    <main class="flex-1 p-3 sm:p-6 max-w-7xl mx-auto w-full flex flex-col min-w-0">
       {#if children}
         {@render children()}
       {/if}
@@ -761,13 +898,14 @@
         {#if existingPlayers.length > 0}
           <div class="space-y-1.5">
             <span class="text-xs font-medium text-muted-foreground block"
-              >快捷选择已有选手 ID：</span
+              >快捷选择最近一年活跃的选手 ID：</span
             >
             <div class="flex flex-wrap gap-1.5 max-h-25 overflow-y-auto pr-1">
-              {#each existingPlayers as p}
+              {#each activeExistingPlayers as p}
                 <button
                   type="button"
                   onclick={() => (idInput = p.id)}
+                  title={p.last_seen_at ? `最近活跃: ${new Date(p.last_seen_at).toLocaleDateString("zh-CN")}` : "无登录记录"}
                   class="text-[11px] px-2 py-0.5 rounded bg-muted hover:bg-primary hover:text-primary-foreground border border-border/80 transition-colors cursor-pointer {idInput ===
                   p.id
                     ? 'bg-primary text-primary-foreground border-primary font-bold'
@@ -775,8 +913,39 @@
                 >
                   {p.display_name}
                 </button>
+              {:else}
+                <span class="text-[10px] text-muted-foreground/60 italic px-1">
+                  暂无最近一年活跃的选手
+                </span>
               {/each}
             </div>
+            {#if inactiveExistingPlayers.length > 0}
+              <details
+                class="mt-1 rounded-lg border border-border/60 bg-muted/20 px-2 py-1.5"
+                bind:open={showInactiveExisting}
+              >
+                <summary
+                  class="text-[10px] text-muted-foreground cursor-pointer select-none"
+                >
+                  显示一年未登录的选手（{inactiveExistingPlayers.length}）
+                </summary>
+                <div class="flex flex-wrap gap-1.5 max-h-25 overflow-y-auto pr-1 mt-1.5">
+                  {#each inactiveExistingPlayers as p}
+                    <button
+                      type="button"
+                      onclick={() => (idInput = p.id)}
+                      title={p.last_seen_at ? `最近活跃: ${new Date(p.last_seen_at).toLocaleDateString("zh-CN")}` : "无登录记录"}
+                      class="text-[11px] px-2 py-0.5 rounded bg-muted/70 hover:bg-primary hover:text-primary-foreground border border-border/80 transition-colors cursor-pointer {idInput ===
+                      p.id
+                        ? 'bg-primary text-primary-foreground border-primary font-bold'
+                        : 'text-muted-foreground'}"
+                    >
+                      {p.display_name}
+                    </button>
+                  {/each}
+                </div>
+              </details>
+            {/if}
           </div>
         {/if}
       </div>

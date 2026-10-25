@@ -11,3 +11,8 @@ dist/
 .DS_Store
 .svelte-kit/
 .pnpm-store/
+.cache/
+.venv/
+__pycache__/
+*.py[cod]
+*.log

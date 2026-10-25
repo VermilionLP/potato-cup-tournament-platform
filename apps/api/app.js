@@ -6,18 +6,23 @@ import swaggerUi from '@fastify/swagger-ui';
 import fastifyStatic from '@fastify/static';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { readFileSync } from 'fs';
+import { readFileSync, existsSync } from 'fs';
 import { EventEmitter } from 'events';
+import dotenv from 'dotenv';
 
 import databasePlugin from './plugins/database.js';
 import tournamentsRoutes from './routes/tournaments.js';
 import playersRoutes from './routes/players.js';
 import matchesRoutes from './routes/matches.js';
 import votesRoutes from './routes/votes.js';
+import ladderRoutes from './routes/ladder.js';
 import replaysRoutes, { checkPythonEnvironment } from './routes/replays.js';
+import pushRoutes from './routes/push.js';
+import { startPushScheduler } from './lib/push-scheduler.js';
 import fastifySse from '@fastify/sse';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+dotenv.config({ path: join(__dirname, '.env') });
 const pkg = JSON.parse(readFileSync(join(__dirname, 'package.json'), 'utf-8'));
 
 const fastify = Fastify({ logger: true, trustProxy: true, bodyLimit: 104857600 });
@@ -36,7 +41,10 @@ await fastify.register(tournamentsRoutes, { prefix: '/api' });
 await fastify.register(playersRoutes, { prefix: '/api' });
 await fastify.register(matchesRoutes, { prefix: '/api' });
 await fastify.register(votesRoutes, { prefix: '/api' });
+await fastify.register(ladderRoutes, { prefix: '/api' });
 await fastify.register(replaysRoutes, { prefix: '/api' });
+await fastify.register(pushRoutes, { prefix: '/api' });
+startPushScheduler(fastify);
 
 // Runtime Python check on startup
 checkPythonEnvironment().then((status) => {
@@ -50,18 +58,31 @@ checkPythonEnvironment().then((status) => {
 
 fastify.get('/api/ping', async () => ({ pong: true }));
 
-await fastify.register(fastifyStatic, {
-  root: join(__dirname, '..', 'web', 'build'),
-  prefix: '/',
-  wildcard: false
-});
+const candidatePaths = [
+  process.env.STATIC_DIR,
+  join(__dirname, '..', 'web', 'build'),
+  join(__dirname, '..', 'suck-tournament-web', 'build')
+].filter(Boolean);
 
-fastify.setNotFoundHandler((req, reply) => {
-  if (!req.url.startsWith('/api')) {
-    return reply.sendFile('index.html');
-  }
-  reply.code(404).send({ error: 'Not found' });
-});
+const staticRoot = candidatePaths.find(p => existsSync(p));
+if (staticRoot) {
+  await fastify.register(fastifyStatic, {
+    root: staticRoot,
+    prefix: '/',
+    wildcard: false
+  });
+
+  fastify.setNotFoundHandler((req, reply) => {
+    if (!req.url.startsWith('/api')) {
+      return reply.sendFile('index.html');
+    }
+    reply.code(404).send({ error: 'Not found' });
+  });
+} else {
+  fastify.setNotFoundHandler((req, reply) => {
+    reply.code(404).send({ error: 'Not found' });
+  });
+}
 
 const port = parseInt(process.env.PORT || '3100');
 

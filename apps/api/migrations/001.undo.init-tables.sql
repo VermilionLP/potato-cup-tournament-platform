@@ -1,0 +1,10 @@
+SET search_path TO axsuck, public;
+
+DROP TABLE IF EXISTS match_replays CASCADE;
+DROP TABLE IF EXISTS custom_votes CASCADE;
+DROP TABLE IF EXISTS time_votes CASCADE;
+ALTER TABLE IF EXISTS tournaments DROP CONSTRAINT IF EXISTS fk_tournaments_active_match;
+DROP TABLE IF EXISTS matches CASCADE;
+DROP TABLE IF EXISTS tournament_players CASCADE;
+DROP TABLE IF EXISTS tournaments CASCADE;
+DROP TABLE IF EXISTS players CASCADE;

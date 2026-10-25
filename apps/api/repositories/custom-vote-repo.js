@@ -1,34 +1,41 @@
 import { getPlayerDisplayName } from './player-repo.js';
 
 export function CustomVoteRepo(db) {
-  function getByTournament(tournamentId) {
-    const rows = db.prepare(`
+  async function getByTournament(tournamentId) {
+    const res = await db.query(`
       SELECT cv.*, p.battle_tags, p.id AS player_id
-      FROM custom_votes cv
-      JOIN players p ON p.id = cv.player_id
-      WHERE cv.tournament_id = ?
+      FROM axsuck.custom_votes cv
+      JOIN axsuck.players p ON p.id = cv.player_id
+      WHERE cv.tournament_id = $1
       ORDER BY cv.topic ASC, cv.value ASC, cv.created_at ASC
-    `).all(tournamentId);
+    `, [tournamentId]);
 
-    return rows.map(row => ({
+    return res.rows.map(row => ({
       ...row,
       display_name: getPlayerDisplayName({ id: row.player_id, battle_tags: row.battle_tags })
     }));
   }
 
-  function upsert(tournamentId, playerId, topic, value) {
-    db.prepare(`
-      INSERT OR IGNORE INTO custom_votes (tournament_id, player_id, topic, value)
-      VALUES (?, ?, ?, ?)
-    `).run(tournamentId, playerId, topic, value);
+  async function upsert(tournamentId, playerId, topic, value) {
+    await db.query(`
+      INSERT INTO axsuck.players (id) VALUES ($1)
+      ON CONFLICT (id) DO NOTHING
+    `, [playerId]);
 
-    const row = db.prepare(`
+    await db.query(`
+      INSERT INTO axsuck.custom_votes (tournament_id, player_id, topic, value)
+      VALUES ($1, $2, $3, $4)
+      ON CONFLICT DO NOTHING
+    `, [tournamentId, playerId, topic, value]);
+
+    const res = await db.query(`
       SELECT cv.*, p.battle_tags, p.id AS player_id
-      FROM custom_votes cv
-      JOIN players p ON p.id = cv.player_id
-      WHERE cv.tournament_id = ? AND cv.player_id = ? AND cv.topic = ? AND cv.value = ?
-    `).get(tournamentId, playerId, topic, value);
+      FROM axsuck.custom_votes cv
+      JOIN axsuck.players p ON p.id = cv.player_id
+      WHERE cv.tournament_id = $1 AND cv.player_id = $2 AND cv.topic = $3 AND cv.value = $4
+    `, [tournamentId, playerId, topic, value]);
 
+    const row = res.rows[0];
     if (!row) return null;
     return {
       ...row,
@@ -36,27 +43,27 @@ export function CustomVoteRepo(db) {
     };
   }
 
-  function removeVote(tournamentId, playerId, topic, value) {
+  async function removeVote(tournamentId, playerId, topic, value) {
     if (topic && value) {
-      db.prepare(`
-        DELETE FROM custom_votes 
-        WHERE tournament_id = ? AND player_id = ? AND topic = ? AND value = ?
-      `).run(tournamentId, playerId, topic, value);
+      await db.query(`
+        DELETE FROM axsuck.custom_votes 
+        WHERE tournament_id = $1 AND player_id = $2 AND topic = $3 AND value = $4
+      `, [tournamentId, playerId, topic, value]);
     } else if (topic) {
-      db.prepare(`
-        DELETE FROM custom_votes 
-        WHERE tournament_id = ? AND player_id = ? AND topic = ?
-      `).run(tournamentId, playerId, topic);
+      await db.query(`
+        DELETE FROM axsuck.custom_votes 
+        WHERE tournament_id = $1 AND player_id = $2 AND topic = $3
+      `, [tournamentId, playerId, topic]);
     } else {
-      db.prepare(`
-        DELETE FROM custom_votes 
-        WHERE tournament_id = ? AND player_id = ?
-      `).run(tournamentId, playerId);
+      await db.query(`
+        DELETE FROM axsuck.custom_votes 
+        WHERE tournament_id = $1 AND player_id = $2
+      `, [tournamentId, playerId]);
     }
   }
 
-  function clearByTournament(tournamentId) {
-    db.prepare(`DELETE FROM custom_votes WHERE tournament_id = ?`).run(tournamentId);
+  async function clearByTournament(tournamentId) {
+    await db.query('DELETE FROM axsuck.custom_votes WHERE tournament_id = $1', [tournamentId]);
   }
 
   return { getByTournament, upsert, removeVote, clearByTournament };

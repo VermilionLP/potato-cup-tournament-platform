@@ -7,6 +7,8 @@ import zlib from 'zlib';
 import os from 'os';
 import { MatchRepo } from '../repositories/match-repo.js';
 import { getPlayerDisplayName } from '../repositories/player-repo.js';
+import { TournamentAccountRepo } from '../repositories/tournament-account-repo.js';
+import { liquipediaBracketTemplate } from '../lib/bracket.js';
 
 const execPromise = util.promisify(exec);
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -21,6 +23,17 @@ const ALLOWED_QQ_GROUPS = (process.env.ALLOWED_QQ_GROUPS || '460309159,100207243
 
 function quoteShellArg(value) {
   return `"${value.replace(/(["\\$`])/g, '\\$1')}"`;
+}
+
+function toDateOnly(value) {
+  if (!value) return new Date().toISOString().split('T')[0];
+  if (value instanceof Date) {
+    const year = value.getFullYear();
+    const month = String(value.getMonth() + 1).padStart(2, '0');
+    const day = String(value.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+  return String(value).split(' ')[0];
 }
 
 async function getPythonCommand() {
@@ -50,9 +63,212 @@ async function parseReplay(scriptPath, replayPath) {
   return { ok: true, stdout };
 }
 
-export function getPlayerInfoFromReplay(playerId, playerDisplayName, playerBattleTags, playerBnetIds, parsedData) {
-  const repPlayers = parsedData.teams?.flatMap((t, tIdx) => (t.players || []).map(p => ({ ...p, teamIdx: tIdx }))) || [];
-  const pIdLower = playerId.toLowerCase().trim();
+// Normalize a Battle.net account reference to a stable `region/subregion/toon` key.
+// Handles profile URLs, `toon_handle` strings, and already-normalized keys.
+export function normalizeBnetUrl(input) {
+  if (!input || typeof input !== 'string') return '';
+  const s = input.trim().toLowerCase();
+  if (!s) return '';
+  const profile = s.match(/profile\/(\d+)\/(\d+)\/(\d+)/);
+  if (profile) return `${profile[1]}/${profile[2]}/${profile[3]}`;
+  const handle = s.match(/^(\d+)-[^-]+-(\d+)-(\d+)$/);
+  if (handle) return `${handle[1]}/${handle[2]}/${handle[3]}`;
+  return s;
+}
+
+// Stable account key for a player object parsed from a replay.
+export function replayPlayerAccountKey(p) {
+  if (!p) return '';
+  if (p.region_id != null && p.subregion != null && p.toon_id != null) {
+    return `${p.region_id}/${p.subregion}/${p.toon_id}`;
+  }
+  return normalizeBnetUrl(p.bnet_url || p.toon_handle || '');
+}
+
+// Battle.net server labels by region id (sc2reader GATEWAY_LOOKUP: 1 us, 2 eu, 3 kr, 5 cn, 6 sea).
+const REGION_LABELS = { 1: '美服', 2: '欧服', 3: '亚服', 5: '国服', 6: '东南亚', 98: '—' };
+const SUBREGION_LABELS = { '1/2': '拉美', '2/2': '俄服', '3/2': '台服' };
+
+export function regionLabel(regionKey) {
+  const m = String(regionKey || '').match(/^(\d+)\/(\d+)/);
+  if (!m) return '';
+  const r = parseInt(m[1], 10);
+  const s = parseInt(m[2], 10);
+  return SUBREGION_LABELS[`${r}/${s}`] || REGION_LABELS[r] || '';
+}
+
+export function accountEntryRegionLabel(entry) {
+  if (!entry) return '';
+  const key = normalizeBnetUrl(entry.url || entry.toon_handle || entry.account_key || '');
+  return regionLabel(key);
+}
+
+// Normalize a tournament_player_accounts row into a bnet_ids-like entry.
+export function tournamentAccountToBnetEntry(a) {
+  return {
+    id: a.account_name || a.id || '',
+    url: a.url || '',
+    toon_handle: a.toon_handle || '',
+    region: a.region || null,
+    subregion: a.subregion != null ? a.subregion : null
+  };
+}
+
+// Combined account entries for a player: global bnet_ids + tournament links.
+function playerAccountEntries(p) {
+  const base = parseBnetIdsField(p?.bnet_ids);
+  const extra = Array.isArray(p?.tournament_accounts)
+    ? p.tournament_accounts.map(tournamentAccountToBnetEntry)
+    : [];
+  return [...base, ...extra];
+}
+
+// Insert/update one account in a bnet_ids array, keyed by the account URL
+// (region/subregion/toon) so an account stays a single entry even if the
+// in-game display name changes. Returns true if anything changed.
+export function upsertGlobalAccountEntry(bnetIds, repPlayer) {
+  const key = replayPlayerAccountKey(repPlayer);
+  const repName = (repPlayer?.name || '').trim();
+  if (!key && !repName) return false;
+  const nameLower = repName.toLowerCase();
+
+  let idx = key ? bnetIds.findIndex(e => bnetEntryKey(e) === key) : -1;
+  const matchedByKey = idx >= 0;
+  if (idx < 0 && repName) {
+    idx = bnetIds.findIndex(e =>
+      ((typeof e === 'string' ? e : e?.id) || '').toLowerCase().trim() === nameLower
+    );
+  }
+
+  let changed = false;
+  let target = null;
+
+  if (idx < 0) {
+    target = { id: repName, url: repPlayer?.bnet_url || '', toon_handle: repPlayer?.toon_handle || null };
+    bnetIds.push(target);
+    changed = true;
+  } else {
+    const entry = bnetIds[idx];
+    if (typeof entry === 'string') {
+      target = { id: repName || entry, url: repPlayer?.bnet_url || '', toon_handle: repPlayer?.toon_handle || null };
+      bnetIds[idx] = target;
+      changed = true;
+    } else if (!matchedByKey && entry.url && key && bnetEntryKey(entry) && bnetEntryKey(entry) !== key) {
+      // Same display name but a different known account -> a separate account.
+      target = { id: repName, url: repPlayer?.bnet_url || '', toon_handle: repPlayer?.toon_handle || null };
+      bnetIds.push(target);
+      changed = true;
+    } else {
+      target = entry;
+      if (!entry.url && repPlayer?.bnet_url) { entry.url = repPlayer.bnet_url; changed = true; }
+      if (!entry.toon_handle && repPlayer?.toon_handle) { entry.toon_handle = repPlayer.toon_handle; changed = true; }
+      if (repName && entry.id !== repName && (matchedByKey || !entry.url)) { entry.id = repName; changed = true; }
+    }
+  }
+
+  // Merge leftover name-only aliases that share the replay's display name into
+  // the account entry (these are the same account seen under an old name).
+  const targetKey = bnetEntryKey(target);
+  if (targetKey && repName) {
+    for (let j = bnetIds.length - 1; j >= 0; j--) {
+      const e = bnetIds[j];
+      if (e === target) continue;
+      const eKey = bnetEntryKey(e);
+      const eId = ((typeof e === 'string' ? e : e?.id) || '').toLowerCase().trim();
+      if (!eKey && eId === nameLower) { bnetIds.splice(j, 1); changed = true; }
+    }
+  }
+
+  return changed;
+}
+
+// Collapse entries that resolve to the same account URL into one (keeps the url).
+export function dedupeAccountEntries(bnetIds) {
+  const byKey = new Map();
+  const out = [];
+  for (const e of bnetIds) {
+    const k = bnetEntryKey(e);
+    if (!k) { out.push(e); continue; }
+    if (byKey.has(k)) {
+      const prev = byKey.get(k);
+      const eObj = typeof e === 'string' ? { id: e, url: '' } : e;
+      if (!prev.url && eObj.url) { prev.url = eObj.url; prev.toon_handle = prev.toon_handle || eObj.toon_handle || null; }
+      if (eObj.id) prev.id = eObj.id;
+    } else {
+      const clone = typeof e === 'string' ? { id: e, url: '' } : { ...e };
+      byKey.set(k, clone);
+      out.push(clone);
+    }
+  }
+  return out;
+}
+
+// Write a replay account into a player's GLOBAL bnet_ids (default association).
+export async function learnGlobalAccount(db, player, repPlayer) {
+  const bnetIds = dedupeAccountEntries(parseBnetIdsField(player.bnet_ids));
+  if (!upsertGlobalAccountEntry(bnetIds, repPlayer)) return;
+  await db.query('UPDATE axsuck.players SET bnet_ids = $1 WHERE id = $2', [JSON.stringify(bnetIds), player.id]);
+  player.bnet_ids = JSON.stringify(bnetIds);
+}
+
+// Every account key a stored account entry could resolve to.
+function bnetEntryAccountKeys(entry) {
+  const keys = [];
+  if (!entry) return keys;
+  if (typeof entry === 'string') {
+    const k = normalizeBnetUrl(entry);
+    if (k) keys.push(k);
+    return keys;
+  }
+  for (const field of [entry.url, entry.toon_handle, entry.toonHandle, entry.account_key]) {
+    const k = normalizeBnetUrl(field);
+    if (k) keys.push(k);
+  }
+  return keys;
+}
+
+export function bnetEntryKey(entry) {
+  return bnetEntryAccountKeys(entry)[0] || '';
+}
+
+export function parseBnetIdsField(playerBnetIds) {
+  let bnetIds = [];
+  if (playerBnetIds) {
+    try {
+      bnetIds = typeof playerBnetIds === 'string' ? JSON.parse(playerBnetIds) : playerBnetIds;
+    } catch (_) {}
+  }
+  return Array.isArray(bnetIds) ? bnetIds : [];
+}
+
+export function flattenReplayPlayers(parsedData) {
+  return parsedData?.teams?.flatMap((t, tIdx) => (t.players || []).map(p => ({ ...p, teamIdx: tIdx }))) || [];
+}
+
+// Shape a replay account for the manual-mapping UI, including a stable key.
+export function describeReplayAccount(repPlayer, matchedPlayer) {
+  return {
+    name: repPlayer?.name || '',
+    race: repPlayer?.race || (repPlayer?.pick_race || '?')[0] || '',
+    pick_race: repPlayer?.pick_race || '',
+    play_race: repPlayer?.play_race || '',
+    bnet_url: repPlayer?.bnet_url || '',
+    toon_handle: repPlayer?.toon_handle || '',
+    region: repPlayer?.region || null,
+    subregion: repPlayer?.subregion != null ? repPlayer.subregion : null,
+    result: repPlayer?.result || null,
+    accountKey: replayPlayerAccountKey(repPlayer),
+    regionLabel: accountEntryRegionLabel({
+      url: repPlayer?.bnet_url || '',
+      toon_handle: repPlayer?.toon_handle || ''
+    }),
+    matchedPlayerId: matchedPlayer ? matchedPlayer.id : null
+  };
+}
+
+export function getPlayerInfoFromReplay(playerId, playerDisplayName, playerBattleTags, playerBnetIds, parsedData, extraAccounts = []) {
+  const repPlayers = flattenReplayPlayers(parsedData);
+  const pIdLower = (playerId || '').toLowerCase().trim();
   const pDispLower = (playerDisplayName || '').toLowerCase().trim();
   
   let tags = {};
@@ -73,14 +289,26 @@ export function getPlayerInfoFromReplay(playerId, playerDisplayName, playerBattl
     }
   }
 
-  let bnetIds = [];
-  if (playerBnetIds) {
-    try {
-      bnetIds = typeof playerBnetIds === 'string' ? JSON.parse(playerBnetIds) : playerBnetIds;
-    } catch (_) {}
-  }
+  const extraEntries = (Array.isArray(extraAccounts) ? extraAccounts : []).map(a =>
+    a && (a.account_key !== undefined || a.account_name !== undefined) ? tournamentAccountToBnetEntry(a) : a
+  );
+  const bnetIds = [...parseBnetIdsField(playerBnetIds), ...extraEntries];
   const bnetNames = bnetIds.map(b => (typeof b === 'string' ? b : b.id).toLowerCase().trim());
 
+  // 1. Prefer an exact Battle.net account match (disambiguates identical display names).
+  const accountKeys = new Set();
+  for (const entry of bnetIds) {
+    for (const k of bnetEntryAccountKeys(entry)) accountKeys.add(k);
+  }
+  if (accountKeys.size > 0) {
+    const accountMatch = repPlayers.find(p => {
+      const k = replayPlayerAccountKey(p);
+      return k && accountKeys.has(k);
+    });
+    if (accountMatch) return accountMatch;
+  }
+
+  // 2. Fall back to name / battle tag / historical bnet id matching.
   return repPlayers.find(p => {
     if (!p.name) return false;
     const nameLower = p.name.toLowerCase().trim();
@@ -131,7 +359,8 @@ export default async function replaysRoutes(fastify) {
     }
 
     // Check if match exists
-    const match = db.prepare('SELECT id FROM matches WHERE id = ?').get(matchId);
+    const matchRes = await db.query('SELECT id FROM axsuck.matches WHERE id = $1', [matchId]);
+    const match = matchRes.rows[0];
     if (!match) {
       throw fastify.httpErrors.notFound('Match not found.');
     }
@@ -175,13 +404,11 @@ export default async function replaysRoutes(fastify) {
         const compressed = zlib.gzipSync(buffer);
 
         // 4. Save to database
-        const stmt = db.prepare(`
-          INSERT INTO match_replays (
+        await db.query(`
+          INSERT INTO axsuck.match_replays (
             match_id, filename, compressed_data, parsed_data, winner, map_name, game_length
-          ) VALUES (?, ?, ?, ?, ?, ?, ?)
-        `);
-
-        stmt.run(
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+        `, [
           matchId,
           filename,
           compressed,
@@ -189,7 +416,7 @@ export default async function replaysRoutes(fastify) {
           parsedData.winner,
           parsedData.map_name,
           parsedData.game_length
-        );
+        ]);
 
         results.push({ filename, status: 'success' });
       } catch (err) {
@@ -206,7 +433,8 @@ export default async function replaysRoutes(fastify) {
     }
 
     // Trigger real-time broadcast
-    const matchObj = db.prepare('SELECT tournament_id FROM matches WHERE id = ?').get(matchId);
+    const matchObjRes = await db.query('SELECT tournament_id FROM axsuck.matches WHERE id = $1', [matchId]);
+    const matchObj = matchObjRes.rows[0];
     if (matchObj) {
       fastify.tournamentEvents.emit(`update:${matchObj.tournament_id}`, { type: 'replays_updated', matchId });
     }
@@ -214,20 +442,33 @@ export default async function replaysRoutes(fastify) {
     return { results };
   });
 
-  // Helper to match player from replay
-  function findMatchPlayer(repName, players) {
+  // Helper to match player from replay. Accepts a replay player object (preferred)
+  // or a bare name string. Account URL match wins over display-name match.
+  function findMatchPlayer(repPlayer, players) {
+    const repName = typeof repPlayer === 'string' ? repPlayer : repPlayer?.name;
     if (!repName) return null;
     const nameLower = repName.toLowerCase().trim();
-    
-    // Check exact ID match
+
+    // 1. Exact Battle.net account match
+    const accountKey = typeof repPlayer === 'object' ? replayPlayerAccountKey(repPlayer) : '';
+    if (accountKey) {
+      const accountMatch = players.find(p => {
+        return playerAccountEntries(p).some(entry =>
+          bnetEntryAccountKeys(entry).includes(accountKey)
+        );
+      });
+      if (accountMatch) return accountMatch;
+    }
+
+    // 2. Check exact ID match
     let matched = players.find(p => p.id.toLowerCase().trim() === nameLower);
     if (matched) return matched;
     
-    // Check exact display name match (derived from first non-empty battle tag nickname)
+    // 3. Check exact display name match (derived from first non-empty battle tag nickname)
     matched = players.find(p => (p.display_name || '').toLowerCase().trim() === nameLower);
     if (matched) return matched;
     
-    // Check inside battle_tags JSON
+    // 4. Check inside battle_tags JSON
     for (const p of players) {
       if (p.battle_tags) {
         try {
@@ -249,27 +490,22 @@ export default async function replaysRoutes(fastify) {
       }
     }
 
-    // Check inside bnet_ids JSON array
+    // 5. Check inside bnet_ids JS accounts (by name), ignoring account URLs
     for (const p of players) {
-      if (p.bnet_ids) {
-        try {
-          const ids = typeof p.bnet_ids === 'string' ? JSON.parse(p.bnet_ids) : p.bnet_ids;
-          if (Array.isArray(ids)) {
-            const hasMatch = ids.some(item => {
-              if (typeof item === 'string') {
-                return item.toLowerCase().trim() === nameLower;
-              } else if (item && typeof item === 'object' && item.id) {
-                return item.id.toLowerCase().trim() === nameLower;
-              }
-              return false;
-            });
-            if (hasMatch) return p;
-          }
-        } catch (_) {}
-      }
+      const ids = playerAccountEntries(p);
+      const hasMatch = ids.some(item => {
+        if (typeof item === 'string') {
+          return normalizeBnetUrl(item) === nameLower || item.toLowerCase().trim() === nameLower;
+        }
+        if (item && typeof item === 'object' && item.id) {
+          return item.id.toLowerCase().trim() === nameLower;
+        }
+        return false;
+      });
+      if (hasMatch) return p;
     }
     
-    // Check sub-string match
+    // 6. Check sub-string match
     const candidates = players.filter(p => 
       p.id.toLowerCase().includes(nameLower) || 
       (p.display_name || '').toLowerCase().includes(nameLower) ||
@@ -292,7 +528,8 @@ export default async function replaysRoutes(fastify) {
       throw fastify.httpErrors.badRequest('No replays provided.');
     }
 
-    const tournament = db.prepare('SELECT id FROM tournaments WHERE id = ?').get(tournamentId);
+    const tourneyRes = await db.query('SELECT id FROM axsuck.tournaments WHERE id = $1', [tournamentId]);
+    const tournament = tourneyRes.rows[0];
     if (!tournament) {
       throw fastify.httpErrors.notFound('Tournament not found.');
     }
@@ -305,14 +542,22 @@ export default async function replaysRoutes(fastify) {
     }
 
     // Fetch players to do mapping
-    const players = db.prepare(`
+    const playersRes = await db.query(`
       SELECT p.*
-      FROM tournament_players tp
-      JOIN players p ON tp.player_id = p.id
-      WHERE tp.tournament_id = ?
-    `).all(tournamentId).map(p => ({
+      FROM axsuck.tournament_players tp
+      JOIN axsuck.players p ON tp.player_id = p.id
+      WHERE tp.tournament_id = $1
+    `, [tournamentId]);
+    const accountRepo = TournamentAccountRepo(db);
+    const tournamentAccounts = await accountRepo.listByTournament(tournamentId);
+    const accountsByPlayer = {};
+    for (const a of tournamentAccounts) {
+      (accountsByPlayer[a.player_id] = accountsByPlayer[a.player_id] || []).push(a);
+    }
+    const players = playersRes.rows.map(p => ({
       ...p,
-      display_name: getPlayerDisplayName(p)
+      display_name: getPlayerDisplayName(p),
+      tournament_accounts: accountsByPlayer[p.id] || []
     }));
 
     const tempDir = join(os.tmpdir(), 'suck-replays');
@@ -341,85 +586,106 @@ export default async function replaysRoutes(fastify) {
         const compressed = zlib.gzipSync(buffer);
 
         // Find players
-        const repPlayers = parsedData.teams?.flatMap(t => t.players || []) || [];
+        const repPlayers = flattenReplayPlayers(parsedData);
         if (repPlayers.length < 2) {
           throw new Error('Replay does not have 2 players');
         }
 
-        const repP1Name = repPlayers[0].name;
-        const repP2Name = repPlayers[1].name;
+        const repP1 = repPlayers[0];
+        const repP2 = repPlayers[1];
 
-        const p1 = findMatchPlayer(repP1Name, players);
-        const p2 = findMatchPlayer(repP2Name, players);
+        const p1 = findMatchPlayer(repP1, players);
+        const p2 = findMatchPlayer(repP2, players);
 
-        if (!p1 || !p2) {
+        // Unmapped when either side is unknown, or when both sides resolve to the
+        // same registered player (two accounts sharing one display name).
+        if (!p1 || !p2 || p1.id === p2.id) {
           results.push({
             filename,
             status: 'unmapped',
             content,
-            repPlayers: [repP1Name, repP2Name],
-            p1Matched: p1 ? p1.id : null,
-            p2Matched: p2 ? p2.id : null
+            repPlayers: [
+              describeReplayAccount(repP1, p1),
+              describeReplayAccount(repP2, p2)
+            ]
           });
           continue;
         }
 
-        // Auto-save matched Battle.net IDs to player profiles
-        const addBnetIdToPlayer = (player, bnetId) => {
-          let bnetIds = [];
-          if (player.bnet_ids) {
-            try {
-              bnetIds = typeof player.bnet_ids === 'string' ? JSON.parse(player.bnet_ids) : player.bnet_ids;
-            } catch (_) {}
-          }
-          if (!Array.isArray(bnetIds)) bnetIds = [];
-          
-          const hasId = bnetIds.some(item => {
-            if (typeof item === 'string') return item.toLowerCase().trim() === bnetId.toLowerCase().trim();
-            if (item && typeof item === 'object' && item.id) return item.id.toLowerCase().trim() === bnetId.toLowerCase().trim();
-            return false;
-          });
-          
-          if (!hasId) {
-            bnetIds.push({ id: bnetId, url: '' });
-            db.prepare('UPDATE players SET bnet_ids = ? WHERE id = ?').run(JSON.stringify(bnetIds), player.id);
-            player.bnet_ids = JSON.stringify(bnetIds);
-          }
-        };
+        // Decide how to associate the replay accounts. Default is GLOBAL; an
+        // account already linked to another player is a shared/borrowed account,
+        // so raise a conflict instead of silently overwriting.
+        const linkDecisions = [
+          { rep: repP1, player: p1 },
+          { rep: repP2, player: p2 }
+        ].map(({ rep, player }) => {
+          const key = replayPlayerAccountKey(rep);
+          if (!key) return { key, player, rep, action: 'none' };
+          const ownsGlobal = parseBnetIdsField(player.bnet_ids).some(e => bnetEntryAccountKeys(e).includes(key));
+          if (ownsGlobal) return { key, player, rep, action: 'keep' };
+          const scoped = (accountsByPlayer[player.id] || []).some(e => bnetEntryAccountKeys(e).includes(key));
+          if (scoped) return { key, player, rep, action: 'temporary' };
+          const other = players.find(q => q.id !== player.id && playerAccountEntries(q).some(e => bnetEntryAccountKeys(e).includes(key)));
+          if (other) return { key, player, rep, action: 'conflict', owner: other.id };
+          return { key, player, rep, action: 'learn' };
+        });
 
-        addBnetIdToPlayer(p1, repP1Name);
-        addBnetIdToPlayer(p2, repP2Name);
+        const sideConflicts = linkDecisions.filter(d => d.action === 'conflict');
+        if (sideConflicts.length > 0) {
+          results.push({
+            filename,
+            status: 'unmapped',
+            conflict: true,
+            content,
+            repPlayers: [describeReplayAccount(repP1, p1), describeReplayAccount(repP2, p2)],
+            conflicts: sideConflicts.map(d => ({
+              account_key: d.key,
+              account_name: d.rep?.name || '',
+              owner: d.owner,
+              attempted: d.player.id
+            }))
+          });
+          continue;
+        }
 
         // Find match
-        const match = db.prepare(`
-          SELECT * FROM matches 
-          WHERE tournament_id = ? 
-            AND ((player1_id = ? AND player2_id = ?) OR (player1_id = ? AND player2_id = ?))
-        `).get(tournamentId, p1.id, p2.id, p2.id, p1.id);
+        const matchRes = await db.query(`
+          SELECT * FROM axsuck.matches 
+          WHERE tournament_id = $1 
+            AND ((player1_id = $2 AND player2_id = $3) OR (player1_id = $4 AND player2_id = $5))
+        `, [tournamentId, p1.id, p2.id, p2.id, p1.id]);
+        const match = matchRes.rows[0];
 
         if (!match) {
           throw new Error(`No scheduled match found for ${p1.display_name || p1.id} vs ${p2.display_name || p2.id}`);
         }
 
         // Check if duplicate replay file (same name or same match/map/length)
-        const duplicate = db.prepare(`
-          SELECT id FROM match_replays 
-          WHERE match_id = ? AND filename = ?
-        `).get(match.id, filename);
+        const duplicateRes = await db.query(`
+          SELECT id FROM axsuck.match_replays 
+          WHERE match_id = $1 AND filename = $2
+        `, [match.id, filename]);
+        const duplicate = duplicateRes.rows[0];
 
         if (duplicate) {
           results.push({ filename, status: 'skipped', message: 'Replay already uploaded for this match', matchId: match.id });
           continue;
         }
 
-        // Save replay to database
-        const stmt = db.prepare(`
-          INSERT INTO match_replays (
-            match_id, filename, compressed_data, parsed_data, winner, map_name, game_length
-          ) VALUES (?, ?, ?, ?, ?, ?, ?)
-        `);
+        // Default: persist the replay accounts to each player's GLOBAL profile.
+        // Temporary (tournament-scoped) links are only created via manual mapping.
+        for (const d of linkDecisions) {
+          if (d.action === 'learn' || d.action === 'keep') {
+            await learnGlobalAccount(db, d.player, d.rep);
+          }
+        }
 
-        stmt.run(
+        // Save replay to database
+        await db.query(`
+          INSERT INTO axsuck.match_replays (
+            match_id, filename, compressed_data, parsed_data, winner, map_name, game_length
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+        `, [
           match.id,
           filename,
           compressed,
@@ -427,49 +693,34 @@ export default async function replaysRoutes(fastify) {
           parsedData.winner,
           parsedData.map_name,
           parsedData.game_length
-        );
+        ]);
 
         // Auto-update match score and result
-        const allReplays = db.prepare(`
-          SELECT id, parsed_data, winner FROM match_replays WHERE match_id = ?
-        `).all(match.id);
+        const allReplaysRes = await db.query(`
+          SELECT id, parsed_data, winner FROM axsuck.match_replays WHERE match_id = $1
+        `, [match.id]);
+        const allReplays = allReplaysRes.rows;
 
         const matchRepo = MatchRepo(db);
         let score1 = 0;
         let score2 = 0;
 
-        const p1Row = db.prepare('SELECT * FROM players WHERE id = ?').get(match.player1_id);
-        const p2Row = db.prepare('SELECT * FROM players WHERE id = ?').get(match.player2_id);
-        const p1Name = getPlayerDisplayName(p1Row) || match.player1_id;
-        const p2Name = getPlayerDisplayName(p2Row) || match.player2_id;
+        const p1Row = (await db.query('SELECT * FROM axsuck.players WHERE id = $1', [match.player1_id])).rows[0];
+        const p2Row = (await db.query('SELECT * FROM axsuck.players WHERE id = $1', [match.player2_id])).rows[0];
 
-        const checkPlayerMatch = (player, nameLower) => {
-          if (!player) return false;
-          if (player.id.toLowerCase().trim() === nameLower) return true;
-          const disp = getPlayerDisplayName(player);
-          if (disp && disp.toLowerCase().trim() === nameLower) return true;
-          if (player.battle_tags) {
-            try {
-              const tags = typeof player.battle_tags === 'string' ? JSON.parse(player.battle_tags) : player.battle_tags;
-              const tagList = Object.values(tags || {}).filter(Boolean).map(t => t.toLowerCase().trim());
-              return tagList.some(tag => tag === nameLower || tag.split('#')[0] === nameLower);
-            } catch (_) {}
-          }
-          return false;
-        };
-
+        // Attribute each game to the registered player whose account actually
+        // appears in the replay (URL-aware), so identical display names are safe.
         allReplays.forEach(r => {
-          const parsed = JSON.parse(r.parsed_data);
-          const rWinner = r.winner || parsed.winner;
-          
-          if (rWinner) {
-            const rWinnerLower = rWinner.toLowerCase().trim();
-            if (checkPlayerMatch(p1Row, rWinnerLower)) {
-              score1++;
-            } else if (checkPlayerMatch(p2Row, rWinnerLower)) {
-              score2++;
-            }
-          }
+          const parsed = typeof r.parsed_data === 'string' ? JSON.parse(r.parsed_data) : r.parsed_data;
+
+          const repP1Match = p1Row ? getPlayerInfoFromReplay(p1Row.id, getPlayerDisplayName(p1Row), p1Row.battle_tags, p1Row.bnet_ids, parsed, accountsByPlayer[p1Row.id] || []) : null;
+          const repP2Match = p2Row ? getPlayerInfoFromReplay(p2Row.id, getPlayerDisplayName(p2Row), p2Row.battle_tags, p2Row.bnet_ids, parsed, accountsByPlayer[p2Row.id] || []) : null;
+
+          const p1Won = repP1Match?.result === 'Win';
+          const p2Won = repP2Match?.result === 'Win';
+
+          if (p1Won && !p2Won) score1++;
+          else if (p2Won && !p1Won) score2++;
         });
 
         if (score1 > 0 || score2 > 0) {
@@ -477,12 +728,12 @@ export default async function replaysRoutes(fastify) {
           if (score1 > score2) winnerId = match.player2_id;
           else if (score2 > score1) winnerId = match.player1_id;
 
-          db.prepare(`
-            UPDATE matches SET score1 = ?, score2 = ?, winner_id = ?, status = 'completed'
-            WHERE id = ?
-          `).run(score1, score2, winnerId, match.id);
+          await db.query(`
+            UPDATE axsuck.matches SET score1 = $1, score2 = $2, winner_id = $3, status = 'completed'
+            WHERE id = $4
+          `, [score1, score2, winnerId, match.id]);
 
-          matchRepo.advanceWinner(tournamentId, match.id);
+          await matchRepo.advanceWinner(tournamentId, match.id);
         }
 
         results.push({ filename, status: 'success', matchId: match.id, p1: p1.display_name || p1.id, p2: p2.display_name || p2.id });
@@ -506,29 +757,30 @@ export default async function replaysRoutes(fastify) {
   // Get replays for a match
   fastify.get('/matches/:matchId/replays', async (req) => {
     const { matchId } = req.params;
-    const replays = db.prepare(`
+    const res = await db.query(`
       SELECT id, match_id, filename, parsed_data, winner, map_name, game_length, uploaded_at
-      FROM match_replays
-      WHERE match_id = ?
+      FROM axsuck.match_replays
+      WHERE match_id = $1
       ORDER BY uploaded_at ASC
-    `).all(matchId);
+    `, [matchId]);
 
-    return replays.map(r => ({
+    return res.rows.map(r => ({
       ...r,
-      parsed_data: JSON.parse(r.parsed_data)
+      parsed_data: typeof r.parsed_data === 'string' ? JSON.parse(r.parsed_data) : r.parsed_data
     }));
   });
 
   // Download raw decompressed replay
   fastify.get('/replays/:replayId/download', async (req, reply) => {
     const { replayId } = req.params;
-    const replay = db.prepare('SELECT filename, compressed_data FROM match_replays WHERE id = ?').get(replayId);
+    const res = await db.query('SELECT filename, compressed_data FROM axsuck.match_replays WHERE id = $1', [replayId]);
+    const replay = res.rows[0];
     if (!replay) {
       throw fastify.httpErrors.notFound('Replay not found.');
     }
 
     // Decompress on the fly
-    const rawData = zlib.gunzipSync(replay.compressed_data);
+    const rawData = zlib.gunzipSync(Buffer.isBuffer(replay.compressed_data) ? replay.compressed_data : Buffer.from(replay.compressed_data));
 
     reply
       .header('Content-Disposition', `attachment; filename="${encodeURIComponent(replay.filename)}"`)
@@ -539,14 +791,15 @@ export default async function replaysRoutes(fastify) {
   // Delete a replay
   fastify.delete('/replays/:replayId', async (req) => {
     const { replayId } = req.params;
-    const matchInfo = db.prepare(`
-      SELECT m.tournament_id FROM match_replays mr
-      JOIN matches m ON mr.match_id = m.id
-      WHERE mr.id = ?
-    `).get(replayId);
+    const matchInfoRes = await db.query(`
+      SELECT m.tournament_id FROM axsuck.match_replays mr
+      JOIN axsuck.matches m ON mr.match_id = m.id
+      WHERE mr.id = $1
+    `, [replayId]);
+    const matchInfo = matchInfoRes.rows[0];
 
-    const result = db.prepare('DELETE FROM match_replays WHERE id = ?').run(replayId);
-    if (result.changes === 0) {
+    const result = await db.query('DELETE FROM axsuck.match_replays WHERE id = $1', [replayId]);
+    if (result.rowCount === 0) {
       throw fastify.httpErrors.notFound('Replay not found.');
     }
 
@@ -560,13 +813,15 @@ export default async function replaysRoutes(fastify) {
   // Reparse all replays for a tournament from raw compressed data
   fastify.post('/tournaments/:id/replays/reparse', async (req) => {
     const { id: tournamentId } = req.params;
-    const matches = db.prepare('SELECT id FROM matches WHERE tournament_id = ?').all(tournamentId);
+    const matchesRes = await db.query('SELECT id FROM axsuck.matches WHERE tournament_id = $1', [tournamentId]);
+    const matches = matchesRes.rows;
     const matchIds = matches.map(m => m.id);
     if (matchIds.length === 0) {
       return { success: true, count: 0 };
     }
 
-    const replays = db.prepare(`SELECT * FROM match_replays WHERE match_id IN (${matchIds.join(',')})`).all();
+    const replaysRes = await db.query('SELECT * FROM axsuck.match_replays WHERE match_id = ANY($1::int[])', [matchIds]);
+    const replays = replaysRes.rows;
     const envCheck = await checkPythonEnvironment();
     if (!envCheck.ok) {
       throw fastify.httpErrors.internalServerError(
@@ -584,16 +839,16 @@ export default async function replaysRoutes(fastify) {
     for (const rep of replays) {
       const tempFilePath = join(tempDir, `${Date.now()}_${rep.filename}`);
       try {
-        const buffer = zlib.gunzipSync(rep.compressed_data);
+        const buffer = zlib.gunzipSync(Buffer.isBuffer(rep.compressed_data) ? rep.compressed_data : Buffer.from(rep.compressed_data));
         writeFileSync(tempFilePath, buffer);
         const parseResult = await parseReplay(scriptPath, tempFilePath);
         if (parseResult.ok) {
           const parsedData = JSON.parse(parseResult.stdout);
-          db.prepare(`
-            UPDATE match_replays 
-            SET parsed_data = ?, winner = ?, map_name = ?, game_length = ?
-            WHERE id = ?
-          `).run(JSON.stringify(parsedData), parsedData.winner, parsedData.map_name, parsedData.game_length, rep.id);
+          await db.query(`
+            UPDATE axsuck.match_replays 
+            SET parsed_data = $1, winner = $2, map_name = $3, game_length = $4
+            WHERE id = $5
+          `, [JSON.stringify(parsedData), parsedData.winner, parsedData.map_name, parsedData.game_length, rep.id]);
           count++;
         }
       } catch (err) {
@@ -607,42 +862,133 @@ export default async function replaysRoutes(fastify) {
       }
     }
 
+    // Rebuild tournament-scoped account links from the freshly parsed replays,
+    // filling in missing URLs / toon handles (this is the "re-parse to fill
+    // account URLs" action; temporary accounts stay scoped to this tournament).
+    const accountRepo = TournamentAccountRepo(db);
+    const pRes = await db.query(`
+      SELECT p.id, p.bnet_ids, p.battle_tags
+      FROM axsuck.tournament_players tp
+      JOIN axsuck.players p ON tp.player_id = p.id
+      WHERE tp.tournament_id = $1
+    `, [tournamentId]);
+    const accountPlayers = pRes.rows.map(p => ({ ...p, display_name: getPlayerDisplayName(p) }));
+
+    const existingLinks = await accountRepo.listByTournament(tournamentId);
+    const accByPlayer = {};
+    for (const l of existingLinks) (accByPlayer[l.player_id] = accByPlayer[l.player_id] || []).push(l);
+    for (const p of accountPlayers) p.tournament_accounts = accByPlayer[p.id] || [];
+
+    const freshReplays = (await db.query(
+      'SELECT parsed_data FROM axsuck.match_replays WHERE match_id = ANY($1::int[])',
+      [matchIds]
+    )).rows;
+
+    // Collapse duplicate entries that resolve to the same account URL.
+    for (const p of accountPlayers) {
+      const before = parseBnetIdsField(p.bnet_ids);
+      const deduped = dedupeAccountEntries(before);
+      if (deduped.length !== before.length) {
+        await db.query('UPDATE axsuck.players SET bnet_ids = $1 WHERE id = $2', [JSON.stringify(deduped), p.id]);
+        p.bnet_ids = JSON.stringify(deduped);
+      }
+    }
+
+    // Re-parse fills account URLs into GLOBAL profiles (default). Existing
+    // scoped links are kept only if they are genuine temporary overrides
+    // (i.e. the player has no matching global account); otherwise they are
+    // leftover auto-links and get merged into global and dropped.
+    const conflicts = [];
+    let accountsLearned = 0;
+    let accountsMerged = 0;
+
+    for (const row of freshReplays) {
+      let parsed;
+      try { parsed = typeof row.parsed_data === 'string' ? JSON.parse(row.parsed_data) : row.parsed_data; } catch (_) { continue; }
+      const reps = flattenReplayPlayers(parsed);
+      for (const rep of reps) {
+        const key = replayPlayerAccountKey(rep);
+        if (!key) continue;
+
+        let owner = accountPlayers.find(p => playerAccountEntries(p).some(e => bnetEntryAccountKeys(e).includes(key)));
+        if (!owner) {
+          const sameName = reps.filter(x => (x.name || '').toLowerCase().trim() === (rep.name || '').toLowerCase().trim());
+          if (sameName.length === 1) owner = findMatchPlayer(rep, accountPlayers);
+        }
+        if (!owner) continue;
+
+        const ownsScoped = (owner.tournament_accounts || []).some(e => bnetEntryAccountKeys(e).includes(key));
+        if (ownsScoped) {
+          const repNameLower = (rep.name || '').toLowerCase().trim();
+          const hasMatchingGlobal = parseBnetIdsField(owner.bnet_ids).some(e => {
+            const k = bnetEntryKey(e);
+            const id = ((typeof e === 'string' ? e : e?.id) || '').toLowerCase().trim();
+            return (k && k === key) || (repNameLower && id === repNameLower);
+          });
+          if (!hasMatchingGlobal) continue; // genuine temporary override -> keep scoped
+
+          // Leftover auto-link: merge into global and drop the scoped duplicate.
+          await learnGlobalAccount(db, owner, rep);
+          await accountRepo.remove(tournamentId, key);
+          owner.tournament_accounts = (owner.tournament_accounts || []).filter(e => !bnetEntryAccountKeys(e).includes(key));
+          accountsMerged++;
+          continue;
+        }
+
+        const other = accountPlayers.find(q => q.id !== owner.id && playerAccountEntries(q).some(e => bnetEntryAccountKeys(e).includes(key)));
+        if (other) {
+          conflicts.push({ account_key: key, account_name: rep.name || '', owner: other.id, attempted: owner.id });
+          continue;
+        }
+
+        const before = owner.bnet_ids;
+        await learnGlobalAccount(db, owner, rep);
+        if (owner.bnet_ids !== before) accountsLearned++;
+      }
+    }
+
     // Trigger real-time broadcast
     fastify.tournamentEvents.emit(`update:${tournamentId}`, { type: 'replays_updated' });
 
-    return { success: true, count };
+    return { success: true, count, accounts_updated: accountsLearned, accounts_merged: accountsMerged, conflicts };
   });
 
   // Generate Liquipedia Wiki Script for a tournament
   fastify.get('/tournaments/:id/wiki', async (req) => {
     const { id: tournamentId } = req.params;
-    const tournament = db.prepare('SELECT * FROM tournaments WHERE id = ?').get(tournamentId);
+    const tourneyRes = await db.query('SELECT * FROM axsuck.tournaments WHERE id = $1', [tournamentId]);
+    const tournament = tourneyRes.rows[0];
     if (!tournament) {
       throw fastify.httpErrors.notFound('Tournament not found.');
     }
 
-
-
-    const players = db.prepare(`
+    const playersRes = await db.query(`
       SELECT 
         p.id, 
         p.bnet_ids,
         p.battle_tags,
-        COALESCE(tp.flag, p.flag) AS flag, 
-        COALESCE(tp.team, p.team) AS team, 
-        COALESCE(tp.link, p.link) AS link, 
+        COALESCE(NULLIF(p.flag, ''), NULLIF(tp.flag, ''), 'cn') AS flag, 
+        COALESCE(NULLIF(tp.team, ''), p.team, '') AS team, 
+        COALESCE(NULLIF(tp.link, ''), p.link, '') AS link, 
         tp.seed, 
         tp.registered_at
-      FROM tournament_players tp
-      JOIN players p ON tp.player_id = p.id
-      WHERE tp.tournament_id = ?
+      FROM axsuck.tournament_players tp
+      JOIN axsuck.players p ON tp.player_id = p.id
+      WHERE tp.tournament_id = $1
       ORDER BY tp.seed IS NULL, tp.seed ASC, tp.registered_at ASC
-    `).all(tournamentId).map(p => ({
+    `, [tournamentId]);
+    const players = playersRes.rows.map(p => ({
       ...p,
       display_name: getPlayerDisplayName(p)
     }));
 
-    const matches = db.prepare(`
+    const wikiAccounts = await TournamentAccountRepo(db).listByTournament(tournamentId);
+    const wikiAccountsByPlayer = {};
+    for (const a of wikiAccounts) {
+      (wikiAccountsByPlayer[a.player_id] = wikiAccountsByPlayer[a.player_id] || []).push(a);
+    }
+
+    const matchesRes = await db.query(`
       SELECT m.*, 
              p1.battle_tags AS player1_battle_tags,
              p1.bnet_ids AS player1_bnet_ids,
@@ -655,15 +1001,16 @@ export default async function replaysRoutes(fastify) {
              COALESCE(tp2.team, p2.team) AS player2_team,
              COALESCE(tp2.link, p2.link) AS player2_link,
              w.battle_tags AS winner_battle_tags
-      FROM matches m
-      LEFT JOIN players p1 ON m.player1_id = p1.id
-      LEFT JOIN tournament_players tp1 ON tp1.tournament_id = m.tournament_id AND tp1.player_id = m.player1_id
-      LEFT JOIN players p2 ON m.player2_id = p2.id
-      LEFT JOIN tournament_players tp2 ON tp2.tournament_id = m.tournament_id AND tp2.player_id = m.player2_id
-      LEFT JOIN players w ON m.winner_id = w.id
-      WHERE m.tournament_id = ?
+      FROM axsuck.matches m
+      LEFT JOIN axsuck.players p1 ON m.player1_id = p1.id
+      LEFT JOIN axsuck.tournament_players tp1 ON tp1.tournament_id = m.tournament_id AND tp1.player_id = m.player1_id
+      LEFT JOIN axsuck.players p2 ON m.player2_id = p2.id
+      LEFT JOIN axsuck.tournament_players tp2 ON tp2.tournament_id = m.tournament_id AND tp2.player_id = m.player2_id
+      LEFT JOIN axsuck.players w ON m.winner_id = w.id
+      WHERE m.tournament_id = $1
       ORDER BY m.round ASC, m.position ASC
-    `).all(tournamentId).map(m => {
+    `, [tournamentId]);
+    const matches = matchesRes.rows.map(m => {
       const p1Name = getPlayerDisplayName({ id: m.player1_id, battle_tags: m.player1_battle_tags }) || m.player1_id || 'TBD';
       const p2Name = getPlayerDisplayName({ id: m.player2_id, battle_tags: m.player2_battle_tags }) || m.player2_id || 'TBD';
       const winnerName = getPlayerDisplayName({ id: m.winner_id, battle_tags: m.winner_battle_tags }) || m.winner_id;
@@ -678,12 +1025,12 @@ export default async function replaysRoutes(fastify) {
     // Fetch replays for these matches to extract maps and game details
     const matchIds = matches.map(m => m.id);
     const replays = matchIds.length > 0
-      ? db.prepare(`SELECT * FROM match_replays WHERE match_id IN (${matchIds.join(',')})`).all()
+      ? (await db.query('SELECT * FROM axsuck.match_replays WHERE match_id = ANY($1::int[])', [matchIds])).rows
       : [];
 
     const replaysByMatchId = {};
     replays.forEach(r => {
-      r.parsed_data = JSON.parse(r.parsed_data);
+      r.parsed_data = typeof r.parsed_data === 'string' ? JSON.parse(r.parsed_data) : r.parsed_data;
       replaysByMatchId[r.match_id] = replaysByMatchId[r.match_id] || [];
       replaysByMatchId[r.match_id].push(r);
     });
@@ -698,7 +1045,7 @@ export default async function replaysRoutes(fastify) {
       }
     });
 
-    const formattedDate = tournament.created_at ? tournament.created_at.split(' ')[0] : new Date().toISOString().split('T')[0];
+    const formattedDate = toDateOnly(tournament.created_at);
     let tournamentDate = formattedDate;
     if (earliestReplayTime) {
       const d = new Date(earliestReplayTime * 1000);
@@ -815,27 +1162,10 @@ export default async function replaysRoutes(fastify) {
 
     wikiScript += `==Results==\n`;
 
-    const bracketTemplates = {
-      2: "Bracket/2",
-      3: "Bracket/2L1D",
-      4: "Bracket/4",
-      5: "Bracket/2L1DH2L",
-      6: "Bracket/4L2DS",
-      7: "Bracket/2L1DH4L",
-      8: "Bracket/8",
-      9: "Bracket/2L1DH2LH4L",
-      10: "Bracket/4L2DH4LS",
-      11: "Bracket/2L1DH2LH4L2DSL",
-      12: "Bracket/8L4DSS",
-      13: "Bracket/2L1DH4LH4L2DSL",
-      14: "Bracket/4L2DH8LS",
-      15: "Bracket/4L2DH8LS",
-      16: "Bracket/16",
-    };
     const matchCount = matches.length;
     const bracketTemplate =
-      bracketTemplates[playerCount] ||
-      bracketTemplates[matchCount + 1] ||
+      liquipediaBracketTemplate(playerCount) ||
+      liquipediaBracketTemplate(matchCount + 1) ||
       "Bracket/16";
     const tournamentIdStr = tournamentNumber.padStart(4, "0");
 
@@ -903,12 +1233,14 @@ export default async function replaysRoutes(fastify) {
 
           const p1Bnet = m.player1_bnet_ids;
           const p2Bnet = m.player2_bnet_ids;
+          const p1Extra = wikiAccountsByPlayer[m.player1_id] || [];
+          const p2Extra = wikiAccountsByPlayer[m.player2_id] || [];
 
           let race1 = 'u';
           let race2 = 'u';
           if (matchReplays.length > 0) {
-            const repP1 = getPlayerInfoFromReplay(m.player1_id, m.player1_name, m.player1_battle_tags, p1Bnet, matchReplays[0].parsed_data);
-            const repP2 = getPlayerInfoFromReplay(m.player2_id, m.player2_name, m.player2_battle_tags, p2Bnet, matchReplays[0].parsed_data);
+            const repP1 = getPlayerInfoFromReplay(m.player1_id, m.player1_name, m.player1_battle_tags, p1Bnet, matchReplays[0].parsed_data, p1Extra);
+            const repP2 = getPlayerInfoFromReplay(m.player2_id, m.player2_name, m.player2_battle_tags, p2Bnet, matchReplays[0].parsed_data, p2Extra);
             if (repP1) {
               const r = (repP1.pick_race || repP1.race || 'u').toLowerCase();
               if (r !== '?') race1 = r;
@@ -928,8 +1260,8 @@ export default async function replaysRoutes(fastify) {
             matchReplays.forEach((rep, gIdx) => {
               const mapName = (rep.map_name || 'Unknown').replace("-天梯版", "").replace("- 天梯版", "");
               
-              const repP1 = getPlayerInfoFromReplay(m.player1_id, m.player1_name, m.player1_battle_tags, p1Bnet, rep.parsed_data);
-              const repP2 = getPlayerInfoFromReplay(m.player2_id, m.player2_name, m.player2_battle_tags, p2Bnet, rep.parsed_data);
+              const repP1 = getPlayerInfoFromReplay(m.player1_id, m.player1_name, m.player1_battle_tags, p1Bnet, rep.parsed_data, p1Extra);
+              const repP2 = getPlayerInfoFromReplay(m.player2_id, m.player2_name, m.player2_battle_tags, p2Bnet, rep.parsed_data, p2Extra);
 
               let gRace1 = 'u';
               let gRace2 = 'u';
@@ -943,12 +1275,18 @@ export default async function replaysRoutes(fastify) {
               }
               
               let gWinner = '0';
-              if (rep.winner) {
+              const p1Won = repP1?.result === 'Win';
+              const p2Won = repP2?.result === 'Win';
+              if (p1Won && !p2Won) {
+                gWinner = '1';
+              } else if (p2Won && !p1Won) {
+                gWinner = '2';
+              } else if (rep.winner) {
                 const repWinnerLower = rep.winner.toLowerCase().trim();
                 const p1MatchesWinner = repP1 && repP1.name && repP1.name.toLowerCase().trim() === repWinnerLower;
                 const p2MatchesWinner = repP2 && repP2.name && repP2.name.toLowerCase().trim() === repWinnerLower;
-                if (p1MatchesWinner) gWinner = '1';
-                else if (p2MatchesWinner) gWinner = '2';
+                if (p1MatchesWinner && !p2MatchesWinner) gWinner = '1';
+                else if (p2MatchesWinner && !p1MatchesWinner) gWinner = '2';
               }
 
               const gRace1Str = gRace1 && gRace1 !== 'u' ? `|race1=${gRace1}` : '';

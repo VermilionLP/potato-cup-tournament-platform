@@ -1,131 +1,53 @@
-# suck-tournament — Agent Guide
+# suck-utilities — Agent Guide
 
 ## Overview
 
-Single-elimination tournament manager replacing Challonge for S.U.C.K (StarCraft Ultra Chicken King) amateur SC2 tournaments. Features: registration, seeding, bracket generation, time voting (multi-select), result submission.
+S.U.C.K SC2 水友赛工具集。单淘赛事的报名、种子、对阵、投票、比分、OBS overlay，以及 SC2 录像解析与 Liquipedia wiki 生成。
+
+## Layout
+
+```
+apps/
+├── api/              # Fastify 5 (ESM), port 3100, PostgreSQL schema axsuck
+├── web/              # SvelteKit 2 SPA (ssr=false), port 5175
+└── replay-process/   # Node + Python: Challonge 拉取 / 录像分析 / wiki 生成
+```
 
 ## Stack
 
 | Layer | Technology |
 |-------|-----------|
-| Backend | **Fastify 5** (ESM) on port 3100 |
-| Database | **SQLite** via better-sqlite3, stored in `api/data/` |
-| Frontend | **SvelteKit 2** SPA (`ssr=false`) on port 5175 |
-| Auth | None — players identified by self-chosen ID in localStorage |
-| UI | **shadcn-svelte** (nova style) + **Tailwind CSS v4** |
+| API | Fastify 5, `@fastify/postgres`, Postgrator migrations, SSE, Swagger |
+| Database | PostgreSQL，所有表在 `axsuck` schema |
+| Web | Svelte 5 runes, SvelteKit 2 + adapter-static, Tailwind CSS v4, shadcn-svelte |
+| Replay | Python 3 + `sc2reader` / `spawningtool` |
 
-## Architecture
-
-```
-suck-tournament/
-├── api/                    # Fastify backend
-│   ├── app.js              # Entry: registers plugins + routes
-│   ├── plugins/database.js # SQLite init + schema migration
-│   ├── routes/             # Route handlers (no fp wrapper)
-│   │   ├── tournaments.js  # CRUD, seeds, bracket generation
-│   │   ├── players.js      # Player upsert, registration
-│   │   ├── matches.js      # Result submission, walkover, manual match create
-│   │   └── votes.js        # Time voting (multi-select)
-│   ├── repositories/       # Data access layer (synchronous, no fp wrapper)
-│   │   ├── tournament-repo.js
-│   │   ├── player-repo.js
-│   │   ├── match-repo.js   # Bracket gen algorithm
-│   │   └── vote-repo.js
-│   ├── db/schema.sql       # CREATE TABLE (IF NOT EXISTS, re-runnable)
-│   ├── data/               # SQLite DB files (gitignored)
-│   └── package.json        # ESM, "type": "module"
-├── web/                    # SvelteKit frontend
-│   ├── src/
-│   │   ├── routes/
-│   │   │   ├── +layout.svelte   # Header + player ID in top bar
-│   │   │   ├── +layout.js       # ssr=false, prerender=false
-│   │   │   ├── +page.svelte     # Tournament list + create
-│   │   │   └── tournament/[id]/+page.svelte  # Detail page
-│   │   └── lib/
-│   │       ├── api.js           # Fetch wrapper, all API methods
-│   │       └── components/ui/   # shadcn-svelte components
-│   ├── svelte.config.js
-│   ├── vite.config.js           # Proxies /api -> localhost:3100
-│   └── package.json
-└── AGENTS.md
-```
-
-## Key Conventions
-
-### Backend
-- **ESM only** (`import`/`export`, `"type": "module"` in package.json)
-- Routes are plain async functions (NO `fastify-plugin` wrapper)
-- Repositories are plain function factories (NO `fastify-plugin` wrapper)
-- Access DB via `fastify.db` (decorated by `plugins/database.js` with `fp()`)
-- Error handling: `throw fastify.httpErrors.badRequest(msg)` / `.notFound(msg)` (requires `@fastify/sensible`)
-- All DB calls are **synchronous** (better-sqlite3)
-- Response: return data directly (Fastify serializes), or throw httpErrors
-
-### Frontend
-- **Svelte 5 runes**: `$state`, `$derived`, `$effect`, `$props` (no legacy `$:` or `export let`)
-- **SPA mode**: `ssr=false`, `prerender=false`, fallback `index.html`
-- API calls go through `$lib/api.js` which uses `fetch` with `/api` prefix
-- Dev server proxies `/api` to `http://127.0.0.1:3100`
-- Player ID stored in `localStorage` key `suck_player_id`
-
-### Database
-- SQLite via better-sqlite3 (synchronous)
-- Schema file `api/db/schema.sql` is re-runnable (`IF NOT EXISTS`)
-- On server start, `database.js` reads and executes schema.sql
-- To reset: delete `api/data/suck-tournament.db` and restart
-
-## API Endpoints
-
-| Method | Path | Purpose |
-|--------|------|---------|
-| GET | `/api/tournaments` | List all tournaments |
-| POST | `/api/tournaments` | Create tournament `{id, name, description?, player_capacity?, hold_third_place?}` |
-| GET | `/api/tournaments/:id` | Tournament detail (includes players, matches, votes) |
-| POST | `/api/tournaments/:id/status` | Change status `{status}` (registration/voting/in_progress/completed) |
-| POST | `/api/tournaments/:id/seeds` | Set seeding order `{player_ids: [id1, id2, ...]}` |
-| POST | `/api/tournaments/:id/bracket` | Generate single-elimination bracket from seeds |
-| GET | `/api/tournaments/:id/bracket` | Get bracket matches |
-| POST | `/api/tournaments/:id/register` | Register player `{player_id}` |
-| DELETE | `/api/tournaments/:id/register` | Unregister player `{player_id}` |
-| POST | `/api/tournaments/:id/matches/:matchId/result` | Submit result `{score1, score2}` |
-| POST | `/api/tournaments/:id/matches/:matchId/walkover` | Walkover `{winner_id}` |
-| POST | `/api/tournaments/:id/matches/manual` | Manual match create `{round, position, player1_id?, player2_id?}` |
-| DELETE | `/api/tournaments/:id/matches` | Clear all matches |
-| GET | `/api/tournaments/:id/votes` | Get all votes |
-| POST | `/api/tournaments/:id/vote` | Vote for a time `{player_id, proposed_time}` |
-| DELETE | `/api/tournaments/:id/vote` | Remove vote `{player_id, proposed_time?}` |
-
-## Database Schema
-
-5 tables: `tournaments`, `players`, `tournament_players`, `matches`, `time_votes`
-
-Key notes:
-- `matches.winner_id` set automatically on result submission
-- `time_votes` has `UNIQUE(tournament_id, player_id, proposed_time)` — multi-select allowed
-- Tournament status flow: registration → voting → in_progress → completed
-
-## Bracket Generation Algorithm
-
-- Uses standard single-elimination seeding order: `getSeedingOrder(size)` (recursive)
-- Byes go to top seeds (players without opponents in round 1)
-- Pre-generates ALL rounds at once (empty slots for TBD)
-- On result submission, `advanceWinner()` fills the next round slot
-- Located in `api/repositories/match-repo.js`
-
-## Running
+## Commands
 
 ```bash
-# Backend (port 3100)
-cd suck-tournament/api && pnpm dev
-
-# Frontend (port 5175, proxies /api to 3100)
-cd suck-tournament/web && pnpm dev
-
-# Swagger docs at http://localhost:3100/docs
+pnpm install
+pnpm dev          # api + web
+pnpm migrate      # 运行 PostgreSQL 迁移
+pnpm build:web    # 生成 apps/web/build
+pnpm test         # web + api 单元测试（不需要数据库）
 ```
 
-## Known Issues
+## Hard Rules
 
-- Tournament IDs with `#` need URL encoding on the client side
-- shadcn-svelte v1.3 generates `utils.js.js` import paths (double `.js`), fix manually after `add`
-- Tailwind v4 CSS variables for shadcn theme are not defined (components may look unstyled without custom CSS)
+- ESM only（`import`/`export`）。
+- SQL 只能用参数化查询；表名一律限定为 `axsuck.<table>`。
+- Route 是普通 async 函数，不要用 `fastify-plugin` 包裹。
+- 数据库通过 `fastify.db.query(...)` 访问。
+- API 响应保持 `{ data, meta }` 形状（已有例外除外）。
+- 前端只用 Svelte 5 runes（`$state` / `$derived` / `$effect` / `$props`），不要用 `$:` 或 `export let`。
+- API 请求统一走 `$lib/api.js`；开发时 `/api` 由 Vite 代理到 `:3100`。
+- 凭证只从环境变量读取，绝不提交到仓库；`apps/*/.env` 已被 gitignore。
+
+## Credentials
+
+- `apps/api/.env` — `DATABASE_URL`、`PORT`、`ALLOWED_QQ_GROUPS`、VAPID keys
+- `apps/replay-process/.env` — `CHALLONGE_API_KEY`、`CHALLONGE_SUBDOMAIN`
+
+## History
+
+2026-10 重写过公开历史，移除了真实录像、玩家 Battle.net 数据和旧凭证。见 `HISTORY.md`。
