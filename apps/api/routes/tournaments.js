@@ -172,14 +172,14 @@ export default async function tournamentsRoutes(fastify) {
   });
 
   fastify.post('/tournaments', async (req) => {
-    const { id, name, description, player_capacity, hold_third_place, loser_advances } = req.body;
+    const { id, name, description, player_capacity, hold_third_place, loser_advances, scheduled_time } = req.body;
     if (!id || !name) throw fastify.httpErrors.badRequest('id and name are required');
     const existing = await repo.getById(id);
     if (existing) throw fastify.httpErrors.conflict('Tournament ID already exists');
     if (player_capacity != null && (!Number.isInteger(Number(player_capacity)) || Number(player_capacity) < 2 || Number(player_capacity) > 128)) {
       throw fastify.httpErrors.badRequest('player_capacity must be between 2 and 128');
     }
-    return await repo.create({ id, name, description, player_capacity, hold_third_place, loser_advances });
+    return await repo.create({ id, name, description, player_capacity, hold_third_place, loser_advances, scheduled_time });
   });
 
   fastify.get('/calendar.ics', async (req, reply) => {
