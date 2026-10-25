@@ -134,6 +134,7 @@
   let newName = $state("");
   let newCapacity = $state(128);
   let newLoserAdvances = $state(true);
+  let newScheduledTime = $state("");
   let creating = $state(false);
 
   // Divide tournaments
@@ -164,6 +165,7 @@
     }
     newName = "";
     newCapacity = 128;
+      newScheduledTime = "";
     newLoserAdvances = true;
     showCreateDialog = true;
   }
@@ -188,11 +190,13 @@
         name: trimmedName,
         player_capacity: newCapacity,
         hold_third_place: 0,
-        loser_advances: newLoserAdvances ? 1 : 0
+        loser_advances: newLoserAdvances ? 1 : 0,
+        scheduled_time: newScheduledTime || null
       });
       toast.success(`赛事创建成功！(生成 ID: ${generatedId})`);
       newName = "";
       newCapacity = 128;
+      newScheduledTime = "";
       showCreateDialog = false;
       await load();
     } catch (e) {
@@ -523,6 +527,16 @@
           max="128"
           class="bg-background border-border text-foreground"
         />
+      </div>
+      <div class="space-y-1.5">
+        <label for="create-time-input" class="text-xs font-bold text-muted-foreground">比赛时间</label>
+        <Input
+          id="create-time-input"
+          type="datetime-local"
+          bind:value={newScheduledTime}
+          class="bg-background border-border text-foreground"
+        />
+        <p class="text-[10px] text-muted-foreground/60">设置后将直接开启报名，无需时间投票。</p>
       </div>
 
       <div class="space-y-1.5">

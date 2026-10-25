@@ -286,7 +286,7 @@
           window.location.reload();
         }, 100);
       } else {
-        qqError = "验证未通过，请输入正确的 SUCK 水友群号";
+        qqError = "验证未通过，请输入正确的群号或 Discord 用户名";
         toast.error("群号验证失败！");
       }
     } catch (err) {
@@ -317,7 +317,7 @@
       try {
         const res = await API.verifyQQ(trimmedQQ);
         if (!res.valid) {
-          qqError = "验证未通过，请输入正确的 SUCK 水友群号";
+          qqError = "验证未通过，请输入正确的群号或 Discord 用户名";
           toast.error("群号验证失败！");
           verifying = false;
           return;
@@ -391,7 +391,7 @@
 </script>
 
 <svelte:head>
-  <title>AlphaX SUCK</title>
+  <title>Potato Cup</title>
 </svelte:head>
 
 <ModeWatcher defaultMode="dark" />
@@ -413,7 +413,7 @@
       >
         <!-- Left: Logo -->
         <a href="/" class="flex items-center gap-1.5 sm:gap-2.5 shrink-0 group">
-          <img src="/favicon.svg" alt="SUCK" class="w-7 h-7 object-contain group-hover:scale-105 transition-transform" />
+          <img src="/favicon.png" alt="Potato Cup" class="w-7 h-7 object-contain group-hover:scale-105 transition-transform" />
           <span
             class="hidden sm:inline font-bold text-sm sm:text-base tracking-tight text-foreground group-hover:text-primary transition-colors"
           >
@@ -572,7 +572,7 @@
         {#if userState.id}
           修改您的游戏昵称、添加多服务器 BattleTag 及关联 Wiki。
         {:else}
-          输入您所在的 SUCK 战队 QQ 水友群号 and 游戏昵称
+          输入您所在的土豆杯 QQ 群号或者Discord username and 游戏昵称
           ID，以解锁创建、报名和修改权限。
         {/if}
       </Dialog.Description>
@@ -868,7 +868,7 @@
           <Input
             id="layout-qq-input"
             bind:value={qqInput}
-            placeholder="请输入 SUCK 任意群号"
+            placeholder="请输入群号或 Discord 用户名"
             class="bg-background border-border text-foreground"
           />
           {#if qqError}

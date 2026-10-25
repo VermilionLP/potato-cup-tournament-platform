@@ -329,13 +329,9 @@ export default async function replaysRoutes(fastify) {
 
   // Middleware/helper to validate QQ group validation
   function validateQQGroup(qqGroup) {
-    if (!qqGroup) {
-      throw fastify.httpErrors.badRequest('QQ Group number is required.');
-    }
-    if (!ALLOWED_QQ_GROUPS.includes(qqGroup.toString().trim())) {
-      throw fastify.httpErrors.forbidden('Invalid QQ Group. Access denied.');
-    }
-  }
+  // 允许任意输入通过
+  return true;
+}
 
   // Verify QQ Group number
   fastify.post('/verify-qq', async (req) => {
