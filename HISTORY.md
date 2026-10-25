@@ -1,6 +1,7 @@
 # 项目历史
 
 本仓库最初是 `suck-utilities`（SC2 水友赛工具），2026-06 起并入 Wayne-Monorepo 继续开发。
+公开仓库只包含 `apps/api` 和 `apps/web`；独立的 `replay-process`（Challonge 拉取 / wiki 生成）工具不对外提供。
 为了让仓库可以安全公开，2026-10 重写了 git 历史，移除了：
 
 - `replays/` 下的真实 `.SC2Replay` 文件、`battlenet_ids.json`、`sc2_replay_data.json`

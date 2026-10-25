@@ -1,6 +1,6 @@
 # Replay Processing & Analysis Integration Plan
 
-> Historical design doc. The storage layer has since moved from SQLite to PostgreSQL (`axsuck` schema, `apps/api/migrations`); the parsing workflow described here still applies.
+> Historical design doc. The storage layer has since moved from SQLite to PostgreSQL (`axsuck` schema, `apps/api/migrations`); the parsing workflow described here still applies. The standalone `replay-process` tool itself is not part of this repository.
 
 This plan details how to integrate the SC2 replay parsing (`replay-process`) and visual analysis (`sc2replay_online_analysis`) into the `suck-tournament` system.
 

@@ -1,10 +1,9 @@
 # Suck Utilities
 
-S.U.C.K（StarCraft Ultra Chicken King）水友赛的一整套工具：赛事前端、API，以及录像解析 / Liquipedia wiki 生成工具。
+S.U.C.K（StarCraft Ultra Chicken King）水友赛的一整套工具：赛事前端与 API。
 
 - `apps/web` — SvelteKit SPA（Svelte 5、Tailwind CSS v4、shadcn-svelte）
 - `apps/api` — Fastify 5 + PostgreSQL（schema `axsuck`），SSE 实时推送、Swagger、可选 Python 录像解析
-- `apps/replay-process` — 独立的 Challonge + SC2 录像分析 / wiki 脚本生成工具
 
 ## 环境要求
 
@@ -40,7 +39,6 @@ pnpm dev
 | `pnpm migrate` | 运行 PostgreSQL 迁移 |
 | `pnpm build:web` | 构建静态前端到 `apps/web/build` |
 | `pnpm test` | Web + API 的单元测试（无需数据库） |
-| `node apps/replay-process/main.js` | 启动录像分析工具（:3000） |
 
 ## 部署
 
@@ -53,8 +51,7 @@ pnpm dev
 ## 配置
 
 - `apps/api/.env.example` — 端口、`DATABASE_URL`、QQ 群白名单、Web Push（VAPID）密钥
-- `apps/replay-process/.env.example` — Challonge API key / subdomain；也可以直接设置环境变量
-- 仓库里的 `config.js` 只读取环境变量，不保存任何真实凭证
+- 仓库里没有任何真实凭证；`apps/api/.env` 已被 gitignore
 
 ## 历史
 

@@ -211,18 +211,6 @@ importers:
         specifier: ^3.6.7
         version: 3.6.7
 
-  apps/replay-process:
-    dependencies:
-      '@fastify/static':
-        specifier: ^9.1.2
-        version: 9.3.0
-      fastify:
-        specifier: ^5.8.5
-        version: 5.12.7
-      sortablejs:
-        specifier: ^1.15.7
-        version: 1.15.7
-
   apps/web:
     dependencies:
       clsx:
@@ -1426,9 +1414,6 @@ packages:
   sonic-boom@4.2.1:
     resolution: {integrity: sha512-w6AxtubXa2wTXAUsZMMWERrsIRAdrK0Sc+FUytWvYAhBJLyuI4llrMIC1DtlNSdI99EI86KZum2MMq3EAZlF9Q==}
 
-  sortablejs@1.15.7:
-    resolution: {integrity: sha512-Kk8wLQPlS+yi1ZEf48a4+fzHa4yxjC30M/Sr2AnQu+f/MPwvvX9XjZ6OWejiz8crBsLwSq8GHqaxaET7u6ux0A==}
-
   source-map-js@1.2.2:
     resolution: {integrity: sha512-KGj/8Y43x35aZVDtt+J4mK1hoLGHULMYfSkODJNQjNDC3oW1PqPoxMwo0pLUsWM/UEGzON/NxeHywEfNXNP3Vw==}
     engines: {node: '>=0.10.0'}
@@ -2587,8 +2572,6 @@ snapshots:
   sonic-boom@4.2.1:
     dependencies:
       atomic-sleep: 1.0.0
-
-  sortablejs@1.15.7: {}
 
   source-map-js@1.2.2: {}
 

@@ -9,9 +9,10 @@ S.U.C.K SC2 水友赛工具集。单淘赛事的报名、种子、对阵、投�
 ```
 apps/
 ├── api/              # Fastify 5 (ESM), port 3100, PostgreSQL schema axsuck
-├── web/              # SvelteKit 2 SPA (ssr=false), port 5175
-└── replay-process/   # Node + Python: Challonge 拉取 / 录像分析 / wiki 生成
+└── web/              # SvelteKit 2 SPA (ssr=false), port 5175
 ```
+
+录像解析由 `apps/api/scripts/parse_replay.py` 调用服务器上的 Python（`sc2reader` / `spawningtool`）。
 
 ## Stack
 
@@ -20,7 +21,6 @@ apps/
 | API | Fastify 5, `@fastify/postgres`, Postgrator migrations, SSE, Swagger |
 | Database | PostgreSQL，所有表在 `axsuck` schema |
 | Web | Svelte 5 runes, SvelteKit 2 + adapter-static, Tailwind CSS v4, shadcn-svelte |
-| Replay | Python 3 + `sc2reader` / `spawningtool` |
 
 ## Commands
 
@@ -46,7 +46,6 @@ pnpm test         # web + api 单元测试（不需要数据库）
 ## Credentials
 
 - `apps/api/.env` — `DATABASE_URL`、`PORT`、`ALLOWED_QQ_GROUPS`、VAPID keys
-- `apps/replay-process/.env` — `CHALLONGE_API_KEY`、`CHALLONGE_SUBDOMAIN`
 
 ## History
 
