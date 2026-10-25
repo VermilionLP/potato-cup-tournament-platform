@@ -2,6 +2,7 @@
   import { onMount } from "svelte";
   import { toast } from "svelte-sonner";
   import { API } from "$lib/api.js";
+  import { defaultVehiclePools } from "$lib/data/vehiclePools.js";
   import { goto } from "$app/navigation";
   import { userState } from "$lib/user.svelte.js";
   import * as Card from "$lib/components/ui/card/index.js";
@@ -135,6 +136,8 @@
   let newCapacity = $state(128);
   let newLoserAdvances = $state(true);
   let newScheduledTime = $state("");
+  let selectedVehiclePool = $state("proleague");
+  let vehiclePools = $state(defaultVehiclePools);
   let creating = $state(false);
 
   // Divide tournaments
@@ -548,6 +551,17 @@
           class="bg-background border-border text-foreground"
         />
         <p class="text-[10px] text-muted-foreground/60">设置后将直接开启报名，无需时间投票。</p>
+      </div>
+
+      
+      <div class="space-y-1.5">
+        <label class="text-xs font-bold text-muted-foreground">载具池</label>
+        <select bind:value={selectedVehiclePool} class="w-full bg-background border border-border rounded-md px-3 py-2 text-sm text-foreground">
+          {#each vehiclePools as pool}
+            <option value={pool.id}>{pool.name}</option>
+          {/each}
+        </select>
+
       </div>
 
       <div class="space-y-1.5">

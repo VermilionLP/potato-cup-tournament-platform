@@ -1,0 +1,415 @@
+[
+  {
+    "name": "F-80A-5",
+    "nation": "USA",
+    "br": 7,
+    "type": "Jet",
+    "group": "F-80"
+  },
+  {
+    "name": "F-80C-10",
+    "nation": "USA",
+    "br": 7.7,
+    "type": "Jet",
+    "group": "F-80"
+  },
+  {
+    "name": "F-86A-5",
+    "nation": "USA",
+    "br": 8,
+    "type": "Jet",
+    "group": "F-86"
+  },
+  {
+    "name": "F-86F-25",
+    "nation": "USA",
+    "br": 8.3,
+    "type": "Jet",
+    "group": "F-86"
+  },
+  {
+    "name": "F-86F-2",
+    "nation": "USA",
+    "br": 8.7,
+    "type": "Jet",
+    "group": "F-86"
+  },
+  {
+    "name": "F-86F-35",
+    "nation": "USA",
+    "br": 8.3,
+    "type": "Jet",
+    "group": "F-86"
+  },
+  {
+    "name": "G.91 R/3",
+    "nation": "Germany",
+    "br": 8.7,
+    "type": "Jet",
+    "group": "G.91"
+  },
+  {
+    "name": "MiG-15bis",
+    "nation": "Germany",
+    "br": 8.3,
+    "type": "Jet",
+    "group": "MiG"
+  },
+  {
+    "name": "Lim-5P",
+    "nation": "Germany",
+    "br": 8.7,
+    "type": "Jet",
+    "group": "MiG"
+  },
+  {
+    "name": "CL-13A Mk.5",
+    "nation": "Germany",
+    "br": 9,
+    "type": "Jet",
+    "group": "F-86"
+  },
+  {
+    "name": "CL-13B Mk.6",
+    "nation": "Germany",
+    "br": 9.3,
+    "type": "Jet",
+    "group": "F-86"
+  },
+  {
+    "name": "Me 262 C-2b",
+    "nation": "Germany",
+    "br": 7.7,
+    "type": "Jet",
+    "group": "Me 262"
+  },
+  {
+    "name": "Me 163 B",
+    "nation": "Germany",
+    "br": 8,
+    "type": "Jet",
+    "group": "Me 163/Ki-200"
+  },
+  {
+    "name": "Me 163 B-0",
+    "nation": "Germany",
+    "br": 7.7,
+    "type": "Jet",
+    "group": "Me 163/Ki-200"
+  },
+  {
+    "name": "Me 262 A-1a",
+    "nation": "Germany",
+    "br": 7,
+    "type": "Jet",
+    "group": "Me 262"
+  },
+  {
+    "name": "Me 262 A-1a/Jabo",
+    "nation": "Germany",
+    "br": 7,
+    "type": "Jet",
+    "group": "Me 262"
+  },
+  {
+    "name": "Me 262 A-2a",
+    "nation": "Germany",
+    "br": 6.7,
+    "type": "Jet",
+    "group": "Me 262"
+  },
+  {
+    "name": "Alpha Jet A",
+    "nation": "Germany",
+    "br": 9.7,
+    "type": "Jet",
+    "group": "Alpha Jet"
+  },
+  {
+    "name": "Me 262 A-1a/U4",
+    "nation": "Germany",
+    "br": 7.3,
+    "type": "Jet",
+    "group": "Me 262"
+  },
+  {
+    "name": "MiG-15bis",
+    "nation": "USSR",
+    "br": 8.3,
+    "type": "Jet",
+    "group": "MiG"
+  },
+  {
+    "name": "MiG-17",
+    "nation": "USSR",
+    "br": 8.7,
+    "type": "Jet",
+    "group": "MiG"
+  },
+  {
+    "name": "Yak-15P",
+    "nation": "USSR",
+    "br": 6.7,
+    "type": "Jet",
+    "group": "Yak-15"
+  },
+  {
+    "name": "Yak-15",
+    "nation": "USSR",
+    "br": 6.3,
+    "type": "Jet",
+    "group": "Yak-15"
+  },
+  {
+    "name": "Yak-17",
+    "nation": "USSR",
+    "br": 7,
+    "type": "Jet",
+    "group": "Yak-15"
+  },
+  {
+    "name": "Yak-23",
+    "nation": "USSR",
+    "br": 7.7,
+    "type": "Jet",
+    "group": "Yak-15"
+  },
+  {
+    "name": "Yak-30D",
+    "nation": "USSR",
+    "br": 7.7,
+    "type": "Jet",
+    "group": "La-15/Yak-30"
+  },
+  {
+    "name": "La-15",
+    "nation": "USSR",
+    "br": 8,
+    "type": "Jet",
+    "group": "La-15/Yak-30"
+  },
+  {
+    "name": "La-174",
+    "nation": "USSR",
+    "br": 8,
+    "type": "Jet",
+    "group": "La-15/Yak-30"
+  },
+  {
+    "name": "Vampire F.B.5",
+    "nation": "Britain",
+    "br": 7.3,
+    "type": "Jet",
+    "group": "Vampire/Venom"
+  },
+  {
+    "name": "Venom FB.4",
+    "nation": "Britain",
+    "br": 8.7,
+    "type": "Jet",
+    "group": "Vampire/Venom"
+  },
+  {
+    "name": "Meteor F Mk 3",
+    "nation": "Britain",
+    "br": 7.3,
+    "type": "Jet",
+    "group": "Meteor"
+  },
+  {
+    "name": "Sea Meteor F Mk 3",
+    "nation": "Britain",
+    "br": 7.3,
+    "type": "Jet",
+    "group": "Meteor"
+  },
+  {
+    "name": "Meteor F Mk 4 G.41F",
+    "nation": "Britain",
+    "br": 8,
+    "type": "Jet",
+    "group": "Meteor"
+  },
+  {
+    "name": "Meteor F Mk 4 G.41G",
+    "nation": "Britain",
+    "br": 8,
+    "type": "Jet",
+    "group": "Meteor"
+  },
+  {
+    "name": "Meteor F Mk 8 G.41K",
+    "nation": "Britain",
+    "br": 8.3,
+    "type": "Jet",
+    "group": "Meteor"
+  },
+  {
+    "name": "F-86F-30",
+    "nation": "Japan",
+    "br": 8.3,
+    "type": "Jet",
+    "group": "F-86"
+  },
+  {
+    "name": "F-86F-40",
+    "nation": "Japan",
+    "br": 8.7,
+    "type": "Jet",
+    "group": "F-86"
+  },
+  {
+    "name": "Ki-200",
+    "nation": "Japan",
+    "br": 8,
+    "type": "Jet",
+    "group": "Me 163/Ki-200"
+  },
+  {
+    "name": "R2Y2 Kai V1",
+    "nation": "Japan",
+    "br": 8,
+    "type": "Jet",
+    "group": "R2Y2"
+  },
+  {
+    "name": "R2Y2 Kai V2",
+    "nation": "Japan",
+    "br": 8,
+    "type": "Jet",
+    "group": "R2Y2"
+  },
+  {
+    "name": "R2Y2 Kai V3",
+    "nation": "Japan",
+    "br": 8.3,
+    "type": "Jet",
+    "group": "R2Y2"
+  },
+  {
+    "name": "Alpha Jet TH",
+    "nation": "Japan",
+    "br": 9.7,
+    "type": "Jet",
+    "group": "Alpha Jet"
+  },
+  {
+    "name": "Sagittario 2",
+    "nation": "Italy",
+    "br": 8,
+    "type": "Jet",
+    "group": "Sagittario/Ariete"
+  },
+  {
+    "name": "Ariete",
+    "nation": "Italy",
+    "br": 9,
+    "type": "Jet",
+    "group": "Sagittario/Ariete"
+  },
+  {
+    "name": "G.91 pre-serie",
+    "nation": "Italy",
+    "br": 8,
+    "type": "Jet",
+    "group": "G.91"
+  },
+  {
+    "name": "G.91 R/1",
+    "nation": "Italy",
+    "br": 8.3,
+    "type": "Jet",
+    "group": "G.91"
+  },
+  {
+    "name": "Fiat G.91 R/4",
+    "nation": "Italy",
+    "br": 8.3,
+    "type": "Jet",
+    "group": "G.91"
+  },
+  {
+    "name": "MiG-17PF",
+    "nation": "Italy",
+    "br": 9,
+    "type": "Jet",
+    "group": "MiG"
+  },
+  {
+    "name": "Vampire FB 52A",
+    "nation": "Italy",
+    "br": 7.3,
+    "type": "Jet",
+    "group": "Vampire/Venom"
+  },
+  {
+    "name": "CL-13 Mk.4",
+    "nation": "Italy",
+    "br": 8.7,
+    "type": "Jet",
+    "group": "F-86"
+  },
+  {
+    "name": "Alpha Jet E",
+    "nation": "France",
+    "br": 9.7,
+    "type": "Jet",
+    "group": "Alpha Jet"
+  },
+  {
+    "name": "J-2",
+    "nation": "China",
+    "br": 8,
+    "type": "Jet",
+    "group": "MiG"
+  },
+  {
+    "name": "J-4",
+    "nation": "China",
+    "br": 8.7,
+    "type": "Jet",
+    "group": "MiG"
+  },
+  {
+    "name": "A28B",
+    "nation": "Sweden",
+    "br": 7.7,
+    "type": "Jet",
+    "group": "Vampire/Venom"
+  },
+  {
+    "name": "A21RB",
+    "nation": "Sweden",
+    "br": 7,
+    "type": "Jet",
+    "group": "J21"
+  },
+  {
+    "name": "J21RA",
+    "nation": "Sweden",
+    "br": 6.7,
+    "type": "Jet",
+    "group": "J21"
+  },
+  {
+    "name": "Meteor NF.13",
+    "nation": "Israel",
+    "br": 8,
+    "type": "Jet",
+    "group": "Meteor"
+  },
+  {
+    "name": "Meteor F.8",
+    "nation": "Israel",
+    "br": 8.3,
+    "type": "Jet",
+    "group": "Meteor"
+  },
+  {
+    "name": "Meteor F Mk 9",
+    "nation": "Israel",
+    "br": 8.7,
+    "type": "Jet",
+    "group": "Meteor"
+  }
+]

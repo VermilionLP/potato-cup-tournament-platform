@@ -1058,31 +1058,41 @@ export default async function replaysRoutes(fastify) {
       } catch (_) {}
     }
 
-    let wikiScript = `{{DISPLAYTITLE:StarCraft Ultra Chicken King #{{SUBPAGENAME}}}}\n`;
-    wikiScript += `{{SUCK_Navbox}}\n`;
+    const playerCount = players.length;
+    let wikiScript = `{{DISPLAYTITLE:Potato Cup Weekly #{{SUBPAGENAME}} (土豆杯周赛#{{SUBPAGENAME}})}}\n`;
+    wikiScript += `{{Template:Potato Cup Navbox}}\n`;
+    wikiScript += `{{tabs static\n`;
+    wikiScript += `|link1=Potato_Cup_Weekly/{{SUBPAGENAME}}|name1=Weekly #{{SUBPAGENAME}}\n`;
+    wikiScript += `|link2=Potato_Cup_Weekly/{{SUBPAGENAME}}/Beginners|name2=Weekly #{{SUBPAGENAME}} Beginners\n`;
+    wikiScript += `}}\n`;
     wikiScript += `{{Infobox league\n`;
-    wikiScript += `|name=S.U.C.K #{{SUBPAGENAME}}\n`;
-    wikiScript += `|image=Alpha X logo dec 2020.png\n`;
-    wikiScript += `|series=StarCraft Ultra Chicken King\n`;
-    wikiScript += `|abbreviation=SUCK\n`;
-    wikiScript += `|tickername=SUCK#{{SUBPAGENAME}}\n`;
+    wikiScript += `|name=Potato Cup Weekly #{{SUBPAGENAME}}\n`;
+    wikiScript += `|image=Potato_Cup_2026_lightmode.png\n`;
+    wikiScript += `|icon=Potato_Cup_2026_icon_lightmode.png\n`;
+    wikiScript += `|imagedark=Potato_Cup_2026_darkmode.png\n`;
+    wikiScript += `|icondark=Potato_Cup_icon_darkmode.png\n`;
+    wikiScript += `|series=Potato Cup\n`;
+    wikiScript += `|abbreviation=\n`;
+    wikiScript += `|tickername=Potato Cup Weekly #{{SUBPAGENAME}}\n`;
     wikiScript += `|number={{SUBPAGENAME}}\n`;
-    wikiScript += `|organizer=AlphaX战队星际水友群\n`;
-    wikiScript += `|sponsor=\n`;
-    wikiScript += `|game=lotv\n`;
-    wikiScript += `|server=cn\n`;
+    wikiScript += `|organizer=Vermilion\n`;
+    wikiScript += `|sponsor=Vermilion\n`;
+    wikiScript += `|server=Europe\n`;
     wikiScript += `|type=Online\n`;
-    wikiScript += `|country=China\n`;
-    wikiScript += `|format=1v1<br>Single-elimination\n`;
-    wikiScript += `|prizepool=0\n`;
+    wikiScript += `|country=World\n`;
+    wikiScript += `|format=1v1<br>Playoffs\n`;
+    wikiScript += `|mode=RB\n`;
+    wikiScript += `|vehicle=Aviation\n`;
+    wikiScript += `|prizepool=200\n`;
     wikiScript += `|localcurrency=cny\n`;
     wikiScript += `|date=${tournamentDate}\n`;
-    wikiScript += `|liquipediatier=4 |tiertype=Showmatch\n`;
+    wikiScript += `|player_number=${players.length}\n`;
+    wikiScript += `|liquipediatier=4 |liquipediatiertype=Weekly\n`;
+    wikiScript += `|web=\n`;
     wikiScript += `|bracket=${bracketUrl}\n`;
     wikiScript += `}}\n\n`;
-
     wikiScript += `==Format==\n`;
-    wikiScript += `* 单淘 Single-elimination bracket\n`;
+    wikiScript += `* Before Finals are {{abbr/Bo3}}.\n`;
 
     const matchCounts = matches.map(m => (replaysByMatchId[m.id] || []).length).filter(c => c > 0);
     const maxGames = matchCounts.length > 0 ? Math.max(...matchCounts) : 1;
@@ -1100,54 +1110,22 @@ export default async function replaysRoutes(fastify) {
     wikiScript += `==Talents==\n`;
     wikiScript += `{{BroadcasterCard\n`;
     wikiScript += `|position=Host\n`;
-    wikiScript += `|b1=Wayne|b1flag=CN|b1link=User:Wayne19980\n`;
+    wikiScript += `|b1=Vermilion\n`;
     wikiScript += `}}\n`;
     wikiScript += `{{BroadcasterCard\n`;
     wikiScript += `|position=Caster\n`;
-    wikiScript += `|b1=Wayne|b1flag=CN|b1link=User:Wayne19980\n`;
+    wikiScript += `|b1=KATO Megumi|b1flag=CN\n`;
+    wikiScript += `|b2=Avı Physıcα|b2flag=CN\n`;
+    wikiScript += `|b3=TheWindupBird|b3flag=CN\n`;
     wikiScript += `}}\n\n`;
-
     wikiScript += `==Prize Pool==\n`;
-    wikiScript += `{{ParticipantTable|hidden=true\n`;
-    players.forEach((player, index) => {
-      const displayName = player.display_name;
-      const flag = player.flag || "cn";
-      const teamStr = player.team ? `|p${index + 1}team=${player.team}` : "";
-      const linkStr = player.link ? `|p${index + 1}link=${player.link}` : "";
-      wikiScript += `|p${index + 1}=${displayName}|p${index + 1}flag=${flag}${teamStr}${linkStr}\n`;
-    });
-    wikiScript += `}}\n`;
-
-    const playerCount = players.length;
-    wikiScript += `{{SoloPrizePool\n`;
-    wikiScript += `|{{Slot|place=1}}\n`;
-    if (playerCount >= 2) wikiScript += `|{{Slot|place=2}}\n`;
-
-    if (playerCount === 3) {
-      wikiScript += `|{{Slot|place=3}}\n`;
-    } else if (playerCount >= 4) {
-      if (tournament.hold_third_place === 1) {
-        wikiScript += `|{{Slot|place=3}}\n`;
-        wikiScript += `|{{Slot|place=4}}\n`;
-      } else {
-        wikiScript += `|{{Slot|place=3-4}}\n`;
-      }
-    }
-
-    if (playerCount >= 8) {
-      wikiScript += `|{{Slot|place=5-8}}\n`;
-    } else if (playerCount > 4) {
-      const placeStr = playerCount === 5 ? "5" : `5-${playerCount}`;
-      wikiScript += `|{{Slot|place=${placeStr}}}\n`;
-    }
-    if (playerCount >= 16) {
-      wikiScript += `|{{Slot|place=9-16}}\n`;
-    } else if (playerCount > 8) {
-      const placeStr = playerCount === 9 ? "9" : `9-${playerCount}`;
-      wikiScript += `|{{Slot|place=${placeStr}}}\n`;
-    }
+    wikiScript += `{{SoloPrizePool|localcurrency=cny\n`;
+    wikiScript += `|points1=PotatoCup Leaderboard 2026|points1link=Potato_Cup/Leaderboard/2026\n`;
+    wikiScript += `|{{Slot|place=1|localprize=136|points=100}}\n`;
+    wikiScript += `|{{Slot|place=2|localprize=49|points=60}}\n`;
+    wikiScript += `|{{Slot|place=3-4|localprize=8|points=35}}\n`;
+    wikiScript += `|{{Slot|place=5-8|localprize=0|points=10}}\n`;
     wikiScript += `}}\n\n`;
-
     wikiScript += `==Notable Participants==\n`;
     wikiScript += `{{ParticipantTable|count=true|onlyNotable=|tournament=#}}\n\n`;
 
@@ -1160,7 +1138,7 @@ export default async function replaysRoutes(fastify) {
       "Bracket/16";
     const tournamentIdStr = tournamentNumber.padStart(4, "0");
 
-    wikiScript += `{{Bracket|${bracketTemplate}|id=AXsuck${tournamentIdStr}\n`;
+    wikiScript += `{{Bracket|${bracketTemplate}|id=pcweek${tournamentIdStr}\n`;
 
     // Group matches by round for bracket structure rendering
     const maxDbRound = Math.max(...matches.map(m => m.round), 1);

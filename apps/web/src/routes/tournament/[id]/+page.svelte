@@ -312,6 +312,101 @@
 
   // Modal for match results
   let showMatchDialog = $state(false);
+  let reportStep = $state("banpick");
+  let drawing = $state(false);
+  let animDisplay = $state(null);
+  let score1Input = $state(0);
+  let score2Input = $state(0);
+  let banPhase = $state("a");
+  let bannedGroups = $state(new Set());
+  let removedVehicles = $state(new Set());
+  let banA = $state(null);
+  let banB = $state(null);
+  let drawnGroup = $state(null);
+  let drawnVehicle = $state(null);
+  let confirmedGroup = $state(false);
+  let usedGroups = $state(new Set());
+
+  const vehiclePool = [
+    {name:"Bf 109 E-4",group:"Bf 109 E"},{name:"Bf 109 F-2",group:"Bf 109"},{name:"Bf 109 E-7",group:"Bf 109"},
+    {name:"Bf 109 G-6",group:"Bf 109"},{name:"Bf 109 K-4",group:"Bf 109"},{name:"Bf 109 F-4",group:"Bf 109"},
+    {name:"Fw 190 A-1",group:"Fw 190"},{name:"Fw 190 D-9",group:"Fw 190"},{name:"Fw 190 A-8",group:"Fw 190"},
+    {name:"P-39N",group:"P-39"},{name:"P-51H-5-NA",group:"P-51"},{name:"P-51D-30",group:"P-51"},{name:"P-51C-10-NT",group:"P-51"},
+    {name:"F6F-5",group:"F6F/F8F"},{name:"P-63A-5",group:"P-63"},{name:"P-63A-10",group:"P-63"},{name:"P-63C-5",group:"P-63"},
+    {name:"P-47D-28",group:"P-47"},{name:"F8F-1B",group:"F6F/F8F"},{name:"F6F-5N",group:"F6F/F8F"},
+    {name:"Yak-1B",group:"Yak"},{name:"Yak-9U",group:"Yak"},{name:"Yak-9T",group:"Yak"},{name:"Yak-3U",group:"Yak"},
+    {name:"Yak-3P",group:"Yak"},{name:"Yak-3",group:"Yak"},{name:"Yak-3 (Eremin)",group:"Yak"},
+    {name:"La-5FN",group:"La"},{name:"La-7",group:"La"},
+    {name:"Spitfire F Mk XIVe",group:"Spitfire"},{name:"Spitfire LF Mk IX",group:"Spitfire"},
+    {name:"Spitfire Mk XVI",group:"Spitfire"},{name:"Spitfire Mk II",group:"Spitfire"},
+    {name:"Ki-61-Ia Otsu",group:"Ki-61"},{name:"A6M5",group:"A6M/A7M"},{name:"A7M2",group:"A6M/A7M"},{name:"A7M1",group:"A6M/A7M"},
+    {name:"Ki-43-III Otsu",group:"Ki-43"},{name:"Ki-84 Otsu",group:"Ki-84"},{name:"Ki-84 Ko",group:"Ki-84"},{name:"Ki-84 Hei",group:"Ki-84"},
+    {name:"J2M2",group:"J2M"},{name:"G.55 Serie 0",group:"G.55/56"},{name:"G.55 Serie 1",group:"G.55/56"},{name:"G.56",group:"G.55/56"},
+    {name:"Re.2005 Serie 0",group:"Re.2005"},{name:"Re.2005 VDM",group:"Re.2005"},
+    {name:"J21A-2",group:"J21"},{name:"J21A-1",group:"J21"},{name:"A21A-3",group:"J21"},{name:"VL Pyörremyrsky",group:"Pyorremyrsky"}
+  ];
+
+  function getAvailableGroups() {
+    const groups = new Set();
+    for (const v of vehiclePool) {
+      if (!bannedGroups.has(v.group) && !usedGroups.has(v.group)) groups.add(v.group);
+    }
+    return [...groups];
+  }
+  function banVehicle(name) {
+    const v = vehiclePool.find(x => x.name === name);
+    if (!v) return;
+    bannedGroups = new Set([...bannedGroups, v.group]);
+    if (banPhase === "a") { banA = v; banPhase = "b"; }
+    else if (banPhase === "b") { banB = v; banPhase = "done"; }
+  }
+  function drawGroup() {
+    const avail = getAvailableGroups();
+    if (!avail.length) return;
+    drawnGroup = avail[Math.floor(Math.random() * avail.length)];
+    drawnVehicle = null;
+  }
+  function removeDrawnGroup() {
+    if (!confirmedGroup && drawnGroup) {
+      // 未确认大组：整组移除，继续抽大组
+      vehiclePool.filter(v => v.group === drawnGroup).forEach(v => removedVehicles.add(v.name));
+      removedVehicles = new Set(removedVehicles);
+      drawnGroup = null;
+      drawnVehicle = null;
+      animDisplay = null;
+      confirmedGroup = false;
+      return;
+    }
+    // 已确认大组：只移除当前抽到的单个载具
+    if (drawnVehicle) {
+      removedVehicles.add(drawnVehicle);
+      removedVehicles = new Set(removedVehicles);
+    }
+    drawnVehicle = null;
+    animDisplay = null;
+  }
+  async function drawInGroup() {
+    if (!drawnGroup || drawing) return;
+    const inGroup = vehiclePool.filter(v => v.group === drawnGroup);
+    const pool = inGroup.map(v => v.name);
+    if (!pool.length) return;
+    drawing = true;
+    const final = pool[Math.floor(Math.random() * pool.length)];
+    const startTime = Date.now();
+    const duration = 1800;
+    while (Date.now() - startTime < duration) {
+      animDisplay = pool[Math.floor(Math.random() * pool.length)];
+      await new Promise(r => setTimeout(r, 70));
+    }
+    animDisplay = final;
+    drawnVehicle = final;
+    drawing = false;
+  }
+
+  function resetBanPick() {
+    banPhase = "a"; bannedGroups = new Set(); removedVehicles = new Set(); banA = null; banB = null;
+    drawnGroup = null; drawnVehicle = null; confirmedGroup = false; usedGroups = new Set();
+  }
   let selectedMatch = $state(null);
   let resultScore1 = $state(0);
   let resultScore2 = $state(0);
@@ -932,13 +1027,13 @@
   // Match report modal triggers
   function openMatchReport(match) {
     selectedMatch = match;
-    showMatchDialog = true;
+    showMatchDialog = true; reportStep = "banpick"; score1Input = 0; score2Input = 0; resetBanPick();
   }
 
   async function openMatchDetails(match) {
     selectedMatch = match;
     if (match.status === "pending" && tournament.status !== "completed") {
-      showMatchDialog = true;
+      showMatchDialog = true; reportStep = "banpick"; score1Input = 0; score2Input = 0; resetBanPick();
     } else {
       showMatchDetailsDialog = true;
       await loadReplaysForMatch(match.id);
@@ -1419,17 +1514,18 @@
 
     submittingResult = true;
 
-    const isPlayer1 = winnerId === selectedMatch.player1_id;
-    const score1 = isPlayer1 ? 1 : 0;
-    const score2 = isPlayer1 ? 0 : 1;
+    const score1 = Number(score1Input) || 0;
+    const score2 = Number(score2Input) || 0;
 
     try {
       await API.submitResult(tid, selectedMatch.id, score1, score2);
-      const advancerId = isPlayer1
+      const advancerId = winnerId === selectedMatch.player1_id
         ? selectedMatch.player2_id
         : selectedMatch.player1_id;
+      const isLoserAdvances = tournament?.loser_advances === 1 || tournament?.loser_advances === true;
+      const advancerName = playerName(isLoserAdvances ? advancerId : winnerId);
       toast.success(
-        `已判定游戏获胜者为 ${playerName(winnerId)}，败者 ${playerName(advancerId)} 晋级`,
+        `已判定游戏获胜者为 ${playerName(winnerId)}，${isLoserAdvances ? "败者" : "胜者"} ${advancerName} 晋级`,
       );
       if (tournament && tournament.active_match_id === selectedMatch.id) {
         await API.setActiveMatch(tid, null);
@@ -2241,7 +2337,7 @@
               class="flex items-center justify-between px-3 py-1.5 rounded-lg bg-background/40 border border-border/60 hover:bg-background/80 transition-colors"
             >
               <span
-                class="text-xs font-medium flex items-center gap-1.5 truncate mr-2"
+                class="text-xs font-medium flex items-center gap-1.5  mr-2"
               >
                 <div
                   class="w-2.5 h-2.5 rounded-full bg-primary/30 border border-primary/50"
@@ -2251,7 +2347,7 @@
                     >[{p.team}]</span
                   >
                 {/if}
-                <span class="truncate">{p.display_name}</span>
+                <span class="">{p.display_name}</span>
                 {#if p.flag}
                   <span
                     class="text-[9px] font-bold px-1 rounded bg-muted text-muted-foreground uppercase font-mono"
@@ -2749,15 +2845,15 @@
                           <!-- Player 1 Row -->
                           <div class="flex items-center justify-between w-full h-6 border-b border-neutral-200/50 dark:border-neutral-900/40 transition-colors
                             {getPlayerRowBgClass(m.player1_id, p1?.race)}">
-                            <div class="flex items-center gap-1.5 pl-1.5 truncate flex-1 min-w-0 h-full py-0">
-                              <span class="truncate font-semibold flex items-center gap-0.5 text-[10.5px]
+                            <div class="flex items-center gap-1.5 pl-1.5  flex-1 min-w-0 h-full py-0">
+                              <span class=" font-semibold flex items-center gap-0.5 text-[10.5px]
                                 {m.winner_id === m.player1_id ? 'text-black dark:text-white font-black' : 'text-neutral-700 dark:text-neutral-300'}
                                 {!m.player1_id ? 'text-neutral-400 dark:text-neutral-500/80' : ''}"
                               >
                                 {#if m.winner_id === m.player1_id && m.winner_id}
                                   <CrownIcon class="w-2.5 h-2.5 text-amber-500 dark:text-amber-400 shrink-0" />
                                 {/if}
-                                <span class="truncate">{playerName(m.player1_id, m)}</span>
+                                <span class="">{playerName(m.player1_id, m)}</span>
                               </span>
                             </div>
                             <!-- Score -->
@@ -2772,15 +2868,15 @@
                           <!-- Player 2 Row -->
                           <div class="flex items-center justify-between w-full h-6 transition-colors
                             {getPlayerRowBgClass(m.player2_id, p2?.race)}">
-                            <div class="flex items-center gap-1.5 pl-1.5 truncate flex-1 min-w-0 h-full py-0">
-                              <span class="truncate font-semibold flex items-center gap-0.5 text-[10.5px]
+                            <div class="flex items-center gap-1.5 pl-1.5  flex-1 min-w-0 h-full py-0">
+                              <span class=" font-semibold flex items-center gap-0.5 text-[10.5px]
                                 {m.winner_id === m.player2_id ? 'text-black dark:text-white font-black' : 'text-neutral-700 dark:text-neutral-300'}
                                 {!m.player2_id ? 'text-neutral-400 dark:text-neutral-500/80' : ''}"
                               >
                                 {#if m.winner_id === m.player2_id && m.winner_id}
                                   <CrownIcon class="w-2.5 h-2.5 text-amber-500 dark:text-amber-400 shrink-0" />
                                 {/if}
-                                <span class="truncate">{playerName(m.player2_id, m)}</span>
+                                <span class="">{playerName(m.player2_id, m)}</span>
                               </span>
                             </div>
                             <!-- Score -->
@@ -2895,15 +2991,15 @@
                             <!-- Player 1 Row -->
                             <div class="flex items-center justify-between w-full h-6 border-b border-neutral-200/50 dark:border-neutral-900/40 transition-colors
                               {getPlayerRowBgClass(thirdPlaceMatch.player1_id, tp1?.race)}">
-                              <div class="flex items-center gap-1.5 pl-1.5 truncate flex-1 min-w-0 h-full py-0">
-                                <span class="truncate font-semibold flex items-center gap-0.5 text-[10.5px]
+                              <div class="flex items-center gap-1.5 pl-1.5  flex-1 min-w-0 h-full py-0">
+                                <span class=" font-semibold flex items-center gap-0.5 text-[10.5px]
                                   {thirdPlaceMatch.winner_id === thirdPlaceMatch.player1_id ? 'text-black dark:text-white font-black' : 'text-neutral-700 dark:text-neutral-300'}
                                   {!thirdPlaceMatch.player1_id ? 'text-neutral-400 dark:text-neutral-500/80' : ''}"
                                 >
                                   {#if thirdPlaceMatch.winner_id === thirdPlaceMatch.player1_id && thirdPlaceMatch.winner_id}
                                     <CrownIcon class="w-2.5 h-2.5 text-amber-500 dark:text-amber-400 shrink-0" />
                                   {/if}
-                                  <span class="truncate">{playerName(thirdPlaceMatch.player1_id, thirdPlaceMatch)}</span>
+                                  <span class="">{playerName(thirdPlaceMatch.player1_id, thirdPlaceMatch)}</span>
                                 </span>
                               </div>
                               {#if thirdPlaceMatch.status !== "pending"}
@@ -2917,15 +3013,15 @@
                             <!-- Player 2 Row -->
                             <div class="flex items-center justify-between w-full h-6 transition-colors
                               {getPlayerRowBgClass(thirdPlaceMatch.player2_id, tp2?.race)}">
-                              <div class="flex items-center gap-1.5 pl-1.5 truncate flex-1 min-w-0 h-full py-0">
-                                <span class="truncate font-semibold flex items-center gap-0.5 text-[10.5px]
+                              <div class="flex items-center gap-1.5 pl-1.5  flex-1 min-w-0 h-full py-0">
+                                <span class=" font-semibold flex items-center gap-0.5 text-[10.5px]
                                   {thirdPlaceMatch.winner_id === thirdPlaceMatch.player2_id ? 'text-black dark:text-white font-black' : 'text-neutral-700 dark:text-neutral-300'}
                                   {!thirdPlaceMatch.player2_id ? 'text-neutral-400 dark:text-neutral-500/80' : ''}"
                                 >
                                   {#if thirdPlaceMatch.winner_id === thirdPlaceMatch.player2_id && thirdPlaceMatch.winner_id}
                                     <CrownIcon class="w-2.5 h-2.5 text-amber-500 dark:text-amber-400 shrink-0" />
                                   {/if}
-                                  <span class="truncate">{playerName(thirdPlaceMatch.player2_id, thirdPlaceMatch)}</span>
+                                  <span class="">{playerName(thirdPlaceMatch.player2_id, thirdPlaceMatch)}</span>
                                 </span>
                               </div>
                               {#if thirdPlaceMatch.status !== "pending"}
@@ -3122,7 +3218,7 @@
 
     <!-- Phase Stepper Graphic -->
     <div
-      class="grid grid-cols-4 gap-2 border border-border bg-card/25 p-3 rounded-2xl text-center text-xs"
+      class="grid grid-cols-5 gap-3 border border-border bg-card/25 p-3 rounded-2xl text-center text-xs"
     >
       <div
         class="space-y-1.5 {tournament.status === 'voting'
@@ -3452,7 +3548,7 @@
                         >#{idx + 1}</span
                       >
                       <div class="flex-1 min-w-0">
-                        <div class="font-semibold truncate">{playerName(pid)}</div>
+                        <div class="font-semibold ">{playerName(pid)}</div>
                         <div class="flex items-center gap-1.5 mt-0.5">
                           <TierBadge tier={p?.ladder_tier} className="text-[9px]" />
                           <span class="text-[9px] font-mono text-muted-foreground">
@@ -4010,125 +4106,135 @@
 
 <!-- Match Result Submission Dialog -->
 <Dialog.Root bind:open={showMatchDialog}>
-  <Dialog.Content class="max-w-95 bg-card border border-border">
+  <Dialog.Content class="!max-w-4xl w-full max-h-[90vh] overflow-y-auto bg-card border border-border">
     <Dialog.Header>
       <Dialog.Title class="text-base font-bold text-foreground">
-        填报比赛结果
+        <div class="flex gap-1 mb-3">
+          <Button size="sm" variant={reportStep === "banpick" ? "default" : "outline"} onclick={() => reportStep = "banpick"}>Ban / Pick</Button>
+          <Button size="sm" variant={reportStep === "score" ? "default" : "outline"} onclick={() => reportStep = "score"}>填报比分</Button>
+        </div>
       </Dialog.Title>
       <Dialog.Description class="text-xs text-muted-foreground">
-        场次对局: {selectedMatch?.position} • {selectedMatch ? roundLabel(selectedMatch.round, totalRounds) : ""}
+        场次: {selectedMatch?.position} • {selectedMatch ? roundLabel(selectedMatch.round, totalRounds) : ""}
       </Dialog.Description>
     </Dialog.Header>
 
     {#if selectedMatch}
-      <div class="py-3 space-y-5">
-        <!-- Standard Score Submission -->
-        <div
-          class="space-y-3 p-4 rounded-xl border border-border bg-background/30 text-center"
-        >
-          <h4
-            class="text-xs font-bold text-muted-foreground uppercase tracking-widest"
-          >
-            判定游戏获胜方 (败者晋级)
-          </h4>
-          <p class="text-[10px] text-muted-foreground/85 leading-normal">
-            本比赛为“败者晋级杯赛”，星际2游戏获胜的一方记大分 1
-            分并被淘汰，失败的一方记 0 分并晋级下一轮。请选择本局星际2游戏的<strong
-              >获胜者</strong
-            >：
-          </p>
-          <div class="flex flex-col gap-2 mt-1">
-            <Button
-              disabled={submittingResult}
-              onclick={() => selectGameWinner(selectedMatch.player1_id)}
-              class="w-full text-xs font-bold h-9 cursor-pointer justify-center"
-            >
-              游戏获胜者: {playerName(selectedMatch.player1_id)} (对方晋级)
-            </Button>
-            <Button
-              disabled={submittingResult}
-              onclick={() => selectGameWinner(selectedMatch.player2_id)}
-              class="w-full text-xs font-bold h-9 cursor-pointer justify-center"
-            >
-              游戏获胜者: {playerName(selectedMatch.player2_id)} (对方晋级)
-            </Button>
+      {#if reportStep === "banpick"}
+        <div class="py-2 space-y-4">
+          <div class="flex justify-center gap-6 text-sm">
+            <div class="px-4 py-2 rounded-xl border-2 {banPhase === 'a' ? 'border-primary' : 'border-border'}">
+              <div class="font-bold">A ({playerName(selectedMatch.player1_id)})</div>
+              <div class="text-xs text-muted-foreground">Ban: {banA?.name || '-'}</div>
+            </div>
+            <div class="px-4 py-2 rounded-xl border-2 {banPhase === 'b' ? 'border-primary' : 'border-border'}">
+              <div class="font-bold">B ({playerName(selectedMatch.player2_id)})</div>
+              <div class="text-xs text-muted-foreground">Ban: {banB?.name || '-'}</div>
+            </div>
+          </div>
+
+          <div class="text-center text-sm font-medium">
+            {banPhase === "done" ? "抽取阶段" : "Ban 阶段 - " + banPhase.toUpperCase()}
+          </div>
+          <div class="grid grid-cols-5 gap-3 p-2 ">
+            {#if banPhase !== "done"}
+              <button
+                type="button"
+                onclick={() => banVehicle(null)}
+                class="text-[10px] p-2 rounded-lg border border-dashed text-left hover:border-primary bg-background"
+              >
+                <div class="font-medium  text-muted-foreground">空置</div>
+                <div class="text-[9px] text-muted-foreground">Null Ban</div>
+              </button>
+            {/if}
+            {#each vehiclePool as v}
+              {@const banned = bannedGroups.has(v.group)}
+                {@const removed = removedVehicles.has(v.name)}
+              <button
+                type="button"
+                disabled={banned || removed || banPhase === "done"}
+                onclick={() => banVehicle(v.name)}
+                class="text-[10px] p-2 rounded-lg border text-left {banned || removed ? 'opacity-30 bg-muted' : 'hover:border-primary bg-background'}"
+              >
+                <div class="font-medium ">{v.name}</div>
+                <div class="text-[9px] text-muted-foreground">Group: {v.group}</div>
+              </button>
+            {/each}
+          </div>
+          {#if banPhase === "done"}
+            <div class="text-center space-y-3 py-6">
+              {#if !drawnGroup}
+                <div class="text-lg font-bold">点击抽取</div>
+                <div class="text-xs text-muted-foreground">抽取大组</div>
+                <Button onclick={drawGroup} class="rounded-full">随机抽取</Button>
+              {:else}
+                <div class="text-2xl font-bold">{drawnGroup}</div>
+                <div class="text-xs text-muted-foreground">已选大组</div>
+                <div class="text-3xl font-bold min-h-[2.5rem] transition-all duration-75 {drawing ? "opacity-60 scale-95" : "opacity-100"}">
+                  {animDisplay === null ? "空置" : (animDisplay || drawnVehicle || "点击抽取")}
+                </div>
+                <div class="text-xs text-muted-foreground mt-1">
+                  {drawnVehicle ? "已抽取载具" : "组内抽取"}
+                </div>
+                <div class="flex justify-center gap-2 flex-wrap mt-4">
+                  <Button onclick={drawInGroup} variant="outline" class="rounded-full" disabled={drawing}>
+                    {drawing ? "抽取中..." : "随机抽取"}
+                  </Button>
+                  <Button onclick={removeDrawnGroup} variant="outline" class="rounded-full" disabled={drawing}>移出并重抽</Button>
+                  {#if confirmedGroup}
+                    <Button variant="outline" class="rounded-full" onclick={() => { confirmedGroup = false; drawnGroup = null; drawnVehicle = null; animDisplay = null; }} disabled={drawing}>返回大组</Button>
+                  {:else}
+                    <Button onclick={() => { confirmedGroup = true; }} class="rounded-full" disabled={drawing}>使用该组</Button>
+                  {/if}
+                </div>
+              {/if}
+            </div>
+          {/if}
+
+          <div class="flex justify-center gap-2 pt-2">
           </div>
         </div>
-
-        <!-- Walkover / Forfeit -->
-        <div
-          class="space-y-2.5 p-4 rounded-xl border border-border bg-destructive/5 text-center"
-        >
-          <h4
-            class="text-xs font-bold text-destructive/80 uppercase tracking-widest"
-          >
-            弃权判定
-          </h4>
-          <p class="text-[10px] text-muted-foreground">
-            若某方选手未能按时出席，可直接判定另一方弃权晋级下一轮。
-          </p>
-          <div class="grid grid-cols-2 gap-2 mt-1">
-            <Button
-              variant="outline"
-              size="sm"
-              onclick={() => recordWalkover(selectedMatch.player2_id)}
-              disabled={submittingResult}
-              class="text-[11px] font-semibold border-red-500/20 text-foreground hover:bg-red-500/10 cursor-pointer text-center truncate px-2"
-            >
-              {playerName(selectedMatch.player2_id)} 晋级 (对方弃权)
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onclick={() => recordWalkover(selectedMatch.player1_id)}
-              disabled={submittingResult}
-              class="text-[11px] font-semibold border-red-500/20 text-foreground hover:bg-red-500/10 cursor-pointer text-center truncate px-2"
-            >
-              {playerName(selectedMatch.player1_id)} 晋级 (对方弃权)
-            </Button>
+      {:else}
+        <div class="py-3 space-y-4">
+          <div class="border border-border rounded-lg overflow-hidden">
+            <div class="grid grid-cols-2 bg-muted/50 text-xs font-semibold px-3 py-2">
+              <span>选手</span><span class="text-right">比分</span>
+            </div>
+            <div class="divide-y divide-border">
+              <div class="grid grid-cols-2 items-center px-3 py-2.5">
+                <span class="text-sm font-medium ">{playerName(selectedMatch.player1_id)}</span>
+                <div class="flex justify-end"><Input type="number" min="0" bind:value={score1Input} class="w-16 h-8 text-center" /></div>
+              </div>
+              <div class="grid grid-cols-2 items-center px-3 py-2.5">
+                <span class="text-sm font-medium ">{playerName(selectedMatch.player2_id)}</span>
+                <div class="flex justify-end"><Input type="number" min="0" bind:value={score2Input} class="w-16 h-8 text-center" /></div>
+              </div>
+            </div>
+          </div>
+          <div class="text-center space-y-2">
+            <div class="text-xs font-bold text-muted-foreground">确认胜者</div>
+            <div class="flex gap-2 justify-center">
+              <Button size="sm" variant={score1Input > score2Input ? "default" : "outline"} onclick={() => { score1Input = 1; score2Input = 0; }}>{playerName(selectedMatch.player1_id)}</Button>
+              <Button size="sm" variant={score2Input > score1Input ? "default" : "outline"} onclick={() => { score1Input = 0; score2Input = 1; }}>{playerName(selectedMatch.player2_id)}</Button>
+            </div>
+          </div>
+          <div class="pt-2 border-t">
+            <div class="text-[10px] text-muted-foreground text-center mb-2">或弃权判定</div>
+            <div class="grid grid-cols-2 gap-2">
+              <Button variant="outline" size="sm" onclick={() => recordWalkover(selectedMatch.player2_id)} disabled={submittingResult}>{playerName(selectedMatch.player2_id)} 晋级</Button>
+              <Button variant="outline" size="sm" onclick={() => recordWalkover(selectedMatch.player1_id)} disabled={submittingResult}>{playerName(selectedMatch.player1_id)} 晋级</Button>
+            </div>
           </div>
         </div>
-
-        <!-- Rollback / Reset match result -->
-        {#if selectedMatch.status === 'completed' || selectedMatch.status === 'walkover'}
-          <div
-            class="space-y-2.5 p-4 rounded-xl border border-amber-500/20 bg-amber-500/5 text-center"
-          >
-            <h4
-              class="text-xs font-bold text-amber-500 uppercase tracking-widest"
-            >
-              回滚比赛结果
-            </h4>
-            <p class="text-[10px] text-muted-foreground leading-normal">
-              完全清除此场比赛的比分及晋级关系，将其状态重设为“未开始”。
-            </p>
-            <Button
-              variant="destructive"
-              size="sm"
-              onclick={doRollback}
-              disabled={submittingResult}
-              class="w-full text-xs font-bold h-9 cursor-pointer justify-center"
-            >
-              回滚本场比赛成绩
-            </Button>
-          </div>
-        {/if}
-      </div>
+        <Dialog.Footer class="flex gap-2">
+          
+          <Button size="sm" disabled={submittingResult || score1Input === score2Input} onclick={() => {
+            const winnerId = score1Input > score2Input ? selectedMatch.player1_id : selectedMatch.player2_id;
+            selectGameWinner(winnerId);
+          }} class="flex-1 font-bold">提交比分</Button>
+        </Dialog.Footer>
+      {/if}
     {/if}
-
-    <Dialog.Footer class="mt-1">
-      <Button
-        variant="ghost"
-        size="sm"
-        onclick={() => {
-          showMatchDialog = false;
-          selectedMatch = null;
-        }}
-        class="w-full text-xs h-8 cursor-pointer"
-      >
-        取消
-      </Button>
-    </Dialog.Footer>
   </Dialog.Content>
 </Dialog.Root>
 
@@ -4246,7 +4352,7 @@
         <span>正在读取录像数据...</span>
       </div>
     {:else}
-      <div class="grid grid-cols-1 md:grid-cols-4 gap-4 flex-1">
+      <div class="grid grid-cols-1 md:grid-cols-6 gap-4 flex-1">
         <!-- Sidebar Replays List -->
         <div
           class="md:col-span-1 space-y-3 border-b md:border-b-0 md:border-r border-border pb-4 md:pb-0 md:pr-4"
@@ -4274,8 +4380,8 @@
                   ? 'bg-primary/10 border-primary text-primary font-bold shadow'
                   : 'bg-background/40 border-border hover:bg-background/80 text-foreground'}"
               >
-                <span class="truncate block font-semibold">Game {idx + 1}</span>
-                <span class="text-[9px] text-muted-foreground truncate"
+                <span class=" block font-semibold">Game {idx + 1}</span>
+                <span class="text-[9px] text-muted-foreground "
                   >{rep.map_name || "未知地图"}</span
                 >
               </button>
@@ -4360,7 +4466,7 @@
                     >
                       地图
                     </p>
-                    <p class="text-sm font-bold mt-0.5 text-foreground truncate" title={selectedReplay.map_name || "未知地图"}>
+                    <p class="text-sm font-bold mt-0.5 text-foreground " title={selectedReplay.map_name || "未知地图"}>
                       {selectedReplay.map_name || "未知地图"}
                     </p>
                   </div>
@@ -4384,7 +4490,7 @@
                     >
                       对局时间
                     </p>
-                    <p class="text-[10px] font-bold mt-1 text-foreground leading-tight truncate" title={formatReplayTime(selectedReplay.parsed_data?.start_time)}>
+                    <p class="text-[10px] font-bold mt-1 text-foreground leading-tight " title={formatReplayTime(selectedReplay.parsed_data?.start_time)}>
                       {formatReplayTime(selectedReplay.parsed_data?.start_time)}
                     </p>
                   </div>
@@ -4472,7 +4578,7 @@
                       class="flex items-center justify-between border-b border-border/40 pb-1"
                     >
                       <span
-                        class="font-bold text-xs text-foreground truncate block"
+                        class="font-bold text-xs text-foreground  block"
                         >{player?.name || "Player"}</span
                       >
                       <Badge
@@ -4488,7 +4594,7 @@
                         <div
                           class="flex items-center justify-between py-1 border-b border-border/10"
                         >
-                          <span class="font-medium text-foreground truncate"
+                          <span class="font-medium text-foreground "
                             >{bo.unit}</span
                           >
                           <div
@@ -4682,7 +4788,7 @@
           size="sm"
           onclick={() => {
             showMatchDetailsDialog = false;
-            showMatchDialog = true;
+            showMatchDialog = true; reportStep = "banpick"; score1Input = 0; score2Input = 0; resetBanPick();
           }}
           class="text-xs h-8 border-amber-500/20 text-amber-400 hover:bg-amber-500/10 cursor-pointer"
         >
@@ -5112,7 +5218,7 @@
         })}
         <div class="p-3 rounded-xl border border-border bg-background/30 space-y-2">
           <div class="flex items-center justify-between gap-2">
-            <div class="text-sm font-bold text-foreground truncate">
+            <div class="text-sm font-bold text-foreground ">
               {p.display_name && p.display_name !== p.id
                 ? `${p.display_name} (${p.id})`
                 : p.id}
@@ -5311,7 +5417,7 @@
               >
               <select
                 bind:value={tempBnetMappings[acct.key]}
-                class="bg-background border border-border text-foreground text-xs rounded-lg p-1.5 focus-visible:outline-none w-50 max-w-60 truncate"
+                class="bg-background border border-border text-foreground text-xs rounded-lg p-1.5 focus-visible:outline-none w-50 max-w-60 "
               >
                 <option value="">-- 选择参赛选手 --</option>
                 {#each getAvailablePlayersForBnet(acct.key) as p}
@@ -5407,7 +5513,7 @@
 
 <!-- Going-live pre-flight checklist -->
 <Dialog.Root bind:open={showStreamChecklist}>
-  <Dialog.Content class="max-w-lg bg-card border border-primary/30">
+  <Dialog.Content class="max-w-2xl bg-card border border-primary/30">
     <Dialog.Header>
       <Dialog.Title class="text-base font-bold text-primary flex items-center gap-2">
         <RadioIcon class="w-4 h-4" /> 开播前检查
@@ -5484,3 +5590,4 @@
     width: 1.5px !important;
   }
 </style>
+

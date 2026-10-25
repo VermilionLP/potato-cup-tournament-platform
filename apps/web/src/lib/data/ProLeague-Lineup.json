@@ -1,0 +1,261 @@
+[
+  {
+    "name": "F-15E",
+    "nation": "USA",
+    "br": 14,
+    "type": "Jet",
+    "group": "F-15"
+  },
+  {
+    "name": "F-15C Golden Eagle",
+    "nation": "USA",
+    "br": 14.3,
+    "type": "Jet",
+    "group": "F-15"
+  },
+  {
+    "name": "F/A-18E",
+    "nation": "USA",
+    "br": 14.3,
+    "type": "Jet",
+    "group": "F/A-18"
+  },
+  {
+    "name": "F-16CM PoBIT",
+    "nation": "USA",
+    "br": 13.7,
+    "type": "Jet",
+    "group": "F-16"
+  },
+  {
+    "name": "F/A-18C Late",
+    "nation": "Germany",
+    "br": 13,
+    "type": "Jet",
+    "group": "F/A-18"
+  },
+  {
+    "name": "EF-2000",
+    "nation": "Germany",
+    "br": 14,
+    "type": "Jet",
+    "group": "Eurofighter"
+  },
+  {
+    "name": "EF-2000 (AESA)",
+    "nation": "Germany",
+    "br": 14,
+    "type": "Jet",
+    "group": "Eurofighter"
+  },
+  {
+    "name": "MiG-29SMT",
+    "nation": "USSR",
+    "br": 12.7,
+    "type": "Jet",
+    "group": "MiG-29"
+  },
+  {
+    "name": "Su-27SM",
+    "nation": "USSR",
+    "br": 13,
+    "type": "Jet",
+    "group": "Flanker"
+  },
+  {
+    "name": "Su-34",
+    "nation": "USSR",
+    "br": 13,
+    "type": "Jet",
+    "group": "Flanker"
+  },
+  {
+    "name": "Su-30SM",
+    "nation": "USSR",
+    "br": 14,
+    "type": "Jet",
+    "group": "Flanker"
+  },
+  {
+    "name": "F/A-18A Late",
+    "nation": "Britain",
+    "br": 12.7,
+    "type": "Jet",
+    "group": "F/A-18"
+  },
+  {
+    "name": "F/A-18F Block 2",
+    "nation": "Britain",
+    "br": 13.7,
+    "type": "Jet",
+    "group": "F/A-18"
+  },
+  {
+    "name": "Typhoon FGR.4",
+    "nation": "Britain",
+    "br": 14,
+    "type": "Jet",
+    "group": "Eurofighter"
+  },
+  {
+    "name": "Typhoon (AESA)",
+    "nation": "Britain",
+    "br": 14,
+    "type": "Jet",
+    "group": "Eurofighter"
+  },
+  {
+    "name": "Su-30MKM",
+    "nation": "Japan",
+    "br": 14,
+    "type": "Jet",
+    "group": "Flanker"
+  },
+  {
+    "name": "F-15J(M)",
+    "nation": "Japan",
+    "br": 13.7,
+    "type": "Jet",
+    "group": "F-15"
+  },
+  {
+    "name": "F-2A",
+    "nation": "Japan",
+    "br": 13.7,
+    "type": "Jet",
+    "group": "F-2"
+  },
+  {
+    "name": "F/A-18D Late",
+    "nation": "Japan",
+    "br": 13,
+    "type": "Jet",
+    "group": "F/A-18"
+  },
+  {
+    "name": "F-16AM",
+    "nation": "France",
+    "br": 13,
+    "type": "Jet",
+    "group": "F-16"
+  },
+  {
+    "name": "Mirage 2000-5F",
+    "nation": "France",
+    "br": 12.7,
+    "type": "Jet",
+    "group": "Mirage 2000"
+  },
+  {
+    "name": "Rafale C F3",
+    "nation": "France",
+    "br": 14,
+    "type": "Jet",
+    "group": "Rafale"
+  },
+  {
+    "name": "Rafale M F3-R",
+    "nation": "France",
+    "br": 14,
+    "type": "Jet",
+    "group": "Rafale"
+  },
+  {
+    "name": "J-10A",
+    "nation": "China",
+    "br": 12.7,
+    "type": "Jet",
+    "group": "J-10"
+  },
+  {
+    "name": "J-11B",
+    "nation": "China",
+    "br": 13,
+    "type": "Jet",
+    "group": "Flanker"
+  },
+  {
+    "name": "J-10C",
+    "nation": "China",
+    "br": 13.7,
+    "type": "Jet",
+    "group": "J-10"
+  },
+  {
+    "name": "Mirage 2000-5EI",
+    "nation": "China",
+    "br": 12.7,
+    "type": "Jet",
+    "group": "Mirage 2000"
+  },
+  {
+    "name": "J-15T",
+    "nation": "China",
+    "br": 13.7,
+    "type": "Jet",
+    "group": "Flanker"
+  },
+  {
+    "name": "F/A-18C",
+    "nation": "Sweden",
+    "br": 13,
+    "type": "Jet",
+    "group": "F/A-18"
+  },
+  {
+    "name": "F/A-18C MLU 2",
+    "nation": "Sweden",
+    "br": 13,
+    "type": "Jet",
+    "group": "F/A-18"
+  },
+  {
+    "name": "JAS 39C",
+    "nation": "Sweden",
+    "br": 13,
+    "type": "Jet",
+    "group": "JAS 39"
+  },
+  {
+    "name": "JAS 39E",
+    "nation": "Sweden",
+    "br": 13.7,
+    "type": "Jet",
+    "group": "JAS 39"
+  },
+  {
+    "name": "Baz Meshupar",
+    "nation": "Israel",
+    "br": 13,
+    "type": "Jet",
+    "group": "F-15"
+  },
+  {
+    "name": "F-15I Ra'am",
+    "nation": "Israel",
+    "br": 14,
+    "type": "Jet",
+    "group": "F-15"
+  },
+  {
+    "name": "F-16D Barak II",
+    "nation": "Israel",
+    "br": 13.7,
+    "type": "Jet",
+    "group": "F-16"
+  },
+  {
+    "name": "F-16C Barak II",
+    "nation": "Israel",
+    "br": 13.7,
+    "type": "Jet",
+    "group": "F-16"
+  },
+  {
+    "name": "F-16I Sufa",
+    "nation": "Israel",
+    "br": 13.7,
+    "type": "Jet",
+    "group": "F-16"
+  }
+]
