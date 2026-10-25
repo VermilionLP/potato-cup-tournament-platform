@@ -337,7 +337,7 @@
                   <span class="text-[10px] text-muted-foreground font-mono bg-muted/60 px-1.5 py-0.25 rounded shrink-0">ID: {t.id}</span>
                 </div>
                 <p class="text-xs text-muted-foreground mt-1 flex items-center gap-1.5 flex-wrap">
-                  <span>WarThunder II 单败淘汰赛</span>
+                  <span>WarThunder 单败淘汰赛</span>
                   <span>·</span>
                   <span>{ruleLabel(t)}</span>
                 </p>
@@ -435,7 +435,7 @@
                     <span class="text-[10px] text-muted-foreground font-mono bg-muted/60 px-1.5 py-0.25 rounded shrink-0">ID: {t.id}</span>
                   </div>
                   <p class="text-[11px] text-muted-foreground mt-0.5 flex items-center gap-1.5 flex-wrap">
-                    <span>WarThunder II 单败淘汰赛</span>
+                    <span>WarThunder 单败淘汰赛</span>
                     <span>·</span>
                     <span>{ruleLabel(t)}</span>
                   </p>
