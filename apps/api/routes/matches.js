@@ -125,4 +125,17 @@ export default async function matchesRoutes(fastify) {
 
     return { success: true };
   });
+
+  fastify.post('/tournaments/:id/matches/:matchId/score', async (req) => {
+    const { score1, score2 } = req.body;
+    const match = await repo.getById(parseInt(req.params.matchId));
+    if (!match) throw fastify.httpErrors.notFound('Match not found');
+    await fastify.db.query(
+      'UPDATE axsuck.matches SET score1 = $1, score2 = $2 WHERE id = $3',
+      [score1 ?? 0, score2 ?? 0, match.id]
+    );
+    fastify.tournamentEvents.emit(`update:${req.params.id}`, { type: 'score_updated', matchId: match.id });
+    return { success: true };
+  });
+
 }

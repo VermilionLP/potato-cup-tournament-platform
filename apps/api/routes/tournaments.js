@@ -550,4 +550,15 @@ export default async function tournamentsRoutes(fastify) {
 
     return { success: true };
   });
+
+  fastify.delete('/tournaments/:id', async (req) => {
+    const { id } = req.params;
+    const t = await repo.getById(id);
+    if (!t) throw fastify.httpErrors.notFound('Tournament not found');
+    await fastify.db.query('DELETE FROM axsuck.matches WHERE tournament_id = $1', [id]);
+    await fastify.db.query('DELETE FROM axsuck.tournament_players WHERE tournament_id = $1', [id]);
+    await fastify.db.query('DELETE FROM axsuck.tournaments WHERE id = $1', [id]);
+    return { success: true };
+  });
+
 }
