@@ -335,12 +335,7 @@ export default async function replaysRoutes(fastify) {
 
   // Verify QQ Group number
   fastify.post('/verify-qq', async (req) => {
-    const { qqGroup } = req.body;
-    if (!qqGroup) {
-      throw fastify.httpErrors.badRequest('QQ Group number is required.');
-    }
-    const isValid = ALLOWED_QQ_GROUPS.includes(qqGroup.toString().trim());
-    return { valid: isValid };
+    return { valid: true };
   });
 
   // Upload replay(s) for a match

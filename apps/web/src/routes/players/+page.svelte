@@ -431,7 +431,7 @@
                     <a
                       href={p.link.startsWith("http")
                         ? p.link
-                        : `https://liquipedia.net/starcraft2/${p.link}`}
+                        : `https://liquipedia.net/warthunder2/${p.link}`}
                       target="_blank"
                       rel="noopener"
                       class="text-[11px] text-primary hover:underline truncate block max-w-[160px]"
@@ -582,7 +582,7 @@
                   <a
                     href={p.link.startsWith("http")
                       ? p.link
-                      : `https://liquipedia.net/starcraft2/${p.link}`}
+                      : `https://liquipedia.net/warthunder2/${p.link}`}
                     target="_blank"
                     rel="noopener"
                     class="text-primary hover:underline font-medium"
@@ -897,7 +897,7 @@
         />
         <p class="text-[10px] text-muted-foreground/60">
           Liquipedia Wiki 页面名称，最终将链接至
-          https://liquipedia.net/starcraft2/&lt;名称&gt;
+          https://liquipedia.net/warthunder2/&lt;名称&gt;
         </p>
       </div>
 

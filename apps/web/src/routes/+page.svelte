@@ -294,7 +294,7 @@
         <div class="min-w-0">
           <p class="text-sm font-semibold text-foreground">暂无活跃赛事</p>
           <p class="text-xs text-muted-foreground mt-0.5">
-            可以直接发起下一届的时间投票，或创建一场新的 StarCraft 锦标赛。
+            可以直接创建一场新的 WarThunder 锦标赛。
           </p>
           {#if historyTournaments.length > 0}
             <div class="mt-2 inline-flex items-center gap-1.5 text-[10px] text-muted-foreground/70">
@@ -308,7 +308,7 @@
           class="gap-1.5 font-bold text-xs shrink-0"
         >
           <PlusIcon class="w-4 h-4" />
-          发起下一届时间投票
+          发起下一场锦标赛
         </Button>
       </div>
     {:else}
@@ -337,7 +337,7 @@
                   <span class="text-[10px] text-muted-foreground font-mono bg-muted/60 px-1.5 py-0.25 rounded shrink-0">ID: {t.id}</span>
                 </div>
                 <p class="text-xs text-muted-foreground mt-1 flex items-center gap-1.5 flex-wrap">
-                  <span>StarCraft II 单败淘汰赛</span>
+                  <span>WarThunder II 单败淘汰赛</span>
                   <span>·</span>
                   <span>{ruleLabel(t)}</span>
                 </p>
@@ -435,7 +435,7 @@
                     <span class="text-[10px] text-muted-foreground font-mono bg-muted/60 px-1.5 py-0.25 rounded shrink-0">ID: {t.id}</span>
                   </div>
                   <p class="text-[11px] text-muted-foreground mt-0.5 flex items-center gap-1.5 flex-wrap">
-                    <span>StarCraft II 单败淘汰赛</span>
+                    <span>WarThunder II 单败淘汰赛</span>
                     <span>·</span>
                     <span>{ruleLabel(t)}</span>
                   </p>
@@ -494,7 +494,7 @@
         创建新赛事
       </Dialog.Title>
       <Dialog.Description class="text-xs text-muted-foreground">
-        输入基本信息以初始化新单淘 StarCraft 赛事。
+        输入基本信息以初始化新单淘 WarThunder 赛事。
       </Dialog.Description>
     </Dialog.Header>
     <div class="space-y-4 py-3">
@@ -506,11 +506,10 @@
         <Input
           id="create-name-input"
           bind:value={newName}
-          placeholder="如: StarCraft Ultra Chicken King #50"
+          placeholder="请输入赛事名称"
           class="bg-background border-border text-foreground"
         />
         <p class="text-[10px] text-muted-foreground/60">
-          系统会根据赛事名称自动生成简洁的赛事 ID (例如输入 SUCK#41 将自动转换为 suck41)。
         </p>
       </div>
 
@@ -543,12 +542,12 @@
         <label class="text-xs font-bold text-muted-foreground block">晋级规则</label>
         <div class="flex items-center gap-4 text-xs pt-1">
           <label class="flex items-center gap-1.5 cursor-pointer text-foreground font-semibold">
-            <input type="radio" bind:group={newLoserAdvances} value={true} class="accent-primary" />
-            <span>败者晋级 (SUCK 经典)</span>
+            <input type="radio" bind:group={newLoserAdvances} value={false} class="accent-primary" />
+            <span>胜者晋级</span>
           </label>
           <label class="flex items-center gap-1.5 cursor-pointer text-muted-foreground hover:text-foreground">
-            <input type="radio" bind:group={newLoserAdvances} value={false} class="accent-primary" />
-            <span>胜者晋级 (常规单淘)</span>
+            <input type="radio" bind:group={newLoserAdvances} value={true} class="accent-primary" />
+            <span>败者晋级</span>
           </label>
         </div>
       </div>

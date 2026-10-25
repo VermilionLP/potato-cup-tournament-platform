@@ -259,7 +259,7 @@
     const trimmedQQ = qqInput.trim();
     const trimmedId = idInput.trim();
     if (!trimmedQQ) {
-      qqError = "请输入 QQ 群号";
+      qqError = "请输入 QQ号或Discord用户名";
       return;
     }
     if (!trimmedId) {
@@ -302,7 +302,7 @@
     const trimmedQQ = qqInput.trim();
     const trimmedId = idInput.trim();
     if (!trimmedQQ) {
-      qqError = "请输入 QQ 群号";
+      qqError = "请输入 QQ号或Discord用户名";
       return;
     }
     if (!trimmedId) {
@@ -417,7 +417,7 @@
           <span
             class="hidden sm:inline font-bold text-sm sm:text-base tracking-tight text-foreground group-hover:text-primary transition-colors"
           >
-            SUCK
+            WarThunder
             <span
               class="hidden sm:inline font-normal text-muted-foreground text-sm ml-1"
               >Tournament</span
@@ -586,7 +586,7 @@
           <div class="space-y-1">
             <label
               for="layout-qq-input"
-              class="text-xs font-bold text-muted-foreground">QQ 群号</label
+              class="text-xs font-bold text-muted-foreground">QQ号或Discord用户名</label
             >
             <Input
               id="layout-qq-input"
@@ -621,82 +621,6 @@
           <div
             class="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-muted/20 border border-border/60 p-3 rounded-xl"
           >
-            <!-- CN Server -->
-            <div class="space-y-2">
-              <span
-                class="text-[11px] font-bold text-muted-foreground flex items-center justify-between"
-              >
-                <span>中国服务器 (CN)</span>
-                <span class="text-[10px] text-muted-foreground/60 font-normal"
-                  >已添加 {editBattleTags.cn.length} 个</span
-                >
-              </span>
-
-              <div
-                class="flex flex-wrap gap-1 min-h-7.5 p-1.5 rounded-lg border border-border bg-background/50"
-              >
-                {#each editBattleTags.cn as tag, idx}
-                  <Badge
-                    variant="secondary"
-                    class="text-[9px] font-mono py-0.5 px-1.5 bg-muted border border-border/80 text-foreground flex items-center gap-1"
-                  >
-                    {tag}
-                    <button
-                      type="button"
-                      onclick={() =>
-                        (editBattleTags.cn = editBattleTags.cn.filter(
-                          (_, i) => i !== idx,
-                        ))}
-                      class="text-muted-foreground hover:text-destructive font-bold text-xs shrink-0 cursor-pointer"
-                      >&times;</button
-                    >
-                  </Badge>
-                {/each}
-                {#if editBattleTags.cn.length === 0}
-                  <span
-                    class="text-[10px] text-muted-foreground/50 italic self-center px-1"
-                    >暂无账号</span
-                  >
-                {/if}
-              </div>
-
-              <div class="flex gap-1">
-                <Input
-                  type="text"
-                  placeholder="例如: Bnet#1234"
-                  id="layout-add-cn-input"
-                  class="text-xs h-7 bg-background border-border text-foreground flex-1 px-2"
-                  onkeydown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      const val = e.currentTarget.value.trim();
-                      if (val && !editBattleTags.cn.includes(val)) {
-                        editBattleTags.cn = [...editBattleTags.cn, val];
-                        e.currentTarget.value = "";
-                      }
-                    }
-                  }}
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  class="w-7 h-7 border-border shrink-0 cursor-pointer"
-                  onclick={() => {
-                    const input = document.getElementById(
-                      "layout-add-cn-input",
-                    );
-                    const val = input.value.trim();
-                    if (val && !editBattleTags.cn.includes(val)) {
-                      editBattleTags.cn = [...editBattleTags.cn, val];
-                      input.value = "";
-                    }
-                  }}
-                >
-                  <PlusIcon class="w-3 h-3" />
-                </Button>
-              </div>
-            </div>
 
             <!-- Global Server -->
             <div class="space-y-2">
@@ -818,7 +742,7 @@
           />
           <p class="text-[10px] text-muted-foreground/60">
             Liquipedia Wiki 页面名称，最终将链接至
-            https://liquipedia.net/starcraft2/&lt;名称&gt;
+            https://liquipedia.net/warthunder/&lt;名称&gt;
           </p>
         </div>
 

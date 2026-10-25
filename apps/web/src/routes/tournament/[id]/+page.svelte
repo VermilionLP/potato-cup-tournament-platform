@@ -5054,7 +5054,7 @@
         />
         <p class="text-[10px] text-muted-foreground/60">
           Liquipedia Wiki 页面名称，最终将链接至
-          https://liquipedia.net/starcraft2/&lt;名称&gt;
+          https://liquipedia.net/warthunder2/&lt;名称&gt;
         </p>
       </div>
     </div>

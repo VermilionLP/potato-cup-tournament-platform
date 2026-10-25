@@ -506,7 +506,7 @@
               <span
                 class="text-cyan-400 text-xs font-mono font-bold tracking-widest uppercase block mb-1"
               >
-                StarCraft Ultra Chicken King • MATCHES OVERVIEW
+                WarThunder Ultra Chicken King • MATCHES OVERVIEW
               </span>
               <h1
                 class="text-4xl md:text-5xl font-extrabold tracking-tight leading-none bg-linear-to-r from-white via-slate-100 to-cyan-400 bg-clip-text text-transparent uppercase font-orbitron"
@@ -673,7 +673,7 @@
               <span
                 class="text-cyan-400 text-xs font-mono font-bold tracking-widest uppercase block mb-1"
               >
-                StarCraft Ultra Chicken King • INTERMISSION
+                WarThunder Ultra Chicken King • INTERMISSION
               </span>
               <h1
                 class="text-4xl md:text-5xl font-extrabold tracking-wider leading-none bg-linear-to-r from-white via-slate-200 to-cyan-400 bg-clip-text text-transparent uppercase"
