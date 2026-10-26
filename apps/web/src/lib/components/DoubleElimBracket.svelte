@@ -165,6 +165,14 @@
     );
   }
 
+  function canEditResult(match) {
+    return (
+      isAdmin &&
+      match.status !== "pending" &&
+      Boolean(match.player1_id && match.player2_id)
+    );
+  }
+
   function scoreLabel(match, slot) {
     if (match.status === "pending") return "";
     if (match.status === "walkover") {
@@ -191,6 +199,8 @@
   {@const bye = isBye(match)}
   {@const voided = isVoid(match)}
   {@const playable = isPlayable(match)}
+  {@const editable = canEditResult(match)}
+  {@const clickable = playable || editable}
   {@const active = activeMatchId === match.id}
   {#if !voided}
     {#if bye}
@@ -207,17 +217,20 @@
         role="button"
         tabindex="0"
         onclick={() => {
-          if (playable) onOpenMatch(match);
+          if (clickable) onOpenMatch(match);
         }}
         onkeydown={(e) => {
-          if ((e.key === "Enter" || e.key === " ") && playable) {
+          if ((e.key === "Enter" || e.key === " ") && clickable) {
             onOpenMatch(match);
           }
         }}
         class="flex h-full flex-col justify-between overflow-hidden rounded-md border bg-white text-xs shadow-sm transition-all dark:bg-[#1c1c1c]
+          {clickable
+          ? 'cursor-pointer hover:shadow-md'
+          : 'cursor-default'}
           {playable
-          ? 'cursor-pointer border-primary/30 ring-2 ring-primary/40 hover:shadow-md'
-          : 'cursor-default border-neutral-300 dark:border-neutral-800'}
+          ? 'border-primary/30 ring-2 ring-primary/40'
+          : 'border-neutral-300 dark:border-neutral-800'}
           {active ? 'border-amber-500/40 ring-2 ring-amber-500/70' : ''}"
       >
         <div
@@ -242,6 +255,9 @@
             {/if}
             {#if userId && match.status === "pending" && (match.player1_id === userId || match.player2_id === userId)}
               <span class="animate-pulse font-bold text-primary">我的比赛</span>
+            {/if}
+            {#if editable}
+              <span class="rounded bg-amber-500/15 px-1 py-0.5 text-[7px] font-bold text-amber-500">修正</span>
             {/if}
           </div>
         </div>
