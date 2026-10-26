@@ -28,6 +28,7 @@
   import ScoreForm from "$lib/components/ScoreForm.svelte";
   import PlayoffPanel from "$lib/components/PlayoffPanel.svelte";
   import DateTimePicker from "$lib/components/DateTimePicker.svelte";
+  import MatchTime from "$lib/components/MatchTime.svelte";
   import { formatScheduled, parseLocal } from "$lib/datetime.js";
   import { canConfirm, confirmResult, initialBanPick, poolVehicles } from "$lib/banpick.js";
   import { defaultVehiclePools } from "$lib/data/vehiclePools.js";
@@ -1112,7 +1113,7 @@
     savingTime = true;
     try {
       tournament = await API.updateTournament(tid, { scheduled_time: timeEditValue });
-      toast.success(`比赛时间已改为 ${formatScheduled(timeEditValue)}`);
+      toast.success(`比赛时间已改为北京时间 ${formatScheduled(timeEditValue)}`);
       showTimeEditDialog = false;
       await load();
     } catch (e) {
@@ -3069,32 +3070,30 @@
             : isSwiss ? `积分制 · ${swissRoundsLabel}` : advancementLabel(tournament.loser_advances)}</span>
         </p>
         {#if tournament.scheduled_time}
-          <div
-            class="mt-2.5 inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border border-primary/30 bg-primary/5 text-primary text-xs font-bold shadow-md shadow-primary/5"
-          >
-            <ClockIcon class="w-4 h-4 text-primary shrink-0 animate-pulse" />
-            <span>比赛时间: {formatScheduled(tournament.scheduled_time)}</span>
-            {#if isAdmin && ["registration", "in_progress"].includes(tournament.status)}
-              <button
-                type="button"
-                onclick={openTimeEdit}
-                class="ml-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-lg border border-primary/25 bg-background/50 text-[10px] font-bold text-primary hover:bg-primary hover:text-primary-foreground transition-colors cursor-pointer"
-                title="调整比赛时间"
+          <MatchTime value={tournament.scheduled_time} status={tournament.status}>
+            {#snippet actions()}
+              {#if isAdmin && ["registration", "in_progress"].includes(tournament.status)}
+                <button
+                  type="button"
+                  onclick={openTimeEdit}
+                  class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg border border-primary/25 bg-background/50 text-[10px] font-bold text-primary hover:bg-primary hover:text-primary-foreground transition-colors cursor-pointer"
+                  title="调整比赛时间"
+                >
+                  <PencilIcon class="w-3 h-3" />
+                  调整
+                </button>
+              {/if}
+              <a
+                href={`/api/tournaments/${encodeURIComponent(tournament.id)}/calendar.ics`}
+                download={`${tournament.id}.ics`}
+                class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg border border-primary/25 bg-background/50 text-[10px] font-bold text-primary hover:bg-primary hover:text-primary-foreground transition-colors"
+                title="下载 .ics 日历文件，一键导入日历（会按你的时区显示）"
               >
-                <PencilIcon class="w-3 h-3" />
-                调整
-              </button>
-            {/if}
-            <a
-              href={`/api/tournaments/${encodeURIComponent(tournament.id)}/calendar.ics`}
-              download={`${tournament.id}.ics`}
-              class="ml-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-lg border border-primary/25 bg-background/50 text-[10px] font-bold text-primary hover:bg-primary hover:text-primary-foreground transition-colors"
-              title="下载 .ics 日历文件，一键导入日历"
-            >
-              <CalendarIcon class="w-3 h-3" />
-              添加到日历
-            </a>
-          </div>
+                <CalendarIcon class="w-3 h-3" />
+                添加到日历
+              </a>
+            {/snippet}
+          </MatchTime>
         {/if}
       </div>
 
@@ -4189,7 +4188,7 @@
         调整比赛时间
       </Dialog.Title>
       <Dialog.Description class="text-xs text-muted-foreground">
-        当前：{tournament?.scheduled_time ? formatScheduled(tournament.scheduled_time) : "未设置"}。修改后选手页面和日历文件会同步更新。
+        当前：{tournament?.scheduled_time ? `北京时间 ${formatScheduled(tournament.scheduled_time)}` : "未设置"}。按北京时间填写，选手会自动看到各自时区的时间；日历文件同步更新。
       </Dialog.Description>
     </Dialog.Header>
     {#if showTimeEditDialog}

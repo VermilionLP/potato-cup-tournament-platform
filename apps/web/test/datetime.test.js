@@ -28,3 +28,30 @@ test("month navigation and past days", () => {
   assert.equal(isPastDay({ y: 2026, m: 10, d: 26 }, now), true);
   assert.equal(isPastDay({ y: 2026, m: 10, d: 27 }, now), false);
 });
+
+test("stored Beijing times convert to the viewer's time zone", async () => {
+  const { toInstant, formatInZone, zoneOffsetMinutes, offsetLabel } = await import("../src/lib/datetime.js");
+  const t = toInstant("2026-11-01T20:30");
+  assert.equal(t.toISOString(), "2026-11-01T12:30:00.000Z");
+  assert.equal(formatInZone(t, "Asia/Shanghai"), "2026/11/01 周日 20:30");
+  assert.equal(formatInZone(t, "Asia/Tokyo"), "2026/11/01 周日 21:30");
+  assert.equal(formatInZone(t, "Europe/Moscow"), "2026/11/01 周日 15:30");
+  // 1 Nov 2026 is after US daylight saving ends: New York is UTC-5.
+  assert.equal(formatInZone(t, "America/New_York"), "2026/11/01 周日 07:30");
+  assert.equal(formatInZone(toInstant("2026-11-01T02:00"), "Europe/London"), "2026/10/31 周六 18:00");
+  assert.equal(zoneOffsetMinutes(t, "Asia/Tokyo"), 540);
+  assert.equal(zoneOffsetMinutes(t, "Asia/Kolkata"), 330);
+  assert.equal(offsetLabel(540), "UTC+9");
+  assert.equal(offsetLabel(330), "UTC+5:30");
+  assert.equal(offsetLabel(-300), "UTC-5");
+  assert.equal(toInstant("本周六晚8点"), null);
+});
+
+test("countdown before and after the start", async () => {
+  const { countdown } = await import("../src/lib/datetime.js");
+  const start = new Date("2026-11-01T12:30:00Z");
+  assert.deepEqual(countdown(start, new Date("2026-10-28T08:18:51Z")), { phase: "before", text: "4 天 04:11:09" });
+  assert.deepEqual(countdown(start, new Date("2026-11-01T12:29:59Z")), { phase: "before", text: "00:00:01" });
+  assert.deepEqual(countdown(start, new Date("2026-11-01T12:45:00Z")), { phase: "after", text: "已开赛 15 分钟" });
+  assert.deepEqual(countdown(start, new Date("2026-11-01T14:35:00Z")), { phase: "after", text: "已开赛 2 小时 5 分" });
+});

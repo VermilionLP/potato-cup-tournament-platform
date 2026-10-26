@@ -4,6 +4,13 @@
   import ChevronRightIcon from "@lucide/svelte/icons/chevron-right";
   import XIcon from "@lucide/svelte/icons/x";
   import {
+    formatInZone,
+    offsetLabel,
+    SOURCE_LABEL,
+    SOURCE_OFFSET_MINUTES,
+    toInstant,
+    viewerTimeZone,
+    zoneOffsetMinutes,
     formatScheduled,
     isPastDay,
     monthGrid,
@@ -28,6 +35,10 @@
   const DEFAULT_TIME = "20:00";
 
   const selected = $derived(parseLocal(value));
+  // Times are entered in Beijing time; show what that is for the viewer.
+  const zone = viewerTimeZone();
+  const instant = $derived(toInstant(value));
+  const viewerOffset = $derived(instant ? zoneOffsetMinutes(instant, zone) : SOURCE_OFFSET_MINUTES);
   const selectedTime = $derived(timeOf(selected));
   let open = $state(startOpen);
   const now = new Date();
@@ -74,6 +85,9 @@
       <span class="truncate {selected ? 'font-semibold text-foreground' : 'text-muted-foreground'}">
         {selected ? formatScheduled(value) : value || placeholder}
       </span>
+      {#if selected}
+        <span class="ml-auto shrink-0 text-[10px] text-muted-foreground">{SOURCE_LABEL}</span>
+      {/if}
     </button>
     {#if clearable && value}
       <button
@@ -87,6 +101,12 @@
       </button>
     {/if}
   </div>
+
+  {#if instant && viewerOffset !== SOURCE_OFFSET_MINUTES}
+    <p class="text-[10px] text-muted-foreground">
+      = 你的时间 {formatInZone(instant, zone)}（{offsetLabel(viewerOffset)}）
+    </p>
+  {/if}
 
   {#if open}
     <div class="grid gap-3 rounded-lg border border-border bg-background/60 p-3 sm:grid-cols-[1fr_11rem]">
@@ -142,7 +162,7 @@
 
       <!-- Time -->
       <div class="flex flex-col gap-2 sm:border-l sm:border-border/60 sm:pl-3">
-        <div class="text-[11px] font-semibold text-muted-foreground">开赛时间</div>
+        <div class="text-[11px] font-semibold text-muted-foreground">开赛时间（{SOURCE_LABEL}）</div>
         <div class="grid grid-cols-3 gap-1 sm:grid-cols-2">
           {#each TIME_SLOTS as slot (slot)}
             <button

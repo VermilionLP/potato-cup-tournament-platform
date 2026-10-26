@@ -16,6 +16,7 @@
     PLAYOFF_FORMATS,
   } from "$lib/tournament.js";
   import DateTimePicker from "$lib/components/DateTimePicker.svelte";
+  import { formatInZone, toInstant } from "$lib/datetime.js";
   import Trash2Icon from "@lucide/svelte/icons/trash-2";
   import { goto } from "$app/navigation";
   import { userState } from "$lib/user.svelte.js";
@@ -53,6 +54,9 @@
 
   function startTimeLabel(raw) {
     if (!raw) return "";
+    // Stored as Beijing time: show it in the viewer's own time zone.
+    const instant = toInstant(raw);
+    if (instant) return formatInZone(instant);
     const m = String(raw).match(
       /(\d{4})[-/](\d{1,2})[-/](\d{1,2})[^\d]*(\d{1,2}):(\d{2})/,
     );
@@ -83,6 +87,8 @@
   function scheduledDateTime(t) {
     const raw = t?.scheduled_time;
     if (!raw) return null;
+    const instant = toInstant(raw);
+    if (instant) return instant;
     const m = String(raw).match(
       /(\d{4})[-/](\d{1,2})[-/](\d{1,2})(?:[^\d]*(\d{1,2}):(\d{2}))?/,
     );
@@ -459,7 +465,7 @@
                 {#if t.scheduled_time}
                   <div class="flex items-center gap-1.5 text-primary text-xs font-bold whitespace-nowrap tabular-nums">
                     <ClockIcon class="w-4 h-4 shrink-0 animate-pulse" />
-                    <span>{startTimeLabel(t.scheduled_time)}</span>
+                    <span title={toInstant(t.scheduled_time) ? `北京时间 ${formatInZone(toInstant(t.scheduled_time), "Asia/Shanghai")}（已换算为你的时区）` : undefined}>{startTimeLabel(t.scheduled_time)}</span>
                   </div>
                 {:else if t.status === "voting"}
                   <div class="flex items-center gap-1.5 text-purple-400 text-xs font-semibold italic">
@@ -570,7 +576,7 @@
                   <div class="grid grid-cols-1 sm:grid-cols-[205px_105px_110px] items-center gap-x-3 gap-y-1 text-xs text-muted-foreground/80">
                     <div class="flex items-center sm:justify-start justify-end gap-1 text-primary font-bold whitespace-nowrap tabular-nums">
                       <ClockIcon class="w-3.5 h-3.5 shrink-0" />
-                      <span>{startTimeLabel(t.scheduled_time) || "时间未记录"}</span>
+                      <span title={toInstant(t.scheduled_time) ? `北京时间 ${formatInZone(toInstant(t.scheduled_time), "Asia/Shanghai")}` : undefined}>{startTimeLabel(t.scheduled_time) || "时间未记录"}</span>
                     </div>
                     <div class="flex items-center sm:justify-start justify-end gap-1 bg-muted/40 border border-border/60 px-2 py-0.5 rounded-full font-medium whitespace-nowrap">
                       <UsersIcon class="w-3 h-3 text-muted-foreground/50 shrink-0" />
