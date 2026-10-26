@@ -581,16 +581,17 @@
 
 <!-- Create Tournament Dialog -->
 <Dialog.Root bind:open={showCreateDialog}>
-  <Dialog.Content class="max-w-[420px] bg-card border border-border">
-    <Dialog.Header>
+  <!-- The form scrolls inside the dialog; title and buttons stay in view. -->
+  <Dialog.Content class="sm:max-w-[560px] max-h-[90vh] flex flex-col gap-3 bg-card border border-border">
+    <Dialog.Header class="shrink-0">
       <Dialog.Title class="text-lg font-bold tracking-tight text-foreground">
         创建新赛事
       </Dialog.Title>
       <Dialog.Description class="text-xs text-muted-foreground">
-        输入基本信息以初始化新 WarThunder 赛事。填写比赛时间会跳过时间投票，直接开启报名。
+        填写比赛时间会跳过时间投票，直接开启报名。
       </Dialog.Description>
     </Dialog.Header>
-    <div class="space-y-4 py-3">
+    <div class="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain -mx-4 px-4 py-1">
       <div class="space-y-1.5">
         <label
           for="create-name-input"
@@ -602,33 +603,32 @@
           placeholder="请输入赛事名称"
           class="bg-background border-border text-foreground"
         />
-        <p class="text-[10px] text-muted-foreground/60">
-        </p>
       </div>
 
-      <div class="space-y-1.5">
-        <label
-          for="create-capacity-input"
-          class="text-xs font-bold text-muted-foreground">选手上限</label
-        >
-        <Input
-          id="create-capacity-input"
-          type="number"
-          bind:value={newCapacity}
-          min="2"
-          max="128"
-          class="bg-background border-border text-foreground"
-        />
-      </div>
-      <div class="space-y-1.5">
-        <label for="create-time-input" class="text-xs font-bold text-muted-foreground">比赛时间</label>
-        <Input
-          id="create-time-input"
-          type="datetime-local"
-          bind:value={newScheduledTime}
-          class="bg-background border-border text-foreground"
-        />
-        <p class="text-[10px] text-muted-foreground/60">设置后将直接开启报名，无需时间投票；留空则先进行时间投票。</p>
+      <div class="grid grid-cols-1 gap-3 sm:grid-cols-[7rem_1fr]">
+        <div class="space-y-1.5">
+          <label
+            for="create-capacity-input"
+            class="text-xs font-bold text-muted-foreground">选手上限</label
+          >
+          <Input
+            id="create-capacity-input"
+            type="number"
+            bind:value={newCapacity}
+            min="2"
+            max="128"
+            class="bg-background border-border text-foreground"
+          />
+        </div>
+        <div class="space-y-1.5">
+          <label for="create-time-input" class="text-xs font-bold text-muted-foreground">比赛时间（可选）</label>
+          <Input
+            id="create-time-input"
+            type="datetime-local"
+            bind:value={newScheduledTime}
+            class="bg-background border-border text-foreground"
+          />
+        </div>
       </div>
 
       <div class="space-y-1.5">
@@ -639,25 +639,22 @@
               type="button"
               onclick={() => (newGameMode = mode.id)}
               title={mode.full}
-              class="px-2 py-2 rounded-md border text-xs font-semibold transition-colors cursor-pointer {newGameMode ===
+              class="px-2 py-1.5 rounded-md border text-xs font-semibold transition-colors cursor-pointer {newGameMode ===
               mode.id
                 ? 'bg-primary text-primary-foreground border-primary'
                 : 'bg-background text-muted-foreground border-border hover:text-foreground'}"
             >
-              <div>{mode.code}</div>
-              <div
-                class="text-[10px] font-normal {newGameMode === mode.id
+              {mode.code}
+              <span
+                class="ml-1 text-[10px] font-normal {newGameMode === mode.id
                   ? 'text-primary-foreground/80'
                   : 'text-muted-foreground/70'}"
               >
                 {mode.name}
-              </div>
+              </span>
             </button>
           {/each}
         </div>
-        <p class="text-[10px] text-muted-foreground/60">
-          AB 街机模式 / RB 历史模式 / SB 全真模式，赛事级设置。
-        </p>
       </div>
 
       <div class="space-y-1.5">
@@ -669,7 +666,7 @@
               disabled={!bracketFormat.available}
               onclick={() => (newFormat = bracketFormat.id)}
               title={bracketFormat.available ? bracketFormat.label : "后续版本开放"}
-              class="px-2 py-2 rounded-md border text-xs font-semibold transition-colors
+              class="px-2 py-1.5 rounded-md border text-xs font-semibold transition-colors
                 {newFormat === bracketFormat.id
                   ? 'bg-primary text-primary-foreground border-primary cursor-pointer'
                   : 'bg-background text-muted-foreground border-border hover:text-foreground cursor-pointer'}
@@ -809,7 +806,7 @@
         </div>
       {/if}
     </div>
-    <Dialog.Footer class="flex flex-col sm:flex-row gap-2 mt-2">
+    <Dialog.Footer class="shrink-0 flex flex-col sm:flex-row gap-2">
       <Button
         variant="outline"
         size="sm"
