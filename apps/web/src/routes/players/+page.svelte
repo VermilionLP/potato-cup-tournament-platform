@@ -63,6 +63,10 @@
   let editDiscord = $state("");
   let editBnetIds = $state([]); // read-only list of [{ id, url }] account entries
   let mergeTargetId = $state("");
+  // In-page confirmation ('merge' | 'delete' | 'rename-self' | null). The
+  // native confirm() returns false without showing anything once a browser
+  // blocks the site's dialogs, which made these buttons silently do nothing.
+  let pendingAction = $state(null);
 
   function parseBnetIds(raw) {
     try {
@@ -98,6 +102,7 @@
     editDiscord = "";
     editBnetIds = [];
     mergeTargetId = "";
+    pendingAction = null;
     showEditDialog = true;
   }
 
@@ -125,6 +130,7 @@
 
     editBnetIds = parseBnetIds(p.bnet_ids);
     mergeTargetId = "";
+    pendingAction = null;
     showEditDialog = true;
   }
 
@@ -152,12 +158,11 @@
             return;
           }
           const isMe = editingId === userState.id;
-          if (isMe) {
-            const confirmed = confirm(
-              `修改您的选手 ID 将会同时更新您的登录凭证，确定要修改吗？`,
-            );
-            if (!confirmed) return;
+          if (isMe && pendingAction !== "rename-self") {
+            pendingAction = "rename-self";
+            return;
           }
+          pendingAction = null;
           toast.loading("正在修改选手 ID...", { id: "ps" });
           await API.renamePlayer(editingId, cleanNewId);
           if (isMe) {
@@ -197,12 +202,11 @@
   }
 
   async function handleDelete() {
-    if (
-      !confirm(
-        `确定要删除选手 ${editingId} 吗？\n若已出现在对阵记录中，请改用"合并"功能。`,
-      )
-    )
+    if (pendingAction !== "delete") {
+      pendingAction = "delete";
       return;
+    }
+    pendingAction = null;
     try {
       toast.loading("正在删除...", { id: "pd" });
       await API.deletePlayer(editingId);
@@ -226,18 +230,20 @@
       toast.error(`找不到选手 ${mergeTargetId}，请从列表中选择`);
       return;
     }
-    if (
-      !confirm(
-        `确定将 ${editingId} 合并到 ${mergeTargetId}？\n合并后 ${editingId} 将被删除！`,
-      )
-    )
+    if (pendingAction !== "merge") {
+      pendingAction = "merge";
       return;
+    }
+    pendingAction = null;
+    const from = editingId;
+    const into = mergeTargetId;
     try {
       toast.loading("正在合并...", { id: "pm" });
-      await API.mergePlayer(editingId, mergeTargetId);
+      await API.mergePlayer(from, into);
       toast.dismiss("pm");
-      toast.success("合并成功");
+      toast.success(`已将 ${from} 合并到 ${into}`);
       showEditDialog = false;
+      players = players.filter((p) => p.id !== from);
       await load();
     } catch (e) {
       toast.dismiss("pm");
@@ -804,6 +810,7 @@
             <input
               list="merge-target-options"
               bind:value={mergeTargetId}
+              oninput={() => pendingAction === "merge" && (pendingAction = null)}
               placeholder="输入或选择目标选手 ID..."
               autocomplete="off"
               class="flex-1 min-w-0 text-xs h-8 rounded-md bg-muted/40 border border-border px-2 text-foreground focus:outline-none focus:border-primary/50"
@@ -824,6 +831,20 @@
               执行合并
             </Button>
           </div>
+          {#if pendingAction === "merge"}
+            <div class="rounded-lg border border-amber-500/40 bg-amber-500/10 p-2.5 space-y-2">
+              <p class="text-xs font-semibold text-amber-600 dark:text-amber-400">
+                确定将 <span class="font-mono">{editingId}</span> 合并到 <span class="font-mono">{mergeTargetId}</span>？合并后 {editingId} 将被删除，无法撤销。
+              </p>
+              <div class="flex gap-2 justify-end">
+                <Button variant="outline" size="sm" class="h-7 text-xs" onclick={() => (pendingAction = null)}>取消</Button>
+                <Button size="sm" class="h-7 text-xs gap-1" onclick={handleMerge}>
+                  <MergeIcon class="w-3.5 h-3.5" />
+                  确认合并
+                </Button>
+              </div>
+            </div>
+          {/if}
           <p class="text-[10px] text-muted-foreground/60">
             合并后此选手的所有对阵、报名、投票和赛事账号转移到目标选手；目标选手没填的国籍、战队、联系方式和 Liquipedia 链接用此选手的补上；然后删除此选手。旧 ID 会被记住，重新导入 Liquipedia 时不会再出现。
           </p>
@@ -831,12 +852,36 @@
       {/if}
     </div>
 
+    {#if pendingAction === "delete" || pendingAction === "rename-self"}
+      <div class="rounded-lg border p-2.5 space-y-2 {pendingAction === 'delete' ? 'border-destructive/40 bg-destructive/10' : 'border-amber-500/40 bg-amber-500/10'}">
+        <p class="text-xs font-semibold {pendingAction === 'delete' ? 'text-destructive' : 'text-amber-600 dark:text-amber-400'}">
+          {#if pendingAction === "delete"}
+            确定要删除选手 <span class="font-mono">{editingId}</span> 吗？若已出现在对阵记录中，请改用"合并"功能。
+          {:else}
+            修改你自己的选手 ID 会同时更新你的登录凭证，确定要改成 <span class="font-mono">{editNewId.trim()}</span> 吗？
+          {/if}
+        </p>
+        <div class="flex gap-2 justify-end">
+          <Button variant="outline" size="sm" class="h-7 text-xs" onclick={() => (pendingAction = null)}>取消</Button>
+          {#if pendingAction === "delete"}
+            <Button variant="destructive" size="sm" class="h-7 text-xs gap-1" onclick={handleDelete}>
+              <TrashIcon class="w-3.5 h-3.5" />
+              确认删除
+            </Button>
+          {:else}
+            <Button size="sm" class="h-7 text-xs" onclick={handleSave}>确认修改</Button>
+          {/if}
+        </div>
+      </div>
+    {/if}
+
     <Dialog.Footer class="flex items-center gap-2 pt-1">
       {#if !isCreating && isAdmin}
         <Button
           variant="destructive"
           size="sm"
           onclick={handleDelete}
+          disabled={pendingAction === "delete"}
           class="text-xs gap-1 mr-auto"
         >
           <TrashIcon class="w-3.5 h-3.5" />
