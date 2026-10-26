@@ -80,3 +80,26 @@ test("actions outside their phase do nothing", () => {
   assert.equal(drawVehicle(s, grouped), s);
   assert.equal(removeVehicle(s), s);
 });
+
+test("repeated vehicle names are listed once per group", () => {
+  const grouped = groupVehicles([
+    { name: "MiG-15bis", group: "MiG", nation: "Germany" },
+    { name: "MiG-15bis", group: "MiG", nation: "USSR" },
+    { name: "Bf 109 F-2", group: "Bf 109", nation: "Germany" },
+    { name: "Bf 109 F-2", group: "Bf 109", nation: "Germany" },
+  ]);
+  assert.deepEqual(grouped.map((g) => g.vehicles.map((v) => v.name)), [["MiG-15bis"], ["Bf 109 F-2"]]);
+  assert.equal(grouped[0].vehicles[0].nation, "Germany / USSR");
+  assert.equal(grouped[1].vehicles[0].nation, "Germany");
+});
+
+test("every bundled pool groups without duplicate names", async () => {
+  const { readFileSync } = await import("node:fs");
+  for (const file of ["ProLeague-Lineup", "Prop-Lineup", "Lagecy-Jet-Lineup"]) {
+    const vehicles = JSON.parse(readFileSync(new URL(`../src/lib/data/${file}.json`, import.meta.url)));
+    for (const g of groupVehicles(vehicles)) {
+      const names = g.vehicles.map((v) => v.name);
+      assert.equal(new Set(names).size, names.length, `${file} / ${g.group} has duplicate names`);
+    }
+  }
+});

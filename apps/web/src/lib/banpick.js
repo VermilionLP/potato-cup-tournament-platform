@@ -14,14 +14,24 @@ export function poolVehicles(poolId, pools = []) {
   return pool ? pool.vehicles : [];
 }
 
-/** Vehicles grouped by `group`, in first-seen order. */
+/**
+ * Vehicles grouped by `group`, in first-seen order. A name listed more than
+ * once in a group (the pool files contain a few repeats, e.g. the German and
+ * Soviet MiG-15bis) is shown once; differing nations are merged.
+ */
 export function groupVehicles(vehicles = []) {
   const groups = new Map();
   for (const v of vehicles) {
-    if (!groups.has(v.group)) groups.set(v.group, []);
-    groups.get(v.group).push(v);
+    if (!groups.has(v.group)) groups.set(v.group, new Map());
+    const byName = groups.get(v.group);
+    const seen = byName.get(v.name);
+    if (!seen) {
+      byName.set(v.name, { ...v });
+    } else if (v.nation && seen.nation && !seen.nation.split(" / ").includes(v.nation)) {
+      seen.nation = `${seen.nation} / ${v.nation}`;
+    }
   }
-  return [...groups.entries()].map(([group, list]) => ({ group, vehicles: list }));
+  return [...groups.entries()].map(([group, byName]) => ({ group, vehicles: [...byName.values()] }));
 }
 
 export function initialBanPick() {
