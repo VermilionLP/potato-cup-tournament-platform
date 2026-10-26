@@ -128,6 +128,16 @@
       .sort((a, b) => b.round - a.round); // highest round number (first round) first
   });
 
+  // Swiss rounds count up from 1 and have no finals; elimination rounds count
+  // down to the final.
+  let isSwiss = $derived(tournament?.format === "swiss");
+  function roundTitle(round, total) {
+    return isSwiss ? `瑞士轮 第 ${round} 轮` : roundLabel(round, total);
+  }
+  function roundShort(round, total) {
+    return isSwiss ? `R${round}` : roundShortLabel(round, total);
+  }
+
   let maxRound = $derived(
     overlayRounds.length ? Math.max(...overlayRounds.map((r) => r.round)) : 1,
   );
@@ -520,7 +530,7 @@
                 >CURRENT STAGE</span
               >
               <span class="text-2xl font-black text-cyan-400 tracking-wider">
-                {roundLabel(selectedRound, maxRound).toUpperCase()}
+                {roundTitle(selectedRound, maxRound).toUpperCase()}
               </span>
               {#if introPageCount > 1}
                 <div
@@ -717,7 +727,7 @@
                       <span
                         class="text-cyan-400 font-bold px-2 py-0.5 rounded bg-cyan-950/20 border border-cyan-800/20 uppercase"
                       >
-                        {roundShortLabel(m.round, maxRound)}
+                        {roundShort(m.round, maxRound)}
                       </span>
                     </div>
 
@@ -802,7 +812,7 @@
                           <span
                             class="font-orbitron font-black text-[11px] bg-cyan-950/80 border border-cyan-500/30 text-cyan-400 px-2 py-0.5 rounded uppercase tracking-wider"
                           >
-                            {roundShortLabel(tr.round, maxRound)}
+                            {roundShort(tr.round, maxRound)}
                           </span>
 
                           <!-- List of matches in this round -->
@@ -872,7 +882,7 @@
                 >
                   <span>{tournament.name}</span>
                   <span class="text-amber-400"
-                    >{roundShortLabel(activeMatch.round, maxRound)}</span
+                    >{roundShort(activeMatch.round, maxRound)}</span
                   >
                 </div>
 
@@ -940,7 +950,7 @@
               >
                 <span>{tournament.players?.length || 0} PLAYERS</span>
                 <span class="text-slate-700">/</span>
-                <span>{roundLabel(displayRounds[0]?.round || maxRound, maxRound)}</span>
+                <span>{roundTitle(displayRounds[0]?.round || maxRound, maxRound)}</span>
                 {#if isLargeBracket}
                   <span class="text-slate-700">/</span>
                   <span class="text-amber-400 font-bold">
@@ -1017,7 +1027,7 @@
                   <div
                     class="text-base md:text-lg text-cyan-400 font-extrabold text-center border-b-2 border-cyan-500/20 pb-2 mb-4 font-orbitron tracking-widest shrink-0 uppercase"
                   >
-                    {roundLabel(r.round, maxRound).toUpperCase()}
+                    {roundTitle(r.round, maxRound).toUpperCase()}
                   </div>
 
                   <!-- Match cards in round (Absolutely positioned for perfect alignment) -->
@@ -1307,7 +1317,7 @@
                 <div
                   class="mt-3 pt-3 border-t border-slate-800/80 flex items-center justify-between text-[9px] font-mono text-slate-500 uppercase"
                 >
-                  <span>{roundLabel(nextMatch.round, maxRound)}</span>
+                  <span>{roundTitle(nextMatch.round, maxRound)}</span>
                   <span>#{matchOrder.get(nextMatch.id)}</span>
                 </div>
               {:else if activeMatch}

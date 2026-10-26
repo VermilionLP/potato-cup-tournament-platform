@@ -6,6 +6,7 @@ import {
   minPlayersForFormat,
   resolveInitialStatus,
   startBlockedReason,
+  SUPPORTED_FORMATS,
 } from "../lib/tournament-config.js";
 
 test("a scheduled match time skips the voting phase", () => {
@@ -52,4 +53,13 @@ test('starting with enough players is allowed', () => {
   assert.equal(startBlockedReason('single_elim', 2), null);
   assert.equal(startBlockedReason('double_elim', 4), null);
   assert.equal(startBlockedReason('double_elim', 16), null);
+});
+
+test('swiss is a supported format that needs a round count to start', () => {
+  assert.ok(SUPPORTED_FORMATS.includes('swiss'));
+  assert.equal(minPlayersForFormat('swiss'), 2);
+  assert.equal(startBlockedReason('swiss', 1, 3), '至少需要 2 名选手才能开赛（当前 1 人）');
+  assert.match(startBlockedReason('swiss', 8, null), /请先设置瑞士轮轮数/);
+  assert.equal(startBlockedReason('swiss', 3, 3), '瑞士轮 3 轮至少需要 4 名选手（当前 3 人）');
+  assert.equal(startBlockedReason('swiss', 8, 3), null);
 });

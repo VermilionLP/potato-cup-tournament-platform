@@ -5,6 +5,7 @@ import {
   bracketRoundLabel,
   bracketRoundTotal,
   buildMatchOrder,
+  groupSwissRounds,
   displayRound,
   groupBracketRounds,
   layoutBracketBand,
@@ -173,4 +174,18 @@ test("connector paths are straight on one row and elbow otherwise", () => {
     bracketConnectorPath({ x: 0, y: 50 }, { x: 300, y: 150 }, 220),
     "M 220 50 L 260 50 L 260 150 L 300 150",
   );
+});
+
+test("swiss matches are numbered and grouped from round 1 upward", () => {
+  const matches = [
+    { id: 30, bracket: "sw", round: 2, position: 1 },
+    { id: 10, bracket: "sw", round: 1, position: 2 },
+    { id: 11, bracket: "sw", round: 1, position: 1 },
+    { id: 31, bracket: "sw", round: 2, position: 2 },
+  ];
+  const order = buildMatchOrder(matches);
+  assert.deepEqual([11, 10, 30, 31].map((id) => order.get(id)), [1, 2, 3, 4]);
+  const rounds = groupSwissRounds(matches);
+  assert.deepEqual(rounds.map((r) => r.round), [1, 2]);
+  assert.deepEqual(rounds[0].matches.map((m) => m.id), [11, 10]);
 });

@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
+  BRACKET_FORMATS,
+  isValidSwissRounds,
+  startBlockedMessage,
+  suggestedSwissRounds,
   advancementLabel,
   formatLabel,
   gameModeInfo,
@@ -49,4 +53,16 @@ test("only finished matches between two players can be corrected", () => {
   assert.equal(canCorrectResult({ ...base, status: "pending" }), false);
   assert.equal(canCorrectResult({ player1_id: "a", player2_id: null, status: "completed" }), false);
   assert.equal(canCorrectResult(null), false);
+});
+
+test("swiss is selectable and its start rules match the server", () => {
+  assert.equal(BRACKET_FORMATS.find((f) => f.id === "swiss").available, true);
+  assert.equal(startBlockedMessage("single_elim", 1), "至少 2 人才能开赛（当前 1 人）");
+  assert.equal(startBlockedMessage("double_elim", 4), null);
+  assert.equal(startBlockedMessage("swiss", 8, null), "请先设置瑞士轮轮数");
+  assert.equal(startBlockedMessage("swiss", 3, 3), "3 轮瑞士轮至少需要 4 人（当前 3 人）");
+  assert.equal(startBlockedMessage("swiss", 8, 3), null);
+  assert.equal(suggestedSwissRounds(16), 4);
+  assert.equal(isValidSwissRounds(0), false);
+  assert.equal(isValidSwissRounds(15), true);
 });

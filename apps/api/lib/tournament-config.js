@@ -1,11 +1,13 @@
+import { swissStartBlockedReason } from './swiss.js';
+
 // Shared rules for creating a tournament. Kept free of database access so the
 // behaviour can be unit tested without PostgreSQL.
 
 export const GAME_MODES = ['ab', 'rb', 'sb'];
 export const DEFAULT_GAME_MODE = 'rb';
 
-// Formats the current bracket engine can actually run. Swiss is added later.
-export const SUPPORTED_FORMATS = ['single_elim', 'double_elim'];
+// Formats the bracket engine can run.
+export const SUPPORTED_FORMATS = ['single_elim', 'double_elim', 'swiss'];
 
 export const DEFAULT_VEHICLE_POOL = 'proleague';
 
@@ -34,7 +36,7 @@ export function normalizeVehiclePool(value) {
 
 // Fewest registered players each format needs before a bracket can start.
 // Double elimination needs a losers' bracket, which takes at least four.
-export const MIN_PLAYERS_BY_FORMAT = { single_elim: 2, double_elim: 4 };
+export const MIN_PLAYERS_BY_FORMAT = { single_elim: 2, double_elim: 4, swiss: 2 };
 
 export function minPlayersForFormat(format) {
   return MIN_PLAYERS_BY_FORMAT[format] ?? MIN_PLAYERS_BY_FORMAT.single_elim;
@@ -44,8 +46,10 @@ export function minPlayersForFormat(format) {
  * Returns the reason a tournament cannot start yet, or null when it can.
  * Used to refuse the switch to `in_progress` with too few players.
  */
-export function startBlockedReason(format, playerCount) {
+export function startBlockedReason(format, playerCount, swissRounds = null) {
   const min = minPlayersForFormat(format);
   const count = Number(playerCount) || 0;
-  return count < min ? `至少需要 ${min} 名选手才能开赛（当前 ${count} 人）` : null;
+  if (count < min) return `至少需要 ${min} 名选手才能开赛（当前 ${count} 人）`;
+  if (format === 'swiss') return swissStartBlockedReason(count, swissRounds);
+  return null;
 }

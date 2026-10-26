@@ -44,10 +44,16 @@ export function roundShortLabel(round, totalRounds) {
  */
 export function buildMatchOrder(matches = []) {
   const order = new Map();
-  const main = matches
-    .filter((m) => m && m.round > 0)
-    .sort((a, b) => b.round - a.round || a.position - b.position || a.id - b.id);
   let n = 0;
+  // Swiss rounds count up (round 1 is played first); elimination rounds count
+  // down to the final (round 1).
+  const swiss = matches
+    .filter((m) => m && m.bracket === "sw")
+    .sort((a, b) => a.round - b.round || a.position - b.position || a.id - b.id);
+  for (const m of swiss) order.set(m.id, ++n);
+  const main = matches
+    .filter((m) => m && m.bracket !== "sw" && m.round > 0)
+    .sort((a, b) => b.round - a.round || a.position - b.position || a.id - b.id);
   for (const m of main) order.set(m.id, ++n);
   const third = matches
     .filter((m) => m && m.round === 0)
@@ -62,6 +68,22 @@ export function playableMatchIds(matches = [], order = buildMatchOrder(matches))
     .filter((m) => m.status === "pending" && m.player1_id && m.player2_id)
     .sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0))
     .map((m) => m.id);
+}
+
+/** Swiss matches grouped by round, first round first. */
+export function groupSwissRounds(matches = []) {
+  const groups = new Map();
+  for (const m of matches) {
+    if (!m || m.bracket !== "sw") continue;
+    if (!groups.has(m.round)) groups.set(m.round, []);
+    groups.get(m.round).push(m);
+  }
+  return [...groups.entries()]
+    .map(([round, ms]) => ({
+      round,
+      matches: [...ms].sort((a, b) => a.position - b.position || a.id - b.id),
+    }))
+    .sort((a, b) => a.round - b.round);
 }
 
 /**

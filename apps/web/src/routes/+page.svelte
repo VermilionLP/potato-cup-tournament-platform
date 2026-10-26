@@ -9,6 +9,9 @@
     advancementLabel,
     formatLabel,
     gameModeLabel,
+    isValidSwissRounds,
+    MAX_SWISS_ROUNDS,
+    MIN_SWISS_ROUNDS,
   } from "$lib/tournament.js";
   import { goto } from "$app/navigation";
   import { userState } from "$lib/user.svelte.js";
@@ -65,6 +68,7 @@
   }
 
   function ruleLabel(t) {
+    if (t?.format === "swiss") return t.swiss_rounds ? `积分制 · ${t.swiss_rounds} 轮` : "积分制";
     return advancementLabel(t?.loser_advances);
   }
 
@@ -147,6 +151,7 @@
   let newGameMode = $state("rb");
   let newFormat = $state("single_elim");
   let newGrandFinalReset = $state(true);
+  let newSwissRounds = $state(5);
   let selectedVehiclePool = $state("proleague");
   let vehiclePools = $state(defaultVehiclePools);
   let creating = $state(false);
@@ -188,6 +193,7 @@
     newGameMode = "rb";
     newFormat = "single_elim";
     newGrandFinalReset = true;
+    newSwissRounds = 5;
     selectedVehiclePool = "proleague";
     showCreateDialog = true;
   }
@@ -204,6 +210,9 @@
     if (newCapacity < 2 || newCapacity > 128) {
       return toast.error("选手容量必须在 2 至 128 人之间");
     }
+    if (newFormat === "swiss" && !isValidSwissRounds(newSwissRounds)) {
+      return toast.error(`瑞士轮轮数必须在 ${MIN_SWISS_ROUNDS} 至 ${MAX_SWISS_ROUNDS} 之间`);
+    }
 
     creating = true;
     try {
@@ -218,6 +227,7 @@
         vehicle_pool: selectedVehiclePool,
         format: newFormat,
         grand_final_reset: newFormat === "double_elim" ? newGrandFinalReset : false,
+        swiss_rounds: newFormat === "swiss" ? Number(newSwissRounds) : null,
       });
       toast.success(
         newScheduledTime
@@ -646,6 +656,22 @@
           <p class="text-[10px] text-muted-foreground/60">
             双败至少需要 4 名选手；胜者组败者进入败者组，败者组再败即淘汰。
           </p>
+        {:else if newFormat === "swiss"}
+          <div class="flex items-center gap-2 pt-1 text-[11px] text-muted-foreground">
+            <label for="new-swiss-rounds">瑞士轮轮数</label>
+            <input
+              id="new-swiss-rounds"
+              type="number"
+              min={MIN_SWISS_ROUNDS}
+              max={MAX_SWISS_ROUNDS}
+              bind:value={newSwissRounds}
+              class="w-16 rounded-md border border-border bg-background px-2 py-1 text-center text-sm text-foreground"
+            />
+            <span>轮</span>
+          </div>
+          <p class="text-[10px] text-muted-foreground/60">
+            建议轮数约为 log₂(人数)：8 人 3 轮、16 人 4 轮、32 人 5 轮；开赛时人数需多于轮数。积分榜第一即冠军，开赛后仍可修改轮数。
+          </p>
         {/if}
       </div>
 
@@ -674,6 +700,13 @@
           </div>
           <p class="text-[10px] text-muted-foreground/60">
             通常选「胜者晋级」；「败者晋级」会反转每场的晋级者，仅用于特殊玩法。
+          </p>
+        </div>
+      {:else if newFormat === "swiss"}
+        <div class="space-y-1.5">
+          <span class="text-xs font-bold text-muted-foreground block">计分规则</span>
+          <p class="text-[11px] text-muted-foreground/80">
+            比分高者获胜，胜 1 分；同分依次比小分净胜、布赫霍尔茨分（对手积分之和）。人数为奇数时，排名最低且未轮空过的选手轮空并记一胜。
           </p>
         </div>
       {:else}

@@ -3,6 +3,12 @@ import {
   resolveDoubleElimRows,
   seedingOrder,
 } from '../lib/double-elim.js';
+import {
+  currentSwissRound,
+  pairSwissRound,
+  SWISS_BRACKET,
+  swissRoundComplete,
+} from '../lib/swiss.js';
 
 export function MatchRepo(db) {
   async function getById(id, runner = db) {
@@ -59,6 +65,7 @@ export function MatchRepo(db) {
     // place.
     const loserAdvances =
       tournament?.format !== 'double_elim' &&
+      tournament?.format !== 'swiss' &&
       (tournament ? tournament.loser_advances !== 0 : true);
 
     let winnerId = null;
@@ -108,6 +115,9 @@ export function MatchRepo(db) {
     );
     if (info.rows[0]?.format === 'double_elim') {
       return generateDoubleElimBracket(tournamentId);
+    }
+    if (info.rows[0]?.format === 'swiss') {
+      return generateSwissFirstRound(tournamentId);
     }
 
     const client = await db.connect();
@@ -207,11 +217,101 @@ export function MatchRepo(db) {
     return getByTournament(tournamentId);
   }
 
+  async function insertSwissRound(client, tournamentId, round, pairs) {
+    let position = 0;
+    for (const pair of pairs) {
+      position += 1;
+      const isBye = !pair.player2_id;
+      await client.query(`
+        INSERT INTO axsuck.matches
+          (tournament_id, round, position, bracket, player1_id, player2_id, winner_id, status)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      `, [
+        tournamentId,
+        round,
+        position,
+        SWISS_BRACKET,
+        pair.player1_id,
+        pair.player2_id ?? null,
+        isBye ? pair.player1_id : null,
+        isBye ? 'completed' : 'pending',
+      ]);
+    }
+  }
+
+  // Swiss round 1 is generated (and regenerated as a preview) like any other
+  // bracket; later rounds are created as soon as the previous one finishes.
+  async function generateSwissFirstRound(tournamentId) {
+    const client = await db.connect();
+    try {
+      await client.query('BEGIN');
+      const players = await loadSeededPlayers(client, tournamentId);
+      if (players.length < 2) throw new Error('瑞士轮至少需要 2 名选手');
+      await client.query('DELETE FROM axsuck.matches WHERE tournament_id = $1', [tournamentId]);
+      await insertSwissRound(client, tournamentId, 1, pairSwissRound(players, [], 1));
+      await client.query('COMMIT');
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+    return getByTournament(tournamentId);
+  }
+
+  /**
+   * Creates the next Swiss round when the current one is finished and the
+   * tournament has rounds left. Returns the new round number, or null.
+   * Serialised per tournament so two results finishing a round at the same
+   * time cannot both create it.
+   */
+  async function advanceSwiss(tournamentId) {
+    const client = await db.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', [`swiss:${tournamentId}`]);
+      const tRes = await client.query(
+        'SELECT swiss_rounds FROM axsuck.tournaments WHERE id = $1',
+        [tournamentId],
+      );
+      const totalRounds = Number(tRes.rows[0]?.swiss_rounds) || 0;
+      const mRes = await client.query(
+        'SELECT * FROM axsuck.matches WHERE tournament_id = $1 AND bracket = $2',
+        [tournamentId, SWISS_BRACKET],
+      );
+      const matches = mRes.rows;
+      const round = currentSwissRound(matches);
+      if (round === 0 || round >= totalRounds || !swissRoundComplete(matches, round)) {
+        await client.query('COMMIT');
+        return null;
+      }
+      const pRes = await client.query(`
+        SELECT player_id AS id, seed FROM axsuck.tournament_players
+        WHERE tournament_id = $1
+        ORDER BY seed IS NULL, seed ASC, registered_at ASC
+      `, [tournamentId]);
+      await insertSwissRound(client, tournamentId, round + 1, pairSwissRound(pRes.rows, matches, round + 1));
+      await client.query('COMMIT');
+      return round + 1;
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+  }
+
   async function advanceWinner(tournamentId, matchId) {
     const match = await getById(matchId);
     if (!match) throw new Error('Match not found');
     if ((match.status !== 'completed' && match.status !== 'walkover') || !match.winner_id) {
       throw new Error('Match not completed or no winner');
+    }
+
+    // Swiss results do not move anyone forward; they may complete the round.
+    if (match.bracket === SWISS_BRACKET) {
+      const nextRound = await advanceSwiss(tournamentId);
+      return nextRound ? { swiss_round_created: nextRound } : null;
     }
 
     const resetMatch = await maybeCreateResetMatch(tournamentId, match);
@@ -357,7 +457,7 @@ export function MatchRepo(db) {
     await db.query('DELETE FROM axsuck.matches WHERE tournament_id = $1', [tournamentId]);
   }
 
-  return { getById, getByTournament, create, submitResult, generateBracket, advanceWinner, clearMatches };
+  return { getById, getByTournament, create, submitResult, generateBracket, advanceWinner, advanceSwiss, clearMatches };
 }
 
 function isBranchEmpty(slots, round, pos, branchNum, totalRounds) {

@@ -162,6 +162,22 @@ export default async function matchesRoutes(fastify) {
         }
       }
 
+      // Swiss rounds after this one were paired from its result, so they go.
+      if (match.bracket === 'sw') {
+        const later = await client.query(`
+          DELETE FROM axsuck.matches
+          WHERE tournament_id = $1 AND bracket = 'sw' AND round > $2
+          RETURNING id
+        `, [match.tournament_id, match.round]);
+        const removed = later.rows.map((r) => r.id);
+        if (removed.length > 0) {
+          await client.query(`
+            UPDATE axsuck.tournaments SET active_match_id = NULL
+            WHERE id = $1 AND active_match_id = ANY($2::int[])
+          `, [match.tournament_id, removed]);
+        }
+      }
+
       await recursiveRollback(matchId);
       await client.query('COMMIT');
     } catch (err) {

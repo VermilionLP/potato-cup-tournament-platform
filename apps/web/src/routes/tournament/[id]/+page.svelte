@@ -23,12 +23,16 @@
     roundLabel,
   } from "$lib/bracket.js";
   import DoubleElimBracket from "$lib/components/DoubleElimBracket.svelte";
+  import SwissView from "$lib/components/SwissView.svelte";
   import {
     advancementLabel,
     formatLabel,
     canCorrectResult,
     gameModeLabel,
-    minPlayersForFormat,
+    isValidSwissRounds,
+    MAX_SWISS_ROUNDS,
+    MIN_SWISS_ROUNDS,
+    startBlockedMessage,
   } from "$lib/tournament.js";
   import TierBadge from "$lib/components/TierBadge.svelte";
   import Flag from "$lib/components/Flag.svelte";
@@ -75,9 +79,12 @@
   let totalRounds = $derived(maxRound(tournament?.matches || []));
   let matchOrder = $derived(buildMatchOrder(tournament?.matches || []));
   let isDoubleElim = $derived(tournament?.format === "double_elim");
-  let minPlayersToStart = $derived(minPlayersForFormat(tournament?.format));
+  let isSwiss = $derived(tournament?.format === "swiss");
   let registeredCount = $derived(tournament?.players?.length || 0);
-  let canStartTournament = $derived(registeredCount >= minPlayersToStart);
+  let startBlocked = $derived(
+    startBlockedMessage(tournament?.format, registeredCount, tournament?.swiss_rounds),
+  );
+  let canStartTournament = $derived(!startBlocked);
   let wbTotalRounds = $derived(
     bracketRoundTotal(tournament?.matches || [], "wb"),
   );
@@ -1069,6 +1076,28 @@
     }
   }
 
+  async function editSwissRounds() {
+    if (!ensureAdmin()) return;
+    const current = tournament?.swiss_rounds ?? "";
+    const input = prompt(
+      `瑞士轮总轮数（${MIN_SWISS_ROUNDS}-${MAX_SWISS_ROUNDS}）。比赛进行中修改时，不能少于当前轮次。`,
+      String(current),
+    );
+    if (input === null) return;
+    const rounds = Number(input.trim());
+    if (!isValidSwissRounds(rounds)) {
+      toast.error(`轮数必须是 ${MIN_SWISS_ROUNDS}-${MAX_SWISS_ROUNDS} 之间的整数`);
+      return;
+    }
+    try {
+      await API.setSwissRounds(tid, rounds);
+      toast.success(`瑞士轮已设为 ${rounds} 轮`);
+      await load();
+    } catch (e) {
+      toast.error(e.message);
+    }
+  }
+
   function recordedResultLabel(match) {
     if (!match) return "";
     if (match.status === "walkover") return `弃权判定，${playerName(match.winner_id)} 晋级`;
@@ -1080,9 +1109,15 @@
   async function prepareCorrection(actionLabel) {
     if (!ensureAdmin()) return false;
     const dependent = checkHasDependentMatchPlayed(selectedMatch);
-    const msg = dependent
-      ? `【警告】该场比赛的晋级选手已在后续轮次进行了比赛！\n${actionLabel}会先重置本场，后续所有相关比赛的比分与晋级状态都将被清空。\n\n确定继续吗？`
-      : `${actionLabel}会先重置本场结果，再按新结果重新晋级。确定继续吗？`;
+    const laterSwissRounds =
+      selectedMatch.bracket === "sw" && downstreamMatches(selectedMatch).length > 0;
+    const msg = laterSwissRounds
+      ? dependent
+        ? `【警告】瑞士轮后续轮次已经有比赛打完！\n${actionLabel}会删除第 ${selectedMatch.round + 1} 轮及之后的所有对阵和比分，并按新结果重新配对。\n\n确定继续吗？`
+        : `${actionLabel}会删除第 ${selectedMatch.round + 1} 轮及之后的对阵（都还没开打），并按新结果重新配对。确定继续吗？`
+      : dependent
+        ? `【警告】该场比赛的晋级选手已在后续轮次进行了比赛！\n${actionLabel}会先重置本场，后续所有相关比赛的比分与晋级状态都将被清空。\n\n确定继续吗？`
+        : `${actionLabel}会先重置本场结果，再按新结果重新晋级。确定继续吗？`;
     if (!confirm(msg)) return false;
     try {
       await API.rollbackResult(tid, selectedMatch.id);
@@ -1113,6 +1148,12 @@
 
   function downstreamMatches(match) {
     if (!match || !tournament?.matches) return [];
+    // Later Swiss rounds were paired from this result.
+    if (match.bracket === "sw") {
+      return tournament.matches.filter(
+        (x) => x.bracket === "sw" && x.round > match.round,
+      );
+    }
     const ids = [];
     if (match.next_match_id) ids.push(match.next_match_id);
     if (match.loser_next_match_id) ids.push(match.loser_next_match_id);
@@ -1550,6 +1591,7 @@
 
   function matchRoundLabel(match) {
     if (!match) return "";
+    if (match.bracket === "sw") return `瑞士轮 第 ${match.round} 轮`;
     if (match.bracket === "wb") {
       return bracketRoundLabel("wb", match.round, wbTotalRounds);
     }
@@ -1593,6 +1635,11 @@
   let podium = $derived.by(() => {
     if (!tournament?.matches?.length || tournament.status !== "completed")
       return null;
+    if (isSwiss) {
+      const table = tournament.standings || [];
+      if (!table.length) return null;
+      return { champion: table[0].player_id, runnerUp: table[1]?.player_id ?? null };
+    }
     const finalMatch = championshipMatch;
     if (!finalMatch || finalMatch.status !== "completed") return null;
     const champion = finalMatch.winner_id;
@@ -1606,6 +1653,26 @@
   // Derive standings for completed/in-progress stages
   let standings = $derived.by(() => {
     if (!tournament?.matches?.length) return [];
+
+    // Swiss placements come straight from the server-side standings.
+    if (isSwiss) {
+      const byId = new Map((tournament.players || []).map((p) => [p.id, p]));
+      return (tournament.standings || []).map((row) => {
+        const p = byId.get(row.player_id) || {};
+        return {
+          id: row.player_id,
+          display_name: p.display_name,
+          flag: p.flag,
+          team: p.team,
+          link: p.link,
+          rank:
+            row.rank === 1 ? "第 1 名 (冠军)" : row.rank === 2 ? "第 2 名 (亚军)" : `第 ${row.rank} 名`,
+          eliminatedRound: null,
+          matchesPlayed: row.wins + row.losses,
+          matchesWon: row.wins,
+        };
+      });
+    }
 
     const playersMap = {};
     (tournament.players || []).forEach((p) => {
@@ -2410,12 +2477,16 @@
               基于当前报名的选手和种子排名实时生成的对阵预览（调整上方种子排序会自动刷新）。
               {#if isDoubleElim}
                 <span class="block mt-1 text-muted-foreground/80">双败淘汰至少需要 4 名选手；种子会依次填入胜者组。</span>
+              {:else if isSwiss}
+                <span class="block mt-1 text-muted-foreground/80">瑞士轮第 1 轮按种子上半区对下半区配对；之后每轮按积分榜重新配对，不会重复交手。</span>
               {/if}
               <span class="sm:hidden block mt-1 text-muted-foreground/80">左右滑动查看本组对阵。</span>
             {:else if tournament.status === "in_progress"}
               点击包含两位选手的待赛卡片可以填报比分或进行弃权处理。
               {#if isDoubleElim}
                 <span class="block mt-1 text-muted-foreground/80">胜者组败者落入败者组；败者组再败即淘汰；总决赛按需加赛。</span>
+              {:else if isSwiss}
+                <span class="block mt-1 text-muted-foreground/80">一轮全部打完后自动生成下一轮对阵；最后一轮结束后积分榜第一即为冠军。</span>
               {/if}
             {:else}
               赛事已结束，此对阵图当前为只读。
@@ -2440,7 +2511,7 @@
         {/if}
       </Card.Header>
 
-      {#if sectionCount > 1 && !isDoubleElim}
+      {#if sectionCount > 1 && !isDoubleElim && !isSwiss}
         <div
           class="flex flex-wrap items-center gap-2 px-3 sm:px-6 pt-4"
         >
@@ -2494,7 +2565,21 @@
       {/if}
 
       <Card.Content class="p-3 sm:p-6 overflow-x-auto relative min-h-100">
-        {#if isDoubleElim}
+        {#if isSwiss}
+          <SwissView
+            matches={tournament.matches || []}
+            players={tournament.players || []}
+            standings={tournament.standings || []}
+            totalRounds={tournament.swiss_rounds}
+            status={tournament.status}
+            activeMatchId={tournament.active_match_id}
+            isAdmin={isAdmin}
+            userId={userState.id}
+            onOpenMatch={openMatchDetails}
+            onToggleActive={toggleActiveMatch}
+            onEditRounds={editSwissRounds}
+          />
+        {:else if isDoubleElim}
           <DoubleElimBracket
             matches={tournament.matches || []}
             players={tournament.players || []}
@@ -2868,7 +2953,7 @@
           • 创建于 {new Date(
             tournament.created_at,
           ).toLocaleDateString("zh-CN")}
-          • 晋级规则: <span class="font-bold text-primary">{advancementLabel(tournament.loser_advances)}</span>
+          • {isSwiss ? "计分规则" : "晋级规则"}: <span class="font-bold text-primary">{isSwiss ? `积分制 · ${tournament.swiss_rounds ?? "?"} 轮` : advancementLabel(tournament.loser_advances)}</span>
         </p>
         {#if tournament.scheduled_time}
           <div
@@ -2935,9 +3020,9 @@
           >
             改为时间投票
           </Button>
-          {#if !canStartTournament}
+          {#if startBlocked}
             <span class="text-xs text-muted-foreground self-center">
-              至少 {minPlayersToStart} 人才能开赛（当前 {registeredCount} 人）
+              {startBlocked}
             </span>
           {/if}
           <Button
@@ -3805,7 +3890,9 @@
                   赛事最终名次排行 (Standings)
                 </Card.Title>
                 <Card.Description class="text-xs">
-                  基于淘汰赛各轮次淘汰情况计算得出的选手最终名次。
+                  {isSwiss
+                    ? "按瑞士轮积分榜排名：积分 → 小分净胜 → 布赫霍尔茨分 → 种子。"
+                    : "基于淘汰赛各轮次淘汰情况计算得出的选手最终名次。"}
                 </Card.Description>
               </Card.Header>
               <Card.Content class="p-6 pt-0">

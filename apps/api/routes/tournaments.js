@@ -12,6 +12,14 @@ import {
   startBlockedReason,
   SUPPORTED_FORMATS,
 } from '../lib/tournament-config.js';
+import {
+  computeStandings,
+  currentSwissRound,
+  MAX_SWISS_ROUNDS,
+  MIN_SWISS_ROUNDS,
+  parseSwissRounds,
+  SWISS_BRACKET,
+} from '../lib/swiss.js';
 
 export default async function tournamentsRoutes(fastify) {
   const repo = TournamentRepo(fastify.db);
@@ -62,10 +70,18 @@ export default async function tournamentsRoutes(fastify) {
       };
     });
 
+    const standings = t.format === 'swiss'
+      ? computeStandings(
+          players.map((p) => ({ id: p.id, seed: p.seed })),
+          ms.filter((m) => m.bracket === SWISS_BRACKET),
+        )
+      : undefined;
+
     return {
       ...t,
       players: playersWithLadder,
       matches: ms,
+      standings,
       votes,
       custom_votes,
       accounts: tournamentAccounts
@@ -156,6 +172,7 @@ export default async function tournamentsRoutes(fastify) {
       vehicle_pool,
       format,
       grand_final_reset,
+      swiss_rounds,
     } = req.body;
     if (!id || !name) throw fastify.httpErrors.badRequest('id and name are required');
     const existing = await repo.getById(id);
@@ -172,6 +189,9 @@ export default async function tournamentsRoutes(fastify) {
     if (vehicle_pool != null && !isValidVehiclePool(vehicle_pool)) {
       throw fastify.httpErrors.badRequest('vehicle_pool must be a slug like "proleague"');
     }
+    if (format === 'swiss' && !parseSwissRounds(swiss_rounds)) {
+      throw fastify.httpErrors.badRequest(`瑞士轮需要设置轮数（${MIN_SWISS_ROUNDS}-${MAX_SWISS_ROUNDS}）`);
+    }
     return await repo.create({
       id,
       name,
@@ -184,6 +204,7 @@ export default async function tournamentsRoutes(fastify) {
       vehicle_pool,
       format,
       grand_final_reset,
+      swiss_rounds,
     });
   });
 
@@ -234,7 +255,7 @@ export default async function tournamentsRoutes(fastify) {
     const wasVoting = t.status === 'voting';
 
     if (status === 'in_progress' && t.status !== 'in_progress') {
-      const reason = startBlockedReason(t.format, t.player_count);
+      const reason = startBlockedReason(t.format, t.player_count, t.swiss_rounds);
       if (reason) throw fastify.httpErrors.badRequest(reason);
     }
 
@@ -279,6 +300,28 @@ export default async function tournamentsRoutes(fastify) {
     }
     
     return { ...updated, auto_registered: autoRegistered };
+  });
+
+  // Change the number of Swiss rounds. It cannot drop below the round already
+  // being played; raising it after the last round finished starts the next one.
+  fastify.post('/tournaments/:id/swiss-rounds', async (req) => {
+    requireAdmin(fastify, req);
+    const t = await repo.getById(req.params.id);
+    if (!t) throw fastify.httpErrors.notFound('Tournament not found');
+    if (t.format !== 'swiss') throw fastify.httpErrors.badRequest('该赛事不是瑞士轮');
+    if (t.status === 'completed') throw fastify.httpErrors.badRequest('赛事已结束，不能修改轮数');
+    const rounds = parseSwissRounds(req.body?.swiss_rounds);
+    if (!rounds) {
+      throw fastify.httpErrors.badRequest(`轮数必须是 ${MIN_SWISS_ROUNDS}-${MAX_SWISS_ROUNDS} 之间的整数`);
+    }
+    const played = currentSwissRound(await repo.getMatches(req.params.id));
+    if (rounds < played) {
+      throw fastify.httpErrors.badRequest(`已经进行到第 ${played} 轮，轮数不能少于 ${played}`);
+    }
+    const updated = await repo.setSwissRounds(req.params.id, rounds);
+    if (t.status === 'in_progress') await matches.advanceSwiss(req.params.id);
+    fastify.tournamentEvents.emit(`update:${req.params.id}`, { type: 'swiss_rounds_changed', swiss_rounds: rounds });
+    return updated;
   });
 
   fastify.post('/tournaments/:id/overlay-state', async (req) => {

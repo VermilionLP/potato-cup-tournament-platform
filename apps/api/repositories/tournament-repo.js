@@ -6,6 +6,7 @@ import {
   resolveInitialStatus,
   SUPPORTED_FORMATS,
 } from '../lib/tournament-config.js';
+import { parseSwissRounds } from '../lib/swiss.js';
 
 export function TournamentRepo(db) {
   async function list() {
@@ -40,13 +41,13 @@ export function TournamentRepo(db) {
     return res.rows[0] || null;
   }
 
-  async function create({ id, name, description, player_capacity, hold_third_place, loser_advances, scheduled_time, game_mode, vehicle_pool, format, grand_final_reset }) {
+  async function create({ id, name, description, player_capacity, hold_third_place, loser_advances, scheduled_time, game_mode, vehicle_pool, format, grand_final_reset, swiss_rounds }) {
     const scheduledTime = String(scheduled_time || '').trim();
     const bracketFormat = SUPPORTED_FORMATS.includes(format) ? format : SUPPORTED_FORMATS[0];
     await db.query(`
       INSERT INTO axsuck.tournaments
-        (id, name, description, status, player_capacity, hold_third_place, loser_advances, scheduled_time, game_mode, vehicle_pool, format, grand_final_reset)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+        (id, name, description, status, player_capacity, hold_third_place, loser_advances, scheduled_time, game_mode, vehicle_pool, format, grand_final_reset, swiss_rounds)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
     `, [
       id,
       name,
@@ -60,6 +61,7 @@ export function TournamentRepo(db) {
       normalizeVehiclePool(vehicle_pool),
       bracketFormat,
       bracketFormat === 'double_elim' && grand_final_reset !== false,
+      bracketFormat === 'swiss' ? parseSwissRounds(swiss_rounds) : null,
     ]);
     return getById(id);
   }
@@ -73,6 +75,15 @@ export function TournamentRepo(db) {
     `, [name, id]);
     if (!res.rowCount) return null;
     return getById(id);
+  }
+
+  async function setSwissRounds(id, rounds) {
+    const res = await db.query(`
+      UPDATE axsuck.tournaments SET swiss_rounds = $1, updated_at = NOW()
+      WHERE id = $2
+      RETURNING id
+    `, [rounds, id]);
+    return res.rowCount > 0 ? getById(id) : null;
   }
 
   async function updateStatus(id, status, scheduledTime = null, createdAt = null, updatedAt = null) {
@@ -299,5 +310,5 @@ export function TournamentRepo(db) {
     return getById(id);
   }
 
-  return { list, getById, create, rename, updateStatus, updateOverlayState, getPlayers, addPlayer, autoRegisterVoters, removePlayer, setSeeds, getMatches, getVotes, getCustomVotes };
+  return { list, getById, create, rename, setSwissRounds, updateStatus, updateOverlayState, getPlayers, addPlayer, autoRegisterVoters, removePlayer, setSeeds, getMatches, getVotes, getCustomVotes };
 }
