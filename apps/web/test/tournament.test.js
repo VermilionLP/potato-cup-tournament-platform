@@ -5,6 +5,7 @@ import {
   formatLabel,
   gameModeInfo,
   gameModeLabel,
+  canCorrectResult,
   minPlayersForFormat,
 } from "../src/lib/tournament.js";
 
@@ -39,4 +40,13 @@ test("start button thresholds match the server rule", () => {
   assert.equal(minPlayersForFormat("single_elim"), 2);
   assert.equal(minPlayersForFormat("double_elim"), 4);
   assert.equal(minPlayersForFormat(undefined), 2);
+});
+
+test("only finished matches between two players can be corrected", () => {
+  const base = { player1_id: "a", player2_id: "b" };
+  assert.equal(canCorrectResult({ ...base, status: "completed" }), true);
+  assert.equal(canCorrectResult({ ...base, status: "walkover" }), true);
+  assert.equal(canCorrectResult({ ...base, status: "pending" }), false);
+  assert.equal(canCorrectResult({ player1_id: "a", player2_id: null, status: "completed" }), false);
+  assert.equal(canCorrectResult(null), false);
 });

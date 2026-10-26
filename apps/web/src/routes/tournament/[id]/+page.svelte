@@ -26,6 +26,7 @@
   import {
     advancementLabel,
     formatLabel,
+    canCorrectResult,
     gameModeLabel,
     minPlayersForFormat,
   } from "$lib/tournament.js";
@@ -322,6 +323,8 @@
   // Modal for match results
   let showMatchDialog = $state(false);
   let reportStep = $state("banpick");
+  // True while an admin is correcting a match that already has a result.
+  let correctingMatch = $state(false);
   let drawing = $state(false);
   let animDisplay = $state(null);
   let score1Input = $state(0);
@@ -1044,13 +1047,50 @@
   // Match report modal triggers
   function openMatchReport(match) {
     selectedMatch = match;
+    correctingMatch = false;
     showMatchDialog = true; reportStep = "banpick"; score1Input = 0; score2Input = 0; resetBanPick();
+  }
+
+  // Opens the score step pre-filled with the recorded result so an admin can fix it.
+  function openMatchCorrection(match) {
+    selectedMatch = match;
+    correctingMatch = true;
+    reportStep = "score";
+    score1Input = match.status === "walkover" ? 0 : Number(match.score1) || 0;
+    score2Input = match.status === "walkover" ? 0 : Number(match.score2) || 0;
+    showMatchDialog = true;
   }
 
   async function openMatchDetails(match) {
     if (match.status === "pending" && tournament.status !== "completed") {
       openMatchReport(match);
+    } else if (isAdmin && canCorrectResult(match)) {
+      openMatchCorrection(match);
     }
+  }
+
+  function recordedResultLabel(match) {
+    if (!match) return "";
+    if (match.status === "walkover") return `弃权判定，${playerName(match.winner_id)} 晋级`;
+    return `${playerName(match.player1_id)} ${match.score1 ?? 0} : ${match.score2 ?? 0} ${playerName(match.player2_id)}`;
+  }
+
+  // A correction first resets this match (and anything it fed into), then the
+  // new result is submitted and propagated again. Returns false if cancelled.
+  async function prepareCorrection(actionLabel) {
+    if (!ensureAdmin()) return false;
+    const dependent = checkHasDependentMatchPlayed(selectedMatch);
+    const msg = dependent
+      ? `【警告】该场比赛的晋级选手已在后续轮次进行了比赛！\n${actionLabel}会先重置本场，后续所有相关比赛的比分与晋级状态都将被清空。\n\n确定继续吗？`
+      : `${actionLabel}会先重置本场结果，再按新结果重新晋级。确定继续吗？`;
+    if (!confirm(msg)) return false;
+    try {
+      await API.rollbackResult(tid, selectedMatch.id);
+    } catch (err) {
+      toast.error("重置原结果失败: " + err.message);
+      return false;
+    }
+    return true;
   }
 
   async function openWikiExport() {
@@ -1128,7 +1168,9 @@
     }
     if (!selectedMatch) return;
 
-    if (checkHasDependentMatchPlayed(selectedMatch)) {
+    if (correctingMatch) {
+      if (!(await prepareCorrection("修正比分"))) return;
+    } else if (checkHasDependentMatchPlayed(selectedMatch)) {
       const confirmMsg = "【警告】该场比赛的晋级选手已在后续轮次进行了比赛！\n修改此场比赛将导致后续所有相关比赛的比分与晋级状态都被清空重置。\n\n确定要继续修改并重置后续比赛吗？";
       if (!confirm(confirmMsg)) return;
       
@@ -1194,7 +1236,9 @@
     }
     if (!selectedMatch) return;
 
-    if (checkHasDependentMatchPlayed(selectedMatch)) {
+    if (correctingMatch) {
+      if (!(await prepareCorrection("改判弃权"))) return;
+    } else if (checkHasDependentMatchPlayed(selectedMatch)) {
       const confirmMsg = "【警告】该场比赛的晋级选手已在后续轮次进行了比赛！\n判定弃权将导致后续所有相关比赛的比分与晋级状态都被清空重置。\n\n确定要继续修改并重置后续比赛吗？";
       if (!confirm(confirmMsg)) return;
       
@@ -2491,7 +2535,8 @@
                         <div class="w-full h-full border border-transparent bg-transparent select-none pointer-events-none opacity-0"></div>
                       {:else}
                         <!-- Normal Match Card -->
-                        {@const isClickable = isPlayable}
+                        {@const isCorrectable = isAdmin && canCorrectResult(m)}
+                        {@const isClickable = isPlayable || isCorrectable}
                         <div
                           role="button"
                           tabindex="0"
@@ -2525,6 +2570,9 @@
                               {/if}
                               {#if userInMatch && isPending}
                                 <span class="text-primary font-bold animate-pulse">我的比赛</span>
+                              {/if}
+                              {#if isCorrectable}
+                                <span class="rounded bg-amber-500/15 px-1 py-0.5 text-[7px] font-bold text-amber-500">修正</span>
                               {/if}
                             </div>
                           </div>
@@ -2652,7 +2700,7 @@
                       {@const tp1 = tournament.players?.find(p => p.id === thirdPlaceMatch.player1_id)}
                       {@const tp2 = tournament.players?.find(p => p.id === thirdPlaceMatch.player2_id)}
                       {@const gfMatch = r.matches[0]}
-                      {@const tpClickable = thirdPlaceMatch.player1_id && thirdPlaceMatch.player2_id && thirdPlaceMatch.status === "pending" && tournament.status === "in_progress"}
+                      {@const tpClickable = (thirdPlaceMatch.player1_id && thirdPlaceMatch.player2_id && thirdPlaceMatch.status === "pending" && tournament.status === "in_progress") || (isAdmin && canCorrectResult(thirdPlaceMatch))}
                       {#if gfMatch}
                         {@const gfPos = matchPositions.positions[gfMatch.id] || { top: 0, height: 64 }}
                         {@const tpTop = gfPos.top + gfPos.height + 28}
@@ -3834,10 +3882,14 @@
   <Dialog.Content class="!max-w-4xl w-full max-h-[90vh] overflow-y-auto bg-card border border-border">
     <Dialog.Header>
       <Dialog.Title class="text-base font-bold text-foreground">
-        <div class="flex gap-1 mb-3">
-          <Button size="sm" variant={reportStep === "banpick" ? "default" : "outline"} onclick={() => reportStep = "banpick"}>Ban / Pick</Button>
-          <Button size="sm" variant={reportStep === "score" ? "default" : "outline"} onclick={() => reportStep = "score"}>填报比分</Button>
-        </div>
+        {#if correctingMatch}
+          <div class="mb-1">修正比赛结果</div>
+        {:else}
+          <div class="flex gap-1 mb-3">
+            <Button size="sm" variant={reportStep === "banpick" ? "default" : "outline"} onclick={() => reportStep = "banpick"}>Ban / Pick</Button>
+            <Button size="sm" variant={reportStep === "score" ? "default" : "outline"} onclick={() => reportStep = "score"}>填报比分</Button>
+          </div>
+        {/if}
       </Dialog.Title>
       <Dialog.Description class="text-xs text-muted-foreground">
         场次: {selectedMatch?.position} • {selectedMatch ? matchRoundLabel(selectedMatch) : ""}
@@ -3921,6 +3973,12 @@
         </div>
       {:else}
         <div class="py-3 space-y-4">
+          {#if correctingMatch}
+            <div class="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs space-y-1">
+              <div><span class="font-bold text-amber-500">当前记录：</span>{recordedResultLabel(selectedMatch)}</div>
+              <div class="text-muted-foreground">提交后会先重置本场，再按新结果重新晋级；如果晋级选手已打过后续比赛，那些比赛也会被清空。</div>
+            </div>
+          {/if}
           <div class="border border-border rounded-lg overflow-hidden">
             <div class="grid grid-cols-2 bg-muted/50 text-xs font-semibold px-3 py-2">
               <span>选手</span><span class="text-right">比分</span>
@@ -3952,11 +4010,14 @@
           </div>
         </div>
         <Dialog.Footer class="flex gap-2">
-          
+          {#if correctingMatch}
+            <Button size="sm" variant="outline" disabled={submittingResult} onclick={doRollback}
+              class="border-destructive/40 text-destructive hover:bg-destructive hover:text-white">重置为未开始</Button>
+          {/if}
           <Button size="sm" disabled={submittingResult || score1Input === score2Input} onclick={() => {
             const winnerId = score1Input > score2Input ? selectedMatch.player1_id : selectedMatch.player2_id;
             selectGameWinner(winnerId);
-          }} class="flex-1 font-bold">提交比分</Button>
+          }} class="flex-1 font-bold">{correctingMatch ? "提交修正" : "提交比分"}</Button>
         </Dialog.Footer>
       {/if}
     {/if}

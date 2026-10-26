@@ -37,3 +37,14 @@ export const MIN_PLAYERS_BY_FORMAT = { single_elim: 2, double_elim: 4 };
 export function minPlayersForFormat(format) {
   return MIN_PLAYERS_BY_FORMAT[format] ?? MIN_PLAYERS_BY_FORMAT.single_elim;
 }
+
+// An admin can correct a match that already has a result (score or walkover)
+// as long as both slots hold a real player; byes and voided slots are skipped.
+export function canCorrectResult(match) {
+  return Boolean(
+    match &&
+      match.status !== "pending" &&
+      match.player1_id &&
+      match.player2_id,
+  );
+}

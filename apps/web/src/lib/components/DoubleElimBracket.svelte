@@ -7,6 +7,7 @@
     bracketRoundTotal,
     layoutBracketBand,
   } from "$lib/bracket.js";
+  import { canCorrectResult } from "$lib/tournament.js";
 
   let {
     matches = [],
@@ -166,11 +167,7 @@
   }
 
   function canEditResult(match) {
-    return (
-      isAdmin &&
-      match.status !== "pending" &&
-      Boolean(match.player1_id && match.player2_id)
-    );
+    return isAdmin && canCorrectResult(match);
   }
 
   function scoreLabel(match, slot) {
