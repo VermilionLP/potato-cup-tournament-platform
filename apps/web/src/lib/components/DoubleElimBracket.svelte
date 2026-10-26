@@ -19,6 +19,8 @@
     grandFinalReset = false,
     onOpenMatch = () => {},
     onToggleActive = () => {},
+    banpickEnabled = false,
+    onBanPick = () => {},
   } = $props();
 
   const CARD_W = 220;
@@ -248,6 +250,19 @@
                   : 'bg-primary text-primary-foreground hover:bg-primary/85'}"
               >
                 {active ? "直播中" : "推流直播"}
+              </button>
+            {/if}
+            {#if banpickEnabled && playable}
+              <button
+                type="button"
+                onclick={(e) => {
+                  e.stopPropagation();
+                  onBanPick(match);
+                }}
+                class="rounded border border-primary/40 px-1 py-0.5 text-[7px] font-bold text-primary transition-all hover:bg-primary hover:text-primary-foreground"
+                title="打开 Ban / Pick"
+              >
+                BP
               </button>
             {/if}
             {#if userId && match.status === "pending" && (match.player1_id === userId || match.player2_id === userId)}

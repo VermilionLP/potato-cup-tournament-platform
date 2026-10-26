@@ -152,6 +152,7 @@
   let newFormat = $state("single_elim");
   let newGrandFinalReset = $state(true);
   let newSwissRounds = $state(5);
+  let newBanpickEnabled = $state(true);
   let selectedVehiclePool = $state("proleague");
   let vehiclePools = $state(defaultVehiclePools);
   let creating = $state(false);
@@ -194,6 +195,7 @@
     newFormat = "single_elim";
     newGrandFinalReset = true;
     newSwissRounds = 5;
+    newBanpickEnabled = true;
     selectedVehiclePool = "proleague";
     showCreateDialog = true;
   }
@@ -228,6 +230,7 @@
         format: newFormat,
         grand_final_reset: newFormat === "double_elim" ? newGrandFinalReset : false,
         swiss_rounds: newFormat === "swiss" ? Number(newSwissRounds) : null,
+        banpick_enabled: newBanpickEnabled,
       });
       toast.success(
         newScheduledTime
@@ -676,18 +679,22 @@
       </div>
 
       <div class="space-y-1.5">
-        <label class="text-xs font-bold text-muted-foreground">载具池</label>
-        <select bind:value={selectedVehiclePool} class="w-full bg-background border border-border rounded-md px-3 py-2 text-sm text-foreground">
+        <label for="new-vehicle-pool" class="text-xs font-bold text-muted-foreground">载具池</label>
+        <select id="new-vehicle-pool" bind:value={selectedVehiclePool} class="w-full bg-background border border-border rounded-md px-3 py-2 text-sm text-foreground">
           {#each vehiclePools as pool}
             <option value={pool.id}>{pool.name}</option>
           {/each}
         </select>
+        <label class="flex items-start gap-2 text-[11px] text-muted-foreground cursor-pointer pt-1">
+          <input type="checkbox" bind:checked={newBanpickEnabled} class="accent-primary mt-0.5" />
+          <span>启用 Ban / Pick：每张对阵卡片上显示 BP 按钮，按所选载具池进行禁用和抽取</span>
+        </label>
 
       </div>
 
       {#if newFormat === "single_elim"}
         <div class="space-y-1.5">
-          <label class="text-xs font-bold text-muted-foreground block">晋级规则</label>
+          <span class="text-xs font-bold text-muted-foreground block">晋级规则</span>
           <div class="flex items-center gap-4 text-xs pt-1">
             <label class="flex items-center gap-1.5 cursor-pointer text-foreground font-semibold">
               <input type="radio" bind:group={newLoserAdvances} value={false} class="accent-primary" />
@@ -706,7 +713,7 @@
         <div class="space-y-1.5">
           <span class="text-xs font-bold text-muted-foreground block">计分规则</span>
           <p class="text-[11px] text-muted-foreground/80">
-            比分高者获胜，胜 1 分；同分依次比小分净胜、布赫霍尔茨分（对手积分之和）。人数为奇数时，排名最低且未轮空过的选手轮空并记一胜。
+            比分高者获胜，胜 1 分；同分依次比小分净胜、对手分（所有对手的积分之和）。人数为奇数时，排名最低且未轮空过的选手轮空并记一胜。
           </p>
         </div>
       {:else}

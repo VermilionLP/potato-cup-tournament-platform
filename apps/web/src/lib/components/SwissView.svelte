@@ -15,6 +15,8 @@
     userId = "",
     onOpenMatch = () => {},
     onToggleActive = () => {},
+    banpickEnabled = false,
+    onBanPick = () => {},
     onEditRounds = () => {},
   } = $props();
 
@@ -129,6 +131,19 @@
               {active ? "直播中" : "推流直播"}
             </button>
           {/if}
+          {#if banpickEnabled && playable}
+            <button
+              type="button"
+              onclick={(e) => {
+                e.stopPropagation();
+                onBanPick(match);
+              }}
+              class="rounded border border-primary/40 px-1 py-0.5 text-[7px] font-bold text-primary transition-all hover:bg-primary hover:text-primary-foreground"
+              title="打开 Ban / Pick"
+            >
+              BP
+            </button>
+          {/if}
           {#if userId && match.status === "pending" && (match.player1_id === userId || match.player2_id === userId)}
             <span class="animate-pulse font-bold text-primary">我的比赛</span>
           {/if}
@@ -163,7 +178,7 @@
       </button>
     {/if}
     <span class="text-muted-foreground/80">
-      胜 1 分 · 同分依次比小分净胜、布赫霍尔茨分（对手积分之和）
+      胜 1 分 · 同分依次比小分净胜、对手分（所有对手的积分之和）
     </span>
   </div>
 
@@ -179,7 +194,7 @@
               <th class="w-16 px-3 py-2 text-center">胜-负</th>
               <th class="w-14 px-3 py-2 text-center">积分</th>
               <th class="w-16 px-3 py-2 text-center" title="所有比赛小分之差">小分净胜</th>
-              <th class="w-16 px-3 py-2 text-center" title="所有对手的积分之和">布赫霍尔茨</th>
+              <th class="w-16 px-3 py-2 text-center" title="对手分：所有对手的积分之和（布赫霍尔茨分），对手越强越高">对手分</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-border/30">

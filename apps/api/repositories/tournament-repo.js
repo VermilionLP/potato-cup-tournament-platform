@@ -41,13 +41,13 @@ export function TournamentRepo(db) {
     return res.rows[0] || null;
   }
 
-  async function create({ id, name, description, player_capacity, hold_third_place, loser_advances, scheduled_time, game_mode, vehicle_pool, format, grand_final_reset, swiss_rounds }) {
+  async function create({ id, name, description, player_capacity, hold_third_place, loser_advances, scheduled_time, game_mode, vehicle_pool, format, grand_final_reset, swiss_rounds, banpick_enabled }) {
     const scheduledTime = String(scheduled_time || '').trim();
     const bracketFormat = SUPPORTED_FORMATS.includes(format) ? format : SUPPORTED_FORMATS[0];
     await db.query(`
       INSERT INTO axsuck.tournaments
-        (id, name, description, status, player_capacity, hold_third_place, loser_advances, scheduled_time, game_mode, vehicle_pool, format, grand_final_reset, swiss_rounds)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+        (id, name, description, status, player_capacity, hold_third_place, loser_advances, scheduled_time, game_mode, vehicle_pool, format, grand_final_reset, swiss_rounds, banpick_enabled)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
     `, [
       id,
       name,
@@ -62,6 +62,7 @@ export function TournamentRepo(db) {
       bracketFormat,
       bracketFormat === 'double_elim' && grand_final_reset !== false,
       bracketFormat === 'swiss' ? parseSwissRounds(swiss_rounds) : null,
+      banpick_enabled !== false,
     ]);
     return getById(id);
   }

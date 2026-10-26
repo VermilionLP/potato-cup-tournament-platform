@@ -24,6 +24,9 @@
   } from "$lib/bracket.js";
   import DoubleElimBracket from "$lib/components/DoubleElimBracket.svelte";
   import SwissView from "$lib/components/SwissView.svelte";
+  import BanPickPanel from "$lib/components/BanPickPanel.svelte";
+  import { poolVehicles } from "$lib/banpick.js";
+  import { defaultVehiclePools } from "$lib/data/vehiclePools.js";
   import {
     advancementLabel,
     formatLabel,
@@ -80,6 +83,7 @@
   let matchOrder = $derived(buildMatchOrder(tournament?.matches || []));
   let isDoubleElim = $derived(tournament?.format === "double_elim");
   let isSwiss = $derived(tournament?.format === "swiss");
+  let banpickEnabled = $derived(tournament?.banpick_enabled !== false);
   let registeredCount = $derived(tournament?.players?.length || 0);
   let startBlocked = $derived(
     startBlockedMessage(tournament?.format, registeredCount, tournament?.swiss_rounds),
@@ -332,100 +336,8 @@
   let reportStep = $state("banpick");
   // True while an admin is correcting a match that already has a result.
   let correctingMatch = $state(false);
-  let drawing = $state(false);
-  let animDisplay = $state(null);
   let score1Input = $state(0);
   let score2Input = $state(0);
-  let banPhase = $state("a");
-  let bannedGroups = $state(new Set());
-  let removedVehicles = $state(new Set());
-  let banA = $state(null);
-  let banB = $state(null);
-  let drawnGroup = $state(null);
-  let drawnVehicle = $state(null);
-  let confirmedGroup = $state(false);
-  let usedGroups = $state(new Set());
-
-  const vehiclePool = [
-    {name:"Bf 109 E-4",group:"Bf 109 E"},{name:"Bf 109 F-2",group:"Bf 109"},{name:"Bf 109 E-7",group:"Bf 109"},
-    {name:"Bf 109 G-6",group:"Bf 109"},{name:"Bf 109 K-4",group:"Bf 109"},{name:"Bf 109 F-4",group:"Bf 109"},
-    {name:"Fw 190 A-1",group:"Fw 190"},{name:"Fw 190 D-9",group:"Fw 190"},{name:"Fw 190 A-8",group:"Fw 190"},
-    {name:"P-39N",group:"P-39"},{name:"P-51H-5-NA",group:"P-51"},{name:"P-51D-30",group:"P-51"},{name:"P-51C-10-NT",group:"P-51"},
-    {name:"F6F-5",group:"F6F/F8F"},{name:"P-63A-5",group:"P-63"},{name:"P-63A-10",group:"P-63"},{name:"P-63C-5",group:"P-63"},
-    {name:"P-47D-28",group:"P-47"},{name:"F8F-1B",group:"F6F/F8F"},{name:"F6F-5N",group:"F6F/F8F"},
-    {name:"Yak-1B",group:"Yak"},{name:"Yak-9U",group:"Yak"},{name:"Yak-9T",group:"Yak"},{name:"Yak-3U",group:"Yak"},
-    {name:"Yak-3P",group:"Yak"},{name:"Yak-3",group:"Yak"},{name:"Yak-3 (Eremin)",group:"Yak"},
-    {name:"La-5FN",group:"La"},{name:"La-7",group:"La"},
-    {name:"Spitfire F Mk XIVe",group:"Spitfire"},{name:"Spitfire LF Mk IX",group:"Spitfire"},
-    {name:"Spitfire Mk XVI",group:"Spitfire"},{name:"Spitfire Mk II",group:"Spitfire"},
-    {name:"Ki-61-Ia Otsu",group:"Ki-61"},{name:"A6M5",group:"A6M/A7M"},{name:"A7M2",group:"A6M/A7M"},{name:"A7M1",group:"A6M/A7M"},
-    {name:"Ki-43-III Otsu",group:"Ki-43"},{name:"Ki-84 Otsu",group:"Ki-84"},{name:"Ki-84 Ko",group:"Ki-84"},{name:"Ki-84 Hei",group:"Ki-84"},
-    {name:"J2M2",group:"J2M"},{name:"G.55 Serie 0",group:"G.55/56"},{name:"G.55 Serie 1",group:"G.55/56"},{name:"G.56",group:"G.55/56"},
-    {name:"Re.2005 Serie 0",group:"Re.2005"},{name:"Re.2005 VDM",group:"Re.2005"},
-    {name:"J21A-2",group:"J21"},{name:"J21A-1",group:"J21"},{name:"A21A-3",group:"J21"},{name:"VL Pyörremyrsky",group:"Pyorremyrsky"}
-  ];
-
-  function getAvailableGroups() {
-    const groups = new Set();
-    for (const v of vehiclePool) {
-      if (!bannedGroups.has(v.group) && !usedGroups.has(v.group)) groups.add(v.group);
-    }
-    return [...groups];
-  }
-  function banVehicle(name) {
-    const v = vehiclePool.find(x => x.name === name);
-    if (!v) return;
-    bannedGroups = new Set([...bannedGroups, v.group]);
-    if (banPhase === "a") { banA = v; banPhase = "b"; }
-    else if (banPhase === "b") { banB = v; banPhase = "done"; }
-  }
-  function drawGroup() {
-    const avail = getAvailableGroups();
-    if (!avail.length) return;
-    drawnGroup = avail[Math.floor(Math.random() * avail.length)];
-    drawnVehicle = null;
-  }
-  function removeDrawnGroup() {
-    if (!confirmedGroup && drawnGroup) {
-      // 未确认大组：整组移除，继续抽大组
-      vehiclePool.filter(v => v.group === drawnGroup).forEach(v => removedVehicles.add(v.name));
-      removedVehicles = new Set(removedVehicles);
-      drawnGroup = null;
-      drawnVehicle = null;
-      animDisplay = null;
-      confirmedGroup = false;
-      return;
-    }
-    // 已确认大组：只移除当前抽到的单个载具
-    if (drawnVehicle) {
-      removedVehicles.add(drawnVehicle);
-      removedVehicles = new Set(removedVehicles);
-    }
-    drawnVehicle = null;
-    animDisplay = null;
-  }
-  async function drawInGroup() {
-    if (!drawnGroup || drawing) return;
-    const inGroup = vehiclePool.filter(v => v.group === drawnGroup);
-    const pool = inGroup.map(v => v.name);
-    if (!pool.length) return;
-    drawing = true;
-    const final = pool[Math.floor(Math.random() * pool.length)];
-    const startTime = Date.now();
-    const duration = 1800;
-    while (Date.now() - startTime < duration) {
-      animDisplay = pool[Math.floor(Math.random() * pool.length)];
-      await new Promise(r => setTimeout(r, 70));
-    }
-    animDisplay = final;
-    drawnVehicle = final;
-    drawing = false;
-  }
-
-  function resetBanPick() {
-    banPhase = "a"; bannedGroups = new Set(); removedVehicles = new Set(); banA = null; banB = null;
-    drawnGroup = null; drawnVehicle = null; confirmedGroup = false; usedGroups = new Set();
-  }
   let selectedMatch = $state(null);
   let resultScore1 = $state(0);
   let resultScore2 = $state(0);
@@ -1052,10 +964,18 @@
 
   // Match report modal triggers
   // Match report modal triggers
-  function openMatchReport(match) {
+  // Clicking a card opens the score form; the card's BP button opens Ban/Pick.
+  function openMatchReport(match, step = "score") {
     selectedMatch = match;
     correctingMatch = false;
-    showMatchDialog = true; reportStep = "banpick"; score1Input = 0; score2Input = 0; resetBanPick();
+    reportStep = step === "banpick" && banpickEnabled ? "banpick" : "score";
+    score1Input = 0;
+    score2Input = 0;
+    showMatchDialog = true;
+  }
+
+  function openBanPick(match) {
+    openMatchReport(match, "banpick");
   }
 
   // Opens the score step pre-filled with the recorded result so an admin can fix it.
@@ -2578,6 +2498,8 @@
             onOpenMatch={openMatchDetails}
             onToggleActive={toggleActiveMatch}
             onEditRounds={editSwissRounds}
+            banpickEnabled={banpickEnabled}
+            onBanPick={openBanPick}
           />
         {:else if isDoubleElim}
           <DoubleElimBracket
@@ -2590,6 +2512,8 @@
             grandFinalReset={tournament.grand_final_reset}
             onOpenMatch={openMatchDetails}
             onToggleActive={toggleActiveMatch}
+            banpickEnabled={banpickEnabled}
+            onBanPick={openBanPick}
           />
         {:else}
         {#if tournament.matches?.length > 0}
@@ -2652,6 +2576,14 @@
                                 >
                                   {isActive ? "直播中" : "推流直播"}
                                 </button>
+                              {/if}
+                              {#if banpickEnabled && isPlayable}
+                                <button
+                                  type="button"
+                                  onclick={(e) => { e.stopPropagation(); openBanPick(m); }}
+                                  class="px-1 py-0.5 rounded font-bold text-[7px] cursor-pointer border border-primary/40 text-primary hover:bg-primary hover:text-primary-foreground transition-all"
+                                  title="打开 Ban / Pick"
+                                >BP</button>
                               {/if}
                               {#if userInMatch && isPending}
                                 <span class="text-primary font-bold animate-pulse">我的比赛</span>
@@ -2791,9 +2723,17 @@
                         {@const tpTop = gfPos.top + gfPos.height + 28}
                         
                         <!-- Third Place Match Header -->
-                        <div class="absolute left-0 w-full text-[9px] font-bold text-center text-neutral-500 uppercase tracking-wider h-4 flex items-center justify-center"
+                        <div class="absolute left-0 w-full text-[9px] font-bold text-center text-neutral-500 uppercase tracking-wider h-4 flex items-center justify-center gap-1.5"
                              style="top: {tpTop - 18}px;">
                           三四名决赛
+                          {#if banpickEnabled && thirdPlaceMatch.player1_id && thirdPlaceMatch.player2_id && thirdPlaceMatch.status === "pending" && tournament.status === "in_progress"}
+                            <button
+                              type="button"
+                              onclick={() => openBanPick(thirdPlaceMatch)}
+                              class="px-1 rounded font-bold text-[7px] cursor-pointer border border-primary/40 text-primary hover:bg-primary hover:text-primary-foreground transition-all normal-case"
+                              title="打开 Ban / Pick"
+                            >BP</button>
+                          {/if}
                         </div>
                         
                         <!-- Third Place Match Card -->
@@ -3891,7 +3831,7 @@
                 </Card.Title>
                 <Card.Description class="text-xs">
                   {isSwiss
-                    ? "按瑞士轮积分榜排名：积分 → 小分净胜 → 布赫霍尔茨分 → 种子。"
+                    ? "按瑞士轮积分榜排名：积分 → 小分净胜 → 对手分（对手积分之和）→ 种子。"
                     : "基于淘汰赛各轮次淘汰情况计算得出的选手最终名次。"}
                 </Card.Description>
               </Card.Header>
@@ -3971,6 +3911,8 @@
       <Dialog.Title class="text-base font-bold text-foreground">
         {#if correctingMatch}
           <div class="mb-1">修正比赛结果</div>
+        {:else if !banpickEnabled}
+          <div class="mb-1">填报比分</div>
         {:else}
           <div class="flex gap-1 mb-3">
             <Button size="sm" variant={reportStep === "banpick" ? "default" : "outline"} onclick={() => reportStep = "banpick"}>Ban / Pick</Button>
@@ -3984,79 +3926,16 @@
     </Dialog.Header>
 
     {#if selectedMatch}
-      {#if reportStep === "banpick"}
-        <div class="py-2 space-y-4">
-          <div class="flex justify-center gap-6 text-sm">
-            <div class="px-4 py-2 rounded-xl border-2 {banPhase === 'a' ? 'border-primary' : 'border-border'}">
-              <div class="font-bold">A ({playerName(selectedMatch.player1_id)})</div>
-              <div class="text-xs text-muted-foreground">Ban: {banA?.name || '-'}</div>
-            </div>
-            <div class="px-4 py-2 rounded-xl border-2 {banPhase === 'b' ? 'border-primary' : 'border-border'}">
-              <div class="font-bold">B ({playerName(selectedMatch.player2_id)})</div>
-              <div class="text-xs text-muted-foreground">Ban: {banB?.name || '-'}</div>
-            </div>
-          </div>
-
-          <div class="text-center text-sm font-medium">
-            {banPhase === "done" ? "抽取阶段" : "Ban 阶段 - " + banPhase.toUpperCase()}
-          </div>
-          <div class="grid grid-cols-5 gap-3 p-2 ">
-            {#if banPhase !== "done"}
-              <button
-                type="button"
-                onclick={() => banVehicle(null)}
-                class="text-[10px] p-2 rounded-lg border border-dashed text-left hover:border-primary bg-background"
-              >
-                <div class="font-medium  text-muted-foreground">空置</div>
-                <div class="text-[9px] text-muted-foreground">Null Ban</div>
-              </button>
-            {/if}
-            {#each vehiclePool as v}
-              {@const banned = bannedGroups.has(v.group)}
-                {@const removed = removedVehicles.has(v.name)}
-              <button
-                type="button"
-                disabled={banned || removed || banPhase === "done"}
-                onclick={() => banVehicle(v.name)}
-                class="text-[10px] p-2 rounded-lg border text-left {banned || removed ? 'opacity-30 bg-muted' : 'hover:border-primary bg-background'}"
-              >
-                <div class="font-medium ">{v.name}</div>
-                <div class="text-[9px] text-muted-foreground">Group: {v.group}</div>
-              </button>
-            {/each}
-          </div>
-          {#if banPhase === "done"}
-            <div class="text-center space-y-3 py-6">
-              {#if !drawnGroup}
-                <div class="text-lg font-bold">点击抽取</div>
-                <div class="text-xs text-muted-foreground">抽取大组</div>
-                <Button onclick={drawGroup} class="rounded-full">随机抽取</Button>
-              {:else}
-                <div class="text-2xl font-bold">{drawnGroup}</div>
-                <div class="text-xs text-muted-foreground">已选大组</div>
-                <div class="text-3xl font-bold min-h-[2.5rem] transition-all duration-75 {drawing ? "opacity-60 scale-95" : "opacity-100"}">
-                  {animDisplay === null ? "空置" : (animDisplay || drawnVehicle || "点击抽取")}
-                </div>
-                <div class="text-xs text-muted-foreground mt-1">
-                  {drawnVehicle ? "已抽取载具" : "组内抽取"}
-                </div>
-                <div class="flex justify-center gap-2 flex-wrap mt-4">
-                  <Button onclick={drawInGroup} variant="outline" class="rounded-full" disabled={drawing}>
-                    {drawing ? "抽取中..." : "随机抽取"}
-                  </Button>
-                  <Button onclick={removeDrawnGroup} variant="outline" class="rounded-full" disabled={drawing}>移出并重抽</Button>
-                  {#if confirmedGroup}
-                    <Button variant="outline" class="rounded-full" onclick={() => { confirmedGroup = false; drawnGroup = null; drawnVehicle = null; animDisplay = null; }} disabled={drawing}>返回大组</Button>
-                  {:else}
-                    <Button onclick={() => { confirmedGroup = true; }} class="rounded-full" disabled={drawing}>使用该组</Button>
-                  {/if}
-                </div>
-              {/if}
-            </div>
-          {/if}
-
-          <div class="flex justify-center gap-2 pt-2">
-          </div>
+      {#if reportStep === "banpick" && banpickEnabled}
+        <div class="py-2">
+          {#key selectedMatch.id}
+            <BanPickPanel
+              vehicles={poolVehicles(tournament?.vehicle_pool, defaultVehiclePools)}
+              poolName={defaultVehiclePools.find((p) => p.id === tournament?.vehicle_pool)?.name || ""}
+              player1={{ name: playerName(selectedMatch.player1_id), flag: tournament?.players?.find((p) => p.id === selectedMatch.player1_id)?.flag }}
+              player2={{ name: playerName(selectedMatch.player2_id), flag: tournament?.players?.find((p) => p.id === selectedMatch.player2_id)?.flag }}
+            />
+          {/key}
         </div>
       {:else}
         <div class="py-3 space-y-4">

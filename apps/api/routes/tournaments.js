@@ -173,6 +173,7 @@ export default async function tournamentsRoutes(fastify) {
       format,
       grand_final_reset,
       swiss_rounds,
+      banpick_enabled,
     } = req.body;
     if (!id || !name) throw fastify.httpErrors.badRequest('id and name are required');
     const existing = await repo.getById(id);
@@ -205,6 +206,7 @@ export default async function tournamentsRoutes(fastify) {
       format,
       grand_final_reset,
       swiss_rounds,
+      banpick_enabled,
     });
   });
 
