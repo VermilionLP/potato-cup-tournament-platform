@@ -31,3 +31,21 @@ export function normalizeVehiclePool(value) {
     ? String(value).trim().toLowerCase()
     : DEFAULT_VEHICLE_POOL;
 }
+
+// Fewest registered players each format needs before a bracket can start.
+// Double elimination needs a losers' bracket, which takes at least four.
+export const MIN_PLAYERS_BY_FORMAT = { single_elim: 2, double_elim: 4 };
+
+export function minPlayersForFormat(format) {
+  return MIN_PLAYERS_BY_FORMAT[format] ?? MIN_PLAYERS_BY_FORMAT.single_elim;
+}
+
+/**
+ * Returns the reason a tournament cannot start yet, or null when it can.
+ * Used to refuse the switch to `in_progress` with too few players.
+ */
+export function startBlockedReason(format, playerCount) {
+  const min = minPlayersForFormat(format);
+  const count = Number(playerCount) || 0;
+  return count < min ? `至少需要 ${min} 名选手才能开赛（当前 ${count} 人）` : null;
+}

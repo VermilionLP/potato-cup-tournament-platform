@@ -29,3 +29,11 @@ export function formatLabel(value) {
 export function advancementLabel(loserAdvances) {
   return loserAdvances ? "败者晋级" : "胜者晋级";
 }
+
+// Mirrors MIN_PLAYERS_BY_FORMAT in apps/api/lib/tournament-config.js; the
+// server enforces it, this copy only drives the UI.
+export const MIN_PLAYERS_BY_FORMAT = { single_elim: 2, double_elim: 4 };
+
+export function minPlayersForFormat(format) {
+  return MIN_PLAYERS_BY_FORMAT[format] ?? MIN_PLAYERS_BY_FORMAT.single_elim;
+}

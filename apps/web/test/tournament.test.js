@@ -5,6 +5,7 @@ import {
   formatLabel,
   gameModeInfo,
   gameModeLabel,
+  minPlayersForFormat,
 } from "../src/lib/tournament.js";
 
 test("game modes are the three WarThunder battle modes", () => {
@@ -32,4 +33,10 @@ test("advancement label follows loser_advances", () => {
   assert.equal(advancementLabel(false), "胜者晋级");
   assert.equal(advancementLabel(1), "败者晋级");
   assert.equal(advancementLabel(true), "败者晋级");
+});
+
+test("start button thresholds match the server rule", () => {
+  assert.equal(minPlayersForFormat("single_elim"), 2);
+  assert.equal(minPlayersForFormat("double_elim"), 4);
+  assert.equal(minPlayersForFormat(undefined), 2);
 });

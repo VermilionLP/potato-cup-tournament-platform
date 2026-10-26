@@ -27,6 +27,7 @@
     advancementLabel,
     formatLabel,
     gameModeLabel,
+    minPlayersForFormat,
   } from "$lib/tournament.js";
   import TierBadge from "$lib/components/TierBadge.svelte";
   import Flag from "$lib/components/Flag.svelte";
@@ -73,6 +74,9 @@
   let totalRounds = $derived(maxRound(tournament?.matches || []));
   let matchOrder = $derived(buildMatchOrder(tournament?.matches || []));
   let isDoubleElim = $derived(tournament?.format === "double_elim");
+  let minPlayersToStart = $derived(minPlayersForFormat(tournament?.format));
+  let registeredCount = $derived(tournament?.players?.length || 0);
+  let canStartTournament = $derived(registeredCount >= minPlayersToStart);
   let wbTotalRounds = $derived(
     bracketRoundTotal(tournament?.matches || [], "wb"),
   );
@@ -2883,8 +2887,14 @@
           >
             改为时间投票
           </Button>
+          {#if !canStartTournament}
+            <span class="text-xs text-muted-foreground self-center">
+              至少 {minPlayersToStart} 人才能开赛（当前 {registeredCount} 人）
+            </span>
+          {/if}
           <Button
             size="sm"
+            disabled={!canStartTournament}
             onclick={() => changeStatus("in_progress")}
             class="text-xs font-semibold cursor-pointer"
           >

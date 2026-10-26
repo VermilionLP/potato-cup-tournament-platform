@@ -9,6 +9,7 @@ import { requireAdmin } from '../lib/admin.js';
 import {
   GAME_MODES,
   isValidVehiclePool,
+  startBlockedReason,
   SUPPORTED_FORMATS,
 } from '../lib/tournament-config.js';
 
@@ -231,6 +232,11 @@ export default async function tournamentsRoutes(fastify) {
     const t = await repo.getById(req.params.id);
     if (!t) throw fastify.httpErrors.notFound('Tournament not found');
     const wasVoting = t.status === 'voting';
+
+    if (status === 'in_progress' && t.status !== 'in_progress') {
+      const reason = startBlockedReason(t.format, t.player_count);
+      if (reason) throw fastify.httpErrors.badRequest(reason);
+    }
 
     const client = await fastify.db.connect();
     try {
