@@ -217,8 +217,13 @@
   }
 
   async function handleMerge() {
+    mergeTargetId = mergeTargetId.trim();
     if (!mergeTargetId) {
       toast.error("请选择合并目标选手");
+      return;
+    }
+    if (mergeTargetId === editingId || !players.some((p) => p.id === mergeTargetId)) {
+      toast.error(`找不到选手 ${mergeTargetId}，请从列表中选择`);
       return;
     }
     if (
@@ -796,20 +801,23 @@
             合并到其他选手
           </label>
           <div class="flex gap-2">
-            <select
+            <input
+              list="merge-target-options"
               bind:value={mergeTargetId}
-              class="flex-1 text-xs h-8 rounded-md bg-muted/40 border border-border px-2 text-foreground focus:outline-none focus:border-primary/50"
-            >
-              <option value="">选择目标选手...</option>
-              {#each players.filter((p) => p.id !== editingId) as p}
-                <option value={p.id}>{p.display_name || p.id} ({p.id})</option>
+              placeholder="输入或选择目标选手 ID..."
+              autocomplete="off"
+              class="flex-1 min-w-0 text-xs h-8 rounded-md bg-muted/40 border border-border px-2 text-foreground focus:outline-none focus:border-primary/50"
+            />
+            <datalist id="merge-target-options">
+              {#each players.filter((p) => p.id !== editingId) as p (p.id)}
+                <option value={p.id}>{p.team ? `[${p.team}] ` : ""}{(p.flag || "").toUpperCase()}</option>
               {/each}
-            </select>
+            </datalist>
             <Button
               variant="outline"
               size="sm"
               onclick={handleMerge}
-              disabled={!mergeTargetId}
+              disabled={!mergeTargetId.trim()}
               class="text-xs gap-1 h-8 shrink-0"
             >
               <MergeIcon class="w-3.5 h-3.5" />
@@ -817,7 +825,7 @@
             </Button>
           </div>
           <p class="text-[10px] text-muted-foreground/60">
-            合并后此选手的所有对阵、报名、投票数据将转移到目标选手，并删除此选手。
+            合并后此选手的所有对阵、报名、投票和赛事账号转移到目标选手；目标选手没填的国籍、战队、联系方式和 Liquipedia 链接用此选手的补上；然后删除此选手。旧 ID 会被记住，重新导入 Liquipedia 时不会再出现。
           </p>
         </div>
       {/if}

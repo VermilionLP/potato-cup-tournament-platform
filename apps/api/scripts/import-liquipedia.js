@@ -70,6 +70,10 @@ function report(plan) {
     console.log('\n== 需要在 Liquipedia 上核对的数据 ==');
     for (const w of warnings) console.log(`${w.title}: ${w.message}`);
   }
+  if (plan.aliased.length) {
+    console.log('\n== 按平台上手动合并/改名的记录归到 ==');
+    for (const m of plan.aliased) console.log(`${m.from.join(', ')} -> ${m.into}`);
+  }
   if (plan.merged.length) {
     console.log('\n== 名字相近、已合并为同一选手 ==');
     for (const m of plan.merged) console.log(`${m.from.join(', ')} -> ${m.into}`);
@@ -95,6 +99,7 @@ async function main() {
   let db = null;
   let existingIds = [];
   let platformIds = [];
+  let aliases = {};
   if (process.env.DATABASE_URL) {
     const pg = (await import('pg')).default;
     db = new pg.Pool({ connectionString: process.env.DATABASE_URL });
@@ -109,11 +114,14 @@ async function main() {
     `)).rows;
     existingIds = rows.map((r) => r.id);
     platformIds = rows.filter((r) => r.platform).map((r) => r.id);
+    aliases = Object.fromEntries(
+      (await db.query('SELECT alias, player_id FROM axsuck.player_aliases')).rows.map((r) => [r.alias, r.player_id])
+    );
   } else if (args.apply) {
     throw new Error('DATABASE_URL is not set');
   }
 
-  const plan = planImport({ pages: dump.pages, templates: dump.templates, existingIds, platformIds });
+  const plan = planImport({ pages: dump.pages, templates: dump.templates, existingIds, platformIds, aliases });
   if (args.only) plan.events = plan.events.filter((e) => e.sourceTitle.includes(args.only));
   report(plan);
 

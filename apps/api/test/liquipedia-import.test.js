@@ -68,3 +68,17 @@ test('leftover look-alike players from an earlier import are merged; two platfor
   assert.equal(clash.playerMerges.length, 0);
   assert.equal(clash.accountClashes.length, 1);
 });
+
+test('names merged or renamed by hand on the platform stay with the kept player', () => {
+  const plan = planImport({
+    pages,
+    templates,
+    existingIds: ['JK_Main'],
+    aliases: { JKsocksCollect: 'JK_Main', Ghost: 'Deleted' },
+  });
+  const de = plan.events.find((e) => e.id === 'lp-pc-2024-autumn-prop-intermediate-group');
+  assert.ok(de.players.some((p) => p.id === 'JK_Main'));
+  assert.ok(!de.players.some((p) => p.id === 'JKsocksCollect'));
+  assert.deepEqual(plan.aliased, [{ into: 'JK_Main', from: ['JKsocksCollect'] }]);
+  assert.ok(!plan.newPlayers.includes('JK_Main'));
+});

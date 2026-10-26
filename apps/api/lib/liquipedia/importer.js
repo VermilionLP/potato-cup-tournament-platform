@@ -53,8 +53,12 @@ export async function downloadDump(client, log = () => {}) {
  * `playerMerges` so their data can be moved onto the kept id. Two platform
  * ids in one group are never merged automatically; they are listed in
  * `accountClashes` instead.
+ *
+ * `aliases`: { oldId: playerId } from manual merges and renames on the
+ * platform. A Liquipedia name matching an alias goes to that player, so a
+ * merge done by hand survives a re-import.
  */
-export function planImport({ pages, templates, existingIds = [], platformIds = [], today = new Date() }) {
+export function planImport({ pages, templates, existingIds = [], platformIds = [], aliases = {}, today = new Date() }) {
   const parsedTemplates = new Map(
     Object.entries(templates).map(([name, text]) => [name, parseBracketTemplate(text)])
   );
@@ -89,18 +93,27 @@ export function planImport({ pages, templates, existingIds = [], platformIds = [
     if (!variants.has(k)) variants.set(k, []);
     variants.get(k).push(name);
   }
+  const existingSet = new Set(existingIds);
+  const aliasByKey = new Map();
+  for (const [alias, playerId] of Object.entries(aliases)) {
+    // A real player with exactly the alias name takes precedence.
+    if (!existingSet.has(alias) && existingSet.has(playerId)) aliasByKey.set(nameKey(alias), playerId);
+  }
   const canonical = new Map();
   const merged = [];
+  const aliased = [];
   const playerMerges = [];
   const accountClashes = [];
   const byUse = (a, b) => (counts.get(b) || 0) - (counts.get(a) || 0) || a.localeCompare(b);
   for (const [k, names] of variants) {
     const existing = existingByKey.get(k) || [];
     const onPlatform = existing.filter((id) => platform.has(id)).sort(byUse);
-    const target = onPlatform[0] || [...names].sort(byUse)[0];
+    const viaAlias = existing.length ? null : aliasByKey.get(k);
+    const target = viaAlias || onPlatform[0] || [...names].sort(byUse)[0];
+    if (viaAlias) aliased.push({ into: viaAlias, from: names });
     for (const n of names) canonical.set(n, target);
     const others = names.filter((n) => n !== target);
-    if (others.length) merged.push({ into: target, from: others });
+    if (others.length && !viaAlias) merged.push({ into: target, from: others });
     for (const id of existing) {
       if (id === target) continue;
       if (platform.has(id)) accountClashes.push({ kept: target, other: id });
@@ -131,6 +144,7 @@ export function planImport({ pages, templates, existingIds = [], platformIds = [
     skipped,
     warnings,
     merged,
+    aliased,
     playerMerges,
     accountClashes,
     similar: similarNames(playerIds),

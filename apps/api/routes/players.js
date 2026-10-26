@@ -407,29 +407,12 @@ export default async function playersRoutes(fastify) {
     try {
       await client.query('BEGIN');
 
-      // Create new player record copying profile
-      await client.query(`
-        INSERT INTO axsuck.players (id, flag, team, link, bnet_ids, battle_tags, last_ip)
-        VALUES ($1, $2, $3, $4, $5, $6, $7)
-      `, [
-        newId,
-        oldPlayer.flag || 'cn',
-        oldPlayer.team || '',
-        oldPlayer.link || '',
-        oldPlayer.bnet_ids || '[]',
-        oldPlayer.battle_tags || '{}',
-        oldPlayer.last_ip || null
-      ]);
-
-      await client.query('UPDATE axsuck.tournament_players SET player_id = $1 WHERE player_id = $2', [newId, oldId]);
-      await client.query('UPDATE axsuck.matches SET player1_id = $1 WHERE player1_id = $2', [newId, oldId]);
-      await client.query('UPDATE axsuck.matches SET player2_id = $1 WHERE player2_id = $2', [newId, oldId]);
-      await client.query('UPDATE axsuck.matches SET winner_id = $1 WHERE winner_id = $2', [newId, oldId]);
-      await client.query('UPDATE axsuck.time_votes SET player_id = $1 WHERE player_id = $2', [newId, oldId]);
-      await client.query('UPDATE axsuck.custom_votes SET player_id = $1 WHERE player_id = $2', [newId, oldId]);
-
-      // Delete old player record
-      await client.query('DELETE FROM axsuck.players WHERE id = $1', [oldId]);
+      // A rename is a merge into a fresh record: everything (registrations,
+      // matches, votes, per-event accounts, profile) moves over and the old
+      // id is kept as an alias for the Liquipedia import.
+      await client.query('INSERT INTO axsuck.players (id, flag) VALUES ($1, $2)', [newId, '']);
+      await mergePlayerInto(client, oldId, newId);
+      await client.query('UPDATE axsuck.players SET last_ip = $2 WHERE id = $1', [newId, oldPlayer.last_ip || null]);
 
       await client.query('COMMIT');
     } catch (e) {
