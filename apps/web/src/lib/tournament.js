@@ -75,3 +75,27 @@ export function startBlockedMessage(format, playerCount, swissRounds = null) {
   }
   return null;
 }
+
+/**
+ * Who wins and who moves on for a score, mirroring the server: the higher
+ * score wins; in single elimination with "loser advances" the loser moves on.
+ * Returns { tie, winner, advancer } with slots 1 / 2 (null on a tie).
+ */
+export function scoreOutcome(score1, score2, { format = "single_elim", loserAdvances = false } = {}) {
+  const s1 = Number(score1) || 0;
+  const s2 = Number(score2) || 0;
+  if (s1 === s2) return { tie: true, winner: null, advancer: null };
+  const winner = s1 > s2 ? 1 : 2;
+  const flipped = format === "single_elim" && Boolean(loserAdvances);
+  return { tie: false, winner, advancer: flipped ? 3 - winner : winner };
+}
+
+// Common results offered as one-tap presets in the score form.
+export const SCORE_PRESETS = [
+  [1, 0],
+  [2, 0],
+  [2, 1],
+  [1, 2],
+  [0, 2],
+  [0, 1],
+];

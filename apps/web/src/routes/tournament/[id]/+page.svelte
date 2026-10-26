@@ -25,6 +25,7 @@
   import DoubleElimBracket from "$lib/components/DoubleElimBracket.svelte";
   import SwissView from "$lib/components/SwissView.svelte";
   import BanPickPanel from "$lib/components/BanPickPanel.svelte";
+  import ScoreForm from "$lib/components/ScoreForm.svelte";
   import { canConfirm, confirmResult, initialBanPick, poolVehicles } from "$lib/banpick.js";
   import { defaultVehiclePools } from "$lib/data/vehiclePools.js";
   import {
@@ -3913,7 +3914,7 @@
 
 <!-- Match Result Submission Dialog -->
 <Dialog.Root bind:open={showMatchDialog}>
-  <Dialog.Content class="!max-w-4xl w-full max-h-[90vh] overflow-y-auto bg-card border border-border">
+  <Dialog.Content class="{reportStep === 'banpick' && banpickEnabled && !correctingMatch ? '!max-w-4xl' : '!max-w-xl'} w-full max-h-[90vh] overflow-y-auto bg-card border border-border">
     <Dialog.Header>
       <Dialog.Title class="text-base font-bold text-foreground">
         {#if correctingMatch}
@@ -3965,45 +3966,38 @@
               <div class="text-muted-foreground">提交后会先重置本场，再按新结果重新晋级；如果晋级选手已打过后续比赛，那些比赛也会被清空。</div>
             </div>
           {/if}
-          <div class="border border-border rounded-lg overflow-hidden">
-            <div class="grid grid-cols-2 bg-muted/50 text-xs font-semibold px-3 py-2">
-              <span>选手</span><span class="text-right">比分</span>
-            </div>
-            <div class="divide-y divide-border">
-              <div class="grid grid-cols-2 items-center px-3 py-2.5">
-                <span class="text-sm font-medium ">{playerName(selectedMatch.player1_id)}</span>
-                <div class="flex justify-end"><Input type="number" min="0" bind:value={score1Input} class="w-16 h-8 text-center" /></div>
-              </div>
-              <div class="grid grid-cols-2 items-center px-3 py-2.5">
-                <span class="text-sm font-medium ">{playerName(selectedMatch.player2_id)}</span>
-                <div class="flex justify-end"><Input type="number" min="0" bind:value={score2Input} class="w-16 h-8 text-center" /></div>
-              </div>
-            </div>
-          </div>
-          <div class="text-center space-y-2">
-            <div class="text-xs font-bold text-muted-foreground">确认胜者</div>
-            <div class="flex gap-2 justify-center">
-              <Button size="sm" variant={score1Input > score2Input ? "default" : "outline"} onclick={() => { score1Input = 1; score2Input = 0; }}>{playerName(selectedMatch.player1_id)}</Button>
-              <Button size="sm" variant={score2Input > score1Input ? "default" : "outline"} onclick={() => { score1Input = 0; score2Input = 1; }}>{playerName(selectedMatch.player2_id)}</Button>
-            </div>
-          </div>
-          <div class="pt-2 border-t">
-            <div class="text-[10px] text-muted-foreground text-center mb-2">或弃权判定</div>
-            <div class="grid grid-cols-2 gap-2">
-              <Button variant="outline" size="sm" onclick={() => recordWalkover(selectedMatch.player2_id)} disabled={submittingResult}>{playerName(selectedMatch.player2_id)} 晋级</Button>
-              <Button variant="outline" size="sm" onclick={() => recordWalkover(selectedMatch.player1_id)} disabled={submittingResult}>{playerName(selectedMatch.player1_id)} 晋级</Button>
-            </div>
-          </div>
+          <ScoreForm
+            player1={{
+              id: selectedMatch.player1_id,
+              name: playerName(selectedMatch.player1_id),
+              flag: tournament?.players?.find((p) => p.id === selectedMatch.player1_id)?.flag,
+              seed: tournament?.players?.find((p) => p.id === selectedMatch.player1_id)?.seed,
+            }}
+            player2={{
+              id: selectedMatch.player2_id,
+              name: playerName(selectedMatch.player2_id),
+              flag: tournament?.players?.find((p) => p.id === selectedMatch.player2_id)?.flag,
+              seed: tournament?.players?.find((p) => p.id === selectedMatch.player2_id)?.seed,
+            }}
+            bind:score1={score1Input}
+            bind:score2={score2Input}
+            format={tournament?.format}
+            loserAdvances={tournament?.loser_advances === 1 || tournament?.loser_advances === true}
+            disabled={submittingResult}
+            onWalkover={recordWalkover}
+          />
         </div>
         <Dialog.Footer class="flex gap-2">
           {#if correctingMatch}
             <Button size="sm" variant="outline" disabled={submittingResult} onclick={doRollback}
               class="border-destructive/40 text-destructive hover:bg-destructive hover:text-white">重置为未开始</Button>
           {/if}
-          <Button size="sm" disabled={submittingResult || score1Input === score2Input} onclick={() => {
-            const winnerId = score1Input > score2Input ? selectedMatch.player1_id : selectedMatch.player2_id;
+          <Button size="sm" disabled={submittingResult || Number(score1Input) === Number(score2Input)} onclick={() => {
+            const winnerId = Number(score1Input) > Number(score2Input) ? selectedMatch.player1_id : selectedMatch.player2_id;
             selectGameWinner(winnerId);
-          }} class="flex-1 font-bold">{correctingMatch ? "提交修正" : "提交比分"}</Button>
+          }} class="flex-1 h-9 font-bold">
+            {submittingResult ? "提交中…" : `${correctingMatch ? "提交修正" : "提交比分"}  ${Number(score1Input) || 0} : ${Number(score2Input) || 0}`}
+          </Button>
         </Dialog.Footer>
       {/if}
     {/if}
