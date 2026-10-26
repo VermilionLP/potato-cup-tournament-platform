@@ -96,13 +96,6 @@
   const NO_MODE = { badge: "bg-zinc-500/10 text-zinc-400 border-zinc-500/25", dot: "bg-zinc-500", bar: "bg-zinc-500/80" };
   const modeColors = (m) => MODE_COLORS[m] ?? NO_MODE;
 
-  function formatSeconds(sec) {
-    if (!sec || isNaN(sec)) return "0秒";
-    const m = Math.floor(sec / 60);
-    const s = Math.round(sec % 60);
-    return `${m}分${s}秒`;
-  }
-
   // Flag rendering lives in $lib/components/Flag.svelte (SVG assets).
 
   const avatarColors = [
@@ -259,14 +252,6 @@
                         {/if}
                       </div>
                     </th>
-                    <th class="py-2.5 px-2 text-center cursor-pointer hover:bg-muted/20 hover:text-foreground transition-colors" onclick={() => handleStatsSort("avg_game_length")}>
-                      <div class="flex items-center justify-center gap-1">
-                        <span>局均时长</span>
-                        {#if statsSortField === "avg_game_length"}
-                          <span class="text-primary">{statsSortOrder === "asc" ? "▲" : "▼"}</span>
-                        {/if}
-                      </div>
-                    </th>
                     <th class="py-2.5 px-2 text-center cursor-pointer hover:bg-muted/20 hover:text-foreground transition-colors" onclick={() => handleStatsSort("tournaments_played")}>
                       <div class="flex items-center justify-center gap-1">
                         <span>参赛数</span>
@@ -316,13 +301,6 @@
                       </td>
                       <td class="py-2 px-2 text-center font-mono font-bold text-muted-foreground">
                         {p.maps_played}
-                      </td>
-                      <td class="py-2 px-2 text-center font-mono text-muted-foreground">
-                        {#if p.avg_game_length}
-                          {formatSeconds(p.avg_game_length)}
-                        {:else}
-                          <span class="text-[9px] italic opacity-50">--</span>
-                        {/if}
                       </td>
                       <td class="py-2 px-2 text-center font-mono font-bold text-muted-foreground">
                         {p.tournaments_played}
@@ -496,12 +474,6 @@
                     选手趣味花边
                   </h4>
                   <div class="space-y-2.5 pt-1">
-                    <div class="flex items-center justify-between border-b border-border/40 pb-2">
-                      <span class="text-[10px] text-muted-foreground">局均比赛时长</span>
-                      <span class="text-xs font-mono font-bold text-foreground">
-                        {selectedStatPlayer.avg_game_length ? formatSeconds(selectedStatPlayer.avg_game_length) : '暂无'}
-                      </span>
-                    </div>
                     <div class="flex items-center justify-between border-b border-border/40 pb-2">
                       <span class="text-[10px] text-muted-foreground">不战而胜 (对手弃权)</span>
                       <span class="text-xs font-mono font-bold text-emerald-400">{selectedStatPlayer.walkover_wins} 次</span>

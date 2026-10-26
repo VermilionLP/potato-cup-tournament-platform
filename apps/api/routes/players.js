@@ -49,9 +49,6 @@ export default async function playersRoutes(fastify) {
         matches_lost: 0,
         walkover_wins: 0,
         walkover_losses: 0,
-        replays_count: 0,
-        total_game_time: 0,
-        game_time_count: 0,
         maps_played: 0,
         maps_won: 0,
         maps_lost: 0,
@@ -145,10 +142,6 @@ export default async function playersRoutes(fastify) {
       }
     }
 
-    // Replay-derived statistics (map usage, races, game length) are no longer
-    // available: replay upload/parsing has been removed from the platform.
-    const mapUsage = {};
-
     const playerStats = Object.values(stats).map(s => {
       let nemesis = null;
       let maxLostMatches = 0;
@@ -195,12 +188,10 @@ export default async function playersRoutes(fastify) {
         match_win_rate: s.matches_played > 0 ? (s.matches_won / s.matches_played) : 0,
         walkover_wins: s.walkover_wins,
         walkover_losses: s.walkover_losses,
-        replays_count: s.replays_count,
         maps_played: s.maps_played,
         maps_won: s.maps_won,
         maps_lost: s.maps_lost,
         map_win_rate: s.maps_played > 0 ? (s.maps_won / s.maps_played) : 0,
-        avg_game_length: s.game_time_count > 0 ? Math.round(s.total_game_time / s.game_time_count) : 0,
         modes: s.modes,
         nemesis: nemesis ? { id: nemesis, display_name: nemesisDisp, count: maxLostMatches } : null,
         favorite: favorite ? { id: favorite, display_name: favoriteDisp, count: maxWonMatches } : null,
@@ -210,22 +201,6 @@ export default async function playersRoutes(fastify) {
 
     const totalTournaments = (await fastify.db.query('SELECT COUNT(*)::int as count FROM axsuck.tournaments')).rows[0]?.count || 0;
     const totalMatches = (await fastify.db.query("SELECT COUNT(*)::int as count FROM axsuck.matches WHERE status != 'pending'")).rows[0]?.count || 0;
-    const totalReplays = 0;
-    const globalAvgReplayLength = 0;
-
-    const topMaps = Object.entries(mapUsage)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 5)
-      .map(([name, count]) => ({ name, count }));
-
-    const withGames = playerStats.filter(p => p.avg_game_length > 0);
-    const longestPlayer = withGames.length > 0
-      ? withGames.reduce((a, b) => a.avg_game_length > b.avg_game_length ? a : b)
-      : null;
-    const shortestPlayer = withGames.length > 0
-      ? withGames.reduce((a, b) => a.avg_game_length < b.avg_game_length ? a : b)
-      : null;
-
     const eligibleForRate = playerStats.filter(p => p.matches_played >= 5);
 
     return {
@@ -233,10 +208,7 @@ export default async function playersRoutes(fastify) {
       global: {
         total_players: players.length,
         total_tournaments: totalTournaments,
-        total_matches: totalMatches,
-        total_replays: totalReplays,
-        avg_game_length: globalAvgReplayLength,
-        top_maps: topMaps
+        total_matches: totalMatches
       },
       rankings: {
         by_win_rate: [...eligibleForRate]
@@ -248,9 +220,7 @@ export default async function playersRoutes(fastify) {
         by_walkover: [...playerStats]
           .filter(p => p.walkover_losses > 0)
           .sort((a, b) => b.walkover_losses - a.walkover_losses)
-          .slice(0, 5),
-        longest_player: longestPlayer,
-        shortest_player: longestPlayer !== shortestPlayer ? shortestPlayer : null
+          .slice(0, 5)
       }
     };
   });
