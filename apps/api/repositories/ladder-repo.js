@@ -11,9 +11,24 @@ import {
 import { getPlayerDisplayName } from './player-repo.js';
 import { TournamentRepo } from './tournament-repo.js';
 
+const YEAR_MS = 365 * 86400000;
+
 export function LadderRepo(db) {
   const tournaments = TournamentRepo(db);
 
+  // When an event was played: the imported date, else its scheduled time
+  // (stored as Beijing "YYYY-MM-DDTHH:mm"), else when it was created.
+  const PLAYED_AT = `COALESCE(
+    t.played_at,
+    CASE WHEN t.scheduled_time ~ '^\\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])[T ]([01]\\d|2[0-3]):[0-5]\\d'
+      THEN substring(t.scheduled_time from 1 for 16)::timestamp AT TIME ZONE 'Asia/Shanghai'
+    END,
+    t.created_at
+  )`;
+
+  // Games in the order they were played: events by date; inside an event
+  // the Swiss stage first (round 1 up), then the elimination brackets from
+  // their first round (highest number) to the final (round 1), grand final last.
   async function loadGames() {
     const res = await db.query(`
       SELECT
@@ -26,7 +41,7 @@ export function LadderRepo(db) {
         m.score1,
         m.score2,
         t.name AS tournament_name,
-        t.created_at AS played_at
+        ${PLAYED_AT} AS played_at
       FROM axsuck.matches m
       JOIN axsuck.tournaments t ON t.id = m.tournament_id
       WHERE m.status = 'completed'
@@ -34,7 +49,13 @@ export function LadderRepo(db) {
         AND m.player2_id IS NOT NULL
         AND m.player1_id <> m.player2_id
         AND m.score1 <> m.score2
-      ORDER BY t.created_at ASC, m.round DESC, m.position ASC, m.id ASC
+      ORDER BY ${PLAYED_AT} ASC,
+        t.created_at ASC,
+        t.id ASC,
+        CASE m.bracket WHEN 'sw' THEN 0 WHEN 'gf' THEN 2 ELSE 1 END,
+        CASE WHEN m.bracket = 'sw' THEN m.round ELSE -m.round END,
+        m.position ASC,
+        m.id ASC
     `);
     return res.rows;
   }
@@ -44,8 +65,13 @@ export function LadderRepo(db) {
     return new Map(res.rows.map((p) => [p.id, p]));
   }
 
-  async function getRatings({ activeDays = ACTIVE_DAYS, includeInactive = false } = {}) {
-    const [games, playerRows] = await Promise.all([loadGames(), loadPlayers()]);
+  // window 'year' rates only the games of the last 365 days, from scratch.
+  async function getRatings({ activeDays = ACTIVE_DAYS, includeInactive = false, window = 'all' } = {}) {
+    const [allGames, playerRows] = await Promise.all([loadGames(), loadPlayers()]);
+    const since = window === 'year' ? Date.now() - YEAR_MS : null;
+    const games = since == null
+      ? allGames
+      : allGames.filter((g) => g.played_at && new Date(g.played_at).getTime() >= since);
     const { players: allPlayers, history } = computeLadder(games);
     const byId = new Map(
       allPlayers.map((p) => {
@@ -55,7 +81,7 @@ export function LadderRepo(db) {
           {
             ...p,
             display_name: getPlayerDisplayName(meta) || p.id,
-            flag: meta.flag || 'cn',
+            flag: meta.flag ?? 'cn',
             team: meta.team || '',
           },
         ];
@@ -81,6 +107,7 @@ export function LadderRepo(db) {
       games,
       activeDays,
       includeInactive,
+      window: since == null ? 'all' : 'year',
       cutoff,
     };
   }
@@ -90,8 +117,8 @@ export function LadderRepo(db) {
     return players;
   }
 
-  async function playerDetail(playerId, { activeDays = ACTIVE_DAYS } = {}) {
-    const { byId, history, games, cutoff } = await getRatings({ activeDays, includeInactive: true });
+  async function playerDetail(playerId, { activeDays = ACTIVE_DAYS, window = 'all' } = {}) {
+    const { byId, history, games, cutoff } = await getRatings({ activeDays, includeInactive: true, window });
     const player = byId.get(playerId);
     if (!player) return null;
 

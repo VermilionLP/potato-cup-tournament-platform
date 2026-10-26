@@ -42,6 +42,27 @@ Match result reporting (`POST /tournaments/:id/matches/:matchId/result` and `/wa
 
 Admin checks fail closed: if `ADMIN_TOKEN` is missing, protected endpoints return `503` instead of allowing anonymous access. Self-service checks return `403` when the caller's `x-player-id` does not match the target.
 
+## Importing past events from Liquipedia
+
+`scripts/import-liquipedia.js` imports the finished Potato Cup events
+(`Potato Cup/...` and `Potato Cup Weekly/...`) from the War Thunder
+Liquipedia wiki through the MediaWiki API, following its terms of use
+(identifying User-Agent, gzip, one request every 2 s). The download is
+cached in `.cache/liquipedia/potato-cup.json`.
+
+```bash
+node scripts/import-liquipedia.js            # dry run: events, skipped pages, data warnings, look-alike names
+node scripts/import-liquipedia.js --apply    # write; re-running replaces the imported events (ids lp-...)
+node scripts/import-liquipedia.js --refresh  # download again instead of using the cache
+```
+
+Set `LIQUIPEDIA_CONTACT` (e.g. an e-mail) so Liquipedia can reach you about
+the requests. Names that differ from an existing player only in letter case
+are merged onto that player; other look-alikes are only listed. Imported
+events are `completed`, carry `played_at`/`source_url`, and link back to
+their Liquipedia page (CC-BY-SA 3.0). The ladder rates all games in date
+order; `GET /api/ladder?window=year` rates only the last 365 days.
+
 ## Elasticsearch logs
 
 Request logs and admin audit events are buffered in memory and sent with the `_bulk` API, so an unavailable ES node never blocks API responses. Logs are dropped after a failed flush (a warning is printed at most once per minute).

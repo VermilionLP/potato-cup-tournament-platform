@@ -66,16 +66,18 @@ export const API = {
   setOverlayState: (id, overlay_scene, overlay_round) => request(`/tournaments/${enc(id)}/overlay-state`, { method: 'POST', body: JSON.stringify({ overlay_scene, overlay_round }) }),
 
   // Ladder
-  getLadder: ({ includeInactive = false, days } = {}) => {
+  getLadder: ({ includeInactive = false, days, window } = {}) => {
     const params = new URLSearchParams();
     if (days) params.set('days', String(days));
+    if (window === 'year') params.set('window', 'year');
     if (includeInactive) params.set('include_inactive', '1');
     const qs = params.toString();
     return request(`/ladder${qs ? `?${qs}` : ''}`);
   },
-  getLadderPlayer: (id, { days } = {}) => {
+  getLadderPlayer: (id, { days, window } = {}) => {
     const params = new URLSearchParams();
     if (days) params.set('days', String(days));
+    if (window === 'year') params.set('window', 'year');
     const qs = params.toString();
     return request(`/ladder/players/${enc(id)}${qs ? `?${qs}` : ''}`);
   },

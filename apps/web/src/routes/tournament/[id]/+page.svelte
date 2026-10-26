@@ -27,6 +27,7 @@
   import BanPickPanel from "$lib/components/BanPickPanel.svelte";
   import ScoreForm from "$lib/components/ScoreForm.svelte";
   import PlayoffPanel from "$lib/components/PlayoffPanel.svelte";
+  import ExternalLinkIcon from "@lucide/svelte/icons/external-link";
   import DateTimePicker from "$lib/components/DateTimePicker.svelte";
   import MatchTime from "$lib/components/MatchTime.svelte";
   import { formatScheduled, parseLocal } from "$lib/datetime.js";
@@ -2639,7 +2640,7 @@
                 </button>
               {/each}
             </div>
-            {#if tournament.status !== "registration"}
+            {#if tournament.status !== "registration" && !tournament.source_url}
               <PlayoffPanel
                 groupStage={tournament.group_stage}
                 players={tournament.players || []}
@@ -3062,14 +3063,29 @@
           {#if tournament.status === "voting"}
             • 投票人数: {tournament.voter_count || 0} 人
           {/if}
-          • 创建于 {new Date(
-            tournament.created_at,
-          ).toLocaleDateString("zh-CN")}
+          {#if tournament.source_url}
+            • 比赛日期 {tournament.scheduled_time || "未知"}
+          {:else}
+            • 创建于 {new Date(
+              tournament.created_at,
+            ).toLocaleDateString("zh-CN")}
+          {/if}
           • {isSwiss ? "赛制结构" : "晋级规则"}: <span class="font-bold text-primary">{isTwoStage
             ? `小组赛 ${swissRoundsLabel}（${tournament.swiss_group_size ? `每组 ${tournament.swiss_group_size} 人` : "不分组"}，每组前 ${tournament.advance_per_group} 名晋级）→ ${tournament.playoff_format === "double_elim" ? "双败" : "单败"}淘汰赛`
             : isSwiss ? `积分制 · ${swissRoundsLabel}` : advancementLabel(tournament.loser_advances)}</span>
         </p>
-        {#if tournament.scheduled_time}
+        {#if tournament.source_url}
+          <a
+            href={tournament.source_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            class="mt-2.5 inline-flex max-w-full items-center gap-1.5 rounded-xl border border-border bg-muted/30 px-3 py-1.5 text-[11px] text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
+            title="历史赛事，赛果来自 Liquipedia（CC-BY-SA 3.0）"
+          >
+            <ExternalLinkIcon class="w-3.5 h-3.5 shrink-0" />
+            <span class="truncate">数据来源：Liquipedia · {tournament.source_title || tournament.name}</span>
+          </a>
+        {:else if tournament.scheduled_time}
           <MatchTime value={tournament.scheduled_time} status={tournament.status}>
             {#snippet actions()}
               {#if isAdmin && ["registration", "in_progress"].includes(tournament.status)}

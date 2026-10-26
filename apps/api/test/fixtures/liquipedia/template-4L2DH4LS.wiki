@@ -1,0 +1,14 @@
+<noinclude><!--
+-->{{TemplateMatch|matchid=R01-M001|header=!rx!1}}<!--
+-->{{TemplateMatch|matchid=R01-M002}}<!--
+-->{{TemplateMatch|matchid=R02-M001|tolower=R01-M001|header=!r3!x}}<!--
+-->{{TemplateMatch|matchid=R02-M002}}<!--
+-->{{TemplateMatch|matchid=R02-M003|tolower=R01-M002}}<!--
+-->{{TemplateMatch|matchid=R02-M004}}<!--
+-->{{TemplateMatch|matchid=R03-M001|toupper=R02-M001|tolower=R02-M002|header=!r2!x}}<!--
+-->{{TemplateMatch|matchid=R03-M002|toupper=R02-M003|tolower=R02-M004}}<!--
+-->{{TemplateMatch|matchid=R04-M001|root=true|toupper=R03-M001|tolower=R03-M002|thirdplace=RxMTP|header=!r1!x}}<!--
+-->{{TemplateMatch|matchid=RxMTP|header=!tp}}<!--
+
+-->{{BracketDocumentation}}[[Category:Extension Brackets]][[Category:10P-Bracket]]<!--
+--></noinclude>

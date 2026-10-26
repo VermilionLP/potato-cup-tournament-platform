@@ -21,6 +21,8 @@
   let errorMsg = $state("");
   let query = $state("");
   let includeInactive = $state(false);
+  // "all" = every recorded game; "year" = ratings from the last 365 days only.
+  let ladderWindow = $state("all");
   let chartMode = $state("time");
   let selected = $state(null);
   let detail = $state(null);
@@ -54,7 +56,7 @@
     loading = true;
     errorMsg = "";
     try {
-      data = await API.getLadder({ includeInactive });
+      data = await API.getLadder({ includeInactive, window: ladderWindow });
       if (selected && !data?.players?.some((p) => p.id === selected.id)) {
         selected = null;
         detail = null;
@@ -77,13 +79,21 @@
     await load();
   }
 
+  async function setWindow(value) {
+    if (ladderWindow === value) return;
+    ladderWindow = value;
+    selected = null;
+    detail = null;
+    await load();
+  }
+
   async function selectPlayer(player) {
     if (selected?.id === player.id) return;
     selected = player;
     detail = null;
     detailLoading = true;
     try {
-      detail = await API.getLadderPlayer(player.id);
+      detail = await API.getLadderPlayer(player.id, { window: ladderWindow });
     } catch (e) {
       toast.error("加载选手天梯记录失败: " + e.message);
     } finally {
@@ -99,8 +109,8 @@
       <h1 class="text-2xl font-extrabold tracking-tight">天梯 MMR</h1>
     </div>
     <p class="text-xs text-muted-foreground">
-      所有已完成的赛事对局按 Elo 计算，经典 SUCK（败者晋级）也计入；初始
-      MMR 3000。默认只显示近 {data?.active_days || 365} 天有对局的选手；分数不重置，
+      所有已完成的赛事对局按比赛日期顺序用 Elo 计算（含从 Liquipedia 导入的历史赛事），经典 SUCK（败者晋级）也计入；初始
+      MMR 3000。选“最近一年”时只用近 365 天的对局从 3000 重新计算。默认只显示近 {data?.active_days || 365} 天有对局的选手；分数不重置，
       回归后沿用原分。种子默认按这里的 MMR 自动排序。
     </p>
   </div>
@@ -172,6 +182,20 @@
           </Card.Description>
         </div>
         <div class="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+          <div class="inline-flex rounded-lg border border-border bg-muted/30 p-0.5 text-[11px]" role="group" aria-label="计分范围">
+            {#each [["all", "全部历史"], ["year", "最近一年"]] as [value, label] (value)}
+              <button
+                type="button"
+                class="px-2.5 py-1 rounded-md transition-colors {ladderWindow === value
+                  ? 'bg-background text-foreground shadow-sm font-semibold'
+                  : 'text-muted-foreground hover:text-foreground'}"
+                aria-pressed={ladderWindow === value}
+                onclick={() => setWindow(value)}
+              >
+                {label}
+              </button>
+            {/each}
+          </div>
           <label class="flex items-center gap-1.5 text-[10px] text-muted-foreground cursor-pointer select-none">
             <input
               type="checkbox"

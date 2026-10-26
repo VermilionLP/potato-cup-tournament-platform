@@ -21,7 +21,7 @@ export function TournamentRepo(db) {
       FROM axsuck.tournaments t
       LEFT JOIN axsuck.tournament_players tp ON tp.tournament_id = t.id
       GROUP BY t.id
-      ORDER BY t.created_at DESC
+      ORDER BY COALESCE(t.played_at, t.created_at) DESC, t.id ASC
     `);
     return res.rows;
   }

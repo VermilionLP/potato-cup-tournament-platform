@@ -1,0 +1,101 @@
+{{DISPLAYTITLE:FamilyX Potato Cup Weekly #{{SUBPAGENAME}} (FamilyX土豆杯周赛#{{SUBPAGENAME}})}}
+{{Template:Potato Cup Navbox}}
+
+{{Infobox league
+|name=FamilyX Potato Cup Weekly #{{SUBPAGENAME}}
+|tickername=Potato Cup Weekly #{{SUBPAGENAME}}
+|number={{SUBPAGENAME}}
+|format=1v1<br>Playoffs
+|mode=RB
+|vehicle=Aviation
+|date=2026-10-17
+|player_number=14
+|liquipediatier=4 |liquipediatiertype=Weekly
+|previous=Potato Cup Weekly/36{{!}}#36
+|next=Potato Cup Weekly/38{{!}}#38
+}}
+
+==Format==
+* Legacy Jet Line-up
+
+==Results==
+<section begin=Results />
+{{Toggle bracket start|sdate=2026-10-17|dateexact=true}}
+{{Bracket|Bracket/4L2DH8LS|id=pocwekly37
+
+<!-- Round 1 -->
+|R1M1={{Match
+    |date=2026-10-17|bestof=3
+    |opponent1={{SoloOpponent|p1=RussianGhost546|flag=ie|score=0}}
+    |opponent2={{SoloOpponent|p1=yamine_9z|flag=fr|score=2}}
+}}
+|R1M2={{Match
+    |date=2026-10-17|bestof=3
+    |opponent1={{SoloOpponent|p1=MOPCIKv12|score=2}}
+    |opponent2={{SoloOpponent|p1=Mav_Rooster|flag=cn|score=0}}
+}}
+|R1M3={{Match
+    |date=2026-10-17|bestof=3
+    |opponent1={{SoloOpponent|p1=Light Pillbox|flag=kz|score=1}}
+    |opponent2={{SoloOpponent|p1=Neon_Uni|flag=uk|score=2}}
+}}
+|R1M4={{Match
+    |date=2026-10-17|bestof=3
+    |opponent1={{SoloOpponent|p1=JOTL_19028|flag=cn|score=2}}
+    |opponent2={{SoloOpponent|p1=qiwen-19|flag=cn|score=0}}
+}}
+|R1M5={{Match
+    |date=2026-10-17|bestof=3
+    |opponent1={{SoloOpponent|p1=M4k1se_Kur1su_|flag=cn|score=w}}
+    |opponent2={{SoloOpponent|p1=RevertMSLCam|flag=tr|score=ff}}
+}}
+|R1M6={{Match
+    |date=2026-10-17|bestof=3
+    |opponent1={{SoloOpponent|p1=TheWindupBird|flag=cn|score=w}}
+    |opponent2={{SoloOpponent|p1=Kirito_0_1|flag=ru|score=ff}}
+}}
+
+<!-- Quarterfinals -->
+|R2M1={{Match
+    |date=2026-10-17|bestof=3
+    |opponent1={{SoloOpponent|p1=_botya_|score=2}}
+    |opponent2={{SoloOpponent|p1=yamine_9z|score=0}}
+}}
+|R2M2={{Match
+    |date=2026-10-17|bestof=3
+    |opponent1={{SoloOpponent|p1=MOPCIKv12|score=1}}
+    |opponent2={{SoloOpponent|p1=Neon_Uni|score=2}}
+}}
+|R2M3={{Match
+    |date=2026-10-17|bestof=3
+    |opponent1={{SoloOpponent|p1=Zuikakuツ|flag=cn|score=2}}
+    |opponent2={{SoloOpponent|p1=JOTL_19028|score=0}}
+}}
+|R2M4={{Match
+    |date=2026-10-17|bestof=3
+    |opponent1={{SoloOpponent|p1=M4k1se_Kur1su_|score=2}}
+    |opponent2={{SoloOpponent|p1=TheWindupBird|score=0}}
+}}
+
+<!-- Semifinals -->
+|R3M1={{Match
+    |date=2026-10-17|bestof=3
+    |opponent1={{SoloOpponent|p1=_botya_|score=2}}
+    |opponent2={{SoloOpponent|p1=Neon_Uni|score=0}}
+}}
+|R3M2={{Match
+    |date=2026-10-17|bestof=3
+    |opponent1={{SoloOpponent|p1=Zuikakuツ|score=1}}
+    |opponent2={{SoloOpponent|p1=M4k1se_Kur1su_|score=2}}
+}}
+
+<!-- Grand Final -->
+|R4M1={{Match
+    |date=2026-10-17|bestof=7
+    |opponent1={{SoloOpponent|p1=_botya_|score=4}}
+    |opponent2={{SoloOpponent|p1=M4k1se_Kur1su_|score=0}}
+}}
+}}
+{{Box|end|padding=1em}}
+<section end=Results />
+{{Toggle bracket end}}
