@@ -2,7 +2,7 @@
   import { onMount } from "svelte";
   import { toast } from "svelte-sonner";
   import { API } from "$lib/api.js";
-  import RaceIcon from "$lib/components/RaceIcon.svelte";
+  import { GAME_MODES } from "$lib/tournament.js";
   import Flag from "$lib/components/Flag.svelte";
   import { Badge } from "$lib/components/ui/badge/index.js";
   import SearchIcon from "@lucide/svelte/icons/search";
@@ -82,27 +82,19 @@
   onMount(loadStats);
 
   // ── Helpers ───────────────────────────────────────────────────────
-  const getRaceName = (r) => {
-    const map = {
-      P: "Protoss",
-      T: "Terran",
-      Z: "Zerg",
-      R: "Random",
-      U: "Unknown"
-    };
-    return map[r] ?? "Unknown";
+  // Game modes: AB / RB / SB; '' = no games yet.
+  const getModeCode = (m) => GAME_MODES.find((x) => x.id === m)?.code ?? "—";
+  const getModeName = (m) => {
+    const mode = GAME_MODES.find((x) => x.id === m);
+    return mode ? `${mode.code} ${mode.name}` : "暂无对局";
   };
-
-  const getRaceColorClass = (r) => {
-    const map = {
-      P: "bg-emerald-500/10 text-emerald-400 border-emerald-500/25",
-      T: "bg-blue-500/10 text-blue-400 border-blue-500/25",
-      Z: "bg-rose-500/10 text-rose-400 border-rose-500/25",
-      R: "bg-purple-500/10 text-purple-400 border-purple-500/25",
-      U: "bg-zinc-500/10 text-zinc-400 border-zinc-500/25"
-    };
-    return map[r] ?? "bg-zinc-500/10 text-zinc-400 border-zinc-500/25";
+  const MODE_COLORS = {
+    ab: { badge: "bg-sky-500/10 text-sky-400 border-sky-500/25", dot: "bg-sky-500", bar: "bg-sky-500/80" },
+    rb: { badge: "bg-amber-500/10 text-amber-500 border-amber-500/25", dot: "bg-amber-500", bar: "bg-amber-500/80" },
+    sb: { badge: "bg-rose-500/10 text-rose-400 border-rose-500/25", dot: "bg-rose-500", bar: "bg-rose-500/80" },
   };
+  const NO_MODE = { badge: "bg-zinc-500/10 text-zinc-400 border-zinc-500/25", dot: "bg-zinc-500", bar: "bg-zinc-500/80" };
+  const modeColors = (m) => MODE_COLORS[m] ?? NO_MODE;
 
   function formatSeconds(sec) {
     if (!sec || isNaN(sec)) return "0秒";
@@ -227,10 +219,10 @@
                         {/if}
                       </div>
                     </th>
-                    <th class="py-2.5 px-2 text-center cursor-pointer hover:bg-muted/20 hover:text-foreground transition-colors" onclick={() => handleStatsSort("main_race")}>
+                    <th class="py-2.5 px-2 text-center cursor-pointer hover:bg-muted/20 hover:text-foreground transition-colors" onclick={() => handleStatsSort("main_mode")}>
                       <div class="flex items-center justify-center gap-1">
-                        <span>种族</span>
-                        {#if statsSortField === "main_race"}
+                        <span>常玩模式</span>
+                        {#if statsSortField === "main_mode"}
                           <span class="text-primary">{statsSortOrder === "asc" ? "▲" : "▼"}</span>
                         {/if}
                       </div>
@@ -301,9 +293,8 @@
                         </div>
                       </td>
                       <td class="py-2 px-2 text-center">
-                        <Badge variant="outline" class="gap-1 text-[9px] px-1 py-0 uppercase tracking-wider {getRaceColorClass(p.main_race)}">
-                          <RaceIcon race={p.main_race} />
-                          {p.main_race}
+                        <Badge variant="outline" class="text-[9px] px-1 py-0 uppercase tracking-wider {modeColors(p.main_mode).badge}" title={getModeName(p.main_mode)}>
+                          {getModeCode(p.main_mode)}
                         </Badge>
                       </td>
                       <td class="py-2 px-2 text-center font-mono font-bold">
@@ -358,9 +349,8 @@
                         <span class="text-[9px] text-muted-foreground font-bold font-mono shrink-0">[{p.team}]</span>
                       {/if}
                       <span class="truncate font-semibold text-sm">{p.display_name}</span>
-                      <Badge variant="outline" class="gap-1 text-[9px] px-1 py-0 uppercase tracking-wider shrink-0 {getRaceColorClass(p.main_race)}">
-                        <RaceIcon race={p.main_race} />
-                        {p.main_race}
+                      <Badge variant="outline" class="text-[9px] px-1 py-0 uppercase tracking-wider shrink-0 {modeColors(p.main_mode).badge}" title={getModeName(p.main_mode)}>
+                        {getModeCode(p.main_mode)}
                       </Badge>
                     </div>
                     <div class="text-[10px] text-muted-foreground mt-1 font-mono truncate">
@@ -399,9 +389,8 @@
                     <div class="flex items-center gap-2">
                       <h3 class="text-base font-extrabold text-foreground">{selectedStatPlayer.display_name}</h3>
                       <Flag code={selectedStatPlayer.flag} size={18} />
-                      <Badge variant="outline" class="gap-1 text-[9px] px-1.5 py-0 uppercase tracking-wider {getRaceColorClass(selectedStatPlayer.main_race)}">
-                        <RaceIcon race={selectedStatPlayer.main_race} size={14} />
-                        {getRaceName(selectedStatPlayer.main_race)}
+                      <Badge variant="outline" class="text-[9px] px-1.5 py-0 tracking-wider {modeColors(selectedStatPlayer.main_mode).badge}" title="最常参加的游戏模式">
+                        {getModeName(selectedStatPlayer.main_mode)}
                       </Badge>
                     </div>
                     <p class="text-[10px] text-muted-foreground mt-0.5 font-mono">
@@ -424,29 +413,34 @@
 
               <!-- Grid stats details -->
               <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <!-- Column 1: Matchups (Z, T, P) -->
+                <!-- Column 1: record per game mode -->
                 <div class="space-y-3 bg-muted/5 border border-border/40 p-3.5 rounded-xl">
                   <h4 class="text-[11px] font-extrabold text-foreground uppercase tracking-wider flex items-center gap-1">
                     <TrendingUpIcon class="w-3.5 h-3.5 text-primary" />
-                    种族对抗战绩 (单局)
+                    模式战绩 (单局)
                   </h4>
                   <div class="space-y-2.5">
-                    {#each ['Z', 'T', 'P'] as r}
-                      {@const vs = selectedStatPlayer.vs_race[r]}
-                      {@const rate = vs && vs.total > 0 ? (vs.won / vs.total) : 0}
+                    {#each GAME_MODES as mode (mode.id)}
+                      {@const rec = selectedStatPlayer.modes?.[mode.id]}
+                      {@const maps = rec ? rec.maps_won + rec.maps_lost : 0}
+                      {@const rate = maps > 0 ? rec.maps_won / maps : 0}
                       <div class="space-y-1">
-                        <div class="flex justify-between text-[10px]">
-                          <span class="font-bold flex items-center gap-1">
-                            <span class="w-1.5 h-1.5 rounded-full {r === 'Z' ? 'bg-rose-500' : r === 'T' ? 'bg-blue-500' : 'bg-emerald-500'}"></span>
-                            vs {getRaceName(r)[0]}
+                        <div class="flex justify-between gap-2 text-[10px]">
+                          <span class="font-bold flex items-center gap-1 min-w-0">
+                            <span class="w-1.5 h-1.5 rounded-full shrink-0 {modeColors(mode.id).dot}"></span>
+                            {mode.code}
+                            <span class="font-normal text-muted-foreground truncate">{mode.name}</span>
                           </span>
-                          <span class="font-mono text-muted-foreground">
-                            {vs ? `${vs.won}/${vs.total}局` : '0/0'} 
+                          <span class="font-mono text-muted-foreground shrink-0">
+                            {#if rec && rec.matches_won + rec.matches_lost > 0}
+                              <span class="pr-1" title="大场胜-负">{rec.matches_won}-{rec.matches_lost}</span>
+                            {/if}
+                            {rec ? rec.maps_won : 0}/{maps}局
                             <span class="font-bold text-foreground pl-1">{Math.round(rate * 100)}%</span>
                           </span>
                         </div>
                         <div class="h-1.5 bg-muted/65 rounded-full overflow-hidden">
-                          <div class="h-full rounded-full transition-all {r === 'Z' ? 'bg-rose-500/80' : r === 'T' ? 'bg-blue-500/80' : 'bg-emerald-500/80'}" style="width: {rate * 100}%"></div>
+                          <div class="h-full rounded-full transition-all {modeColors(mode.id).bar}" style="width: {rate * 100}%"></div>
                         </div>
                       </div>
                     {/each}

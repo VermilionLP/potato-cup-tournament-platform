@@ -2,6 +2,7 @@ import { PlayerRepo } from '../repositories/player-repo.js';
 import { TournamentRepo } from '../repositories/tournament-repo.js';
 import { LadderRepo } from '../repositories/ladder-repo.js';
 import { bnetEntryKey } from '../lib/bnet.js';
+import { GAME_MODES } from '../lib/tournament-config.js';
 import { requireAdmin, requireSelfOrAdmin } from '../lib/admin.js';
 
 export default async function playersRoutes(fastify) {
@@ -24,9 +25,16 @@ export default async function playersRoutes(fastify) {
     const players = await repo.list();
     const registrations = (await fastify.db.query('SELECT * FROM axsuck.tournament_players')).rows;
     const matches = (await fastify.db.query("SELECT * FROM axsuck.matches WHERE status IN ('completed', 'walkover')")).rows;
-    const tournaments = (await fastify.db.query('SELECT id, name FROM axsuck.tournaments')).rows;
+    const tournaments = (await fastify.db.query('SELECT id, name, game_mode FROM axsuck.tournaments')).rows;
     const tournamentMap = {};
-    for (const t of tournaments) tournamentMap[t.id] = t.name;
+    const modeOf = {};
+    for (const t of tournaments) {
+      tournamentMap[t.id] = t.name;
+      modeOf[t.id] = GAME_MODES.includes(t.game_mode) ? t.game_mode : 'rb';
+    }
+    const emptyModes = () => Object.fromEntries(GAME_MODES.map((m) => [m, {
+      tournaments: 0, matches_won: 0, matches_lost: 0, maps_won: 0, maps_lost: 0,
+    }]));
 
     const stats = {};
     for (const p of players) {
@@ -47,13 +55,7 @@ export default async function playersRoutes(fastify) {
         maps_played: 0,
         maps_won: 0,
         maps_lost: 0,
-        races_used: {},
-        vs_race: {
-          Z: { won: 0, total: 0 },
-          T: { won: 0, total: 0 },
-          P: { won: 0, total: 0 },
-          R: { won: 0, total: 0 }
-        },
+        modes: emptyModes(),
         opponents: {},
         tournament_ids: []
       };
@@ -62,6 +64,8 @@ export default async function playersRoutes(fastify) {
     for (const reg of registrations) {
       if (stats[reg.player_id]) {
         stats[reg.player_id].tournaments_played++;
+        const mode = modeOf[reg.tournament_id];
+        if (mode) stats[reg.player_id].modes[mode].tournaments++;
         if (!stats[reg.player_id].tournament_ids.includes(reg.tournament_id)) {
           stats[reg.player_id].tournament_ids.push(reg.tournament_id);
         }
@@ -87,6 +91,15 @@ export default async function playersRoutes(fastify) {
         const s1 = m.score1;
         const s2 = m.score2;
         const totalMaps = s1 + s2;
+        const mode = modeOf[m.tournament_id] || 'rb';
+        for (const [id, won, mine, theirs] of [[p1, p1Won, s1, s2], [p2, !p1Won, s2, s1]]) {
+          const rec = stats[id]?.modes[mode];
+          if (!rec) continue;
+          if (won) rec.matches_won++;
+          else rec.matches_lost++;
+          rec.maps_won += mine;
+          rec.maps_lost += theirs;
+        }
 
         if (stats[p1]) {
           stats[p1].matches_played++;
@@ -156,14 +169,25 @@ export default async function playersRoutes(fastify) {
       const nemesisDisp = nemesis && stats[nemesis] ? stats[nemesis].display_name : nemesis;
       const favoriteDisp = favorite && stats[favorite] ? stats[favorite].display_name : favorite;
 
-      const mainRace = Object.entries(s.races_used).sort((a, b) => b[1] - a[1])[0]?.[0] || 'U';
+      // Favourite mode: most matches played, then most events entered;
+      // '' when the player has neither.
+      let mainMode = '';
+      let best = 0;
+      for (const mode of GAME_MODES) {
+        const r = s.modes[mode];
+        const score = (r.matches_won + r.matches_lost) * 1000 + r.tournaments;
+        if (score > best) {
+          best = score;
+          mainMode = mode;
+        }
+      }
 
       return {
         id: s.id,
         display_name: s.display_name,
         team: s.team,
         flag: s.flag,
-        main_race: mainRace,
+        main_mode: mainMode,
         tournaments_played: s.tournaments_played,
         matches_played: s.matches_played,
         matches_won: s.matches_won,
@@ -177,7 +201,7 @@ export default async function playersRoutes(fastify) {
         maps_lost: s.maps_lost,
         map_win_rate: s.maps_played > 0 ? (s.maps_won / s.maps_played) : 0,
         avg_game_length: s.game_time_count > 0 ? Math.round(s.total_game_time / s.game_time_count) : 0,
-        vs_race: s.vs_race,
+        modes: s.modes,
         nemesis: nemesis ? { id: nemesis, display_name: nemesisDisp, count: maxLostMatches } : null,
         favorite: favorite ? { id: favorite, display_name: favoriteDisp, count: maxWonMatches } : null,
         tournaments: s.tournament_ids.map(tid => ({ id: tid, name: tournamentMap[tid] || tid }))
