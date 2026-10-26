@@ -110,7 +110,10 @@ test('seeding keeps groups apart in larger fields and never moves players across
 test('two-stage start checks', () => {
   const base = { rounds: 3, groupSize: 8, perGroup: 2, playoffFormat: 'single_elim' };
   assert.equal(twoStageStartBlockedReason(32, base), null);
-  assert.match(twoStageStartBlockedReason(32, { ...base, rounds: null }), /轮数/);
+  assert.equal(twoStageStartBlockedReason(32, { ...base, rounds: null }), null, 'automatic rounds');
+  assert.match(twoStageStartBlockedReason(32, { ...base, rounds: 0 }), /轮数/);
+  // A group of 3 can play 3 rounds without a rematch (everyone sits out once).
+  assert.equal(twoStageStartBlockedReason(6, { ...base, groupSize: 3, perGroup: 1, rounds: 3 }), null);
   assert.match(twoStageStartBlockedReason(32, { ...base, playoffFormat: null }), /淘汰赛赛制/);
   // 9 players, size 8 -> 2 groups of 5 and 4: 4 rounds is too many for the group of 4.
   assert.equal(

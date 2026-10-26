@@ -24,6 +24,8 @@ import {
 import {
   computeStandings,
   currentSwissRound,
+  effectiveSwissRounds,
+  isAutoRounds,
   MAX_SWISS_ROUNDS,
   MIN_SWISS_ROUNDS,
   parseSwissRounds,
@@ -38,9 +40,10 @@ function buildGroupStage(t, players, swissMatches) {
   const perGroup = Number(t.advance_per_group) || 1;
   const { qualifiers, warnings } = selectQualifiers(groups, perGroup);
   const { seeded, sameGroupPairs } = seedPlayoffs(qualifiers);
-  const complete = swissMatches.length > 0 && groupStageComplete(field, swissMatches, Number(t.swiss_rounds) || 0);
+  const roundsFor = (size) => effectiveSwissRounds(t.swiss_rounds, size);
+  const complete = swissMatches.length > 0 && groupStageComplete(field, swissMatches, roundsFor);
   return {
-    groups,
+    groups: groups.map((g) => ({ ...g, rounds: roundsFor(g.rows.length) })),
     per_group: perGroup,
     complete,
     qualifiers: seeded.map((q, i) => ({
@@ -112,12 +115,21 @@ export default async function tournamentsRoutes(fastify) {
       ? buildGroupStage(t, players, swissMatches)
       : undefined;
 
+    // Rounds actually played; an automatic count follows the field size.
+    const swissRoundsEffective = t.format !== 'swiss'
+      ? undefined
+      : groupStage
+        ? Math.max(1, ...groupStage.groups.map((g) => g.rounds))
+        : effectiveSwissRounds(t.swiss_rounds, players.length);
+
     return {
       ...t,
       players: playersWithLadder,
       matches: ms,
       standings,
       group_stage: groupStage,
+      swiss_rounds_auto: t.format === 'swiss' ? isAutoRounds(t.swiss_rounds) : undefined,
+      swiss_rounds_effective: swissRoundsEffective,
       votes,
       custom_votes,
       accounts: tournamentAccounts
@@ -229,8 +241,8 @@ export default async function tournamentsRoutes(fastify) {
     if (vehicle_pool != null && !isValidVehiclePool(vehicle_pool)) {
       throw fastify.httpErrors.badRequest('vehicle_pool must be a slug like "proleague"');
     }
-    if (format === 'swiss' && !parseSwissRounds(swiss_rounds)) {
-      throw fastify.httpErrors.badRequest(`瑞士轮需要设置轮数（${MIN_SWISS_ROUNDS}-${MAX_SWISS_ROUNDS}）`);
+    if (format === 'swiss' && !isAutoRounds(swiss_rounds) && !parseSwissRounds(swiss_rounds)) {
+      throw fastify.httpErrors.badRequest(`瑞士轮轮数必须是 ${MIN_SWISS_ROUNDS}-${MAX_SWISS_ROUNDS} 之间的整数（留空为自动）`);
     }
     if (format === 'swiss' && playoff_format) {
       if (!PLAYOFF_FORMATS.includes(playoff_format)) {
@@ -296,13 +308,34 @@ export default async function tournamentsRoutes(fastify) {
     return ics;
   });
 
+  // Rename and/or move the match time. The time can be changed once the
+  // voting phase is over (voting sets it when registration opens).
   fastify.patch('/tournaments/:id', async (req) => {
     requireAdmin(fastify, req);
-    const name = String(req.body?.name || '').trim();
-    if (!name) throw fastify.httpErrors.badRequest('name is required');
-    const updated = await repo.rename(req.params.id, name);
-    if (!updated) throw fastify.httpErrors.notFound('Tournament not found');
-    fastify.tournamentEvents.emit(`update:${req.params.id}`, { type: 'name_changed', name });
+    const body = req.body || {};
+    const hasName = body.name !== undefined;
+    const hasTime = body.scheduled_time !== undefined;
+    if (!hasName && !hasTime) throw fastify.httpErrors.badRequest('name or scheduled_time is required');
+    const t = await repo.getById(req.params.id);
+    if (!t) throw fastify.httpErrors.notFound('Tournament not found');
+
+    let updated = t;
+    if (hasName) {
+      const name = String(body.name || '').trim();
+      if (!name) throw fastify.httpErrors.badRequest('name is required');
+      updated = await repo.rename(req.params.id, name);
+      fastify.tournamentEvents.emit(`update:${req.params.id}`, { type: 'name_changed', name });
+    }
+    if (hasTime) {
+      const time = String(body.scheduled_time || '').trim();
+      if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(time)) {
+        throw fastify.httpErrors.badRequest('比赛时间格式应为 YYYY-MM-DDTHH:mm');
+      }
+      if (t.status === 'voting') throw fastify.httpErrors.badRequest('时间投票进行中，请通过「确定比赛时间」开启报名');
+      if (t.status === 'completed') throw fastify.httpErrors.badRequest('赛事已结束，不能修改比赛时间');
+      updated = await repo.setScheduledTime(req.params.id, time);
+      fastify.tournamentEvents.emit(`update:${req.params.id}`, { type: 'time_changed', scheduled_time: time });
+    }
     return updated;
   });
 
@@ -376,13 +409,22 @@ export default async function tournamentsRoutes(fastify) {
     if (t.format !== 'swiss') throw fastify.httpErrors.badRequest('该赛事不是瑞士轮');
     if (t.status === 'completed') throw fastify.httpErrors.badRequest('赛事已结束，不能修改轮数');
     if (t.current_stage === 'playoff') throw fastify.httpErrors.badRequest('淘汰赛已开始，不能再修改小组赛轮数');
-    const rounds = parseSwissRounds(req.body?.swiss_rounds);
-    if (!rounds) {
-      throw fastify.httpErrors.badRequest(`轮数必须是 ${MIN_SWISS_ROUNDS}-${MAX_SWISS_ROUNDS} 之间的整数`);
+    // An empty value switches back to the automatic (round robin) count.
+    const auto = isAutoRounds(req.body?.swiss_rounds);
+    const rounds = auto ? null : parseSwissRounds(req.body?.swiss_rounds);
+    if (!auto && !rounds) {
+      throw fastify.httpErrors.badRequest(`轮数必须是 ${MIN_SWISS_ROUNDS}-${MAX_SWISS_ROUNDS} 之间的整数（留空为自动）`);
     }
-    const played = currentSwissRound(await repo.getMatches(req.params.id));
-    if (rounds < played) {
-      throw fastify.httpErrors.badRequest(`已经进行到第 ${played} 轮，轮数不能少于 ${played}`);
+    const players = await repo.getPlayers(req.params.id);
+    const swissMatches = (await repo.getMatches(req.params.id)).filter((m) => m.bracket === SWISS_BRACKET);
+    const groupIds = [...new Set(players.map((p) => p.swiss_group || 1))];
+    for (const g of groupIds) {
+      const size = players.filter((p) => (p.swiss_group || 1) === g).length;
+      const played = currentSwissRound(swissMatches.filter((m) => (m.swiss_group || 1) === g));
+      const target = effectiveSwissRounds(rounds, size);
+      if (target < played) {
+        throw fastify.httpErrors.badRequest(`已经进行到第 ${played} 轮，轮数不能少于 ${played}`);
+      }
     }
     const updated = await repo.setSwissRounds(req.params.id, rounds);
     if (t.status === 'in_progress') await matches.advanceSwiss(req.params.id);

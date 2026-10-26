@@ -5,6 +5,7 @@ import {
 } from '../lib/double-elim.js';
 import {
   currentSwissRound,
+  effectiveSwissRounds,
   pairSwissRound,
   SWISS_BRACKET,
   swissRoundComplete,
@@ -219,7 +220,7 @@ export function MatchRepo(db) {
       const players = await loadSeededPlayers(client, tournamentId);
       if (players.length < 2) throw new Error('瑞士轮至少需要 2 名选手');
       const tRes = await client.query(
-        'SELECT playoff_format, swiss_group_size FROM axsuck.tournaments WHERE id = $1',
+        'SELECT playoff_format, swiss_group_size, swiss_rounds FROM axsuck.tournaments WHERE id = $1',
         [tournamentId],
       );
       const t = tRes.rows[0] || {};
@@ -236,7 +237,8 @@ export function MatchRepo(db) {
       }
       for (let g = 1; g <= groupCount; g += 1) {
         const own = players.filter((p) => groups.get(p.id) === g);
-        await insertSwissRound(client, tournamentId, 1, pairSwissRound(own, [], 1), g);
+        const totalRounds = effectiveSwissRounds(t.swiss_rounds, own.length);
+        await insertSwissRound(client, tournamentId, 1, pairSwissRound(own, [], 1, { totalRounds }), g);
       }
       await client.query('COMMIT');
     } catch (err) {
@@ -263,7 +265,7 @@ export function MatchRepo(db) {
         'SELECT swiss_rounds, current_stage FROM axsuck.tournaments WHERE id = $1',
         [tournamentId],
       );
-      const totalRounds = Number(tRes.rows[0]?.swiss_rounds) || 0;
+      const storedRounds = tRes.rows[0]?.swiss_rounds ?? null;
       if (tRes.rows[0]?.current_stage === 'playoff') {
         await client.query('COMMIT');
         return null;
@@ -281,11 +283,18 @@ export function MatchRepo(db) {
       let created = null;
       for (const g of groupIds) {
         const own = mRes.rows.filter((m) => (m.swiss_group || 1) === g);
+        const ownPlayers = pRes.rows.filter((p) => (p.swiss_group || 1) === g);
+        const totalRounds = effectiveSwissRounds(storedRounds, ownPlayers.length);
         const round = currentSwissRound(own);
         if (round === 0 || round >= totalRounds || !swissRoundComplete(own, round)) continue;
-        const ownPlayers = pRes.rows.filter((p) => (p.swiss_group || 1) === g);
         const groupValue = own[0]?.swiss_group ?? null;
-        await insertSwissRound(client, tournamentId, round + 1, pairSwissRound(ownPlayers, own, round + 1), groupValue);
+        await insertSwissRound(
+          client,
+          tournamentId,
+          round + 1,
+          pairSwissRound(ownPlayers, own, round + 1, { totalRounds }),
+          groupValue,
+        );
         created = created === null ? round + 1 : Math.min(created, round + 1);
       }
       await client.query('COMMIT');

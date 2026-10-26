@@ -26,6 +26,37 @@ export function suggestedSwissRounds(playerCount) {
   return Math.max(MIN_SWISS_ROUNDS, Math.ceil(Math.log2(n)));
 }
 
+/**
+ * Rounds needed for every player to meet every other player once. With an odd
+ * number of players each round has one bye, so it takes as many rounds as
+ * there are players (everyone sits out once).
+ */
+export function roundRobinRounds(playerCount) {
+  const n = Number(playerCount) || 0;
+  if (n < 2) return 1;
+  return n % 2 === 0 ? n - 1 : n;
+}
+
+/** Fewest players needed to play `rounds` rounds without a rematch. */
+export function minPlayersForRounds(rounds) {
+  const r = Number(rounds) || 1;
+  return Math.max(2, r % 2 === 0 ? r + 1 : r);
+}
+
+/** A stored round count of null / '' / 'auto' means "automatic". */
+export function isAutoRounds(value) {
+  return value === null || value === undefined || value === '' || value === 'auto';
+}
+
+/**
+ * Rounds a group of `playerCount` players actually plays: the admin's value,
+ * or automatically a full round robin (capped at MAX_SWISS_ROUNDS).
+ */
+export function effectiveSwissRounds(stored, playerCount) {
+  if (!isAutoRounds(stored)) return parseSwissRounds(stored) ?? MIN_SWISS_ROUNDS;
+  return Math.min(MAX_SWISS_ROUNDS, roundRobinRounds(playerCount));
+}
+
 /** Parses an admin-entered round count, or returns null when it is invalid. */
 export function parseSwissRounds(value) {
   if (value === null || value === undefined || value === '') return null;
@@ -151,12 +182,52 @@ function pickBye(orderedIds, byeCounts) {
 }
 
 /**
+ * Round-robin pairings for `round` (circle method) from players in seed
+ * order. Over roundRobinRounds(n) rounds everyone meets everyone once; with an
+ * odd field each player gets exactly one bye.
+ */
+export function roundRobinPairs(playersBySeed, round) {
+  const ids = playersBySeed.map((p) => p.id);
+  if (ids.length % 2 === 1) ids.push(null);
+  const n = ids.length;
+  const rest = ids.slice(1);
+  const k = (round - 1) % (n - 1);
+  const rotated = rest.slice(rest.length - k).concat(rest.slice(0, rest.length - k));
+  const circle = [ids[0], ...rotated];
+  const pairs = [];
+  let bye = null;
+  for (let i = 0; i < n / 2; i += 1) {
+    const a = circle[i];
+    const b = circle[n - 1 - i];
+    if (a === null || b === null) bye = a ?? b;
+    else pairs.push({ player1_id: a, player2_id: b });
+  }
+  if (bye) pairs.push({ player1_id: bye, player2_id: null });
+  return pairs;
+}
+
+/**
  * Pairings for `round` (1-based). `players`: [{ id, seed }]; `matches`: every
  * Swiss match of earlier rounds. Returns [{ player1_id, player2_id }] in board
  * order; a bye has player2_id = null and comes last.
  */
-export function pairSwissRound(players, matches, round) {
+export function pairSwissRound(players, matches, round, { totalRounds = null } = {}) {
   if (players.length < 2) throw new Error('瑞士轮至少需要 2 名选手');
+
+  // A full round robin follows a fixed schedule so nobody is left with only
+  // rematches in the last rounds. Falls back to Swiss pairing if earlier
+  // rounds did not follow that schedule.
+  if (totalRounds && totalRounds >= roundRobinRounds(players.length)) {
+    const bySeed = [...players].sort(
+      (a, b) => (a.seed ?? Infinity) - (b.seed ?? Infinity) || String(a.id).localeCompare(String(b.id)),
+    );
+    const scheduled = roundRobinPairs(bySeed, round);
+    const played = playedPairs(matches);
+    const clean = scheduled.every(
+      (p) => !p.player2_id || !played.has(pairKey(p.player1_id, p.player2_id)),
+    );
+    if (clean) return scheduled;
+  }
 
   const pairs = [];
   let bye = null;
@@ -205,9 +276,11 @@ export function swissRoundComplete(matches, round) {
 /** Reason a Swiss tournament cannot start, or null. */
 export function swissStartBlockedReason(playerCount, rounds) {
   const count = Number(playerCount) || 0;
-  if (!parseSwissRounds(rounds)) return `请先设置瑞士轮轮数（${MIN_SWISS_ROUNDS}-${MAX_SWISS_ROUNDS}）`;
-  if (rounds > count - 1) {
-    return `瑞士轮 ${rounds} 轮至少需要 ${rounds + 1} 名选手（当前 ${count} 人）`;
+  if (isAutoRounds(rounds)) return null;
+  const r = parseSwissRounds(rounds);
+  if (!r) return `请先设置瑞士轮轮数（${MIN_SWISS_ROUNDS}-${MAX_SWISS_ROUNDS}）`;
+  if (r > roundRobinRounds(count)) {
+    return `瑞士轮 ${r} 轮至少需要 ${minPlayersForRounds(r)} 名选手（当前 ${count} 人）`;
   }
   return null;
 }

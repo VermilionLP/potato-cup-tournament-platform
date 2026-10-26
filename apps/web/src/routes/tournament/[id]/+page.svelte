@@ -27,6 +27,8 @@
   import BanPickPanel from "$lib/components/BanPickPanel.svelte";
   import ScoreForm from "$lib/components/ScoreForm.svelte";
   import PlayoffPanel from "$lib/components/PlayoffPanel.svelte";
+  import DateTimePicker from "$lib/components/DateTimePicker.svelte";
+  import { formatScheduled, parseLocal } from "$lib/datetime.js";
   import { canConfirm, confirmResult, initialBanPick, poolVehicles } from "$lib/banpick.js";
   import { defaultVehiclePools } from "$lib/data/vehiclePools.js";
   import {
@@ -102,6 +104,11 @@
   );
   let isSwiss = $derived(tournament?.format === "swiss");
   let banpickEnabled = $derived(tournament?.banpick_enabled !== false);
+  let swissRoundsLabel = $derived(
+    tournament?.swiss_rounds_auto
+      ? `${tournament?.swiss_rounds_effective ?? "?"} 轮（自动单循环）`
+      : `${tournament?.swiss_rounds ?? "?"} 轮`,
+  );
   let registeredCount = $derived(tournament?.players?.length || 0);
   let startBlocked = $derived(
     startBlockedMessage(tournament?.format, registeredCount, tournament?.swiss_rounds, isTwoStage ? {
@@ -370,6 +377,10 @@
 
   // Modal for selecting final time
   let showStatusTimeDialog = $state(false);
+  // Admin: move the match time after registration opened.
+  let showTimeEditDialog = $state(false);
+  let timeEditValue = $state("");
+  let savingTime = $state(false);
   let selectedFinalTime = $state("");
 
   // Next-match hand-off enforcement: force choosing the next live match, then auto-switch to ingame HUD
@@ -1071,21 +1082,43 @@
     if (!ensureAdmin()) return;
     const current = tournament?.swiss_rounds ?? "";
     const input = prompt(
-      `瑞士轮总轮数（${MIN_SWISS_ROUNDS}-${MAX_SWISS_ROUNDS}）。比赛进行中修改时，不能少于当前轮次。`,
+      `瑞士轮总轮数（${MIN_SWISS_ROUNDS}-${MAX_SWISS_ROUNDS}）。留空 = 自动（单循环，每人与同组所有人各打一场）。比赛进行中修改时，不能少于当前轮次。`,
       String(current),
     );
     if (input === null) return;
-    const rounds = Number(input.trim());
-    if (!isValidSwissRounds(rounds)) {
-      toast.error(`轮数必须是 ${MIN_SWISS_ROUNDS}-${MAX_SWISS_ROUNDS} 之间的整数`);
+    const trimmed = input.trim();
+    const rounds = trimmed === "" ? null : Number(trimmed);
+    if (rounds !== null && !isValidSwissRounds(rounds)) {
+      toast.error(`轮数必须是 ${MIN_SWISS_ROUNDS}-${MAX_SWISS_ROUNDS} 之间的整数，或留空表示自动`);
       return;
     }
     try {
       await API.setSwissRounds(tid, rounds);
-      toast.success(`瑞士轮已设为 ${rounds} 轮`);
+      toast.success(rounds === null ? "瑞士轮轮数已改为自动（单循环）" : `瑞士轮已设为 ${rounds} 轮`);
       await load();
     } catch (e) {
       toast.error(e.message);
+    }
+  }
+
+  function openTimeEdit() {
+    if (!ensureAdmin()) return;
+    timeEditValue = parseLocal(tournament?.scheduled_time) ? tournament.scheduled_time : "";
+    showTimeEditDialog = true;
+  }
+
+  async function saveTimeEdit() {
+    if (!parseLocal(timeEditValue)) return toast.error("请选择日期和时间");
+    savingTime = true;
+    try {
+      tournament = await API.updateTournament(tid, { scheduled_time: timeEditValue });
+      toast.success(`比赛时间已改为 ${formatScheduled(timeEditValue)}`);
+      showTimeEditDialog = false;
+      await load();
+    } catch (e) {
+      toast.error(e.message);
+    } finally {
+      savingTime = false;
     }
   }
 
@@ -2625,7 +2658,7 @@
             matches={tournament.matches || []}
             players={tournament.players || []}
             standings={tournament.standings || []}
-            totalRounds={tournament.swiss_rounds}
+            totalRounds={tournament.swiss_rounds_effective ?? tournament.swiss_rounds}
             status={tournament.status}
             activeMatchId={tournament.active_match_id}
             isAdmin={isAdmin}
@@ -3032,15 +3065,26 @@
             tournament.created_at,
           ).toLocaleDateString("zh-CN")}
           • {isSwiss ? "赛制结构" : "晋级规则"}: <span class="font-bold text-primary">{isTwoStage
-            ? `小组赛 ${tournament.swiss_rounds ?? "?"} 轮（${tournament.swiss_group_size ? `每组 ${tournament.swiss_group_size} 人` : "不分组"}，每组前 ${tournament.advance_per_group} 名晋级）→ ${tournament.playoff_format === "double_elim" ? "双败" : "单败"}淘汰赛`
-            : isSwiss ? `积分制 · ${tournament.swiss_rounds ?? "?"} 轮` : advancementLabel(tournament.loser_advances)}</span>
+            ? `小组赛 ${swissRoundsLabel}（${tournament.swiss_group_size ? `每组 ${tournament.swiss_group_size} 人` : "不分组"}，每组前 ${tournament.advance_per_group} 名晋级）→ ${tournament.playoff_format === "double_elim" ? "双败" : "单败"}淘汰赛`
+            : isSwiss ? `积分制 · ${swissRoundsLabel}` : advancementLabel(tournament.loser_advances)}</span>
         </p>
         {#if tournament.scheduled_time}
           <div
             class="mt-2.5 inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border border-primary/30 bg-primary/5 text-primary text-xs font-bold shadow-md shadow-primary/5"
           >
             <ClockIcon class="w-4 h-4 text-primary shrink-0 animate-pulse" />
-            <span>比赛时间: {tournament.scheduled_time}</span>
+            <span>比赛时间: {formatScheduled(tournament.scheduled_time)}</span>
+            {#if isAdmin && ["registration", "in_progress"].includes(tournament.status)}
+              <button
+                type="button"
+                onclick={openTimeEdit}
+                class="ml-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-lg border border-primary/25 bg-background/50 text-[10px] font-bold text-primary hover:bg-primary hover:text-primary-foreground transition-colors cursor-pointer"
+                title="调整比赛时间"
+              >
+                <PencilIcon class="w-3 h-3" />
+                调整
+              </button>
+            {/if}
             <a
               href={`/api/tournaments/${encodeURIComponent(tournament.id)}/calendar.ics`}
               download={`${tournament.id}.ics`}
@@ -4133,6 +4177,30 @@
         </Dialog.Footer>
       {/if}
     {/if}
+  </Dialog.Content>
+</Dialog.Root>
+
+<!-- Admin: adjust the match time -->
+<Dialog.Root bind:open={showTimeEditDialog}>
+  <Dialog.Content class="sm:max-w-[520px] bg-card border border-border">
+    <Dialog.Header>
+      <Dialog.Title class="text-base font-bold text-foreground flex items-center gap-2">
+        <ClockIcon class="w-4 h-4 text-primary" />
+        调整比赛时间
+      </Dialog.Title>
+      <Dialog.Description class="text-xs text-muted-foreground">
+        当前：{tournament?.scheduled_time ? formatScheduled(tournament.scheduled_time) : "未设置"}。修改后选手页面和日历文件会同步更新。
+      </Dialog.Description>
+    </Dialog.Header>
+    {#if showTimeEditDialog}
+      <DateTimePicker bind:value={timeEditValue} clearable={false} startOpen={true} />
+    {/if}
+    <Dialog.Footer class="flex gap-2">
+      <Button variant="outline" size="sm" onclick={() => (showTimeEditDialog = false)} disabled={savingTime}>取消</Button>
+      <Button size="sm" onclick={saveTimeEdit} disabled={savingTime || !parseLocal(timeEditValue)} class="font-bold">
+        {savingTime ? "保存中…" : "保存"}
+      </Button>
+    </Dialog.Footer>
   </Dialog.Content>
 </Dialog.Root>
 

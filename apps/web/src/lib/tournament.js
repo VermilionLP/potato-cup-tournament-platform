@@ -57,6 +57,23 @@ export function suggestedSwissRounds(playerCount) {
   return n < 2 ? 1 : Math.max(1, Math.ceil(Math.log2(n)));
 }
 
+/** Rounds for everyone to meet everyone once (odd fields: everyone sits out once). */
+export function roundRobinRounds(playerCount) {
+  const n = Number(playerCount) || 0;
+  if (n < 2) return 1;
+  return n % 2 === 0 ? n - 1 : n;
+}
+
+/** Empty round count = automatic (a full round robin). */
+export function isAutoRounds(value) {
+  return value === null || value === undefined || value === "" || value === "auto";
+}
+
+/** Automatic round count for a group of `playerCount`, capped like the server. */
+export function autoSwissRounds(playerCount) {
+  return Math.min(MAX_SWISS_ROUNDS, roundRobinRounds(playerCount));
+}
+
 export function isValidSwissRounds(value) {
   const n = Number(value);
   return Number.isInteger(n) && n >= MIN_SWISS_ROUNDS && n <= MAX_SWISS_ROUNDS;
@@ -70,10 +87,11 @@ export function startBlockedMessage(format, playerCount, swissRounds = null, two
   if (format === "swiss" && twoStage?.playoffFormat) {
     return twoStageStartMessage(count, { rounds: swissRounds, ...twoStage });
   }
-  if (format === "swiss") {
+  if (format === "swiss" && !isAutoRounds(swissRounds)) {
     if (!isValidSwissRounds(swissRounds)) return "请先设置瑞士轮轮数";
-    if (swissRounds > count - 1) {
-      return `${swissRounds} 轮瑞士轮至少需要 ${swissRounds + 1} 人（当前 ${count} 人）`;
+    if (swissRounds > roundRobinRounds(count)) {
+      const need = swissRounds % 2 === 0 ? swissRounds + 1 : swissRounds;
+      return `${swissRounds} 轮瑞士轮至少需要 ${need} 人（当前 ${count} 人）`;
     }
   }
   return null;
@@ -123,11 +141,14 @@ export function groupCountFor(playerCount, groupSize) {
 /** Why a two-stage event cannot start yet, or null. */
 export function twoStageStartMessage(playerCount, { rounds, groupSize, perGroup, playoffFormat }) {
   const count = Number(playerCount) || 0;
-  if (!isValidSwissRounds(rounds)) return "请先设置瑞士轮轮数";
+  const auto = isAutoRounds(rounds);
+  if (!auto && !isValidSwissRounds(rounds)) return "请先设置瑞士轮轮数";
   const groups = groupCountFor(count, groupSize);
   const smallest = Math.floor(count / groups);
   if (smallest < 2) return `分成 ${groups} 组后每组不足 2 人（当前 ${count} 人）`;
-  if (rounds > smallest - 1) return `最小的组只有 ${smallest} 人，最多打 ${smallest - 1} 轮（当前 ${rounds} 轮）`;
+  if (!auto && rounds > roundRobinRounds(smallest)) {
+    return `最小的组只有 ${smallest} 人，最多打 ${roundRobinRounds(smallest)} 轮（当前 ${rounds} 轮）`;
+  }
   const k = Number(perGroup) || 0;
   if (k < 1) return "请先设置每组晋级人数";
   if (k > smallest) return `每组晋级 ${k} 人，但最小的组只有 ${smallest} 人`;

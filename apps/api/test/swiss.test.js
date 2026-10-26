@@ -3,8 +3,12 @@ import { test } from 'node:test';
 import {
   computeStandings,
   currentSwissRound,
+  effectiveSwissRounds,
+  minPlayersForRounds,
   pairSwissRound,
   parseSwissRounds,
+  roundRobinPairs,
+  roundRobinRounds,
   suggestedSwissRounds,
   swissRoundComplete,
   swissStartBlockedReason,
@@ -45,10 +49,66 @@ test('round counts: suggestion is ceil(log2 N), admin input is validated', () =>
   assert.equal(parseSwissRounds(16), null);
 });
 
-test('start needs a round count and more players than rounds', () => {
-  assert.match(swissStartBlockedReason(8, null), /请先设置瑞士轮轮数/);
+test('start needs enough players for the rounds; no round count means automatic', () => {
+  assert.equal(swissStartBlockedReason(8, null), null);
+  assert.equal(swissStartBlockedReason(8, 'auto'), null);
+  assert.match(swissStartBlockedReason(8, 0), /请先设置瑞士轮轮数/);
   assert.equal(swissStartBlockedReason(4, 4), '瑞士轮 4 轮至少需要 5 名选手（当前 4 人）');
   assert.equal(swissStartBlockedReason(5, 4), null);
+  assert.equal(swissStartBlockedReason(5, 5), null, 'odd fields can play n rounds');
+  assert.equal(swissStartBlockedReason(4, 5), '瑞士轮 5 轮至少需要 5 名选手（当前 4 人）');
+});
+
+test('automatic rounds are a full round robin, capped at 15', () => {
+  assert.equal(roundRobinRounds(4), 3);
+  assert.equal(roundRobinRounds(5), 5);
+  assert.equal(roundRobinRounds(8), 7);
+  assert.equal(effectiveSwissRounds(null, 4), 3);
+  assert.equal(effectiveSwissRounds(null, 3), 3);
+  assert.equal(effectiveSwissRounds(null, 40), 15);
+  assert.equal(effectiveSwissRounds(2, 8), 2, 'an explicit value wins');
+  assert.equal(minPlayersForRounds(3), 3);
+  assert.equal(minPlayersForRounds(4), 5);
+});
+
+test('round-robin schedule: everyone meets everyone once, odd fields sit out once each', () => {
+  for (let n = 2; n <= 13; n += 1) {
+    const field = players(n);
+    const met = new Set();
+    const byes = new Map();
+    for (let round = 1; round <= roundRobinRounds(n); round += 1) {
+      const seen = new Set();
+      for (const p of roundRobinPairs(field, round)) {
+        for (const id of [p.player1_id, p.player2_id].filter(Boolean)) {
+          assert.ok(!seen.has(id), `n=${n} r=${round}: ${id} twice`);
+          seen.add(id);
+        }
+        if (!p.player2_id) {
+          byes.set(p.player1_id, (byes.get(p.player1_id) || 0) + 1);
+          continue;
+        }
+        const key = [p.player1_id, p.player2_id].sort().join('|');
+        assert.ok(!met.has(key), `n=${n}: rematch ${key}`);
+        met.add(key);
+      }
+      assert.equal(seen.size, n);
+    }
+    assert.equal(met.size, (n * (n - 1)) / 2, `n=${n}: every pair met`);
+    if (n % 2 === 1) for (const p of field) assert.equal(byes.get(p.id), 1);
+  }
+});
+
+test('Swiss pairing uses the round-robin schedule when the rounds cover it', () => {
+  const field = players(4);
+  assert.deepEqual(
+    pairSwissRound(field, [], 1, { totalRounds: 3 }),
+    roundRobinPairs(field, 1),
+  );
+  // Fewer rounds: ordinary Swiss round 1 (top half against bottom half).
+  assert.deepEqual(
+    pairSwissRound(field, [], 1, { totalRounds: 2 }).map((p) => [p.player1_id, p.player2_id]),
+    [['p1', 'p3'], ['p2', 'p4']],
+  );
 });
 
 test('round 1 pairs top half against bottom half by seed', () => {

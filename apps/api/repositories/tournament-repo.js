@@ -84,6 +84,17 @@ export function TournamentRepo(db) {
     return getById(id);
   }
 
+  async function setScheduledTime(id, scheduledTime) {
+    const res = await db.query(`
+      UPDATE axsuck.tournaments
+      SET scheduled_time = $1, updated_at = NOW()
+      WHERE id = $2
+      RETURNING id
+    `, [scheduledTime, id]);
+    if (!res.rowCount) return null;
+    return getById(id);
+  }
+
   async function setSwissRounds(id, rounds) {
     const res = await db.query(`
       UPDATE axsuck.tournaments SET swiss_rounds = $1, updated_at = NOW()
@@ -318,5 +329,5 @@ export function TournamentRepo(db) {
     return getById(id);
   }
 
-  return { list, getById, create, rename, setSwissRounds, updateStatus, updateOverlayState, getPlayers, addPlayer, autoRegisterVoters, removePlayer, setSeeds, getMatches, getVotes, getCustomVotes };
+  return { list, getById, create, rename, setScheduledTime, setSwissRounds, updateStatus, updateOverlayState, getPlayers, addPlayer, autoRegisterVoters, removePlayer, setSeeds, getMatches, getVotes, getCustomVotes };
 }

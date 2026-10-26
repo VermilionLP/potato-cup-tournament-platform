@@ -59,8 +59,10 @@ test("swiss is selectable and its start rules match the server", () => {
   assert.equal(BRACKET_FORMATS.find((f) => f.id === "swiss").available, true);
   assert.equal(startBlockedMessage("single_elim", 1), "至少 2 人才能开赛（当前 1 人）");
   assert.equal(startBlockedMessage("double_elim", 4), null);
-  assert.equal(startBlockedMessage("swiss", 8, null), "请先设置瑞士轮轮数");
-  assert.equal(startBlockedMessage("swiss", 3, 3), "3 轮瑞士轮至少需要 4 人（当前 3 人）");
+  assert.equal(startBlockedMessage("swiss", 8, null), null, "automatic rounds");
+  assert.equal(startBlockedMessage("swiss", 8, 0), "请先设置瑞士轮轮数");
+  assert.equal(startBlockedMessage("swiss", 3, 3), null, "odd fields can play n rounds");
+  assert.equal(startBlockedMessage("swiss", 3, 4), "4 轮瑞士轮至少需要 5 人（当前 3 人）");
   assert.equal(startBlockedMessage("swiss", 8, 3), null);
   assert.equal(suggestedSwissRounds(16), 4);
   assert.equal(isValidSwissRounds(0), false);
@@ -89,4 +91,13 @@ test("two-stage start rules match the server", async () => {
   );
   assert.equal(groupCountFor(30, 8), 4);
   assert.equal(groupLabel(3), "C");
+});
+
+test("automatic Swiss rounds are a full round robin", async () => {
+  const { autoSwissRounds, roundRobinRounds, isAutoRounds } = await import("../src/lib/tournament.js");
+  assert.equal(roundRobinRounds(4), 3);
+  assert.equal(roundRobinRounds(3), 3);
+  assert.equal(autoSwissRounds(40), 15);
+  assert.equal(isAutoRounds(""), true);
+  assert.equal(isAutoRounds(3), false);
 });

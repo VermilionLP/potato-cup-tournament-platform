@@ -31,6 +31,8 @@
     groups.length ? groups.find((g) => g.group === selectedGroup) || groups[0] : null,
   );
   const shownStandings = $derived(activeGroup ? activeGroup.rows : standings);
+  // Automatic round counts can differ per group (e.g. groups of 4 and 3).
+  const roundsTotal = $derived(activeGroup?.rounds ?? totalRounds);
   const shownMatches = $derived(
     activeGroup && hasGroups
       ? matches.filter((m) => (m.swiss_group || 1) === activeGroup.group)
@@ -42,7 +44,7 @@
   const currentRound = $derived(rounds.length ? rounds[rounds.length - 1].round : 0);
   const finished = $derived(
     rounds.length > 0 &&
-      currentRound >= (totalRounds || 0) &&
+      currentRound >= (roundsTotal || 0) &&
       rounds[rounds.length - 1].matches.every((m) => m.status !== "pending"),
   );
 
@@ -178,7 +180,7 @@
 <div class="space-y-6 py-1">
   <div class="flex flex-wrap items-center gap-2 text-[11px]">
     <span class="rounded-full border border-primary/30 bg-primary/5 px-2 py-0.5 font-bold text-primary">
-      共 {totalRounds ?? "?"} 轮
+      共 {roundsTotal ?? "?"} 轮
     </span>
     {#if currentRound > 0}
       <span class="rounded-full border border-border px-2 py-0.5 text-muted-foreground">

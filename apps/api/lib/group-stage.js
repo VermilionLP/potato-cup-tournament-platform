@@ -17,7 +17,13 @@
 // - A tie right on the qualification line that only the registration seed
 //   breaks is reported to the admin, who confirms before the playoff starts.
 
-import { computeStandings, parseSwissRounds, swissRoundComplete } from './swiss.js';
+import {
+  computeStandings,
+  isAutoRounds,
+  parseSwissRounds,
+  roundRobinRounds,
+  swissRoundComplete,
+} from './swiss.js';
 import { seedingOrder } from './double-elim.js';
 
 export const PLAYOFF_FORMATS = ['single_elim', 'double_elim'];
@@ -61,13 +67,18 @@ export function groupStandings(players, matches) {
   }));
 }
 
-/** True when every group has finished all `totalRounds` rounds. */
+/**
+ * True when every group has finished its rounds. `totalRounds` is a number or
+ * a function of the group's size (automatic round counts differ per group).
+ */
 export function groupStageComplete(players, matches, totalRounds) {
   const groups = [...new Set(players.map((p) => p.swiss_group || 1))];
   return groups.every((group) => {
+    const size = players.filter((p) => (p.swiss_group || 1) === group).length;
+    const target = typeof totalRounds === 'function' ? totalRounds(size) : totalRounds;
     const own = matches.filter((m) => (m.swiss_group || 1) === group);
     const last = own.reduce((max, m) => Math.max(max, m.round), 0);
-    return last >= totalRounds && swissRoundComplete(own, last);
+    return last >= target && swissRoundComplete(own, last);
   });
 }
 
@@ -164,13 +175,14 @@ export function seedPlayoffs(qualifiers) {
 /** Why a two-stage event cannot start, or null. */
 export function twoStageStartBlockedReason(playerCount, { rounds, groupSize, perGroup, playoffFormat }) {
   const count = Number(playerCount) || 0;
-  if (!parseSwissRounds(rounds)) return '请先设置瑞士轮轮数（1-15）';
+  const auto = isAutoRounds(rounds);
+  if (!auto && !parseSwissRounds(rounds)) return '请先设置瑞士轮轮数（1-15）';
   if (!PLAYOFF_FORMATS.includes(playoffFormat)) return '请先选择淘汰赛赛制';
   const groups = groupCountFor(count, groupSize);
   const smallest = Math.floor(count / groups);
   if (smallest < MIN_GROUP_SIZE) return `分成 ${groups} 组后每组不足 ${MIN_GROUP_SIZE} 人（当前 ${count} 人）`;
-  if (rounds > smallest - 1) {
-    return `最小的组只有 ${smallest} 人，最多只能打 ${smallest - 1} 轮瑞士轮（当前设置 ${rounds} 轮）`;
+  if (!auto && rounds > roundRobinRounds(smallest)) {
+    return `最小的组只有 ${smallest} 人，最多只能打 ${roundRobinRounds(smallest)} 轮瑞士轮（当前设置 ${rounds} 轮）`;
   }
   const k = Number(perGroup) || 0;
   if (k < 1) return '请先设置每组晋级人数';
