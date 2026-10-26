@@ -19,6 +19,9 @@
   import SettingsIcon from "@lucide/svelte/icons/settings";
   import XIcon from "@lucide/svelte/icons/x";
   import PlusCircleIcon from "@lucide/svelte/icons/plus-circle";
+  import ChevronDownIcon from "@lucide/svelte/icons/chevron-down";
+  import ChevronUpIcon from "@lucide/svelte/icons/chevron-up";
+  import { isRecentlySeen } from "$lib/players.js";
 
   // ── Data ──────────────────────────────────────────────────────────
   let players = $state([]);
@@ -35,6 +38,21 @@
         (p.team || "").toLowerCase().includes(q)
       );
     }),
+  );
+
+  // Players not seen for over a year (no event, vote or visit) are folded
+  // away so active players find themselves quickly. Your own entry comes
+  // first. A search always looks through everyone.
+  let showInactive = $state(false);
+  const mineFirst = (list) => {
+    const me = list.findIndex((p) => p.id === userState.id);
+    return me > 0 ? [list[me], ...list.slice(0, me), ...list.slice(me + 1)] : list;
+  };
+  let activePlayers = $derived(mineFirst(filteredPlayers.filter((p) => isRecentlySeen(p))));
+  let inactivePlayers = $derived(filteredPlayers.filter((p) => !isRecentlySeen(p)));
+  let searching = $derived(searchQuery.trim() !== "");
+  let shownPlayers = $derived(
+    searching || showInactive ? [...activePlayers, ...inactivePlayers] : activePlayers,
   );
 
   onMount(load);
@@ -278,7 +296,7 @@
         选手列表
       </h1>
       <p class="text-xs text-muted-foreground mt-1">
-        共 {players.length} 名选手 · 管理全局选手档案与关联信息
+        共 {players.length} 名选手（近一年活跃 {players.filter((p) => isRecentlySeen(p)).length} 名）· 管理全局选手档案与关联信息
       </p>
     </div>
     {#if isAdmin}
@@ -336,10 +354,10 @@
             </tr>
           </thead>
           <tbody class="divide-y divide-border/50">
-            {#each filteredPlayers as p (p.id)}
+            {#each shownPlayers as p (p.id)}
               {@const bnetIds = parseBnetIds(p.bnet_ids)}
               {@const contact = parseContact(p.battle_tags)}
-              <tr class="hover:bg-accent/30 transition-colors group">
+              <tr class="hover:bg-accent/30 transition-colors group {isRecentlySeen(p) ? '' : 'opacity-60'}">
                 <!-- Player identity -->
                 <td class="px-5 py-3">
                   <div class="flex items-center gap-3">
@@ -452,7 +470,7 @@
               </tr>
             {/each}
 
-            {#if filteredPlayers.length === 0}
+            {#if shownPlayers.length === 0}
               <tr>
                 <td colspan="7" class="px-5 py-16 text-center">
                   <div
@@ -460,7 +478,7 @@
                   >
                     <UsersIcon class="w-8 h-8 opacity-30" />
                     <p class="text-sm">
-                      {searchQuery ? "没有找到符合条件的选手" : "暂无选手数据"}
+                      {searchQuery ? "没有找到符合条件的选手" : inactivePlayers.length ? "最近一年没有活跃选手" : "暂无选手数据"}
                     </p>
                   </div>
                 </td>
@@ -472,20 +490,23 @@
 
       {#if filteredPlayers.length > 0}
         <div
-          class="px-5 py-2.5 border-t border-border/50 bg-muted/20 text-[11px] text-muted-foreground"
+          class="px-5 py-2.5 border-t border-border/50 bg-muted/20 text-[11px] text-muted-foreground flex items-center justify-between gap-3"
         >
-          显示 {filteredPlayers.length} / {players.length} 名选手
+          <span>显示 {shownPlayers.length} / {players.length} 名选手</span>
+          {#if inactivePlayers.length && !searching}
+            {@render inactiveToggle()}
+          {/if}
         </div>
       {/if}
     </div>
 
     <!-- Mobile Card View -->
     <div class="block sm:hidden space-y-3">
-      {#each filteredPlayers as p (p.id)}
+      {#each shownPlayers as p (p.id)}
         {@const bnetIds = parseBnetIds(p.bnet_ids)}
         {@const contact = parseContact(p.battle_tags)}
         <div
-          class="bg-card border border-border rounded-xl p-4.5 space-y-3 shadow-sm hover:border-primary/30 transition-all"
+          class="bg-card border border-border rounded-xl p-4.5 space-y-3 shadow-sm hover:border-primary/30 transition-all {isRecentlySeen(p) ? '' : 'opacity-60'}"
         >
           <!-- Header: Avatar + Nickname/Team + Edit Button -->
           <div class="flex items-center justify-between">
@@ -608,27 +629,46 @@
         </div>
       {/each}
 
-      {#if filteredPlayers.length === 0}
+      {#if shownPlayers.length === 0}
         <div
           class="text-center py-12 border border-dashed border-border rounded-xl bg-card/20 flex flex-col items-center justify-center gap-2"
         >
           <UsersIcon class="w-8 h-8 text-muted-foreground/30" />
           <p class="text-xs text-muted-foreground">
-            {searchQuery ? "没有找到符合条件的选手" : "暂无选手数据"}
+            {searchQuery ? "没有找到符合条件的选手" : inactivePlayers.length ? "最近一年没有活跃选手" : "暂无选手数据"}
           </p>
         </div>
       {/if}
 
       {#if filteredPlayers.length > 0}
         <div
-          class="text-[11px] text-muted-foreground/80 text-center py-1 bg-muted/10 border border-border rounded-lg"
+          class="text-[11px] text-muted-foreground/80 text-center py-1.5 px-3 bg-muted/10 border border-border rounded-lg flex flex-col items-center gap-1"
         >
-          显示 {filteredPlayers.length} / {players.length} 名选手
+          <span>显示 {shownPlayers.length} / {players.length} 名选手</span>
+          {#if inactivePlayers.length && !searching}
+            {@render inactiveToggle()}
+          {/if}
         </div>
       {/if}
     </div>
   {/if}
 </div>
+
+{#snippet inactiveToggle()}
+  <button
+    type="button"
+    onclick={() => (showInactive = !showInactive)}
+    class="inline-flex items-center gap-1 font-semibold text-primary hover:underline cursor-pointer"
+  >
+    {#if showInactive}
+      <ChevronUpIcon class="w-3.5 h-3.5" />
+      收起超过一年未活跃的 {inactivePlayers.length} 名选手
+    {:else}
+      <ChevronDownIcon class="w-3.5 h-3.5" />
+      展开超过一年未活跃的 {inactivePlayers.length} 名选手
+    {/if}
+  </button>
+{/snippet}
 
 <!-- ── Edit / Create Dialog ─────────────────────────────────────── -->
 <Dialog.Root bind:open={showEditDialog}>

@@ -167,15 +167,19 @@ export async function writeEvent(db, event) {
     await client.query('BEGIN');
     await client.query('DELETE FROM axsuck.tournaments WHERE id = $1', [event.id]);
 
+    // A player's last activity is at least the date of this event (not the
+    // moment of the import).
+    const date = event.date || null;
+    const playedAt = date ? `${date}T00:00:00+08:00` : null;
     for (const p of event.players) {
       await client.query(
-        `INSERT INTO axsuck.players (id, flag) VALUES ($1, $2)
-         ON CONFLICT (id) DO NOTHING`,
-        [p.id, p.flag || '']
+        `INSERT INTO axsuck.players (id, flag, last_seen_at) VALUES ($1, $2, $3::timestamptz)
+         ON CONFLICT (id) DO UPDATE
+         SET last_seen_at = GREATEST(axsuck.players.last_seen_at, EXCLUDED.last_seen_at)`,
+        [p.id, p.flag || '', playedAt]
       );
     }
 
-    const date = event.date || null;
     await client.query(
       `INSERT INTO axsuck.tournaments
         (id, name, description, status, player_capacity, hold_third_place, loser_advances,
@@ -200,7 +204,7 @@ export async function writeEvent(db, event) {
         event.playoffFormat ? clamp(event.swissGroupSize, 2, 64) : null,
         event.playoffFormat ? clamp(event.advancePerGroup, 1, 64) : null,
         event.playoffFormat ? 'playoff' : 'group',
-        date ? `${date}T00:00:00+08:00` : null,
+        playedAt,
         event.sourceUrl || null,
         event.sourceTitle || null,
       ]
