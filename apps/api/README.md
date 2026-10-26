@@ -64,6 +64,13 @@ events are `completed`, carry `played_at`/`source_url`, and link back to
 their Liquipedia page (CC-BY-SA 3.0). The ladder rates all games in date
 order; `GET /api/ladder?window=year` rates only the last 365 days.
 
+`scripts/import-liquipedia-flags.js` fills in player nationality: the
+player's Liquipedia page (Infobox country) first, otherwise the most recent
+Potato Cup page that shows a flag for them (participant tables, match
+opponents). Dry run by default, `--apply` writes. Players without a flag and
+players that only appear in imported events are updated; a different flag on
+a player who uses the platform is only listed unless `--overwrite` is given.
+
 ## Elasticsearch logs
 
 Request logs and admin audit events are buffered in memory and sent with the `_bulk` API, so an unavailable ES node never blocks API responses. Logs are dropped after a failed flush (a warning is printed at most once per minute).

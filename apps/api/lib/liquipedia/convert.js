@@ -15,26 +15,14 @@
 // winners bracket; that drop is found from the actual results.
 
 import { isDoubleElimination } from './bracket-template.js';
+import { normalizeCountry } from './countries.js';
 import { matchResult, parseBlocks, parseInfobox } from './page.js';
 
 const SKIP_TITLES = [/\/Leaderboard\//i, /\/Simulate\//i, /^Potato Cup Misc$/i];
 
-const COUNTRY_FLAGS = {
-  uk: 'gb', england: 'gb', 'united kingdom': 'gb', usa: 'us', 'united states': 'us',
-  spain: 'es', russia: 'ru', china: 'cn', ukraine: 'ua', germany: 'de', france: 'fr',
-  japan: 'jp', korea: 'kr', 'south korea': 'kr', poland: 'pl', portugal: 'pt',
-  kazakhstan: 'kz', turkey: 'tr', ireland: 'ie', taiwan: 'tw', 'hong kong': 'hk',
-  belarus: 'by', italy: 'it', netherlands: 'nl', sweden: 'se', finland: 'fi',
-  canada: 'ca', brazil: 'br', australia: 'au', 'czech republic': 'cz', czechia: 'cz',
-  norway: 'no', india: 'in', singapore: 'sg', malaysia: 'my', vietnam: 'vn',
-};
-
 /** Liquipedia flag value -> ISO code used by apps/web/static/flags, or null. */
 export function normalizeFlag(value) {
-  const v = String(value ?? '').trim().toLowerCase();
-  if (!v) return null;
-  if (COUNTRY_FLAGS[v]) return COUNTRY_FLAGS[v];
-  return /^[a-z]{2}$/.test(v) ? v : null;
+  return normalizeCountry(value);
 }
 
 export function slugify(text) {

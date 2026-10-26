@@ -18,13 +18,12 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import dotenv from 'dotenv';
-import { createClient } from '../lib/liquipedia/fetch.js';
-import { planImport, templateNames, writeEvent } from '../lib/liquipedia/importer.js';
+import { createClient, userAgentFor } from '../lib/liquipedia/fetch.js';
+import { downloadDump, planImport, writeEvent } from '../lib/liquipedia/importer.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.join(__dirname, '../.env') });
 
-const REPO_URL = 'https://github.com/VermilionLP/potato-cup-tournament-platform';
 const CACHE = path.join(__dirname, '../.cache/liquipedia/potato-cup.json');
 
 function parseArgs(argv) {
@@ -41,25 +40,14 @@ function parseArgs(argv) {
   return args;
 }
 
-async function download(contact) {
-  const userAgent = `PotatoCupTournamentPlatform/1.0 (${REPO_URL}${contact ? `; ${contact}` : ''}) history-import`;
-  const client = createClient({ userAgent, log: (m) => console.log(m) });
-  const titles = (await client.listPages('Potato Cup')).filter((t) => /^Potato Cup( Weekly)?($|\/)/.test(t));
-  console.log(`找到 ${titles.length} 个 Potato Cup 页面，正在下载内容（每 2 秒一次请求）...`);
-  const pages = await client.wikiPages(titles);
-  const names = templateNames(pages);
-  console.log(`下载 ${names.length} 个对阵模板...`);
-  const templates = await client.bracketTemplates(names);
-  return { fetchedAt: new Date().toISOString(), source: 'https://liquipedia.net/warthunder/', license: 'CC-BY-SA 3.0', pages, templates };
-}
-
 async function loadDump(args) {
   if (args.input) return JSON.parse(fs.readFileSync(args.input, 'utf8'));
   if (!args.refresh && fs.existsSync(CACHE)) {
     console.log(`使用缓存 ${CACHE}（加 --refresh 重新下载）`);
     return JSON.parse(fs.readFileSync(CACHE, 'utf8'));
   }
-  const dump = await download(args.contact);
+  const client = createClient({ userAgent: userAgentFor(args.contact), log: (m) => console.log(m) });
+  const dump = await downloadDump(client, (m) => console.log(m));
   fs.mkdirSync(path.dirname(CACHE), { recursive: true });
   fs.writeFileSync(CACHE, JSON.stringify(dump));
   return dump;

@@ -7,6 +7,12 @@ const WIKI_API = 'https://liquipedia.net/warthunder/api.php';
 const COMMONS_API = 'https://liquipedia.net/commons/api.php';
 const MIN_GAP_MS = 2100;
 const BATCH = 50;
+const REPO_URL = 'https://github.com/VermilionLP/potato-cup-tournament-platform';
+
+/** User-Agent naming the project and, when given, a contact. */
+export function userAgentFor(contact) {
+  return `PotatoCupTournamentPlatform/1.0 (${REPO_URL}${contact ? `; ${contact}` : ''}) history-import`;
+}
 
 export function createClient({ userAgent, log = () => {} }) {
   if (!userAgent) throw new Error('A User-Agent with contact details is required');
@@ -57,8 +63,36 @@ export function createClient({ userAgent, log = () => {} }) {
     return out;
   }
 
+  /**
+   * Player pages for the given names, following redirects.
+   * Returns { name: wikitext } keyed by the name that was asked for.
+   */
+  async function playerPages(names) {
+    const out = {};
+    for (let i = 0; i < names.length; i += BATCH) {
+      const asked = names.slice(i, i + BATCH);
+      const body = await get(WIKI_API, {
+        action: 'query', prop: 'revisions', rvprop: 'content', rvslots: 'main', redirects: '1',
+        titles: asked.join('|'),
+      });
+      const q = body.query || {};
+      const step = (list) => new Map((list || []).map((r) => [r.from, r.to]));
+      const normalized = step(q.normalized);
+      const redirects = step(q.redirects);
+      const content = new Map((q.pages || []).filter((pg) => !pg.missing)
+        .map((pg) => [pg.title, pg.revisions?.[0]?.slots?.main?.content ?? '']));
+      for (const name of asked) {
+        let title = normalized.get(name) || name;
+        title = redirects.get(title) || title;
+        if (content.has(title)) out[name] = content.get(title);
+      }
+    }
+    return out;
+  }
+
   return {
     listPages,
+    playerPages,
     wikiPages: (titles) => pageContents(WIKI_API, titles),
     /** Bracket templates by name ("Bracket/8") from Liquipedia Commons. */
     async bracketTemplates(names) {

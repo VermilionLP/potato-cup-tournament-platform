@@ -24,6 +24,20 @@ export function templateNames(pages) {
 }
 
 /**
+ * Downloads every Potato Cup / Potato Cup Weekly page and the bracket
+ * templates they use: { fetchedAt, source, license, pages, templates }.
+ */
+export async function downloadDump(client, log = () => {}) {
+  const titles = (await client.listPages('Potato Cup')).filter((t) => /^Potato Cup( Weekly)?($|\/)/.test(t));
+  log(`找到 ${titles.length} 个 Potato Cup 页面，正在下载内容（每 2 秒一次请求）...`);
+  const pages = await client.wikiPages(titles);
+  const names = templateNames(pages);
+  log(`下载 ${names.length} 个对阵模板...`);
+  const templates = await client.bracketTemplates(names);
+  return { fetchedAt: new Date().toISOString(), source: SOURCE_BASE, license: 'CC-BY-SA 3.0', pages, templates };
+}
+
+/**
  * Converts every page and settles player ids.
  *
  * `existingIds`: ids already on the platform. Names that only differ in
