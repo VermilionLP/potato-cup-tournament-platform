@@ -1,5 +1,11 @@
 import { getPlayerDisplayName } from './player-repo.js';
 import { isSameVoteTime, normalizeVoteTime } from '../lib/vote-time.js';
+import {
+  normalizeGameMode,
+  normalizeVehiclePool,
+  resolveInitialStatus,
+  SUPPORTED_FORMATS,
+} from '../lib/tournament-config.js';
 
 export function TournamentRepo(db) {
   async function list() {
@@ -34,11 +40,27 @@ export function TournamentRepo(db) {
     return res.rows[0] || null;
   }
 
-  async function create({ id, name, description, player_capacity, hold_third_place, loser_advances }) {
+  async function create({ id, name, description, player_capacity, hold_third_place, loser_advances, scheduled_time, game_mode, vehicle_pool, format, grand_final_reset }) {
+    const scheduledTime = String(scheduled_time || '').trim();
+    const bracketFormat = SUPPORTED_FORMATS.includes(format) ? format : SUPPORTED_FORMATS[0];
     await db.query(`
-      INSERT INTO axsuck.tournaments (id, name, description, status, player_capacity, hold_third_place, loser_advances)
-      VALUES ($1, $2, $3, 'voting', $4, $5, $6)
-    `, [id, name, description || '', player_capacity || 128, hold_third_place ? 1 : 0, loser_advances !== undefined ? (loser_advances ? 1 : 0) : 1]);
+      INSERT INTO axsuck.tournaments
+        (id, name, description, status, player_capacity, hold_third_place, loser_advances, scheduled_time, game_mode, vehicle_pool, format, grand_final_reset)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+    `, [
+      id,
+      name,
+      description || '',
+      resolveInitialStatus(scheduledTime),
+      player_capacity || 128,
+      hold_third_place ? 1 : 0,
+      loser_advances ? 1 : 0,
+      scheduledTime,
+      normalizeGameMode(game_mode),
+      normalizeVehiclePool(vehicle_pool),
+      bracketFormat,
+      bracketFormat === 'double_elim' && grand_final_reset !== false,
+    ]);
     return getById(id);
   }
 

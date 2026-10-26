@@ -93,35 +93,71 @@ export default async function matchesRoutes(fastify) {
     try {
       await client.query('BEGIN');
 
-      async function recursiveRollback(mId) {
+      async function recursiveRollback(mId, depth = 0) {
+        if (depth > 64) return;
         const mRes = await client.query('SELECT * FROM axsuck.matches WHERE id = $1', [mId]);
         const m = mRes.rows[0];
         if (!m) return;
+
+        // Rolling back the first grand final also removes a pending reset match.
+        if (m.bracket === 'gf' && m.position === 1) {
+          const resetRes = await client.query(`
+            SELECT id FROM axsuck.matches
+            WHERE tournament_id = $1 AND bracket = 'gf' AND position = 2
+          `, [m.tournament_id]);
+          for (const reset of resetRes.rows) {
+            await client.query('DELETE FROM axsuck.matches WHERE id = $1', [reset.id]);
+            await client.query(`
+              UPDATE axsuck.tournaments SET active_match_id = NULL
+              WHERE id = $1 AND active_match_id = $2
+            `, [m.tournament_id, reset.id]);
+          }
+        }
 
         await client.query(`
           UPDATE axsuck.matches SET score1 = 0, score2 = 0, winner_id = NULL, status = 'pending'
           WHERE id = $1
         `, [mId]);
 
-        const nextRound = m.round - 1;
-        if (nextRound >= 1) {
-          const nextPosition = Math.ceil(m.position / 2);
-          const nextRes = await client.query(`
-            SELECT * FROM axsuck.matches WHERE tournament_id = $1 AND round = $2 AND position = $3
-          `, [m.tournament_id, nextRound, nextPosition]);
-          const nextMatch = nextRes.rows[0];
+        const targets = [];
+        if (m.next_match_id && m.next_slot) {
+          targets.push({ id: m.next_match_id, slot: m.next_slot });
+        }
+        if (m.loser_next_match_id && m.loser_next_slot) {
+          targets.push({ id: m.loser_next_match_id, slot: m.loser_next_slot });
+        }
 
-          if (nextMatch) {
-            const isPlayer1 = m.position % 2 === 1;
-            if (isPlayer1) {
-              await client.query('UPDATE axsuck.matches SET player1_id = NULL WHERE id = $1', [nextMatch.id]);
-            } else {
-              await client.query('UPDATE axsuck.matches SET player2_id = NULL WHERE id = $1', [nextMatch.id]);
+        // Legacy single-elimination brackets advance by position, not by link.
+        if (targets.length === 0 && (!m.bracket || m.bracket === 'main')) {
+          const nextRound = m.round - 1;
+          if (nextRound >= 1) {
+            const nextPosition = Math.ceil(m.position / 2);
+            const nextRes = await client.query(`
+              SELECT * FROM axsuck.matches
+              WHERE tournament_id = $1 AND bracket = 'main' AND round = $2 AND position = $3
+            `, [m.tournament_id, nextRound, nextPosition]);
+            const nextMatch = nextRes.rows[0];
+            if (nextMatch) {
+              targets.push({
+                id: nextMatch.id,
+                slot: m.position % 2 === 1 ? 1 : 2,
+              });
             }
+          }
+        }
 
-            if (nextMatch.status === 'completed' || nextMatch.status === 'walkover' || nextMatch.winner_id) {
-              await recursiveRollback(nextMatch.id);
-            }
+        for (const target of targets) {
+          const playerColumn = target.slot === 1 ? 'player1_id' : 'player2_id';
+          const voidColumn = target.slot === 1 ? 'slot1_void' : 'slot2_void';
+          await client.query(`
+            UPDATE axsuck.matches SET ${playerColumn} = NULL, ${voidColumn} = FALSE
+            WHERE id = $1
+          `, [target.id]);
+
+          const targetRes = await client.query('SELECT * FROM axsuck.matches WHERE id = $1', [target.id]);
+          const nextMatch = targetRes.rows[0];
+          if (nextMatch && (nextMatch.winner_id || nextMatch.status !== 'pending')) {
+            await recursiveRollback(nextMatch.id, depth + 1);
           }
         }
       }

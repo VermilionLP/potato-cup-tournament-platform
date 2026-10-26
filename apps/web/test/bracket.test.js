@@ -1,8 +1,13 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
+  bracketConnectorPath,
+  bracketRoundLabel,
+  bracketRoundTotal,
   buildMatchOrder,
   displayRound,
+  groupBracketRounds,
+  layoutBracketBand,
   maxRound,
   playableMatchIds,
   roundLabel,
@@ -76,4 +81,96 @@ test("playableMatchIds skips TBD/completed matches and sorts by bracket order", 
 test("maxRound ignores missing and zero rounds", () => {
   assert.equal(maxRound([]), 1);
   assert.equal(maxRound([{ round: 0 }, { round: 3 }, { round: 2 }]), 3);
+});
+
+test("double-elimination rounds group by bracket and keep first round first", () => {
+  const matches = [
+    { id: 1, bracket: "wb", round: 3, position: 1 },
+    { id: 2, bracket: "wb", round: 3, position: 2 },
+    { id: 3, bracket: "wb", round: 1, position: 1 },
+    { id: 4, bracket: "lb", round: 4, position: 1 },
+    { id: 5, bracket: "lb", round: 1, position: 1 },
+    { id: 6, bracket: "gf", round: 1, position: 1 },
+  ];
+  const wb = groupBracketRounds(matches, "wb");
+  assert.deepEqual(wb.map((r) => r.round), [3, 1]);
+  assert.deepEqual(wb[0].matches.map((m) => m.id), [1, 2]);
+  assert.deepEqual(groupBracketRounds(matches, "lb").map((r) => r.round), [4, 1]);
+  assert.equal(bracketRoundTotal(matches, "lb"), 4);
+});
+
+test("double-elimination round headers name the bracket", () => {
+  assert.equal(bracketRoundLabel("wb", 1, 3), "胜者组决赛");
+  assert.equal(bracketRoundLabel("wb", 2, 3), "胜者组第 2 轮");
+  assert.equal(bracketRoundLabel("wb", 3, 3), "胜者组第 1 轮");
+  assert.equal(bracketRoundLabel("lb", 1, 4), "败者组决赛");
+  assert.equal(bracketRoundLabel("lb", 3, 4), "败者组第 2 轮");
+  assert.equal(bracketRoundLabel("gf", 1, 1), "总决赛");
+});
+
+test("bracket layout centres each round between the matches that feed it", () => {
+  const matches = [
+    { id: 1, bracket: "wb", round: 3, position: 1, next_match_id: 5 },
+    { id: 2, bracket: "wb", round: 3, position: 2, next_match_id: 5 },
+    { id: 3, bracket: "wb", round: 3, position: 3, next_match_id: 6 },
+    { id: 4, bracket: "wb", round: 3, position: 4, next_match_id: 6 },
+    { id: 5, bracket: "wb", round: 2, position: 1, next_match_id: 7 },
+    { id: 6, bracket: "wb", round: 2, position: 2, next_match_id: 7 },
+    { id: 7, bracket: "wb", round: 1, position: 1, next_match_id: null },
+  ];
+  const band = layoutBracketBand(matches, "wb", {
+    cardHeight: 76,
+    slotHeight: 104,
+    columnWidth: 220,
+    columnGap: 52,
+  });
+
+  assert.deepEqual(
+    band.columns[0].matches.map((item) => item.y),
+    [38, 142, 246, 350],
+  );
+  assert.deepEqual(
+    band.columns[1].matches.map((item) => item.y),
+    [90, 298],
+  );
+  assert.deepEqual(
+    band.columns[2].matches.map((item) => item.y),
+    [194],
+  );
+  assert.equal(band.width, 764);
+  assert.equal(band.height, 388);
+});
+
+test("one-to-one cross feeds keep their row in the layout", () => {
+  const matches = [
+    { id: 10, bracket: "lb", round: 2, position: 1, next_match_id: 12 },
+    { id: 11, bracket: "lb", round: 2, position: 2, next_match_id: 13 },
+    { id: 12, bracket: "lb", round: 1, position: 1, next_match_id: null },
+    { id: 13, bracket: "lb", round: 1, position: 2, next_match_id: null },
+  ];
+  const band = layoutBracketBand(matches, "lb", {
+    cardHeight: 76,
+    slotHeight: 104,
+    columnWidth: 220,
+    columnGap: 52,
+  });
+  assert.deepEqual(
+    band.columns[0].matches.map((item) => item.y),
+    [38, 142],
+  );
+  assert.deepEqual(
+    band.columns[1].matches.map((item) => item.y),
+    [38, 142],
+  );
+});
+
+test("connector paths are straight on one row and elbow otherwise", () => {
+  assert.equal(
+    bracketConnectorPath({ x: 0, y: 50 }, { x: 100, y: 50 }, 220),
+    "M 220 50 L 100 50",
+  );
+  assert.equal(
+    bracketConnectorPath({ x: 0, y: 50 }, { x: 300, y: 150 }, 220),
+    "M 220 50 L 260 50 L 260 150 L 300 150",
+  );
 });

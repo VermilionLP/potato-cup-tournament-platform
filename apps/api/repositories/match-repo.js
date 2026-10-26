@@ -1,4 +1,8 @@
 import { describeBracket } from '../lib/bracket.js';
+import {
+  resolveDoubleElimRows,
+  seedingOrder,
+} from '../lib/double-elim.js';
 
 export function MatchRepo(db) {
   async function getById(id, runner = db) {
@@ -8,7 +12,18 @@ export function MatchRepo(db) {
 
   async function getByTournament(tournamentId, runner = db) {
     const res = await runner.query(`
-      SELECT * FROM axsuck.matches WHERE tournament_id = $1 ORDER BY round DESC, position ASC
+      SELECT * FROM axsuck.matches
+      WHERE tournament_id = $1
+      ORDER BY
+        CASE bracket
+          WHEN 'main' THEN 0
+          WHEN 'wb' THEN 0
+          WHEN 'lb' THEN 1
+          WHEN 'gf' THEN 2
+          ELSE 3
+        END,
+        round DESC,
+        position ASC
     `, [tournamentId]);
     return res.rows;
   }
@@ -16,7 +31,7 @@ export function MatchRepo(db) {
   async function getNextPosition(tournamentId, round, runner = db) {
     const res = await runner.query(`
       SELECT COALESCE(MAX(position), 0) as pos FROM axsuck.matches
-      WHERE tournament_id = $1 AND round = $2
+      WHERE tournament_id = $1 AND round = $2 AND bracket = 'main'
     `, [tournamentId, round]);
     return (res.rows[0]?.pos || 0) + 1;
   }
@@ -34,9 +49,17 @@ export function MatchRepo(db) {
     const match = await getById(id);
     if (!match) throw new Error('Match not found');
 
-    const tourneyRes = await db.query('SELECT loser_advances FROM axsuck.tournaments WHERE id = $1', [match.tournament_id]);
+    const tourneyRes = await db.query(
+      'SELECT loser_advances, format FROM axsuck.tournaments WHERE id = $1',
+      [match.tournament_id],
+    );
     const tournament = tourneyRes.rows[0];
-    const loserAdvances = tournament ? (tournament.loser_advances !== 0) : true;
+    // Double elimination always uses the higher score as the match winner: the
+    // loser keeps playing in the losers bracket instead of "advancing" in its
+    // place.
+    const loserAdvances =
+      tournament?.format !== 'double_elim' &&
+      (tournament ? tournament.loser_advances !== 0 : true);
 
     let winnerId = null;
     if (score1 > score2) {
@@ -54,33 +77,45 @@ export function MatchRepo(db) {
     return updateRes.rows[0];
   }
 
+  async function loadSeededPlayers(client, tournamentId) {
+    const playersRes = await client.query(`
+      SELECT p.id, tp.seed FROM axsuck.tournament_players tp
+      JOIN axsuck.players p ON p.id = tp.player_id
+      WHERE tp.tournament_id = $1
+      ORDER BY tp.seed IS NULL, tp.seed ASC, tp.registered_at ASC
+    `, [tournamentId]);
+
+    const players = playersRes.rows;
+    // Automatically assign and compact seeds sequentially (1 to N).
+    for (let idx = 0; idx < players.length; idx++) {
+      const p = players[idx];
+      const targetSeed = idx + 1;
+      if (p.seed !== targetSeed) {
+        await client.query(`
+          UPDATE axsuck.tournament_players SET seed = $1
+          WHERE tournament_id = $2 AND player_id = $3
+        `, [targetSeed, tournamentId, p.id]);
+        p.seed = targetSeed;
+      }
+    }
+    return players;
+  }
+
   async function generateBracket(tournamentId) {
+    const info = await db.query(
+      'SELECT format FROM axsuck.tournaments WHERE id = $1',
+      [tournamentId],
+    );
+    if (info.rows[0]?.format === 'double_elim') {
+      return generateDoubleElimBracket(tournamentId);
+    }
+
     const client = await db.connect();
     try {
       await client.query('BEGIN');
 
-      const playersRes = await client.query(`
-        SELECT p.id, tp.seed FROM axsuck.tournament_players tp
-        JOIN axsuck.players p ON p.id = tp.player_id
-        WHERE tp.tournament_id = $1
-        ORDER BY tp.seed IS NULL, tp.seed ASC, tp.registered_at ASC
-      `, [tournamentId]);
-
-      const players = playersRes.rows;
+      const players = await loadSeededPlayers(client, tournamentId);
       if (players.length < 2) throw new Error('Need at least 2 players');
-
-      // Automatically assign and compact seeds sequentially (1 to N)
-      for (let idx = 0; idx < players.length; idx++) {
-        const p = players[idx];
-        const targetSeed = idx + 1;
-        if (p.seed !== targetSeed) {
-          await client.query(`
-            UPDATE axsuck.tournament_players SET seed = $1
-            WHERE tournament_id = $2 AND player_id = $3
-          `, [targetSeed, tournamentId, p.id]);
-          p.seed = targetSeed;
-        }
-      }
 
       await client.query('DELETE FROM axsuck.matches WHERE tournament_id = $1', [tournamentId]);
 
@@ -89,13 +124,77 @@ export function MatchRepo(db) {
       const size = bracket.size;
       const totalRounds = bracket.totalRounds;
 
-      const seedingOrder = getSeedingOrder(size);
-      const slots = seedingOrder.map(seed => {
-        const player = players.find(p => p.seed === seed);
+      const order = seedingOrder(size);
+      const slots = order.map((seed) => {
+        const player = players.find((p) => p.seed === seed);
         return player ? player.id : null;
       });
 
       await buildRounds(tournamentId, slots, totalRounds, client);
+
+      await client.query('COMMIT');
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+
+    return getByTournament(tournamentId);
+  }
+
+  async function generateDoubleElimBracket(tournamentId) {
+    const client = await db.connect();
+    try {
+      await client.query('BEGIN');
+
+      const players = await loadSeededPlayers(client, tournamentId);
+      if (players.length < 4) {
+        throw new Error('双败淘汰赛至少需要 4 名选手');
+      }
+
+      const rows = resolveDoubleElimRows(players.map((p) => p.id));
+
+      await client.query('DELETE FROM axsuck.matches WHERE tournament_id = $1', [tournamentId]);
+
+      const idByKey = new Map();
+      for (const row of rows) {
+        const res = await client.query(`
+          INSERT INTO axsuck.matches
+            (tournament_id, round, position, bracket, player1_id, player2_id,
+             winner_id, status, slot1_void, slot2_void)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+          RETURNING id
+        `, [
+          tournamentId,
+          row.round,
+          row.position,
+          row.bracket,
+          row.player1_id,
+          row.player2_id,
+          row.winner_id,
+          row.status,
+          row.slot1_void,
+          row.slot2_void,
+        ]);
+        idByKey.set(row.key, res.rows[0].id);
+      }
+
+      for (const row of rows) {
+        if (!row.next_key && !row.loser_next_key) continue;
+        await client.query(`
+          UPDATE axsuck.matches
+          SET next_match_id = $1, next_slot = $2,
+              loser_next_match_id = $3, loser_next_slot = $4
+          WHERE id = $5
+        `, [
+          row.next_key ? idByKey.get(row.next_key) : null,
+          row.next_slot ?? null,
+          row.loser_next_key ? idByKey.get(row.loser_next_key) : null,
+          row.loser_next_slot ?? null,
+          idByKey.get(row.key),
+        ]);
+      }
 
       await client.query('COMMIT');
     } catch (err) {
@@ -115,13 +214,25 @@ export function MatchRepo(db) {
       throw new Error('Match not completed or no winner');
     }
 
+    const resetMatch = await maybeCreateResetMatch(tournamentId, match);
+
+    if (match.next_match_id || match.loser_next_match_id) {
+      const loserId = match.winner_id === match.player1_id
+        ? match.player2_id
+        : match.player1_id;
+      await propagateOutcome(match, match.winner_id, loserId || null, 0);
+      return resetMatch;
+    }
+
+    // Legacy single-elimination brackets have no explicit links.
     const nextRound = match.round - 1;
-    if (nextRound < 1) return null; // final match
+    if (nextRound < 1) return resetMatch; // final match
 
     const nextPosition = Math.ceil(match.position / 2);
 
     const nextRes = await db.query(`
-      SELECT * FROM axsuck.matches WHERE tournament_id = $1 AND round = $2 AND position = $3
+      SELECT * FROM axsuck.matches
+      WHERE tournament_id = $1 AND bracket = 'main' AND round = $2 AND position = $3
     `, [tournamentId, nextRound, nextPosition]);
     let nextMatch = nextRes.rows[0] || null;
 
@@ -148,22 +259,105 @@ export function MatchRepo(db) {
     return nextMatch;
   }
 
+  // Fills a slot in a linked match; the loser of a bye arrives as null and is
+  // remembered as a void slot so a later result can auto-advance.
+  async function fillLinkedSlot(matchId, slot, playerId, depth) {
+    if (!matchId || (slot !== 1 && slot !== 2)) return;
+    const playerColumn = slot === 1 ? 'player1_id' : 'player2_id';
+    const voidColumn = slot === 1 ? 'slot1_void' : 'slot2_void';
+    await db.query(`
+      UPDATE axsuck.matches SET ${playerColumn} = $1, ${voidColumn} = $2 WHERE id = $3
+    `, [playerId ?? null, playerId == null, matchId]);
+    await settleWalkover(matchId, depth + 1);
+  }
+
+  async function propagateOutcome(match, winnerId, loserId, depth) {
+    if (match.next_match_id && match.next_slot) {
+      await fillLinkedSlot(match.next_match_id, match.next_slot, winnerId, depth);
+    }
+    if (match.loser_next_match_id && match.loser_next_slot) {
+      await fillLinkedSlot(match.loser_next_match_id, match.loser_next_slot, loserId, depth);
+    }
+  }
+
+  // A match whose only possible opponent came from a bye is a walkover.
+  async function settleWalkover(matchId, depth = 0) {
+    if (depth > 64) return;
+    const m = await getById(matchId);
+    if (!m || m.status !== 'pending') return;
+
+    const slot1Ready = Boolean(m.player1_id) || m.slot1_void;
+    const slot2Ready = Boolean(m.player2_id) || m.slot2_void;
+    if (!slot1Ready || !slot2Ready) return;
+
+    const filled = [m.player1_id, m.player2_id].filter(Boolean);
+    if (filled.length === 2) return;
+
+    const winnerId = filled[0] ?? null;
+    await db.query(`
+      UPDATE axsuck.matches
+      SET status = 'completed', winner_id = $1, score1 = 0, score2 = 0
+      WHERE id = $2
+    `, [winnerId, matchId]);
+
+    const updated = await getById(matchId);
+    await propagateOutcome(updated, winnerId, null, depth);
+  }
+
+  // With bracket reset enabled, a losers-bracket champion who wins the first
+  // grand final forces one more match. The reset match is created on demand so
+  // brackets that end 2-0 never show an empty extra final.
+  async function maybeCreateResetMatch(tournamentId, match) {
+    if (match.bracket !== 'gf' || match.position !== 1) return null;
+
+    const info = await db.query(
+      'SELECT format, grand_final_reset FROM axsuck.tournaments WHERE id = $1',
+      [tournamentId],
+    );
+    const tournament = info.rows[0];
+    if (!tournament || tournament.format !== 'double_elim' || !tournament.grand_final_reset) {
+      return null;
+    }
+
+    const existing = await db.query(`
+      SELECT * FROM axsuck.matches
+      WHERE tournament_id = $1 AND bracket = 'gf' AND position = 2
+    `, [tournamentId]);
+    if (existing.rowCount) {
+      const reset = existing.rows[0];
+      if (match.winner_id !== match.player2_id) {
+        // The winners-bracket champion closed it out: no reset match is needed.
+        await db.query('DELETE FROM axsuck.matches WHERE id = $1', [reset.id]);
+        return null;
+      }
+      // Re-reporting the first final reopens the reset match with a clean slate.
+      await db.query(`
+        UPDATE axsuck.matches
+        SET player1_id = $1, player2_id = $2, score1 = 0, score2 = 0,
+            winner_id = NULL, status = 'pending'
+        WHERE id = $3
+      `, [match.player1_id, match.player2_id, reset.id]);
+      return await getById(reset.id);
+    }
+
+    // Slot 2 of the first grand final is the losers-bracket champion: only a
+    // win from that side forces the extra match.
+    if (match.winner_id !== match.player2_id) return null;
+
+    const res = await db.query(`
+      INSERT INTO axsuck.matches
+        (tournament_id, round, position, bracket, player1_id, player2_id, status)
+      VALUES ($1, 1, 2, 'gf', $2, $3, 'pending')
+      RETURNING *
+    `, [tournamentId, match.player1_id, match.player2_id]);
+    return res.rows[0];
+  }
+
   async function clearMatches(tournamentId) {
     await db.query('DELETE FROM axsuck.matches WHERE tournament_id = $1', [tournamentId]);
   }
 
   return { getById, getByTournament, create, submitResult, generateBracket, advanceWinner, clearMatches };
-}
-
-function getSeedingOrder(size) {
-  if (size <= 2) return [1, 2];
-  const half = getSeedingOrder(size / 2);
-  const result = [];
-  for (let i = 0; i < half.length; i++) {
-    result.push(half[i]);
-    result.push(size + 1 - half[i]);
-  }
-  return result;
 }
 
 function isBranchEmpty(slots, round, pos, branchNum, totalRounds) {

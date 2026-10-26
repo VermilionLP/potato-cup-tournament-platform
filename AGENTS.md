@@ -2,7 +2,7 @@
 
 ## Overview
 
-S.U.C.K SC2 水友赛工具集。单淘赛事的报名、种子、对阵、投票、比分、OBS overlay，以及 SC2 录像解析与 Liquipedia wiki 生成。
+S.U.C.K SC2 水友赛工具集。单淘赛事的报名、种子、对阵、投票、比分、OBS overlay，以及 Liquipedia wiki 生成。
 
 ## Layout
 
@@ -11,8 +11,6 @@ apps/
 ├── api/              # Fastify 5 (ESM), port 3100, PostgreSQL schema axsuck
 └── web/              # SvelteKit 2 SPA (ssr=false), port 5175
 ```
-
-录像解析由 `apps/api/scripts/parse_replay.py` 调用服务器上的 Python（`sc2reader` / `spawningtool`）。
 
 ## Stack
 
@@ -49,4 +47,4 @@ pnpm test         # web + api 单元测试（不需要数据库）
 
 ## History
 
-2026-10 重写过公开历史，移除了真实录像、玩家 Battle.net 数据和旧凭证。见 `HISTORY.md`。
+2026-10 重写过公开历史，移除了真实录像、玩家 Battle.net 数据和旧凭证。见 `HISTORY.md`。同月移除了 SC2 录像上传/解析功能（`match_replays` 表已丢弃）。同月把选手资料里的 Battle.net 服务器标签换成 QQ / Discord 联系方式（`battle_tags` 新键 `qq` / `discord`，迁移 008），国籍改用 `apps/web/static/flags/<iso>.svg` 本地国旗，不再依赖 emoji。

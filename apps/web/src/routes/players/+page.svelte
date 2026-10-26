@@ -7,7 +7,9 @@
   import { Button } from "$lib/components/ui/button/index.js";
   import { Input } from "$lib/components/ui/input/index.js";
   import { Badge } from "$lib/components/ui/badge/index.js";
+  import Flag from "$lib/components/Flag.svelte";
   import { accountRegionLabel } from "$lib/utils.js";
+  import { buildContact, parseContact } from "$lib/contact.js";
   import PlusIcon from "@lucide/svelte/icons/plus";
   import SearchIcon from "@lucide/svelte/icons/search";
   import Edit2Icon from "@lucide/svelte/icons/pencil";
@@ -56,8 +58,10 @@
   let editFlag = $state("cn");
   let editTeam = $state("");
   let editLink = $state("");
-  let editBattleTags = $state({ cn: [], global: [] });
-  let editBnetIds = $state([]); // read-only list of [{ id, url }] from replay
+  let editContactBase = $state({});
+  let editQQ = $state("");
+  let editDiscord = $state("");
+  let editBnetIds = $state([]); // read-only list of [{ id, url }] account entries
   let mergeTargetId = $state("");
 
   function parseBnetIds(raw) {
@@ -79,7 +83,7 @@
       return;
     }
     if (!userState.qqGroup || !userState.id) {
-      toast.error("此操作需要先验证 QQ 群号与选手 ID。");
+      toast.error("此操作需要先填写 QQ / Discord 联系方式与选手 ID。");
       document.getElementById("header-profile-button")?.click();
       return;
     }
@@ -89,7 +93,9 @@
     editFlag = "cn";
     editTeam = "";
     editLink = "";
-    editBattleTags = { cn: [], global: [] };
+    editContactBase = {};
+    editQQ = "";
+    editDiscord = "";
     editBnetIds = [];
     mergeTargetId = "";
     showEditDialog = true;
@@ -101,7 +107,7 @@
       return;
     }
     if (!userState.qqGroup || !userState.id) {
-      toast.error("此操作需要先验证 QQ 群号与选手 ID。");
+      toast.error("此操作需要先填写 QQ / Discord 联系方式与选手 ID。");
       document.getElementById("header-profile-button")?.click();
       return;
     }
@@ -112,29 +118,10 @@
     editTeam = p.team || "";
     editLink = p.link || "";
 
-    let parsedTags = {};
-    if (p.battle_tags) {
-      try {
-        parsedTags =
-          typeof p.battle_tags === "string"
-            ? JSON.parse(p.battle_tags)
-            : p.battle_tags;
-      } catch (_) {}
-    }
-    const parseToArray = (val) => {
-      if (!val) return [];
-      if (Array.isArray(val)) return val.filter(Boolean);
-      if (typeof val === "string")
-        return val
-          .split(",")
-          .map((s) => s.trim())
-          .filter(Boolean);
-      return [];
-    };
-    editBattleTags = {
-      cn: parseToArray(parsedTags.cn),
-      global: parseToArray(parsedTags.global),
-    };
+    const contact = parseContact(p.battle_tags);
+    editContactBase = contact.base;
+    editQQ = contact.qq;
+    editDiscord = contact.discord;
 
     editBnetIds = parseBnetIds(p.bnet_ids);
     mergeTargetId = "";
@@ -186,7 +173,10 @@
         flag: editFlag,
         team: editTeam,
         link: editLink,
-        battle_tags: editBattleTags,
+        battle_tags: buildContact(editContactBase, {
+          qq: editQQ,
+          discord: editDiscord,
+        }),
         bnet_ids: editBnetIds,
       });
 
@@ -251,19 +241,6 @@
   }
 
   // ── Helpers ───────────────────────────────────────────────────────
-  const flagEmoji = (f) => {
-    const map = {
-      cn: "🇨🇳",
-      hk: "🇭🇰",
-      tw: "🇹🇼",
-      us: "🇺🇸",
-      kr: "🇰🇷",
-      de: "🇩🇪",
-      fr: "🇫🇷",
-    };
-    return map[(f || "").toLowerCase()] ?? "🏳️";
-  };
-
   const avatarColors = [
     "from-amber-500 to-orange-500",
     "from-purple-500 to-indigo-500",
@@ -341,7 +318,7 @@
               <th class="px-5 py-3">选手</th>
               <th class="px-5 py-3">战队</th>
               <th class="px-5 py-3">国籍</th>
-              <th class="px-5 py-3">BattleTags</th>
+              <th class="px-5 py-3">联系方式</th>
               <th class="px-5 py-3">Liquipedia</th>
               <th class="px-5 py-3">IP 地址</th>
               <th class="px-5 py-3 text-right">操作</th>
@@ -350,28 +327,7 @@
           <tbody class="divide-y divide-border/50">
             {#each filteredPlayers as p (p.id)}
               {@const bnetIds = parseBnetIds(p.bnet_ids)}
-              {@const tags = (() => {
-                try {
-                  const parsed =
-                    typeof p.battle_tags === "string"
-                      ? JSON.parse(p.battle_tags)
-                      : p.battle_tags || {};
-                  return {
-                    cn: Array.isArray(parsed.cn)
-                      ? parsed.cn
-                      : parsed.cn
-                        ? [parsed.cn]
-                        : [],
-                    global: Array.isArray(parsed.global)
-                      ? parsed.global
-                      : parsed.global
-                        ? [parsed.global]
-                        : [],
-                  };
-                } catch {
-                  return { cn: [], global: [] };
-                }
-              })()}
+              {@const contact = parseContact(p.battle_tags)}
               <tr class="hover:bg-accent/30 transition-colors group">
                 <!-- Player identity -->
                 <td class="px-5 py-3">
@@ -407,34 +363,37 @@
 
                 <!-- Flag -->
                 <td class="px-5 py-3">
-                  <span class="text-sm" title={p.flag?.toUpperCase()}>
-                    {flagEmoji(p.flag)}
-                    <span class="text-xs text-muted-foreground ml-1 uppercase"
+                  <span
+                    class="flex items-center gap-1.5"
+                    title={p.flag?.toUpperCase()}
+                  >
+                    <Flag code={p.flag} size={20} />
+                    <span class="text-xs text-muted-foreground uppercase"
                       >{p.flag || "—"}</span
                     >
                   </span>
                 </td>
 
-                <!-- BattleTags -->
+                <!-- Contact -->
                 <td class="px-5 py-3">
                   <div class="flex flex-wrap gap-1 max-w-[280px]">
-                    {#each tags.cn as tag}
+                    {#if contact.qq}
                       <Badge
                         variant="secondary"
-                        class="text-[10px] font-mono bg-red-500/10 text-red-500 border border-red-500/20 px-1.5 py-0 shrink-0"
+                        class="text-[10px] font-mono bg-sky-500/10 text-sky-400 border border-sky-500/20 px-1.5 py-0 shrink-0"
                       >
-                        CN: {tag}
+                        QQ: {contact.qq}
                       </Badge>
-                    {/each}
-                    {#each tags.global as tag}
+                    {/if}
+                    {#if contact.discord}
                       <Badge
                         variant="secondary"
-                        class="text-[10px] font-mono bg-blue-500/10 text-blue-400 border border-blue-500/20 px-1.5 py-0 shrink-0"
+                        class="text-[10px] font-mono bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 px-1.5 py-0 shrink-0"
                       >
-                        Global: {tag}
+                        Discord: {contact.discord}
                       </Badge>
-                    {/each}
-                    {#if tags.cn.length === 0 && tags.global.length === 0}
+                    {/if}
+                    {#if !contact.qq && !contact.discord}
                       <span class="text-muted-foreground/40 text-xs">—</span>
                     {/if}
                   </div>
@@ -513,28 +472,7 @@
     <div class="block sm:hidden space-y-3">
       {#each filteredPlayers as p (p.id)}
         {@const bnetIds = parseBnetIds(p.bnet_ids)}
-        {@const tags = (() => {
-          try {
-            const parsed =
-              typeof p.battle_tags === "string"
-                ? JSON.parse(p.battle_tags)
-                : p.battle_tags || {};
-            return {
-              cn: Array.isArray(parsed.cn)
-                ? parsed.cn
-                : parsed.cn
-                  ? [parsed.cn]
-                  : [],
-              global: Array.isArray(parsed.global)
-                ? parsed.global
-                : parsed.global
-                  ? [parsed.global]
-                  : [],
-            };
-          } catch {
-            return { cn: [], global: [] };
-          }
-        })()}
+        {@const contact = parseContact(p.battle_tags)}
         <div
           class="bg-card border border-border rounded-xl p-4.5 space-y-3 shadow-sm hover:border-primary/30 transition-all"
         >
@@ -588,7 +526,7 @@
                 >国籍 / 地区</span
               >
               <span class="text-foreground text-xs flex items-center gap-1">
-                <span class="text-sm">{flagEmoji(p.flag)}</span>
+                <Flag code={p.flag} size={18} />
                 <span class="uppercase font-medium">{p.flag || "—"}</span>
               </span>
             </div>
@@ -615,30 +553,30 @@
             </div>
           </div>
 
-          <!-- Footer: BattleTags & IP -->
+          <!-- Footer: Contact & IP -->
           <div class="grid grid-cols-2 gap-3 pt-1 min-w-0">
             <div class="space-y-1 min-w-0">
               <span class="text-[10px] text-muted-foreground block"
-                >BattleTags</span
+                >联系方式</span
               >
               <div class="flex flex-wrap gap-1">
-                {#each tags.cn as tag}
+                {#if contact.qq}
                   <Badge
                     variant="secondary"
-                    class="text-[9px] font-mono bg-red-500/10 text-red-500 border border-red-500/20 px-1.5 py-0"
+                    class="text-[9px] font-mono bg-sky-500/10 text-sky-400 border border-sky-500/20 px-1.5 py-0"
                   >
-                    CN: {tag}
+                    QQ: {contact.qq}
                   </Badge>
-                {/each}
-                {#each tags.global as tag}
+                {/if}
+                {#if contact.discord}
                   <Badge
                     variant="secondary"
-                    class="text-[9px] font-mono bg-blue-500/10 text-blue-400 border border-blue-500/20 px-1.5 py-0"
+                    class="text-[9px] font-mono bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 px-1.5 py-0"
                   >
-                    Global: {tag}
+                    Discord: {contact.discord}
                   </Badge>
-                {/each}
-                {#if tags.cn.length === 0 && tags.global.length === 0}
+                {/if}
+                {#if !contact.qq && !contact.discord}
                   <span class="text-[10px] text-muted-foreground/45 italic"
                     >未设置</span
                   >
@@ -692,7 +630,7 @@
         {isCreating ? "新建选手资料" : `编辑 · ${editingId}`}
       </Dialog.Title>
       <Dialog.Description class="text-xs text-muted-foreground">
-        配置选手全局档案，包含 ID、显示名称、国籍、战队及关联 Battle.net 账号。
+        配置选手全局档案，包含 ID、显示名称、国籍、战队、联系方式及关联 Battle.net 账号。
       </Dialog.Description>
     </Dialog.Header>
 
@@ -713,168 +651,43 @@
         </p>
       </div>
 
-      <!-- BattleTags -->
+      <!-- Contact (QQ / Discord) -->
       <div class="space-y-2.5">
         <span class="text-xs font-bold text-muted-foreground"
-          >游戏 BattleTags</span
+          >联系方式（QQ / Discord）</span
         >
         <div
           class="grid grid-cols-1 md:grid-cols-2 gap-4 bg-muted/20 border border-border/60 p-4 rounded-xl"
         >
-          <!-- CN Server -->
-          <div class="space-y-2">
-            <span
-              class="text-[11px] font-bold text-muted-foreground flex items-center justify-between"
+          <div class="space-y-1">
+            <label
+              for="edit-contact-qq"
+              class="text-[11px] font-bold text-muted-foreground">QQ 号</label
             >
-              <span>中国服务器 (CN)</span>
-              <span class="text-[10px] text-muted-foreground/60 font-normal"
-                >已添加 {editBattleTags.cn.length} 个</span
-              >
-            </span>
-
-            <!-- Badges list -->
-            <div
-              class="flex flex-wrap gap-1.5 min-h-[34px] p-2 rounded-lg border border-border bg-background/50"
-            >
-              {#each editBattleTags.cn as tag, idx}
-                <Badge
-                  variant="secondary"
-                  class="text-[10px] font-mono py-0.5 px-2 bg-muted border border-border/80 text-foreground flex items-center gap-1"
-                >
-                  {tag}
-                  <button
-                    type="button"
-                    onclick={() =>
-                      (editBattleTags.cn = editBattleTags.cn.filter(
-                        (_, i) => i !== idx,
-                      ))}
-                    class="text-muted-foreground hover:text-destructive font-bold text-xs shrink-0 cursor-pointer"
-                    >&times;</button
-                  >
-                </Badge>
-              {/each}
-              {#if editBattleTags.cn.length === 0}
-                <span
-                  class="text-[10px] text-muted-foreground/50 italic self-center px-1"
-                  >暂无账号</span
-                >
-              {/if}
-            </div>
-
-            <!-- Add input -->
-            <div class="flex gap-1.5">
-              <Input
-                type="text"
-                placeholder="例如: Bnet#1234"
-                id="add-cn-input"
-                class="text-xs h-7.5 bg-background border-border text-foreground flex-1"
-                onkeydown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    const val = e.currentTarget.value.trim();
-                    if (val && !editBattleTags.cn.includes(val)) {
-                      editBattleTags.cn = [...editBattleTags.cn, val];
-                      e.currentTarget.value = "";
-                    }
-                  }
-                }}
-              />
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                class="w-7.5 h-7.5 border-border shrink-0 cursor-pointer"
-                onclick={() => {
-                  const input = document.getElementById("add-cn-input");
-                  const val = input.value.trim();
-                  if (val && !editBattleTags.cn.includes(val)) {
-                    editBattleTags.cn = [...editBattleTags.cn, val];
-                    input.value = "";
-                  }
-                }}
-              >
-                <PlusIcon class="w-3.5 h-3.5" />
-              </Button>
-            </div>
+            <Input
+              id="edit-contact-qq"
+              bind:value={editQQ}
+              placeholder="例如: 123456789"
+              class="text-xs h-8 bg-background border-border text-foreground"
+            />
           </div>
-
-          <!-- Global Server -->
-          <div class="space-y-2">
-            <span
-              class="text-[11px] font-bold text-muted-foreground flex items-center justify-between"
+          <div class="space-y-1">
+            <label
+              for="edit-contact-discord"
+              class="text-[11px] font-bold text-muted-foreground"
+              >Discord 用户名</label
             >
-              <span>国际服务器 (Global)</span>
-              <span class="text-[10px] text-muted-foreground/60 font-normal"
-                >已添加 {editBattleTags.global.length} 个</span
-              >
-            </span>
-
-            <!-- Badges list -->
-            <div
-              class="flex flex-wrap gap-1.5 min-h-[34px] p-2 rounded-lg border border-border bg-background/50"
-            >
-              {#each editBattleTags.global as tag, idx}
-                <Badge
-                  variant="secondary"
-                  class="text-[10px] font-mono py-0.5 px-2 bg-muted border border-border/80 text-foreground flex items-center gap-1"
-                >
-                  {tag}
-                  <button
-                    type="button"
-                    onclick={() =>
-                      (editBattleTags.global = editBattleTags.global.filter(
-                        (_, i) => i !== idx,
-                      ))}
-                    class="text-muted-foreground hover:text-destructive font-bold text-xs shrink-0 cursor-pointer"
-                    >&times;</button
-                  >
-                </Badge>
-              {/each}
-              {#if editBattleTags.global.length === 0}
-                <span
-                  class="text-[10px] text-muted-foreground/50 italic self-center px-1"
-                  >暂无账号</span
-                >
-              {/if}
-            </div>
-
-            <!-- Add input -->
-            <div class="flex gap-1.5">
-              <Input
-                type="text"
-                placeholder="例如: Bnet#9012"
-                id="add-global-input"
-                class="text-xs h-7.5 bg-background border-border text-foreground flex-1"
-                onkeydown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    const val = e.currentTarget.value.trim();
-                    if (val && !editBattleTags.global.includes(val)) {
-                      editBattleTags.global = [...editBattleTags.global, val];
-                      e.currentTarget.value = "";
-                    }
-                  }
-                }}
-              />
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                class="w-7.5 h-7.5 border-border shrink-0 cursor-pointer"
-                onclick={() => {
-                  const input = document.getElementById("add-global-input");
-                  const val = input.value.trim();
-                  if (val && !editBattleTags.global.includes(val)) {
-                    editBattleTags.global = [...editBattleTags.global, val];
-                    input.value = "";
-                  }
-                }}
-              >
-                <PlusIcon class="w-3.5 h-3.5" />
-              </Button>
-            </div>
+            <Input
+              id="edit-contact-discord"
+              bind:value={editDiscord}
+              placeholder="例如: username"
+              class="text-xs h-8 bg-background border-border text-foreground"
+            />
           </div>
         </div>
+        <p class="text-[10px] text-muted-foreground/60">
+          赛务联系用，会显示在选手列表中。
+        </p>
       </div>
 
       <!-- Flag + Team -->
@@ -883,12 +696,15 @@
           <label for="edit-flag" class="text-xs font-bold text-muted-foreground"
             >国籍 (Flag)</label
           >
-          <Input
-            id="edit-flag"
-            bind:value={editFlag}
-            placeholder="cn / hk / tw"
-            class="text-xs h-8"
-          />
+          <div class="flex items-center gap-2">
+            <Flag code={editFlag} size={20} />
+            <Input
+              id="edit-flag"
+              bind:value={editFlag}
+              placeholder="cn / hk / tw"
+              class="text-xs h-8 flex-1"
+            />
+          </div>
         </div>
         <div class="space-y-1">
           <label for="edit-team" class="text-xs font-bold text-muted-foreground"
@@ -920,10 +736,10 @@
         </p>
       </div>
 
-      <!-- Battle.net IDs (from Replay, editable) -->
+      <!-- Battle.net IDs (editable) -->
       <div class="space-y-2 pt-2 border-t border-border/60">
         <span class="text-xs font-bold text-muted-foreground block"
-          >自动解析的游戏账号 (来自录像上传，可移除)</span
+          >已关联的游戏账号 (可移除)</span
         >
         <div
           class="flex flex-wrap gap-1.5 min-h-[40px] p-2 rounded-lg border border-border/80 bg-muted/10"
@@ -961,7 +777,7 @@
           {#if editBnetIds.length === 0}
             <span
               class="text-[10px] text-muted-foreground/50 italic self-center px-1"
-              >暂无关联的录像账号，系统将在解析比赛录像时自动匹配并填入。</span
+              >暂无关联的游戏账号。</span
             >
           {/if}
         </div>

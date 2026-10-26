@@ -1,7 +1,7 @@
 import { PlayerRepo } from '../repositories/player-repo.js';
 import { TournamentRepo } from '../repositories/tournament-repo.js';
 import { LadderRepo } from '../repositories/ladder-repo.js';
-import { getPlayerInfoFromReplay, bnetEntryKey } from './replays.js';
+import { bnetEntryKey } from '../lib/bnet.js';
 import { requireAdmin, requireSelfOrAdmin } from '../lib/admin.js';
 
 export default async function playersRoutes(fastify) {
@@ -9,78 +9,22 @@ export default async function playersRoutes(fastify) {
   const tourneyRepo = TournamentRepo(fastify.db);
   const ladderRepo = LadderRepo(fastify.db);
 
-  fastify.get('/stats/play-times', async () => {
-    const rows = (await fastify.db.query(`
-      SELECT (parsed_data::jsonb->>'start_time')::bigint AS start_time
-      FROM axsuck.match_replays
-      WHERE parsed_data LIKE '{%'
-        AND parsed_data::jsonb ? 'start_time'
-    `)).rows;
-    const games = rows
-      .map((row) => Number(row.start_time) * 1000)
-      .filter((ms) => Number.isFinite(ms) && ms > 0);
-
-    const weekdays = [0, 0, 0, 0, 0, 0, 0];
-    const nights = new Map();
-    for (const ms of games) {
-      const d = new Date(ms + 8 * 3600 * 1000);
-      const key = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
-      const hour = d.getUTCHours();
-      const minute = d.getUTCMinutes();
-      const weekday = d.getUTCDay();
-      if (!nights.has(key)) {
-        nights.set(key, { date: key, weekday, minutes: hour * 60 + minute });
-      } else {
-        const night = nights.get(key);
-        night.minutes = Math.min(night.minutes, hour * 60 + minute);
-      }
-    }
-
-    const nightHours = {};
-    const slotCounts = new Map();
-    for (const night of nights.values()) {
-      weekdays[night.weekday] += 1;
-      const hh = Math.floor(night.minutes / 60);
-      const hourKey = String(hh).padStart(2, "0");
-      nightHours[hourKey] = (nightHours[hourKey] || 0) + 1;
-      // Bucket to 30 minutes for stable "usual time" suggestions.
-      const bucketMinutes = Math.floor(night.minutes / 30) * 30;
-      const bh = Math.floor(bucketMinutes / 60);
-      const bm = bucketMinutes % 60;
-      const bucketTime = `${String(bh).padStart(2, "0")}:${String(bm).padStart(2, "0")}`;
-      const slotKey = `${night.weekday}|${bucketTime}`;
-      slotCounts.set(slotKey, (slotCounts.get(slotKey) || 0) + 1);
-    }
-
-    const topSlots = [...slotCounts.entries()]
-      .map(([key, count]) => {
-        const [weekday, time] = key.split("|");
-        return { weekday: Number(weekday), time, count };
-      })
-      .sort((a, b) => b.count - a.count || a.weekday - b.weekday)
-      .slice(0, 8);
-
-    return {
-      total_games: games.length,
-      total_nights: nights.size,
-      weekdays,
-      night_hours: nightHours,
-      top_slots: topSlots,
-    };
-  });
+  // Play-time statistics used to be derived from parsed replay start times.
+  // Replay support has been removed, so the endpoint reports an empty dataset
+  // while keeping its response shape for the statistics page.
+  fastify.get('/stats/play-times', async () => ({
+    total_games: 0,
+    total_nights: 0,
+    weekdays: [0, 0, 0, 0, 0, 0, 0],
+    night_hours: {},
+    top_slots: []
+  }));
 
   fastify.get('/players/statistics', async () => {
     const players = await repo.list();
     const registrations = (await fastify.db.query('SELECT * FROM axsuck.tournament_players')).rows;
     const matches = (await fastify.db.query("SELECT * FROM axsuck.matches WHERE status IN ('completed', 'walkover')")).rows;
-    const replays = (await fastify.db.query('SELECT match_id, winner, map_name, game_length, parsed_data FROM axsuck.match_replays')).rows;
     const tournaments = (await fastify.db.query('SELECT id, name FROM axsuck.tournaments')).rows;
-    const tournamentAccounts = (await fastify.db.query('SELECT * FROM axsuck.tournament_player_accounts')).rows;
-    const accountsByTournamentPlayer = {};
-    for (const a of tournamentAccounts) {
-      const k = `${a.tournament_id}|${a.player_id}`;
-      (accountsByTournamentPlayer[k] = accountsByTournamentPlayer[k] || []).push(a);
-    }
     const tournamentMap = {};
     for (const t of tournaments) tournamentMap[t.id] = t.name;
 
@@ -188,70 +132,9 @@ export default async function playersRoutes(fastify) {
       }
     }
 
-    const matchPlayerMap = {};
-    for (const m of matches) {
-      matchPlayerMap[m.id] = { p1: m.player1_id, p2: m.player2_id, tid: m.tournament_id };
-    }
-
+    // Replay-derived statistics (map usage, races, game length) are no longer
+    // available: replay upload/parsing has been removed from the platform.
     const mapUsage = {};
-
-    for (const r of replays) {
-      const match = matchPlayerMap[r.match_id];
-      if (!match) continue;
-
-      if (r.map_name) {
-        mapUsage[r.map_name] = (mapUsage[r.map_name] || 0) + 1;
-      }
-
-      let parsedData;
-      try {
-        parsedData = typeof r.parsed_data === 'string' ? JSON.parse(r.parsed_data) : r.parsed_data;
-      } catch (_) {
-        continue;
-      }
-
-      const p1 = stats[match.p1];
-      const p2 = stats[match.p2];
-
-      const p1Data = p1 ? getPlayerInfoFromReplay(p1.id, p1.display_name, p1.battle_tags, p1.bnet_ids, parsedData, accountsByTournamentPlayer[`${match.tid}|${p1.id}`] || []) : null;
-      const p2Data = p2 ? getPlayerInfoFromReplay(p2.id, p2.display_name, p2.battle_tags, p2.bnet_ids, parsedData, accountsByTournamentPlayer[`${match.tid}|${p2.id}`] || []) : null;
-
-      if (r.game_length > 0) {
-        if (p1) {
-          p1.total_game_time += r.game_length;
-          p1.game_time_count++;
-        }
-        if (p2) {
-          p2.total_game_time += r.game_length;
-          p2.game_time_count++;
-        }
-      }
-
-      if (p1) p1.replays_count++;
-      if (p2) p2.replays_count++;
-
-      const r1 = p1Data && p1Data.race ? p1Data.race[0].toUpperCase() : null;
-      const r2 = p2Data && p2Data.race ? p2Data.race[0].toUpperCase() : null;
-
-      if (p1 && r1 && r1 !== '?') {
-        p1.races_used[r1] = (p1.races_used[r1] || 0) + 1;
-      }
-      if (p2 && r2 && r2 !== '?') {
-        p2.races_used[r2] = (p2.races_used[r2] || 0) + 1;
-      }
-
-      const p1WonReplay = r.winner && p1Data && r.winner.toLowerCase() === p1Data.name.toLowerCase();
-      const p2WonReplay = r.winner && p2Data && r.winner.toLowerCase() === p2Data.name.toLowerCase();
-
-      if (p1 && r2 && ['Z', 'T', 'P', 'R'].includes(r2)) {
-        p1.vs_race[r2].total++;
-        if (p1WonReplay) p1.vs_race[r2].won++;
-      }
-      if (p2 && r1 && ['Z', 'T', 'P', 'R'].includes(r1)) {
-        p2.vs_race[r1].total++;
-        if (p2WonReplay) p2.vs_race[r1].won++;
-      }
-    }
 
     const playerStats = Object.values(stats).map(s => {
       let nemesis = null;
@@ -303,9 +186,8 @@ export default async function playersRoutes(fastify) {
 
     const totalTournaments = (await fastify.db.query('SELECT COUNT(*)::int as count FROM axsuck.tournaments')).rows[0]?.count || 0;
     const totalMatches = (await fastify.db.query("SELECT COUNT(*)::int as count FROM axsuck.matches WHERE status != 'pending'")).rows[0]?.count || 0;
-    const totalReplays = (await fastify.db.query('SELECT COUNT(*)::int as count FROM axsuck.match_replays')).rows[0]?.count || 0;
-    const avgReplayLengthObj = (await fastify.db.query('SELECT AVG(game_length) as avg FROM axsuck.match_replays WHERE game_length > 0')).rows[0];
-    const globalAvgReplayLength = avgReplayLengthObj ? Math.round(Number(avgReplayLengthObj.avg) || 0) : 0;
+    const totalReplays = 0;
+    const globalAvgReplayLength = 0;
 
     const topMaps = Object.entries(mapUsage)
       .sort((a, b) => b[1] - a[1])

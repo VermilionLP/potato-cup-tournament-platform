@@ -3,9 +3,14 @@ import { MatchRepo } from '../repositories/match-repo.js';
 import { TournamentAccountRepo } from '../repositories/tournament-account-repo.js';
 import { LadderRepo } from '../repositories/ladder-repo.js';
 import { Readable } from 'stream';
-import { getPlayerInfoFromReplay, bnetEntryKey } from './replays.js';
+import { bnetEntryKey } from '../lib/bnet.js';
 import { buildCalendarFeed, buildTournamentIcs } from '../lib/calendar.js';
 import { requireAdmin } from '../lib/admin.js';
+import {
+  GAME_MODES,
+  isValidVehiclePool,
+  SUPPORTED_FORMATS,
+} from '../lib/tournament-config.js';
 
 export default async function tournamentsRoutes(fastify) {
   const repo = TournamentRepo(fastify.db);
@@ -32,52 +37,14 @@ export default async function tournamentsRoutes(fastify) {
       (accountsByPlayer[a.player_id] = accountsByPlayer[a.player_id] || []).push(a);
     }
 
-    // Dynamically retrieve player races from uploaded replays
-    const matchIds = ms.map(m => m.id);
-    const replays = matchIds.length > 0
-      ? (await fastify.db.query('SELECT * FROM axsuck.match_replays WHERE match_id = ANY($1::int[])', [matchIds])).rows
-      : [];
-
-    const playerRaces = {};
-    for (const p of players) {
-      playerRaces[p.id] = {};
-    }
-
-    for (const r of replays) {
-      let parsedData;
-      try {
-        parsedData = typeof r.parsed_data === 'string' ? JSON.parse(r.parsed_data) : r.parsed_data;
-      } catch (_) {
-        continue;
-      }
-      for (const p of players) {
-        const repInfo = getPlayerInfoFromReplay(
-          p.id,
-          p.display_name,
-          p.battle_tags,
-          p.bnet_ids,
-          parsedData,
-          accountsByPlayer[p.id] || []
-        );
-        if (repInfo && repInfo.race) {
-          const raceLetter = repInfo.race[0].toUpperCase();
-          if (raceLetter !== '?') {
-            playerRaces[p.id][raceLetter] = (playerRaces[p.id][raceLetter] || 0) + 1;
-          }
-        }
-      }
-    }
-
-    const playersWithRace = players.map(p => {
-      const races = playerRaces[p.id] || {};
-      const sorted = Object.entries(races).sort((a, b) => b[1] - a[1]);
-      const detectedRace = sorted.length > 0 ? sorted[0][0] : 'U';
-      return {
-        ...p,
-        race: detectedRace,
-        tournament_accounts: accountsByPlayer[p.id] || []
-      };
-    });
+    // Player races used to be detected from uploaded replays. Replay support has
+    // been removed, so races stay unknown ('U') like they did when no replay
+    // was ever uploaded.
+    const playersWithRace = players.map(p => ({
+      ...p,
+      race: 'U',
+      tournament_accounts: accountsByPlayer[p.id] || []
+    }));
 
     const ladder = await ladderRepo.getRatings();
     const playersWithLadder = playersWithRace.map(p => {
@@ -176,14 +143,47 @@ export default async function tournamentsRoutes(fastify) {
 
   fastify.post('/tournaments', async (req) => {
     requireAdmin(fastify, req);
-    const { id, name, description, player_capacity, hold_third_place, loser_advances, scheduled_time } = req.body;
+    const {
+      id,
+      name,
+      description,
+      player_capacity,
+      hold_third_place,
+      loser_advances,
+      scheduled_time,
+      game_mode,
+      vehicle_pool,
+      format,
+      grand_final_reset,
+    } = req.body;
     if (!id || !name) throw fastify.httpErrors.badRequest('id and name are required');
     const existing = await repo.getById(id);
     if (existing) throw fastify.httpErrors.conflict('Tournament ID already exists');
     if (player_capacity != null && (!Number.isInteger(Number(player_capacity)) || Number(player_capacity) < 2 || Number(player_capacity) > 128)) {
       throw fastify.httpErrors.badRequest('player_capacity must be between 2 and 128');
     }
-    return await repo.create({ id, name, description, player_capacity, hold_third_place, loser_advances, scheduled_time });
+    if (game_mode != null && !GAME_MODES.includes(String(game_mode))) {
+      throw fastify.httpErrors.badRequest(`game_mode must be one of: ${GAME_MODES.join(', ')}`);
+    }
+    if (format != null && !SUPPORTED_FORMATS.includes(String(format))) {
+      throw fastify.httpErrors.badRequest(`format must be one of: ${SUPPORTED_FORMATS.join(', ')}`);
+    }
+    if (vehicle_pool != null && !isValidVehiclePool(vehicle_pool)) {
+      throw fastify.httpErrors.badRequest('vehicle_pool must be a slug like "proleague"');
+    }
+    return await repo.create({
+      id,
+      name,
+      description,
+      player_capacity,
+      hold_third_place,
+      loser_advances,
+      scheduled_time,
+      game_mode,
+      vehicle_pool,
+      format,
+      grand_final_reset,
+    });
   });
 
   fastify.get('/calendar.ics', async (req, reply) => {
@@ -340,7 +340,15 @@ export default async function tournamentsRoutes(fastify) {
     requireAdmin(fastify, req);
     const t = await repo.getById(req.params.id);
     if (!t) throw fastify.httpErrors.notFound('Tournament not found');
-    const bracket = await matches.generateBracket(req.params.id);
+    let bracket;
+    try {
+      bracket = await matches.generateBracket(req.params.id);
+    } catch (err) {
+      if (/至少需要|at least/.test(err.message)) {
+        throw fastify.httpErrors.badRequest(err.message);
+      }
+      throw err;
+    }
     
     // Trigger real-time broadcast
     fastify.tournamentEvents.emit(`update:${req.params.id}`, { type: 'bracket_generated' });

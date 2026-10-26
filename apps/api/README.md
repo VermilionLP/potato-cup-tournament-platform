@@ -1,6 +1,6 @@
 # suck-tournament-api
 
-Standalone StarCraft 2 tournament API: Fastify 5 on PostgreSQL (schema `axsuck`), with Postgrator migrations, SSE live updates, Swagger docs, and an optional Python SC2 replay parser.
+Standalone StarCraft 2 tournament API: Fastify 5 on PostgreSQL (schema `axsuck`), with Postgrator migrations, SSE live updates, and Swagger docs.
 
 This app lives in the `suck-utilities` repository; see the root `README.md`.
 
@@ -28,7 +28,7 @@ Administrative operations require `x-admin-token`. In the web app, click the shi
 Admin-only endpoints include:
 
 - Tournaments: create, edit, delete, status changes, seeds (manual/auto/randomize), bracket generation, overlay state, active match, tournament-scoped account links, and import.
-- Matches: manual match creation, score edits, rollback, and replay batch import/reparse/delete.
+- Matches: manual match creation, score edits, and rollback.
 - Players: rename, merge, delete, and cleanup of empty accounts.
 - Votes: deleting past vote options.
 

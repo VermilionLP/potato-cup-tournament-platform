@@ -15,8 +15,22 @@
   import { Input } from "$lib/components/ui/input/index.js";
   import { Badge } from "$lib/components/ui/badge/index.js";
   import { accountRegionLabel, accountKey } from "$lib/utils.js";
-  import { maxRound, roundLabel, buildMatchOrder } from "$lib/bracket.js";
+  import {
+    bracketRoundLabel,
+    bracketRoundTotal,
+    buildMatchOrder,
+    maxRound,
+    roundLabel,
+  } from "$lib/bracket.js";
+  import DoubleElimBracket from "$lib/components/DoubleElimBracket.svelte";
+  import {
+    advancementLabel,
+    formatLabel,
+    gameModeLabel,
+  } from "$lib/tournament.js";
   import TierBadge from "$lib/components/TierBadge.svelte";
+  import Flag from "$lib/components/Flag.svelte";
+  import { buildContact, parseContact } from "$lib/contact.js";
   import { isRecentlySeen } from "$lib/players.js";
   import * as Card from "$lib/components/ui/card/index.js";
   import * as Dialog from "$lib/components/ui/dialog/index.js";
@@ -35,7 +49,6 @@
   import TrashIcon from "@lucide/svelte/icons/trash-2";
   import CrownIcon from "@lucide/svelte/icons/crown";
   import DownloadIcon from "@lucide/svelte/icons/download";
-  import UploadCloudIcon from "@lucide/svelte/icons/upload-cloud";
   import FileTextIcon from "@lucide/svelte/icons/file-text";
   import LinkIcon from "@lucide/svelte/icons/link";
   import UnlinkIcon from "@lucide/svelte/icons/unlink";
@@ -59,6 +72,18 @@
   let tournament = $state(null);
   let totalRounds = $derived(maxRound(tournament?.matches || []));
   let matchOrder = $derived(buildMatchOrder(tournament?.matches || []));
+  let isDoubleElim = $derived(tournament?.format === "double_elim");
+  let wbTotalRounds = $derived(
+    bracketRoundTotal(tournament?.matches || [], "wb"),
+  );
+  let lbTotalRounds = $derived(
+    bracketRoundTotal(tournament?.matches || [], "lb"),
+  );
+  let grandFinalMatches = $derived(
+    (tournament?.matches || [])
+      .filter((m) => m.bracket === "gf")
+      .sort((a, b) => a.position - b.position),
+  );
   let allPlayers = $state([]);
   let playTimes = $state(null);
   let voteWeekOffset = $state(0);
@@ -95,13 +120,6 @@
     return false;
   }
 
-  // Replays integration states
-  let showMatchDetailsDialog = $state(false);
-  let matchReplays = $state([]);
-  let loadingReplays = $state(false);
-  let activeReplayTab = $state("overview"); // overview, build_order, curves, chat
-  let selectedReplay = $state(null);
-  let uploadingReplays = $state(false);
 
   // Player Editing states
   let showPlayerEditDialog = $state(false);
@@ -109,13 +127,12 @@
   let editPlayerNewId = $state("");
   let editPlayerFlag = $state("cn");
   let editPlayerTeam = $state("");
-  let editPlayerBattleTags = $state({ cn: [], global: [] });
+  let editPlayerContactBase = $state({});
+  let editPlayerQQ = $state("");
+  let editPlayerDiscord = $state("");
   let editPlayerLink = $state("");
   let editPlayerBnetIds = $state([]);
-  let unmappedReplays = $state([]);
-  let showUnmappedDialog = $state(false);
-  let tempBnetMappings = $state({});
-  let tempBnetTemporary = $state({});
+
 
   // Tournament-scoped account links (temporary / borrowed accounts)
   let showAccountsDialog = $state(false);
@@ -222,26 +239,6 @@
       await refreshAccounts();
     } catch (err) {
       toast.error("操作失败: " + err.message);
-    } finally {
-      accountsBusy = false;
-    }
-  }
-
-  async function reparseAndBackfillAccounts() {
-    if (!ensureAdmin()) return;
-    try {
-      accountsBusy = true;
-      toast.loading("正在重新解析并补充账号 URL...", { id: "acct-backfill" });
-      const res = await API.reparseReplays(tid);
-      toast.dismiss("acct-backfill");
-      toast.success(`重新解析完成，补充/更新 ${res.accounts_updated ?? 0} 个账号关联`);
-      if (res.conflicts?.length) {
-        toast.warning(`有 ${res.conflicts.length} 个账号已属于其他选手，未自动关联`);
-      }
-      await refreshAccounts();
-    } catch (e) {
-      toast.dismiss("acct-backfill");
-      toast.error("重新解析失败: " + e.message);
     } finally {
       accountsBusy = false;
     }
@@ -794,8 +791,10 @@
 
       // Auto-generate/refresh bracket preview on page load in registration phase
       if (
+        isAdmin &&
         tournament.status === "registration" &&
-        tournament.players?.length >= 2
+        tournament.players?.length >=
+          (tournament.format === "double_elim" ? 4 : 2)
       ) {
         const matches = await API.generateBracket(tid);
         tournament = { ...tournament, matches };
@@ -882,7 +881,7 @@
     const targetId = regInput.trim();
     if (targetId && targetId !== userState.id && !ensureAdmin()) return;
     if (!targetId && (!userState.qqGroup || !userState.id)) {
-      toast.error("此操作需要先验证 QQ 群号与选手 ID。已为您打开配置面板！");
+      toast.error("此操作需要先填写 QQ / Discord 联系方式与选手 ID。已为您打开配置面板！");
       document.getElementById("header-profile-button")?.click();
       return;
     }
@@ -896,7 +895,11 @@
       await load();
 
       // Auto-update bracket preview (admin only; server rejects it for other users)
-      if (isAdmin && tournament.players?.length >= 2) {
+      if (
+        isAdmin &&
+        tournament.players?.length >=
+          (tournament.format === "double_elim" ? 4 : 2)
+      ) {
         const matches = await API.generateBracket(tid);
         tournament = { ...tournament, matches };
       }
@@ -921,7 +924,10 @@
     }
     selectedRegIds = [];
     await load();
-    if ((tournament.players?.length || 0) >= 2) {
+    if (
+      (tournament.players?.length || 0) >=
+      (tournament.format === "double_elim" ? 4 : 2)
+    ) {
       try {
         const matches = await API.generateBracket(tid);
         tournament = { ...tournament, matches };
@@ -937,7 +943,7 @@
     if (pid !== userState.id) {
       if (!ensureAdmin()) return;
     } else if (!userState.qqGroup || !userState.id) {
-      toast.error("此操作需要先验证 QQ 群号与选手 ID。已为您打开配置面板！");
+      toast.error("此操作需要先填写 QQ / Discord 联系方式与选手 ID。已为您打开配置面板！");
       document.getElementById("header-profile-button")?.click();
       return;
     }
@@ -947,7 +953,11 @@
       await load();
 
       // Auto-update bracket preview (admin only)
-      if (isAdmin && tournament.players?.length >= 2) {
+      if (
+        isAdmin &&
+        tournament.players?.length >=
+          (tournament.format === "double_elim" ? 4 : 2)
+      ) {
         const matches = await API.generateBracket(tid);
         tournament = { ...tournament, matches };
       } else if (!isAdmin) {
@@ -999,13 +1009,27 @@
     }
   }
 
+  async function toggleActiveMatch(match) {
+    const isActive = tournament?.active_match_id === match.id;
+    try {
+      await API.setActiveMatch(tid, isActive ? null : match.id);
+      tournament = {
+        ...tournament,
+        active_match_id: isActive ? null : match.id,
+      };
+      toast.success(isActive ? "已取消直播该场次" : "已开启该场次直播！");
+    } catch (err) {
+      toast.error("更新直播状态失败: " + err.message);
+    }
+  }
+
   // Bracket generation
   async function doGenerateBracket() {
     if (!ensureAdmin()) return;
     try {
       const matches = await API.generateBracket(tid);
       tournament = { ...tournament, matches };
-      toast.success("单淘汰 Bracket 已成功生成！");
+      toast.success(`${formatLabel(tournament.format)} 对阵已成功生成！`);
       await load();
     } catch (e) {
       toast.error(e.message);
@@ -1020,345 +1044,9 @@
   }
 
   async function openMatchDetails(match) {
-    selectedMatch = match;
     if (match.status === "pending" && tournament.status !== "completed") {
-      showMatchDialog = true; reportStep = "banpick"; score1Input = 0; score2Input = 0; resetBanPick();
-    } else {
-      showMatchDetailsDialog = true;
-      await loadReplaysForMatch(match.id);
+      openMatchReport(match);
     }
-  }
-
-  async function loadReplaysForMatch(matchId) {
-    loadingReplays = true;
-    try {
-      matchReplays = await API.getReplays(matchId);
-      if (matchReplays.length > 0) {
-        selectedReplay = matchReplays[0];
-      } else {
-        selectedReplay = null;
-      }
-    } catch (e) {
-      toast.error("加载录像数据失败: " + e.message);
-    }
-    loadingReplays = false;
-  }
-
-  async function uploadFileList(files) {
-    uploadingReplays = true;
-    const list = [];
-
-    const readAsBase64 = (file) =>
-      new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = (e) => resolve(e.target.result.split(",")[1]);
-        reader.onerror = (err) => reject(err);
-        reader.readAsDataURL(file);
-      });
-
-    try {
-      for (const file of files) {
-        if (!file.name.toLowerCase().endsWith(".sc2replay")) {
-          toast.error(`文件 ${file.name} 格式不正确，必须为 .SC2Replay`);
-          continue;
-        }
-        const base64 = await readAsBase64(file);
-        list.push({ filename: file.name, content: base64 });
-      }
-
-      if (list.length === 0) {
-        uploadingReplays = false;
-        return;
-      }
-
-      const res = await API.uploadReplays(
-        selectedMatch.id,
-        list,
-        userState.qqGroup,
-      );
-
-      const successCount = res.results.filter(
-        (r) => r.status === "success",
-      ).length;
-      const failCount = res.results.length - successCount;
-
-      if (successCount > 0) {
-        toast.success(`成功上传并解析 ${successCount} 个录像文件！`);
-      }
-      if (failCount > 0) {
-        const errors = res.results
-          .filter((r) => r.status === "error")
-          .map((r) => `${r.filename}: ${r.error}`)
-          .join("\n");
-        toast.error(`有 ${failCount} 个录像上传失败：\n${errors}`);
-      }
-
-      await loadReplaysForMatch(selectedMatch.id);
-    } catch (e) {
-      toast.error("上传录像失败: " + e.message);
-    } finally {
-      uploadingReplays = false;
-    }
-  }
-
-  async function handleFileUpload(event) {
-    if (!userState.qqGroup || !userState.id) {
-      toast.error("此操作需要先验证 QQ 群号与选手 ID。已为您打开配置面板！");
-      document.getElementById("header-profile-button")?.click();
-      return;
-    }
-    if (!selectedMatch) return;
-    const files = event.target.files;
-    if (!files || files.length === 0) return;
-    await uploadFileList(files);
-    event.target.value = "";
-  }
-
-  async function handleBatchUpload(event) {
-    if (!ensureAdmin()) return;
-    const files = event.target.files;
-    if (!files || files.length === 0) return;
-
-    toast.loading("正在解析并自动匹配录像...", { id: "batch-upload" });
-
-    const list = [];
-    const readAsBase64 = (file) =>
-      new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = (e) => resolve(e.target.result.split(",")[1]);
-        reader.onerror = (err) => reject(err);
-        reader.readAsDataURL(file);
-      });
-
-    try {
-      for (const file of files) {
-        if (!file.name.toLowerCase().endsWith(".sc2replay")) {
-          continue;
-        }
-        const base64 = await readAsBase64(file);
-        list.push({ filename: file.name, content: base64 });
-      }
-
-      if (list.length === 0) {
-        toast.dismiss("batch-upload");
-        toast.error("未找到有效的 .SC2Replay 录像文件");
-        return;
-      }
-
-      const res = await API.uploadBatchReplays(tid, list, userState.qqGroup);
-
-      const successCount = res.results.filter(
-        (r) => r.status === "success",
-      ).length;
-      const skippedCount = res.results.filter(
-        (r) => r.status === "skipped",
-      ).length;
-      const unmapped = res.results.filter((r) => r.status === "unmapped");
-      const failCount =
-        res.results.length - successCount - skippedCount - unmapped.length;
-
-      toast.dismiss("batch-upload");
-
-      if (successCount > 0) {
-        toast.success(`成功自动匹配并导入了 ${successCount} 个对局！`);
-      }
-      if (skippedCount > 0) {
-        toast.info(`${skippedCount} 个已存在对局，已自动跳过。`);
-      }
-      const conflictReplays = unmapped.filter((r) => r.conflict);
-      if (conflictReplays.length > 0) {
-        const detail = conflictReplays
-          .flatMap((r) => (r.conflicts || []).map((c) => `${c.account_name || c.account_key}: 已属于 ${c.owner}`))
-          .slice(0, 3)
-          .join("；");
-        toast.warning(
-          `有 ${conflictReplays.length} 个录像的账号已关联到其他选手（可能是借号），已转为手动关联。${detail ? "\n" + detail : ""}`,
-        );
-      }
-      if (unmapped.length > 0) {
-        unmappedReplays = unmapped;
-        tempBnetMappings = {};
-        tempBnetTemporary = {};
-        showUnmappedDialog = true;
-        toast.info(
-          `发现 ${unmapped.length} 个无法自动匹配的录像，已为您打开手动关联窗口。`,
-        );
-      }
-      if (failCount > 0) {
-        const errors = res.results
-          .filter((r) => r.status === "error")
-          .map((r) => `${r.filename}: ${r.error}`)
-          .join("\n");
-        toast.error(`有 ${failCount} 个录像解析失败：\n${errors}`);
-      }
-
-      await load();
-    } catch (e) {
-      toast.dismiss("batch-upload");
-      toast.error("批量导入失败: " + e.message);
-    } finally {
-      event.target.value = "";
-    }
-  }
-
-  function getUnmappedAccounts(replays) {
-    const accounts = new Map();
-    replays.forEach((r) => {
-      (r.repPlayers || []).forEach((p) => {
-        if (!p || typeof p !== "object") return;
-        if (p.matchedPlayerId) return;
-        const key = p.accountKey || p.toon_handle || p.name;
-        if (!key) return;
-        if (!accounts.has(key)) {
-          accounts.set(key, {
-            key,
-            name: p.name || "",
-            race: p.race || p.pick_race || "",
-            bnet_url: p.bnet_url || "",
-            toon_handle: p.toon_handle || "",
-            region: p.region || null,
-            subregion: p.subregion ?? null,
-            regionLabel: accountRegionLabel(p),
-          });
-        }
-      });
-    });
-    return Array.from(accounts.values());
-  }
-
-  function getAvailablePlayersForBnet(currentKey) {
-    const allPlayers = tournament.players || [];
-    const selectedPlayerIds = Object.entries(tempBnetMappings)
-      .filter(([key, pid]) => key !== currentKey && !!pid)
-      .map(([_, pid]) => pid);
-    return allPlayers.filter((p) => !selectedPlayerIds.includes(p.id));
-  }
-
-  async function submitAllManualMappings() {
-    const entries = Object.entries(tempBnetMappings).filter(
-      ([_, pid]) => !!pid,
-    );
-    if (entries.length === 0) {
-      return toast.error("请至少选择一个账号进行关联");
-    }
-
-    try {
-      toast.loading("正在保存关联并重新导入对局...", { id: "manual-map" });
-
-      const accountByKey = {};
-      getUnmappedAccounts(unmappedReplays).forEach((a) => {
-        accountByKey[a.key] = a;
-      });
-
-      const playerBnetUpdates = {};
-      entries.forEach(([key, pid]) => {
-        if (!playerBnetUpdates[pid]) {
-          playerBnetUpdates[pid] = [];
-        }
-        playerBnetUpdates[pid].push(
-          accountByKey[key] || { key, name: key, bnet_url: "", toon_handle: "" },
-        );
-      });
-
-      const toPayload = (acct) => ({
-        account_key: acct.key,
-        name: acct.name || acct.key,
-        url: acct.bnet_url || "",
-        toon_handle: acct.toon_handle || "",
-        region: acct.region ?? null,
-        subregion: acct.subregion ?? null,
-      });
-
-      for (const [pid, accountsToAdd] of Object.entries(playerBnetUpdates)) {
-        const temporary = accountsToAdd.filter((a) => tempBnetTemporary[a.key]);
-        const permanent = accountsToAdd.filter((a) => !tempBnetTemporary[a.key]);
-        if (permanent.length > 0) {
-          await API.linkPlayerAccounts(pid, permanent.map(toPayload));
-        }
-        if (temporary.length > 0) {
-          await API.linkTournamentAccounts(tid, pid, temporary.map(toPayload));
-        }
-      }
-
-      const replaysToUpload = unmappedReplays.map((r) => ({
-        filename: r.filename,
-        content: r.content,
-      }));
-
-      const res = await API.uploadBatchReplays(
-        tid,
-        replaysToUpload,
-        userState.qqGroup,
-      );
-
-      const successCount = res.results.filter(
-        (r) => r.status === "success",
-      ).length;
-      const skippedCount = res.results.filter(
-        (r) => r.status === "skipped",
-      ).length;
-      const stillUnmapped = res.results.filter((r) => r.status === "unmapped");
-      const failCount = res.results.filter((r) => r.status === "error").length;
-
-      toast.dismiss("manual-map");
-
-      if (stillUnmapped.length > 0) {
-        unmappedReplays = stillUnmapped;
-        tempBnetMappings = {};
-        tempBnetTemporary = {};
-        toast.info(
-          `导入了部分对局，但仍有 ${stillUnmapped.length} 个录像未关联。`,
-        );
-      } else {
-        showUnmappedDialog = false;
-        unmappedReplays = [];
-        tempBnetMappings = {};
-        tempBnetTemporary = {};
-        toast.success(`所有录像已成功关联并解析！`);
-      }
-
-      if (failCount > 0) {
-        const errors = res.results
-          .filter((r) => r.status === "error")
-          .map((r) => `${r.filename}: ${r.error}`)
-          .join("\n");
-        toast.error(`有 ${failCount} 个录像解析失败：\n${errors}`);
-      }
-
-      await load();
-    } catch (e) {
-      toast.dismiss("manual-map");
-      toast.error("保存关联或重新导入失败: " + e.message);
-    }
-  }
-
-  async function handleFileDrop(event) {
-    event.preventDefault();
-    if (!userState.qqGroup || !userState.id) {
-      toast.error("此操作需要先验证 QQ 群号与选手 ID。已为您打开配置面板！");
-      document.getElementById("header-profile-button")?.click();
-      return;
-    }
-    if (!selectedMatch) return;
-    const files = event.dataTransfer?.files;
-    if (!files || files.length === 0) return;
-    await uploadFileList(files);
-  }
-
-  async function handleDeleteReplay(replayId) {
-    if (!ensureAdmin()) return;
-    if (!confirm("确定要删除这个录像吗？此操作不可逆。")) return;
-    try {
-      await API.deleteReplay(replayId);
-      toast.success("录像已成功删除");
-      await loadReplaysForMatch(selectedMatch.id);
-    } catch (e) {
-      toast.error("删除录像失败: " + e.message);
-    }
-  }
-
-  function downloadReplay(replayId) {
-    window.open(`/api/replays/${replayId}/download`, "_blank");
   }
 
   async function openWikiExport() {
@@ -1379,104 +1067,58 @@
     toast.success("Wiki 代码已成功复制到剪贴板！");
   }
 
-  let reparsing = $state(false);
-  async function triggerReparseReplays() {
-    if (!ensureAdmin()) return;
-    if (!confirm("确定要重新对该赛事的所有录像进行一遍底层解析吗？这会覆盖并修复时区等解析字段，整个过程可能耗时数秒。")) return;
-    reparsing = true;
-    try {
-      const res = await API.reparseReplays(tid);
-      toast.success(`成功重新解析并刷新了 ${res.count} 个录像对局数据！`);
-      if (showWikiDialog) {
-        await openWikiExport();
-      } else {
-        await load();
-      }
-    } catch (e) {
-      toast.error("重新解析录像失败: " + e.message);
-    } finally {
-      reparsing = false;
+  function downstreamMatches(match) {
+    if (!match || !tournament?.matches) return [];
+    const ids = [];
+    if (match.next_match_id) ids.push(match.next_match_id);
+    if (match.loser_next_match_id) ids.push(match.loser_next_match_id);
+
+    // Legacy single-elimination brackets link implicitly by position.
+    if (
+      ids.length === 0 &&
+      (!match.bracket || match.bracket === "main") &&
+      match.round - 1 >= 1
+    ) {
+      const nextPosition = Math.ceil(match.position / 2);
+      const next = tournament.matches.find(
+        (x) =>
+          x.bracket === "main" &&
+          x.round === match.round - 1 &&
+          x.position === nextPosition,
+      );
+      if (next) ids.push(next.id);
     }
-  }
 
-  function formatDuration(sec) {
-    if (!sec) return "00:00";
-    const m = Math.floor(sec / 60);
-    const s = sec % 60;
-    return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
-  }
-
-  function formatReplayTime(ts) {
-    if (!ts) return "未知";
-    try {
-      const date = new Date(ts * 1000);
-      if (isNaN(date.getTime())) return "未知";
-      
-      const tzName = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      const options = {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: false
-      };
-      const formatted = new Intl.DateTimeFormat(undefined, options).format(date);
-      return `${formatted} (${tzName})`;
-    } catch (e) {
-      return "未知";
-    }
-  }
-
-  function getSvgPath(
-    curve,
-    width = 500,
-    height = 200,
-    maxTime = 20,
-    maxWorkers = 85,
-  ) {
-    if (!curve || curve.length === 0) return "";
-    return curve
-      .map((pt) => {
-        const x = Math.min(width, Math.max(0, (pt.t / maxTime) * width));
-        const y = Math.min(
-          height,
-          Math.max(0, height - (pt.w / maxWorkers) * height),
-        );
-        return `${x.toFixed(1)},${y.toFixed(1)}`;
-      })
-      .join(" ");
+    return ids
+      .map((id) => tournament.matches.find((x) => x.id === id))
+      .filter(Boolean);
   }
 
   function checkHasDependentMatchPlayed(match) {
-    if (!match || !tournament?.matches) return false;
-    let hasPlayed = false;
-    
+    const seen = new Set();
+
     function check(m) {
-      const nextRound = m.round - 1;
-      if (nextRound >= 1) {
-        const nextPosition = Math.ceil(m.position / 2);
-        const nextMatch = tournament.matches.find(
-          (x) => x.round === nextRound && x.position === nextPosition
-        );
-        if (nextMatch) {
-          if (nextMatch.status === "completed" || nextMatch.status === "walkover") {
-            hasPlayed = true;
-            return;
-          }
-          check(nextMatch);
+      for (const next of downstreamMatches(m)) {
+        if (seen.has(next.id)) continue;
+        seen.add(next.id);
+        if (
+          next.status === "completed" ||
+          next.status === "walkover" ||
+          next.winner_id
+        ) {
+          return true;
         }
+        if (check(next)) return true;
       }
+      return false;
     }
-    
-    check(match);
-    return hasPlayed;
+
+    return check(match);
   }
 
   async function selectGameWinner(winnerId) {
     if (!userState.qqGroup || !userState.id) {
-      toast.error("此操作需要先验证 QQ 群号与选手 ID。已为您打开配置面板！");
+      toast.error("此操作需要先填写 QQ / Discord 联系方式与选手 ID。已为您打开配置面板！");
       document.getElementById("header-profile-button")?.click();
       return;
     }
@@ -1501,14 +1143,31 @@
 
     try {
       await API.submitResult(tid, selectedMatch.id, score1, score2);
-      const advancerId = winnerId === selectedMatch.player1_id
-        ? selectedMatch.player2_id
-        : selectedMatch.player1_id;
-      const isLoserAdvances = tournament?.loser_advances === 1 || tournament?.loser_advances === true;
-      const advancerName = playerName(isLoserAdvances ? advancerId : winnerId);
-      toast.success(
-        `已判定游戏获胜者为 ${playerName(winnerId)}，${isLoserAdvances ? "败者" : "胜者"} ${advancerName} 晋级`,
-      );
+      if (tournament?.format === "double_elim") {
+        let destination = "胜者晋级下一轮";
+        if (selectedMatch.bracket === "wb") {
+          destination = "胜者晋级胜者组，败者进入败者组";
+        } else if (selectedMatch.bracket === "gf") {
+          destination =
+            selectedMatch.position === 1 &&
+            winnerId === selectedMatch.player2_id &&
+            tournament?.grand_final_reset
+              ? "败者组冠军赢下首场，将进行重置赛"
+              : "总决赛胜者夺冠";
+        }
+        toast.success(
+          `已判定游戏获胜者为 ${playerName(winnerId)}，${destination}`,
+        );
+      } else {
+        const advancerId = winnerId === selectedMatch.player1_id
+          ? selectedMatch.player2_id
+          : selectedMatch.player1_id;
+        const isLoserAdvances = tournament?.loser_advances === 1 || tournament?.loser_advances === true;
+        const advancerName = playerName(isLoserAdvances ? advancerId : winnerId);
+        toast.success(
+          `已判定游戏获胜者为 ${playerName(winnerId)}，${isLoserAdvances ? "败者" : "胜者"} ${advancerName} 晋级`,
+        );
+      }
       if (isAdmin && tournament && tournament.active_match_id === selectedMatch.id) {
         await API.setActiveMatch(tid, null);
         if (streamMode) await showHybridScene();
@@ -1525,7 +1184,7 @@
 
   async function recordWalkover(winnerId) {
     if (!userState.qqGroup || !userState.id) {
-      toast.error("此操作需要先验证 QQ 群号与选手 ID。已为您打开配置面板！");
+      toast.error("此操作需要先填写 QQ / Discord 联系方式与选手 ID。已为您打开配置面板！");
       document.getElementById("header-profile-button")?.click();
       return;
     }
@@ -1607,7 +1266,7 @@
 
   async function doVote() {
     if (!userState.qqGroup || !userState.id) {
-      toast.error("此操作需要先验证 QQ 群号与选手 ID。已为您打开配置面板！");
+      toast.error("此操作需要先填写 QQ / Discord 联系方式与选手 ID。已为您打开配置面板！");
       document.getElementById("header-profile-button")?.click();
       return;
     }
@@ -1628,7 +1287,7 @@
 
   async function toggleVoteOption(optionTime, voted) {
     if (!userState.qqGroup || !userState.id) {
-      toast.error("此操作需要先验证 QQ 群号与选手 ID。已为您打开配置面板！");
+      toast.error("此操作需要先填写 QQ / Discord 联系方式与选手 ID。已为您打开配置面板！");
       document.getElementById("header-profile-button")?.click();
       return;
     }
@@ -1679,7 +1338,7 @@
 
   async function submitCustomVote(topic, value) {
     if (!userState.qqGroup || !userState.id) {
-      toast.error("此操作需要先验证 QQ 群号与选手 ID。已为您打开配置面板！");
+      toast.error("此操作需要先填写 QQ / Discord 联系方式与选手 ID。已为您打开配置面板！");
       document.getElementById("header-profile-button")?.click();
       return;
     }
@@ -1698,7 +1357,7 @@
 
   async function toggleCustomVote(topic, value, voted) {
     if (!userState.qqGroup || !userState.id) {
-      toast.error("此操作需要先验证 QQ 群号与选手 ID。已为您打开配置面板！");
+      toast.error("此操作需要先填写 QQ / Discord 联系方式与选手 ID。已为您打开配置面板！");
       document.getElementById("header-profile-button")?.click();
       return;
     }
@@ -1724,29 +1383,10 @@
     editPlayerTeam = p.team || "";
     editPlayerLink = p.link || "";
 
-    let parsedTags = {};
-    if (p.battle_tags) {
-      try {
-        parsedTags =
-          typeof p.battle_tags === "string"
-            ? JSON.parse(p.battle_tags)
-            : p.battle_tags;
-      } catch (_) {}
-    }
-    const parseToArray = (val) => {
-      if (!val) return [];
-      if (Array.isArray(val)) return val.filter(Boolean);
-      if (typeof val === "string")
-        return val
-          .split(",")
-          .map((s) => s.trim())
-          .filter(Boolean);
-      return [];
-    };
-    editPlayerBattleTags = {
-      cn: parseToArray(parsedTags.cn),
-      global: parseToArray(parsedTags.global),
-    };
+    const contact = parseContact(p.battle_tags);
+    editPlayerContactBase = contact.base;
+    editPlayerQQ = contact.qq;
+    editPlayerDiscord = contact.discord;
 
     if (p.bnet_ids) {
       try {
@@ -1804,7 +1444,10 @@
         flag: editPlayerFlag,
         team: editPlayerTeam,
         link: editPlayerLink,
-        battle_tags: editPlayerBattleTags,
+        battle_tags: buildContact(editPlayerContactBase, {
+          qq: editPlayerQQ,
+          discord: editPlayerDiscord,
+        }),
         bnet_ids: editPlayerBnetIds,
         tournament_id: tid,
       });
@@ -1828,7 +1471,11 @@
   // Helpers
   function playerName(pid, match = null) {
     if (!pid) {
-      if (match && match.round === totalRounds) {
+      if (
+        match &&
+        (!match.bracket || match.bracket === "main") &&
+        match.round === totalRounds
+      ) {
         return "BYE (轮空)";
       }
       return "TBD";
@@ -1853,6 +1500,20 @@
       .sort((a, b) => b.round - a.round);
   }
 
+  function matchRoundLabel(match) {
+    if (!match) return "";
+    if (match.bracket === "wb") {
+      return bracketRoundLabel("wb", match.round, wbTotalRounds);
+    }
+    if (match.bracket === "lb") {
+      return bracketRoundLabel("lb", match.round, lbTotalRounds);
+    }
+    if (match.bracket === "gf") {
+      return match.position === 2 ? "总决赛 · 重置" : "总决赛";
+    }
+    return roundLabel(match.round, totalRounds);
+  }
+
   function statusLabel(s) {
     return (
       {
@@ -1864,13 +1525,27 @@
     );
   }
 
+  // Find the match that decides the title: the grand final (or its reset) for
+  // double elimination, the last match of the main bracket otherwise.
+  let championshipMatch = $derived.by(() => {
+    if (!tournament?.matches?.length) return null;
+    if (isDoubleElim) {
+      const played = grandFinalMatches.filter(
+        (m) =>
+          (m.status === "completed" || m.status === "walkover") && m.winner_id,
+      );
+      return played.length ? played[played.length - 1] : grandFinalMatches[0] || null;
+    }
+    return (
+      tournament.matches.find((m) => m.round === 1 && m.position === 1) || null
+    );
+  });
+
   // Find overall champion and runner-up
   let podium = $derived.by(() => {
     if (!tournament?.matches?.length || tournament.status !== "completed")
       return null;
-    const finalMatch = tournament.matches.find(
-      (m) => m.round === 1 && m.position === 1,
-    );
+    const finalMatch = championshipMatch;
     if (!finalMatch || finalMatch.status !== "completed") return null;
     const champion = finalMatch.winner_id;
     const runnerUp =
@@ -1900,7 +1575,7 @@
     });
 
     const matches = tournament.matches || [];
-    const finalMatch = matches.find((m) => m.round === 1 && m.position === 1);
+    const finalMatch = championshipMatch;
 
     matches.forEach((m) => {
       if (m.player1_id && playersMap[m.player1_id])
@@ -1938,10 +1613,36 @@
       if (runnerUpId && playersMap[runnerUpId]) {
         playersMap[runnerUpId].rank = "第 2 名 (亚军)";
       }
+
+      // In double elimination the loser of the losers-bracket final is third.
+      if (isDoubleElim) {
+        const firstFinal = matches.find(
+          (m) => m.bracket === "gf" && m.position === 1,
+        );
+        const lbFinal = firstFinal
+          ? matches.find(
+              (m) =>
+                m.next_match_id === firstFinal.id && m.next_slot === 2,
+            )
+          : null;
+        if (lbFinal?.winner_id) {
+          const thirdId =
+            lbFinal.winner_id === lbFinal.player1_id
+              ? lbFinal.player2_id
+              : lbFinal.player1_id;
+          if (thirdId && playersMap[thirdId]) {
+            playersMap[thirdId].rank = "第 3 名";
+          }
+        }
+      }
     }
 
     Object.values(playersMap).forEach((p) => {
       if (p.rank !== "TBD") return;
+      if (isDoubleElim) {
+        p.rank = "已淘汰";
+        return;
+      }
       if (p.eliminatedRound === null) {
         p.rank = "未淘汰";
         return;
@@ -2325,10 +2026,13 @@
                 {/if}
                 <span class="">{p.display_name}</span>
                 {#if p.flag}
-                  <span
-                    class="text-[9px] font-bold px-1 rounded bg-muted text-muted-foreground uppercase font-mono"
-                    >{p.flag}</span
-                  >
+                  <span class="flex items-center gap-1">
+                    <Flag code={p.flag} size={16} />
+                    <span
+                      class="text-[9px] font-bold px-1 rounded bg-muted text-muted-foreground uppercase font-mono"
+                      >{p.flag}</span
+                    >
+                  </span>
                 {/if}
                 {#if p.seed}
                   <span class="text-[10px] text-amber-500 font-bold"
@@ -2650,15 +2354,21 @@
             {#if tournament.status === "registration"}
               对阵图预览 (Bracket Preview)
             {:else}
-              赛事对阵图 (Single Elimination Bracket)
+              赛事对阵图 · {formatLabel(tournament.format)}
             {/if}
           </Card.Title>
           <Card.Description class="text-xs">
             {#if tournament.status === "registration"}
               基于当前报名的选手和种子排名实时生成的对阵预览（调整上方种子排序会自动刷新）。
-              <span class="sm:hidden block mt-1 text-muted-foreground/80">左右滑动查看本组对阵；手机每 16 人一组。</span>
+              {#if isDoubleElim}
+                <span class="block mt-1 text-muted-foreground/80">双败淘汰至少需要 4 名选手；种子会依次填入胜者组。</span>
+              {/if}
+              <span class="sm:hidden block mt-1 text-muted-foreground/80">左右滑动查看本组对阵。</span>
             {:else if tournament.status === "in_progress"}
               点击包含两位选手的待赛卡片可以填报比分或进行弃权处理。
+              {#if isDoubleElim}
+                <span class="block mt-1 text-muted-foreground/80">胜者组败者落入败者组；败者组再败即淘汰；总决赛按需加赛。</span>
+              {/if}
             {:else}
               赛事已结束，此对阵图当前为只读。
             {/if}
@@ -2666,29 +2376,6 @@
         </div>
         {#if ["in_progress", "completed"].includes(tournament.status) && isAdmin}
           <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 shrink-0 w-full sm:w-auto">
-            <label
-              class="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl border border-primary/30 bg-primary/5 text-primary text-xs font-bold shadow hover:bg-primary hover:text-black transition-all cursor-pointer w-full sm:w-auto h-8"
-            >
-              <input
-                type="file"
-                accept=".SC2Replay"
-                multiple
-                onchange={handleBatchUpload}
-                class="hidden"
-              />
-              <UploadCloudIcon class="w-3.5 h-3.5" />
-              <span>批量导入录像</span>
-            </label>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={reparsing}
-              onclick={triggerReparseReplays}
-              class="h-8 text-xs font-bold rounded-xl border border-yellow-500/30 bg-yellow-500/5 text-yellow-500 shadow hover:bg-yellow-500 hover:text-black cursor-pointer gap-1.5 w-full sm:w-auto"
-            >
-              <RefreshCwIcon class="w-3.5 h-3.5 {reparsing ? 'animate-spin' : ''}" />
-              <span>{reparsing ? '解析中...' : '重新解析录像'}</span>
-            </Button>
             <Button
               variant="outline"
               size="sm"
@@ -2705,7 +2392,7 @@
         {/if}
       </Card.Header>
 
-      {#if sectionCount > 1}
+      {#if sectionCount > 1 && !isDoubleElim}
         <div
           class="flex flex-wrap items-center gap-2 px-3 sm:px-6 pt-4"
         >
@@ -2759,6 +2446,19 @@
       {/if}
 
       <Card.Content class="p-3 sm:p-6 overflow-x-auto relative min-h-100">
+        {#if isDoubleElim}
+          <DoubleElimBracket
+            matches={tournament.matches || []}
+            players={tournament.players || []}
+            status={tournament.status}
+            activeMatchId={tournament.active_match_id}
+            isAdmin={isAdmin}
+            userId={userState.id}
+            grandFinalReset={tournament.grand_final_reset}
+            onOpenMatch={openMatchDetails}
+            onToggleActive={toggleActiveMatch}
+          />
+        {:else}
         {#if tournament.matches?.length > 0}
           <div class="flex justify-start items-stretch min-w-max py-4 {bracketSpecs.colGap}">
             {#each displayRounds as r, colIdx (r.round)}
@@ -2787,7 +2487,7 @@
                         <div class="w-full h-full border border-transparent bg-transparent select-none pointer-events-none opacity-0"></div>
                       {:else}
                         <!-- Normal Match Card -->
-                        {@const isClickable = bothPlayersReady && ["in_progress", "completed"].includes(tournament.status)}
+                        {@const isClickable = isPlayable}
                         <div
                           role="button"
                           tabindex="0"
@@ -2948,6 +2648,7 @@
                       {@const tp1 = tournament.players?.find(p => p.id === thirdPlaceMatch.player1_id)}
                       {@const tp2 = tournament.players?.find(p => p.id === thirdPlaceMatch.player2_id)}
                       {@const gfMatch = r.matches[0]}
+                      {@const tpClickable = thirdPlaceMatch.player1_id && thirdPlaceMatch.player2_id && thirdPlaceMatch.status === "pending" && tournament.status === "in_progress"}
                       {#if gfMatch}
                         {@const gfPos = matchPositions.positions[gfMatch.id] || { top: 0, height: 64 }}
                         {@const tpTop = gfPos.top + gfPos.height + 28}
@@ -2962,9 +2663,9 @@
                         <div class="absolute left-0 w-full" style="top: {tpTop}px; height: {gfPos.height}px;">
                           <button
                             type="button"
-                            onclick={() => { if (thirdPlaceMatch.player1_id && thirdPlaceMatch.player2_id) openMatchDetails(thirdPlaceMatch); }}
+                            onclick={() => { if (tpClickable) openMatchDetails(thirdPlaceMatch); }}
                             class="w-full h-full text-left bg-white dark:bg-[#1c1c1c] border border-neutral-300 dark:border-neutral-800 rounded-md transition-all flex flex-col justify-between group/match shadow-md text-xs cursor-default overflow-hidden
-                            {thirdPlaceMatch.player1_id && thirdPlaceMatch.player2_id ? 'hover:border-neutral-400 dark:hover:border-neutral-700 hover:shadow-lg cursor-pointer' : ''}"
+                            {tpClickable ? 'hover:border-neutral-400 dark:hover:border-neutral-700 hover:shadow-lg cursor-pointer' : ''}"
                           >
                             <!-- Tiny Header Bar -->
                             <div class="px-2 py-0.5 bg-neutral-100 dark:bg-neutral-900 text-[8px] font-mono text-neutral-500 dark:text-neutral-400 flex items-center justify-between border-b border-neutral-200 dark:border-neutral-800/80 shrink-0 h-4">
@@ -3032,6 +2733,7 @@
             {/if}
           </div>
         {/if}
+        {/if}
       </Card.Content>
     </Card.Root>
   {/snippet}
@@ -3095,9 +2797,18 @@
           >
             {statusLabel(tournament.status)}
           </Badge>
+          <Badge
+            variant="outline"
+            class="text-[10px] px-2 py-0.5 font-mono bg-muted/40 text-muted-foreground border-border/70"
+            title={formatLabel(tournament.format)}
+          >
+            {gameModeLabel(tournament.game_mode)} · {formatLabel(tournament.format)}
+          </Badge>
         </div>
         <p class="text-xs text-muted-foreground font-medium">
-          ID: {tournament.id} • 选手容量: {tournament.player_count ||
+          ID: {tournament.id} • 比赛模式: <span class="font-bold text-foreground">{gameModeLabel(tournament.game_mode)}</span>
+          • 赛制: <span class="font-bold text-foreground">{formatLabel(tournament.format)}</span>
+          • 选手容量: {tournament.player_count ||
             0}/{tournament.player_capacity} 人
           {#if tournament.status === "voting"}
             • 投票人数: {tournament.voter_count || 0} 人
@@ -3105,7 +2816,7 @@
           • 创建于 {new Date(
             tournament.created_at,
           ).toLocaleDateString("zh-CN")}
-          • 晋级规则: <span class="font-bold text-primary">{tournament.loser_advances ? "败者晋级 (SUCK 经典)" : "胜者晋级 (常规单淘)"}</span>
+          • 晋级规则: <span class="font-bold text-primary">{advancementLabel(tournament.loser_advances)}</span>
         </p>
         {#if tournament.scheduled_time}
           <div
@@ -3135,7 +2846,7 @@
             onclick={() => {
               if (!userState.qqGroup || !userState.id) {
                 toast.error(
-                  "此操作需要先验证 QQ 群号与选手 ID。已为您打开配置面板！",
+                  "此操作需要先填写 QQ / Discord 联系方式与选手 ID。已为您打开配置面板！",
                 );
                 document.getElementById("header-profile-button")?.click();
                 return;
@@ -3159,10 +2870,18 @@
           <Button
             variant="outline"
             size="sm"
-            onclick={() => changeStatus("voting")}
+            onclick={() => {
+              if (
+                confirm(
+                  "返回时间投票会清空已生成的对阵，确定继续吗？",
+                )
+              ) {
+                changeStatus("voting");
+              }
+            }}
             class="text-xs border-purple-500/30 text-purple-400 hover:bg-purple-500 hover:text-white cursor-pointer"
           >
-            返回时间投票
+            改为时间投票
           </Button>
           <Button
             size="sm"
@@ -3219,6 +2938,9 @@
           1
         </div>
         <div>时间投票</div>
+        {#if tournament.scheduled_time && tournament.status !== "voting"}
+          <div class="text-[9px] text-emerald-500 font-semibold">已跳过</div>
+        {/if}
       </div>
       <div
         class="space-y-1.5 {tournament.status === 'registration'
@@ -3280,8 +3002,9 @@
                 选手报名管理
               </Card.Title>
               <Card.Description class="text-xs">
-                当报名人数达到设定或充足时，组织者可进行种子排序并生成单淘汰
-                Bracket。
+                当报名人数达到设定或充足时，组织者可进行种子排序并生成{formatLabel(
+                  tournament.format,
+                )} Bracket。
               </Card.Description>
             </Card.Header>
             <Card.Content class="p-6 pt-0 space-y-4">
@@ -3582,7 +3305,7 @@
       </div>
 
       <!-- Bracket Preview in Registration stage -->
-      {#if (tournament.players?.length || 0) >= 2}
+      {#if (tournament.players?.length || 0) >= (isDoubleElim ? 4 : 2)}
         <div class="mt-6">
           {@render bracketView()}
         </div>
@@ -4061,10 +3784,13 @@
                               {/if}
                               <span>{item.display_name || item.id}</span>
                               {#if item.flag}
-                                <span
-                                  class="text-[9px] font-bold px-1 rounded bg-muted text-muted-foreground uppercase font-mono"
-                                  >{item.flag}</span
-                                >
+                                <span class="flex items-center gap-1">
+                                  <Flag code={item.flag} size={16} />
+                                  <span
+                                    class="text-[9px] font-bold px-1 rounded bg-muted text-muted-foreground uppercase font-mono"
+                                    >{item.flag}</span
+                                  >
+                                </span>
                               {/if}
                             </span>
                           </td>
@@ -4104,7 +3830,7 @@
         </div>
       </Dialog.Title>
       <Dialog.Description class="text-xs text-muted-foreground">
-        场次: {selectedMatch?.position} • {selectedMatch ? roundLabel(selectedMatch.round, totalRounds) : ""}
+        场次: {selectedMatch?.position} • {selectedMatch ? matchRoundLabel(selectedMatch) : ""}
       </Dialog.Description>
     </Dialog.Header>
 
@@ -4311,500 +4037,6 @@
   </Dialog.Content>
 </Dialog.Root>
 
-<!-- Match Replay Details Dialog -->
-<Dialog.Root bind:open={showMatchDetailsDialog}>
-  <Dialog.Content
-    class="sm:max-w-237.5 w-[95vw] max-h-[85vh] overflow-y-auto bg-card border border-border p-6 flex flex-col gap-4"
-  >
-    <Dialog.Header>
-      <Dialog.Title
-        class="text-lg font-bold text-foreground flex items-center justify-between"
-      >
-        <span>比赛对局分析与录像</span>
-        {#if selectedMatch}
-          <span class="text-xs text-muted-foreground font-mono"
-            >场次 {selectedMatch.position} • {playerName(
-              selectedMatch.player1_id,
-            )} vs {playerName(selectedMatch.player2_id)}</span
-          >
-        {/if}
-      </Dialog.Title>
-    </Dialog.Header>
-
-    {#if loadingReplays}
-      <div
-        class="flex flex-col items-center justify-center py-12 gap-2 text-muted-foreground text-xs"
-      >
-        <div
-          class="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin"
-        ></div>
-        <span>正在读取录像数据...</span>
-      </div>
-    {:else}
-      <div class="grid grid-cols-1 md:grid-cols-6 gap-4 flex-1">
-        <!-- Sidebar Replays List -->
-        <div
-          class="md:col-span-1 space-y-3 border-b md:border-b-0 md:border-r border-border pb-4 md:pb-0 md:pr-4"
-        >
-          <div class="flex items-center justify-between">
-            <span
-              class="text-xs font-bold text-muted-foreground uppercase tracking-wider"
-              >录像场次</span
-            >
-            <span
-              class="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded font-mono font-bold"
-              >{matchReplays.length} 局</span
-            >
-          </div>
-
-          <div class="space-y-1.5 max-h-55 overflow-y-auto pr-1">
-            {#each matchReplays as rep, idx}
-              <button
-                onclick={() => {
-                  selectedReplay = rep;
-                  activeReplayTab = "overview";
-                }}
-                class="w-full text-left text-xs p-2.5 rounded-xl border transition-all flex flex-col gap-1 cursor-pointer
-                {selectedReplay?.id === rep.id
-                  ? 'bg-primary/10 border-primary text-primary font-bold shadow'
-                  : 'bg-background/40 border-border hover:bg-background/80 text-foreground'}"
-              >
-                <span class=" block font-semibold">Game {idx + 1}</span>
-                <span class="text-[9px] text-muted-foreground "
-                  >{rep.map_name || "未知地图"}</span
-                >
-              </button>
-            {/each}
-            {#if matchReplays.length === 0}
-              <p
-                class="text-[11px] text-muted-foreground italic text-center py-4"
-              >
-                暂无录像
-              </p>
-            {/if}
-          </div>
-
-          <!-- Upload Area -->
-          {#if isAdmin || (userState.id && (selectedMatch?.player1_id === userState.id || selectedMatch?.player2_id === userState.id))}
-          <div class="pt-2">
-            <label
-              class="w-full h-24 border border-dashed border-border/80 hover:border-primary/50 bg-background/30 hover:bg-background/50 rounded-xl flex flex-col items-center justify-center gap-1.5 cursor-pointer transition-all p-3 text-center relative overflow-hidden"
-              ondragover={(e) => e.preventDefault()}
-              ondragenter={(e) => e.preventDefault()}
-              ondrop={handleFileDrop}
-            >
-              <input
-                type="file"
-                accept=".SC2Replay"
-                multiple
-                onchange={handleFileUpload}
-                disabled={uploadingReplays}
-                class="hidden"
-              />
-              {#if uploadingReplays}
-                <div
-                  class="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin"
-                ></div>
-                <span class="text-[10px] text-muted-foreground"
-                  >正在解析并保存...</span
-                >
-              {:else}
-                <UploadCloudIcon
-                  class="w-6 h-6 text-muted-foreground animate-pulse"
-                />
-                <span class="text-[10px] font-medium text-foreground"
-                  >点击或拖拽上传</span
-                >
-                <span class="text-[8px] text-muted-foreground"
-                  >仅限 .SC2Replay 格式</span
-                >
-              {/if}
-            </label>
-          </div>
-          {/if}
-        </div>
-
-        <!-- Replay Content Area -->
-        <div class="md:col-span-3 flex flex-col gap-3 min-h-75">
-          {#if selectedReplay}
-            <!-- Mini Tab Bar -->
-            <div
-              class="flex gap-1 border-b border-border/60 pb-1.5 overflow-x-auto text-[11px]"
-            >
-              {#each [{ id: "overview", label: "对局概览", icon: FileTextIcon }, { id: "build_order", label: "建造顺序", icon: ListOrderedIcon }, { id: "curves", label: "农民折线", icon: TrendingUpIcon }, { id: "chat", label: "聊天历史", icon: MessageSquareIcon }] as tab}
-                <button
-                  onclick={() => (activeReplayTab = tab.id)}
-                  class="flex items-center gap-1 px-3 py-1.5 rounded-lg font-semibold transition-all cursor-pointer
-                  {activeReplayTab === tab.id
-                    ? 'bg-primary text-primary-foreground font-bold shadow'
-                    : 'text-muted-foreground hover:bg-muted/40 hover:text-foreground'}"
-                >
-                  <tab.icon class="w-3.5 h-3.5" />
-                  {tab.label}
-                </button>
-              {/each}
-            </div>
-
-            <!-- Tab content: Overview -->
-            {#if activeReplayTab === "overview"}
-              <div class="space-y-4 pt-1">
-                 <div class="grid grid-cols-3 gap-3">
-                  <div
-                    class="p-3 bg-background/50 border border-border rounded-xl"
-                  >
-                    <p
-                      class="text-[10px] text-muted-foreground uppercase font-bold tracking-wider"
-                    >
-                      地图
-                    </p>
-                    <p class="text-sm font-bold mt-0.5 text-foreground " title={selectedReplay.map_name || "未知地图"}>
-                      {selectedReplay.map_name || "未知地图"}
-                    </p>
-                  </div>
-                  <div
-                    class="p-3 bg-background/50 border border-border rounded-xl"
-                  >
-                    <p
-                      class="text-[10px] text-muted-foreground uppercase font-bold tracking-wider"
-                    >
-                      游戏时长
-                    </p>
-                    <p class="text-sm font-bold mt-0.5 text-foreground">
-                      {formatDuration(selectedReplay.game_length)}
-                    </p>
-                  </div>
-                  <div
-                    class="p-3 bg-background/50 border border-border rounded-xl"
-                  >
-                    <p
-                      class="text-[10px] text-muted-foreground uppercase font-bold tracking-wider"
-                    >
-                      对局时间
-                    </p>
-                    <p class="text-[10px] font-bold mt-1 text-foreground leading-tight " title={formatReplayTime(selectedReplay.parsed_data?.start_time)}>
-                      {formatReplayTime(selectedReplay.parsed_data?.start_time)}
-                    </p>
-                  </div>
-                </div>
-
-                <div
-                  class="border border-border rounded-xl overflow-hidden bg-background/30"
-                >
-                  <div
-                    class="p-2.5 bg-muted/20 border-b border-border/40 text-[10px] font-bold text-muted-foreground uppercase tracking-wider"
-                  >
-                    对局结果
-                  </div>
-                  <div class="p-3 divide-y divide-border/40 space-y-2">
-                    {#each selectedReplay.parsed_data?.teams || [] as team, tIdx}
-                      {#each team.players || [] as player}
-                        <div
-                          class="flex items-center justify-between text-xs py-1.5 {tIdx ===
-                          0
-                            ? 'text-foreground'
-                            : ''}"
-                        >
-                          <span class="font-semibold flex items-center gap-1.5">
-                            <span
-                              class="w-4 h-4 rounded-full bg-linear-to-br from-primary to-indigo-600 flex items-center justify-center text-[8px] font-bold text-white uppercase"
-                              >{player.name.slice(0, 1)}</span
-                            >
-                            {player.name}
-                            <Badge
-                              variant="outline"
-                              class="text-[9px] px-1 py-0 border-primary/20 uppercase tracking-wider"
-                              >{player.race}</Badge
-                            >
-                          </span>
-                          {#if selectedReplay.winner === player.name}
-                            <Badge
-                              class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[9px] font-bold"
-                              >WINNER</Badge
-                            >
-                          {:else}
-                            <span class="text-[10px] text-muted-foreground"
-                              >LOSS</span
-                            >
-                          {/if}
-                        </div>
-                      {/each}
-                    {/each}
-                  </div>
-                </div>
-
-                <!-- Delete & Download Action -->
-                <div
-                  class="flex items-center gap-2 pt-2 border-t border-border/40"
-                >
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onclick={() => downloadReplay(selectedReplay.id)}
-                    class="text-xs h-8 cursor-pointer border-primary/20 text-primary gap-1"
-                  >
-                    <DownloadIcon class="w-3.5 h-3.5" /> 下载 SC2Replay
-                  </Button>
-                  {#if isAdmin}
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onclick={() => handleDeleteReplay(selectedReplay.id)}
-                    class="text-xs h-8 cursor-pointer gap-1"
-                  >
-                    <TrashIcon class="w-3.5 h-3.5" /> 删除录像
-                  </Button>
-                  {/if}
-                </div>
-              </div>
-
-              <!-- Tab content: Build Order -->
-            {:else if activeReplayTab === "build_order"}
-              <div
-                class="grid grid-cols-2 gap-4 flex-1 pt-1 max-h-75 overflow-y-auto pr-1"
-              >
-                {#each selectedReplay.parsed_data?.teams || [] as team, teamIdx}
-                  {@const player = team.players?.[0]}
-                  <div
-                    class="space-y-2 bg-background/20 border border-border p-3 rounded-xl flex flex-col"
-                  >
-                    <div
-                      class="flex items-center justify-between border-b border-border/40 pb-1"
-                    >
-                      <span
-                        class="font-bold text-xs text-foreground  block"
-                        >{player?.name || "Player"}</span
-                      >
-                      <Badge
-                        variant="outline"
-                        class="text-[9px] uppercase tracking-wider shrink-0"
-                        >{player?.race || "?"}</Badge
-                      >
-                    </div>
-                    <div
-                      class="space-y-1.5 overflow-y-auto max-h-55 text-[10px] pr-1"
-                    >
-                      {#each (player?.build_order || []).filter((item) => !item.is_worker) as bo}
-                        <div
-                          class="flex items-center justify-between py-1 border-b border-border/10"
-                        >
-                          <span class="font-medium text-foreground "
-                            >{bo.unit}</span
-                          >
-                          <div
-                            class="flex items-center gap-2 shrink-0 font-mono text-muted-foreground"
-                          >
-                            {#if bo.supply}
-                              <span>{bo.supply} </span>
-                            {/if}
-                            <span>{formatDuration(bo.start_time)}</span>
-                          </div>
-                        </div>
-                      {/each}
-                      {#if (player?.build_order || []).length === 0}
-                        <p
-                          class="text-center italic text-muted-foreground/60 py-4"
-                        >
-                          无建造顺序记录
-                        </p>
-                      {/if}
-                    </div>
-                  </div>
-                {/each}
-              </div>
-
-              <!-- Tab content: Curves -->
-            {:else if activeReplayTab === "curves"}
-              <div class="space-y-3 pt-1 flex-1 flex flex-col justify-between">
-                <div
-                  class="flex items-center justify-between text-[10px] text-muted-foreground font-semibold"
-                >
-                  <span>横轴：时间 (分钟) • 纵轴：农民数 (人)</span>
-                  <div class="flex gap-3">
-                    <span class="flex items-center gap-1"
-                      ><span class="w-2.5 h-1 bg-blue-500 rounded"></span>
-                      {selectedReplay.parsed_data.teams?.[0]?.players?.[0]
-                        ?.name}</span
-                    >
-                    <span class="flex items-center gap-1"
-                      ><span class="w-2.5 h-1 bg-rose-500 rounded"></span>
-                      {selectedReplay.parsed_data.teams?.[1]?.players?.[0]
-                        ?.name}</span
-                    >
-                  </div>
-                </div>
-
-                <div
-                  class="w-full bg-background/50 border border-border rounded-xl p-4 flex items-center justify-center flex-1"
-                >
-                  {#if selectedReplay.parsed_data.teams?.[0]?.players?.[0]?.workers_curve?.length > 0}
-                    {@const c1 =
-                      selectedReplay.parsed_data.teams[0].players[0]
-                        .workers_curve}
-                    {@const c2 =
-                      selectedReplay.parsed_data.teams[1]?.players?.[0]
-                        ?.workers_curve || []}
-                    {@const totalDurMin = selectedReplay.game_length / 60}
-                    {@const maxWorkers = 80}
-                    <svg
-                      viewBox="0 0 500 200"
-                      class="w-full h-44 overflow-visible"
-                    >
-                      <!-- Grid lines -->
-                      <line
-                        x1="0"
-                        y1="200"
-                        x2="500"
-                        y2="200"
-                        stroke="#333"
-                        stroke-width="1.5"
-                      />
-                      <line
-                        x1="0"
-                        y1="0"
-                        x2="0"
-                        y2="200"
-                        stroke="#333"
-                        stroke-width="1.5"
-                      />
-                      <line
-                        x1="0"
-                        y1="100"
-                        x2="500"
-                        y2="100"
-                        stroke="#222"
-                        stroke-dasharray="3,3"
-                      />
-                      <line
-                        x1="0"
-                        y1="50"
-                        x2="500"
-                        y2="50"
-                        stroke="#222"
-                        stroke-dasharray="3,3"
-                      />
-                      <line
-                        x1="0"
-                        y1="150"
-                        x2="500"
-                        y2="150"
-                        stroke="#222"
-                        stroke-dasharray="3,3"
-                      />
-
-                      <!-- Path 1 (Blue) -->
-                      <polyline
-                        fill="none"
-                        stroke="#3b82f6"
-                        stroke-width="2.5"
-                        points={getSvgPath(
-                          c1,
-                          500,
-                          200,
-                          totalDurMin,
-                          maxWorkers,
-                        )}
-                      />
-                      <!-- Path 2 (Red) -->
-                      {#if c2.length > 0}
-                        <polyline
-                          fill="none"
-                          stroke="#f43f5e"
-                          stroke-width="2.5"
-                          points={getSvgPath(
-                            c2,
-                            500,
-                            200,
-                            totalDurMin,
-                            maxWorkers,
-                          )}
-                        />
-                      {/if}
-                    </svg>
-                  {:else}
-                    <p class="text-xs text-muted-foreground italic">
-                      本局无追踪指标，无法渲染农民图表。
-                    </p>
-                  {/if}
-                </div>
-              </div>
-
-              <!-- Tab content: Chat -->
-            {:else if activeReplayTab === "chat"}
-              <div
-                class="border border-border bg-background/40 rounded-xl p-3 flex-1 overflow-y-auto max-h-75 text-[11px] space-y-2.5 font-mono"
-              >
-                {#each selectedReplay.parsed_data?.chat || [] as msg}
-                  <div class="flex items-start gap-1.5 leading-normal">
-                    <span class="text-muted-foreground shrink-0"
-                      >[{formatDuration(msg.time)}]</span
-                    >
-                    <span class="font-bold text-primary shrink-0"
-                      >{msg.player}:</span
-                    >
-                    <span class="text-foreground break-all">{msg.text}</span>
-                  </div>
-                {/each}
-                {#if (selectedReplay.parsed_data?.chat || []).length === 0}
-                  <p class="text-center italic text-muted-foreground/60 py-8">
-                    本局没有聊天记录
-                  </p>
-                {/if}
-              </div>
-            {/if}
-          {:else}
-            <!-- Empty state -->
-            <div
-              class="flex-1 border border-dashed border-border rounded-xl bg-background/20 flex flex-col items-center justify-center py-16 text-center text-muted-foreground gap-3"
-            >
-              <FileTextIcon class="w-10 h-10 text-muted-foreground/50" />
-              <div>
-                <h4 class="text-xs font-bold text-foreground">
-                  未关联任何录像
-                </h4>
-                <p class="text-[10px] text-muted-foreground mt-0.5">
-                  请通过左侧面板的上传入口上传此场比赛的 `.SC2Replay`
-                  录像文件进行入库。
-                </p>
-              </div>
-            </div>
-          {/if}
-        </div>
-      </div>
-    {/if}
-
-    <Dialog.Footer
-      class="mt-2 border-t border-border pt-3 flex flex-row items-center justify-between gap-3"
-    >
-      {#if tournament.status === "in_progress" && (isAdmin || (userState.id && (selectedMatch?.player1_id === userState.id || selectedMatch?.player2_id === userState.id)))}
-        <Button
-          variant="outline"
-          size="sm"
-          onclick={() => {
-            showMatchDetailsDialog = false;
-            showMatchDialog = true; reportStep = "banpick"; score1Input = 0; score2Input = 0; resetBanPick();
-          }}
-          class="text-xs h-8 border-amber-500/20 text-amber-400 hover:bg-amber-500/10 cursor-pointer"
-        >
-          修改比分 / 重新填报
-        </Button>
-      {/if}
-      <Button
-        variant="ghost"
-        size="sm"
-        onclick={() => {
-          showMatchDetailsDialog = false;
-          selectedMatch = null;
-          matchReplays = [];
-          selectedReplay = null;
-        }}
-        class="text-xs h-8 cursor-pointer"
-      >
-        关闭面板
-      </Button>
-    </Dialog.Footer>
-  </Dialog.Content>
-</Dialog.Root>
-
 <!-- Liquipedia Wiki Export Dialog -->
 <Dialog.Root bind:open={showWikiDialog}>
   <Dialog.Content
@@ -4818,7 +4050,7 @@
         Liquipedia Wiki 代码导出
       </Dialog.Title>
       <Dialog.Description class="text-xs text-muted-foreground">
-        为您自动统计赛事结果、比分及录像分析数据，生成匹配的 Liquipedia Bracket
+        为您自动统计赛事结果与比分，生成匹配的 Liquipedia Bracket
         格式代码。
       </Dialog.Description>
     </Dialog.Header>
@@ -4897,185 +4129,58 @@
         />
       </div>
 
-      <!-- BattleTags -->
+      <!-- Contact (QQ / Discord) -->
       <div class="space-y-2.5">
         <span class="text-xs font-bold text-muted-foreground"
-          >游戏 BattleTags</span
+          >联系方式（QQ / Discord）</span
         >
         <div
-          class="grid grid-cols-1 gap-3 bg-muted/20 border border-border/60 p-3 rounded-lg"
+          class="grid grid-cols-1 md:grid-cols-2 gap-4 bg-muted/20 border border-border/60 p-4 rounded-xl"
         >
-          <!-- CN Server -->
-          <div class="space-y-1.5">
-            <span
-              class="text-[10px] font-bold text-muted-foreground flex items-center justify-between"
+          <div class="space-y-1">
+            <label
+              for="edit-contact-qq"
+              class="text-[11px] font-bold text-muted-foreground">QQ 号</label
             >
-              <span>中国服务器 (CN)</span>
-              <span class="text-[9px] text-muted-foreground/60 font-normal"
-                >已添加 {editPlayerBattleTags.cn.length} 个</span
-              >
-            </span>
-            <div
-              class="flex flex-wrap gap-1 min-h-7.5 p-1.5 rounded bg-background/50 border border-border"
-            >
-              {#each editPlayerBattleTags.cn as tag, idx}
-                <Badge
-                  variant="secondary"
-                  class="text-[9px] font-mono py-0 px-1.5 bg-muted border border-border/80 text-foreground flex items-center gap-1"
-                >
-                  {tag}
-                  <button
-                    type="button"
-                    onclick={() =>
-                      (editPlayerBattleTags.cn = editPlayerBattleTags.cn.filter(
-                        (_, i) => i !== idx,
-                      ))}
-                    class="text-muted-foreground hover:text-destructive font-bold text-xs cursor-pointer"
-                    >&times;</button
-                  >
-                </Badge>
-              {/each}
-              {#if editPlayerBattleTags.cn.length === 0}
-                <span
-                  class="text-[9px] text-muted-foreground/50 italic self-center px-1"
-                  >暂无账号</span
-                >
-              {/if}
-            </div>
-            <div class="flex gap-1">
-              <Input
-                type="text"
-                placeholder="例如: Bnet#1234"
-                id="edit-add-cn-input"
-                class="bg-background border-border text-foreground text-xs h-7 flex-1"
-                onkeydown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    const val = e.currentTarget.value.trim();
-                    if (val && !editPlayerBattleTags.cn.includes(val)) {
-                      editPlayerBattleTags.cn = [
-                        ...editPlayerBattleTags.cn,
-                        val,
-                      ];
-                      e.currentTarget.value = "";
-                    }
-                  }
-                }}
-              />
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                class="w-7 h-7 border-border shrink-0 cursor-pointer"
-                onclick={() => {
-                  const input = document.getElementById("edit-add-cn-input");
-                  const val = input.value.trim();
-                  if (val && !editPlayerBattleTags.cn.includes(val)) {
-                    editPlayerBattleTags.cn = [...editPlayerBattleTags.cn, val];
-                    input.value = "";
-                  }
-                }}
-              >
-                <PlusIcon class="w-3 h-3" />
-              </Button>
-            </div>
+            <Input
+              id="edit-contact-qq"
+              bind:value={editPlayerQQ}
+              placeholder="例如: 123456789"
+              class="text-xs h-8 bg-background border-border text-foreground"
+            />
           </div>
-
-          <!-- Global Server -->
-          <div class="space-y-1.5">
-            <span
-              class="text-[10px] font-bold text-muted-foreground flex items-center justify-between"
+          <div class="space-y-1">
+            <label
+              for="edit-contact-discord"
+              class="text-[11px] font-bold text-muted-foreground"
+              >Discord 用户名</label
             >
-              <span>国际服务器 (Global)</span>
-              <span class="text-[9px] text-muted-foreground/60 font-normal"
-                >已添加 {editPlayerBattleTags.global.length} 个</span
-              >
-            </span>
-            <div
-              class="flex flex-wrap gap-1 min-h-7.5 p-1.5 rounded bg-background/50 border border-border"
-            >
-              {#each editPlayerBattleTags.global as tag, idx}
-                <Badge
-                  variant="secondary"
-                  class="text-[9px] font-mono py-0 px-1.5 bg-muted border border-border/80 text-foreground flex items-center gap-1"
-                >
-                  {tag}
-                  <button
-                    type="button"
-                    onclick={() =>
-                      (editPlayerBattleTags.global =
-                        editPlayerBattleTags.global.filter(
-                          (_, i) => i !== idx,
-                        ))}
-                    class="text-muted-foreground hover:text-destructive font-bold text-xs cursor-pointer"
-                    >&times;</button
-                  >
-                </Badge>
-              {/each}
-              {#if editPlayerBattleTags.global.length === 0}
-                <span
-                  class="text-[9px] text-muted-foreground/50 italic self-center px-1"
-                  >暂无账号</span
-                >
-              {/if}
-            </div>
-            <div class="flex gap-1">
-              <Input
-                type="text"
-                placeholder="例如: Bnet#9012"
-                id="edit-add-global-input"
-                class="bg-background border-border text-foreground text-xs h-7 flex-1"
-                onkeydown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    const val = e.currentTarget.value.trim();
-                    if (val && !editPlayerBattleTags.global.includes(val)) {
-                      editPlayerBattleTags.global = [
-                        ...editPlayerBattleTags.global,
-                        val,
-                      ];
-                      e.currentTarget.value = "";
-                    }
-                  }
-                }}
-              />
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                class="w-7 h-7 border-border shrink-0 cursor-pointer"
-                onclick={() => {
-                  const input = document.getElementById(
-                    "edit-add-global-input",
-                  );
-                  const val = input.value.trim();
-                  if (val && !editPlayerBattleTags.global.includes(val)) {
-                    editPlayerBattleTags.global = [
-                      ...editPlayerBattleTags.global,
-                      val,
-                    ];
-                    input.value = "";
-                  }
-                }}
-              >
-                <PlusIcon class="w-3 h-3" />
-              </Button>
-            </div>
+            <Input
+              id="edit-contact-discord"
+              bind:value={editPlayerDiscord}
+              placeholder="例如: username"
+              class="text-xs h-8 bg-background border-border text-foreground"
+            />
           </div>
         </div>
+        <p class="text-[10px] text-muted-foreground/60">
+          赛务联系用，会显示在选手列表中。
+        </p>
       </div>
-
       <div class="grid grid-cols-2 gap-3">
         <div class="space-y-1.5">
           <label for="edit-flag" class="text-xs font-bold text-muted-foreground"
             >国籍/地区 (Flag)</label
           >
-          <Input
-            id="edit-flag"
-            bind:value={editPlayerFlag}
-            placeholder="例如: cn, hk, tw"
-            class="bg-background border-border text-foreground text-xs"
-          />
+          <div class="flex items-center gap-2">
+            <Flag code={editPlayerFlag} size={20} />
+            <Input
+              id="edit-flag"
+              bind:value={editPlayerFlag}
+              placeholder="例如: cn, hk, tw"
+              class="bg-background border-border text-foreground text-xs flex-1"
+            />
+          </div>
         </div>
         <div class="space-y-1.5">
           <label for="edit-team" class="text-xs font-bold text-muted-foreground"
@@ -5090,10 +4195,10 @@
         </div>
       </div>
 
-      <!-- Battle.net IDs (from Replay, removable) -->
+      <!-- Battle.net IDs (removable) -->
       <div class="space-y-1.5">
         <span class="text-xs font-bold text-muted-foreground block"
-          >已关联游戏账号 (Battle.net IDs) (来自录像上传，可移除)</span
+          >已关联游戏账号 (Battle.net IDs)</span
         >
         <div
           class="flex flex-wrap gap-1.5 min-h-10 p-2 rounded-xl border border-border bg-background/30"
@@ -5131,7 +4236,7 @@
           {#if editPlayerBnetIds.length === 0}
             <span
               class="text-[10px] text-muted-foreground/60 italic self-center px-1"
-              >暂无关联的游戏账号（将通过录像上传自动匹配并关联）</span
+              >暂无关联的游戏账号</span
             >
           {/if}
         </div>
@@ -5333,132 +4438,7 @@
           <TrashIcon class="w-3.5 h-3.5" />
           清理无 URL 账号
         </Button>
-        <Button
-          size="sm"
-          disabled={accountsBusy}
-          onclick={reparseAndBackfillAccounts}
-          class="text-xs font-bold px-4 h-8 cursor-pointer gap-1.5"
-        >
-          <RefreshCwIcon class="w-3.5 h-3.5 {accountsBusy ? 'animate-spin' : ''}" />
-          重新解析并补充
-        </Button>
       </div>
-    </Dialog.Footer>
-  </Dialog.Content>
-</Dialog.Root>
-
-<!-- Dialog for manual mapping of unmapped replays -->
-<Dialog.Root bind:open={showUnmappedDialog}>
-  <Dialog.Content
-    class="max-w-137.5 bg-card border border-border p-6 flex flex-col gap-4"
-  >
-    <Dialog.Header>
-      <Dialog.Title
-        class="text-lg font-bold text-foreground flex items-center gap-2"
-      >
-        <UsersIcon class="w-5 h-5 text-amber-500" />
-        手动关联录像账号
-      </Dialog.Title>
-      <Dialog.Description class="text-xs text-muted-foreground">
-        以下为录像中未识别的游戏账号（按战网账号区分，同名账号会分别列出）。默认把账号写入选手的**全局资料**；勾选「临时」则只在本赛事生效、不写入全局。绑定后会重新解析并导入受影响的录像。
-      </Dialog.Description>
-    </Dialog.Header>
-
-    <div class="space-y-3 max-h-87.5 overflow-y-auto pr-1 py-1">
-      {#each getUnmappedAccounts(unmappedReplays) as acct (acct.key)}
-        <div
-          class="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-4 p-3.5 rounded-xl border border-border bg-background/30 items-center"
-        >
-          <div class="min-w-0 space-y-1">
-            <div class="flex items-center gap-2 min-w-0">
-              <span class="font-mono text-sm font-bold text-amber-500 break-all select-all"
-                >{acct.name || acct.key}</span
-              >
-              {#if acct.race && acct.race !== "?"}
-                <Badge
-                  variant="secondary"
-                  class="text-[10px] font-mono bg-muted/65 border border-border/60 px-1.5 py-0 shrink-0"
-                  >{acct.race}</Badge
-                >
-              {/if}
-              {#if acct.regionLabel}
-                <Badge
-                  variant="secondary"
-                  class="text-[10px] bg-sky-500/10 border border-sky-500/30 text-sky-500 px-1.5 py-0 shrink-0"
-                  >{acct.regionLabel}</Badge
-                >
-              {/if}
-            </div>
-            {#if acct.bnet_url}
-              <a
-                href={acct.bnet_url}
-                target="_blank"
-                rel="noopener"
-                class="block font-mono text-[10px] text-primary/80 hover:underline break-all"
-                >{acct.toon_handle || acct.bnet_url} ↗</a
-              >
-            {:else if acct.toon_handle}
-              <span class="block font-mono text-[10px] text-muted-foreground break-all"
-                >{acct.toon_handle}</span
-              >
-            {/if}
-          </div>
-          <div class="flex flex-col items-stretch sm:items-end gap-1.5 shrink-0">
-            <div class="flex items-center gap-2 justify-between sm:justify-end">
-              <span class="text-[10px] text-muted-foreground shrink-0"
-                >对应选手:</span
-              >
-              <select
-                bind:value={tempBnetMappings[acct.key]}
-                class="bg-background border border-border text-foreground text-xs rounded-lg p-1.5 focus-visible:outline-none w-50 max-w-60 "
-              >
-                <option value="">-- 选择参赛选手 --</option>
-                {#each getAvailablePlayersForBnet(acct.key) as p}
-                  <option value={p.id}>
-                    {p.display_name && p.display_name !== p.id ? `${p.display_name} (${p.id})` : p.id}
-                  </option>
-                {/each}
-              </select>
-            </div>
-            <label
-              class="inline-flex items-center gap-1.5 text-[10px] text-muted-foreground cursor-pointer select-none justify-end"
-            >
-              <input
-                type="checkbox"
-                bind:checked={tempBnetTemporary[acct.key]}
-                class="accent-sky-500"
-              />
-              <span>临时（仅本赛事，不写入选手全局资料）</span>
-            </label>
-          </div>
-
-        </div>
-      {/each}
-    </div>
-
-    <Dialog.Footer
-      class="mt-2 border-t border-border pt-3 flex flex-row items-center justify-between gap-3"
-    >
-      <Button
-        variant="ghost"
-        size="sm"
-        onclick={() => {
-          showUnmappedDialog = false;
-          unmappedReplays = [];
-          tempBnetMappings = {};
-          tempBnetTemporary = {};
-        }}
-        class="text-xs h-8 cursor-pointer"
-      >
-        关闭窗口
-      </Button>
-      <Button
-        size="sm"
-        onclick={submitAllManualMappings}
-        class="text-xs font-bold px-4 h-8 cursor-pointer"
-      >
-        保存并重新解析
-      </Button>
     </Dialog.Footer>
   </Dialog.Content>
 </Dialog.Root>

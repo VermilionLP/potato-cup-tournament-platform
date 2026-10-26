@@ -5,18 +5,24 @@
   import { userState } from "$lib/user.svelte.js";
   import { API } from "$lib/api.js";
   import { isRecentlySeen } from "$lib/players.js";
+  import {
+    buildContact,
+    contactIsEmpty,
+    parseContact,
+    splitContactInput,
+  } from "$lib/contact.js";
   import { page } from "$app/stores";
   import { ModeWatcher, toggleMode } from "mode-watcher";
   import * as Dialog from "$lib/components/ui/dialog/index.js";
   import { Button } from "$lib/components/ui/button/index.js";
   import { Input } from "$lib/components/ui/input/index.js";
   import { Badge } from "$lib/components/ui/badge/index.js";
+  import Flag from "$lib/components/Flag.svelte";
   import UserRoundIcon from "@lucide/svelte/icons/user-round";
   import TrophyIcon from "@lucide/svelte/icons/trophy";
   import UsersIcon from "@lucide/svelte/icons/users";
   import SunIcon from "@lucide/svelte/icons/sun";
   import MoonIcon from "@lucide/svelte/icons/moon";
-  import PlusIcon from "@lucide/svelte/icons/plus";
   import TrendingUpIcon from "@lucide/svelte/icons/trending-up";
   import SwordsIcon from "@lucide/svelte/icons/swords";
   import BellIcon from "@lucide/svelte/icons/bell";
@@ -35,8 +41,8 @@
   let inactiveExistingPlayers = $derived(
     existingPlayers.filter((p) => !isRecentlySeen(p.last_seen_at)),
   );
-  let qqInput = $state("");
-  let qqError = $state("");
+  let contactInput = $state("");
+  let contactError = $state("");
   let verifying = $state(false);
   let pushEnabled = $state(false);
   let pushBusy = $state(false);
@@ -165,7 +171,9 @@
   let editFlag = $state("cn");
   let editTeam = $state("");
   let editLink = $state("");
-  let editBattleTags = $state({ cn: [], global: [] });
+  let editContactBase = $state({}); // untouched battle_tags keys kept across saves
+  let editQQ = $state("");
+  let editDiscord = $state("");
   let editBnetIds = $state([]);
 
   // Avatar gradient derived from player ID
@@ -222,21 +230,9 @@
     try {
       const player = await API.getPlayer(playerId);
       if (player) {
-        let parsedTags = {};
-        if (player.battle_tags) {
-          try {
-            parsedTags =
-              typeof player.battle_tags === "string"
-                ? JSON.parse(player.battle_tags)
-                : player.battle_tags;
-          } catch (_) {}
-        }
-        const cnTags = Array.isArray(parsedTags.cn) ? parsedTags.cn : [];
-        const globalTags = Array.isArray(parsedTags.global)
-          ? parsedTags.global
-          : [];
-        if (cnTags.length === 0 && globalTags.length === 0) {
-          toast.warning("您的 BattleTag 尚未填写，可能会影响录像自动匹配。", {
+        const contact = parseContact(player.battle_tags);
+        if (contactIsEmpty(contact)) {
+          toast.warning("您的 QQ / Discord 联系方式尚未填写，可能会影响赛事联系。", {
             action: {
               label: "立即完善",
               onClick: () => handleOpenDialog(),
@@ -252,8 +248,8 @@
 
   async function handleOpenDialog() {
     idInput = userState.id || "";
-    qqInput = userState.qqGroup || "";
-    qqError = "";
+    contactInput = userState.qqGroup || "";
+    contactError = "";
     openIdDialog = true;
 
     if (userState.id) {
@@ -264,29 +260,10 @@
           editTeam = p.team || "";
           editLink = p.link || "";
 
-          let parsedTags = {};
-          if (p.battle_tags) {
-            try {
-              parsedTags =
-                typeof p.battle_tags === "string"
-                  ? JSON.parse(p.battle_tags)
-                  : p.battle_tags;
-            } catch (_) {}
-          }
-          const parseToArray = (val) => {
-            if (!val) return [];
-            if (Array.isArray(val)) return val.filter(Boolean);
-            if (typeof val === "string")
-              return val
-                .split(",")
-                .map((s) => s.trim())
-                .filter(Boolean);
-            return [];
-          };
-          editBattleTags = {
-            cn: parseToArray(parsedTags.cn),
-            global: parseToArray(parsedTags.global),
-          };
+          const contact = parseContact(p.battle_tags);
+          editContactBase = contact.base;
+          editQQ = contact.qq;
+          editDiscord = contact.discord;
           editBnetIds = parseBnetIds(p.bnet_ids);
         }
       } catch (e) {
@@ -302,11 +279,49 @@
     }
   }
 
+  // Fills the join field with the contact already on file for a player.
+  function prefillContactFromPlayer(player) {
+    const contact = parseContact(player?.battle_tags);
+    contactInput = contact.qq || contact.discord || "";
+  }
+
+  // Writes the contact typed at sign-in onto the player profile. Only the
+  // channel that was typed is replaced, so an existing QQ or Discord value
+  // is never wiped by the other one.
+  async function saveSignInContact(playerId, rawContact) {
+    const parsed = splitContactInput(rawContact);
+    if (!parsed.qq && !parsed.discord) return;
+
+    let player = existingPlayers.find((p) => p.id === playerId);
+    if (!player) {
+      try {
+        player = await API.getPlayer(playerId);
+      } catch (_) {
+        player = null;
+      }
+    }
+
+    const current = parseContact(player?.battle_tags);
+    const nextQQ = parsed.qq || current.qq;
+    const nextDiscord = parsed.discord || current.discord;
+    if (nextQQ === current.qq && nextDiscord === current.discord) return;
+
+    await API.updatePlayer(playerId, {
+      flag: player?.flag || "cn",
+      team: player?.team || "",
+      link: player?.link || "",
+      battle_tags: buildContact(current.base, {
+        qq: nextQQ,
+        discord: nextDiscord,
+      }),
+    });
+  }
+
   async function handleSaveId() {
-    const trimmedQQ = qqInput.trim();
+    const trimmedContact = contactInput.trim();
     const trimmedId = idInput.trim();
-    if (!trimmedQQ) {
-      qqError = "请输入 QQ号或Discord用户名";
+    if (!trimmedContact) {
+      contactError = "请输入 QQ 号或 Discord 用户名";
       return;
     }
     if (!trimmedId) {
@@ -315,16 +330,21 @@
     }
 
     verifying = true;
-    qqError = "";
+    contactError = "";
     try {
-      const res = await API.verifyQQ(trimmedQQ);
+      const res = await API.verifyQQ(trimmedContact);
       if (res.valid) {
-        userState.setQQGroup(trimmedQQ);
+        userState.setQQGroup(trimmedContact);
         userState.setId(trimmedId);
         try {
           await API.touchPlayer(trimmedId);
         } catch (e) {
           console.warn("touch player failed:", e);
+        }
+        try {
+          await saveSignInContact(trimmedId, trimmedContact);
+        } catch (e) {
+          console.warn("保存联系方式失败:", e);
         }
         openIdDialog = false;
         toast.success("身份配置已保存并激活权限！");
@@ -333,11 +353,11 @@
           window.location.reload();
         }, 100);
       } else {
-        qqError = "验证未通过，请输入正确的群号或 Discord 用户名";
-        toast.error("群号验证失败！");
+        contactError = "验证未通过，请检查 QQ 号或 Discord 用户名";
+        toast.error("身份验证失败！");
       }
     } catch (err) {
-      qqError = "验证请求发生错误，请稍后重试";
+      contactError = "验证请求发生错误，请稍后重试";
       toast.error("网络错误，请稍后重试");
       console.error(err);
     } finally {
@@ -346,42 +366,13 @@
   }
 
   async function handleSaveProfile() {
-    const trimmedQQ = qqInput.trim();
     const trimmedId = idInput.trim();
-    if (!trimmedQQ) {
-      qqError = "请输入 QQ号或Discord用户名";
-      return;
-    }
     if (!trimmedId) {
       toast.error("请输入选手 ID");
       return;
     }
 
-    // 1. Verify QQ Group if it changed
-    if (trimmedQQ !== userState.qqGroup) {
-      verifying = true;
-      qqError = "";
-      try {
-        const res = await API.verifyQQ(trimmedQQ);
-        if (!res.valid) {
-          qqError = "验证未通过，请输入正确的群号或 Discord 用户名";
-          toast.error("群号验证失败！");
-          verifying = false;
-          return;
-        }
-        userState.setQQGroup(trimmedQQ);
-      } catch (err) {
-        qqError = "验证请求发生错误，请稍后重试";
-        toast.error("网络错误，请稍后重试");
-        console.error(err);
-        verifying = false;
-        return;
-      } finally {
-        verifying = false;
-      }
-    }
-
-    // 2. Handle Player ID rename ("两边一起改")
+    // 1. Handle Player ID rename ("两边一起改")
     const oldId = userState.id;
     if (trimmedId !== oldId) {
       if (!userState.adminToken) {
@@ -407,14 +398,17 @@
       }
     }
 
-    // 3. Save profile details
+    // 2. Save profile details
     verifying = true;
     try {
       await API.updatePlayer(trimmedId, {
         flag: editFlag || "cn",
         team: editTeam || "",
         link: editLink || "",
-        battle_tags: editBattleTags,
+        battle_tags: buildContact(editContactBase, {
+          qq: editQQ,
+          discord: editDiscord,
+        }),
       });
       toast.success("个人资料保存成功！");
       openIdDialog = false;
@@ -432,7 +426,7 @@
     userState.setId("");
     userState.setQQGroup("");
     idInput = "";
-    qqInput = "";
+    contactInput = "";
     openIdDialog = false;
     toast.success("已退出身份，目前为只读查看模式");
     setTimeout(() => {
@@ -601,7 +595,7 @@
                 {userState.id || "游客模式"}
               </div>
               <div class="text-[10px] text-muted-foreground leading-none">
-                {userState.qqGroup ? `群: ${userState.qqGroup}` : "未登录"}
+                {userState.qqGroup ? `联系: ${userState.qqGroup}` : "未登录"}
               </div>
             </div>
           </button>
@@ -633,14 +627,13 @@
         class="text-lg font-bold tracking-tight text-foreground flex items-center gap-2"
       >
         <UserRoundIcon class="w-5 h-5 text-primary" />
-        {userState.id ? "完善个人资料" : "身份与加入群验证"}
+        {userState.id ? "完善个人资料" : "身份与联系方式验证"}
       </Dialog.Title>
       <Dialog.Description class="text-xs text-muted-foreground">
         {#if userState.id}
-          修改您的游戏昵称、添加多服务器 BattleTag 及关联 Wiki。
+          修改您的游戏昵称、QQ / Discord 联系方式及关联 Wiki。
         {:else}
-          输入您所在的土豆杯 QQ 群号或者Discord username and 游戏昵称
-          ID，以解锁创建、报名和修改权限。
+          填写您的 QQ 号或 Discord 用户名（联系方式）与游戏昵称 ID，以解锁创建、报名和修改权限。
         {/if}
       </Dialog.Description>
     </Dialog.Header>
@@ -648,130 +641,63 @@
     {#if userState.id}
       <!-- Logged-in profile editor -->
       <div class="space-y-3 py-1 max-h-[65vh] overflow-y-auto pr-1">
-        <!-- QQ Group & Player ID -->
-        <div class="grid grid-cols-2 gap-3">
-          <div class="space-y-1">
-            <label
-              for="layout-qq-input"
-              class="text-xs font-bold text-muted-foreground">QQ号或Discord用户名</label
-            >
-            <Input
-              id="layout-qq-input"
-              bind:value={qqInput}
-              class="text-xs h-8 bg-background border-border text-foreground"
-            />
-            {#if qqError}
-              <p class="text-[9px] text-destructive font-medium animate-pulse">
-                {qqError}
-              </p>
-            {/if}
-          </div>
-          <div class="space-y-1">
-            <label
-              for="player-id-input"
-              class="text-xs font-bold text-muted-foreground"
-              >选手游戏昵称 / ID</label
-            >
-            <Input
-              id="player-id-input"
-              bind:value={idInput}
-              disabled={!!userState.id && !userState.adminToken}
-              class="text-xs h-8 bg-background border-border text-foreground"
-            />
-            {#if userState.id && !userState.adminToken}
-              <p class="text-[9px] text-muted-foreground/70">
-                修改选手 ID 需要管理员权限；普通用户只能维护资料。
-              </p>
-            {/if}
-          </div>
+        <!-- Player ID -->
+        <div class="space-y-1">
+          <label
+            for="player-id-input"
+            class="text-xs font-bold text-muted-foreground"
+            >选手游戏昵称 / ID</label
+          >
+          <Input
+            id="player-id-input"
+            bind:value={idInput}
+            disabled={!!userState.id && !userState.adminToken}
+            class="text-xs h-8 bg-background border-border text-foreground"
+          />
+          {#if userState.id && !userState.adminToken}
+            <p class="text-[9px] text-muted-foreground/70">
+              修改选手 ID 需要管理员权限；普通用户只能维护资料。
+            </p>
+          {/if}
         </div>
 
-        <!-- BattleTags -->
+        <!-- Contact (QQ / Discord) -->
         <div class="space-y-2">
           <span class="text-xs font-bold text-muted-foreground"
-            >游戏 BattleTags</span
+            >联系方式（QQ / Discord）</span
           >
           <div
             class="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-muted/20 border border-border/60 p-3 rounded-xl"
           >
-
-            <!-- Global Server -->
-            <div class="space-y-2">
-              <span
-                class="text-[11px] font-bold text-muted-foreground flex items-center justify-between"
+            <div class="space-y-1">
+              <label
+                for="layout-contact-qq"
+                class="text-[11px] font-bold text-muted-foreground">QQ 号</label
               >
-                <span>国际服务器 (Global)</span>
-                <span class="text-[10px] text-muted-foreground/60 font-normal"
-                  >已添加 {editBattleTags.global.length} 个</span
-                >
-              </span>
-
-              <div
-                class="flex flex-wrap gap-1 min-h-7.5 p-1.5 rounded-lg border border-border bg-background/50"
+              <Input
+                id="layout-contact-qq"
+                bind:value={editQQ}
+                placeholder="例如: 123456789"
+                class="text-xs h-8 bg-background border-border text-foreground"
+              />
+            </div>
+            <div class="space-y-1">
+              <label
+                for="layout-contact-discord"
+                class="text-[11px] font-bold text-muted-foreground"
+                >Discord 用户名</label
               >
-                {#each editBattleTags.global as tag, idx}
-                  <Badge
-                    variant="secondary"
-                    class="text-[9px] font-mono py-0.5 px-1.5 bg-muted border border-border/80 text-foreground flex items-center gap-1"
-                  >
-                    {tag}
-                    <button
-                      type="button"
-                      onclick={() =>
-                        (editBattleTags.global = editBattleTags.global.filter(
-                          (_, i) => i !== idx,
-                        ))}
-                      class="text-muted-foreground hover:text-destructive font-bold text-xs shrink-0 cursor-pointer"
-                      >&times;</button
-                    >
-                  </Badge>
-                {/each}
-                {#if editBattleTags.global.length === 0}
-                  <span
-                    class="text-[10px] text-muted-foreground/50 italic self-center px-1"
-                    >暂无账号</span
-                  >
-                {/if}
-              </div>
-
-              <div class="flex gap-1">
-                <Input
-                  type="text"
-                  placeholder="例如: Bnet#9012"
-                  id="layout-add-global-input"
-                  class="text-xs h-7 bg-background border-border text-foreground flex-1 px-2"
-                  onkeydown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      const val = e.currentTarget.value.trim();
-                      if (val && !editBattleTags.global.includes(val)) {
-                        editBattleTags.global = [...editBattleTags.global, val];
-                        e.currentTarget.value = "";
-                      }
-                    }
-                  }}
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  class="w-7 h-7 border-border shrink-0 cursor-pointer"
-                  onclick={() => {
-                    const input = document.getElementById(
-                      "layout-add-global-input",
-                    );
-                    const val = input.value.trim();
-                    if (val && !editBattleTags.global.includes(val)) {
-                      editBattleTags.global = [...editBattleTags.global, val];
-                      input.value = "";
-                    }
-                  }}
-                >
-                  <PlusIcon class="w-3 h-3" />
-                </Button>
-              </div>
+              <Input
+                id="layout-contact-discord"
+                bind:value={editDiscord}
+                placeholder="例如: username"
+                class="text-xs h-8 bg-background border-border text-foreground"
+              />
             </div>
           </div>
+          <p class="text-[10px] text-muted-foreground/60">
+            赛务联系用，会显示在选手列表中。
+          </p>
         </div>
 
         <!-- Flag + Team -->
@@ -781,12 +707,15 @@
               for="edit-flag"
               class="text-xs font-bold text-muted-foreground">国籍 (Flag)</label
             >
-            <Input
-              id="edit-flag"
-              bind:value={editFlag}
-              placeholder="cn / hk / tw"
-              class="text-xs h-8 bg-background border-border text-foreground"
-            />
+            <div class="flex items-center gap-2">
+              <Flag code={editFlag} size={20} />
+              <Input
+                id="edit-flag"
+                bind:value={editFlag}
+                placeholder="cn / hk / tw"
+                class="text-xs h-8 bg-background border-border text-foreground flex-1"
+              />
+            </div>
           </div>
           <div class="space-y-1">
             <label
@@ -822,7 +751,7 @@
         <!-- Battle.net IDs (Read-only) -->
         <div class="space-y-2 pt-2 border-t border-border/60">
           <span class="text-xs font-bold text-muted-foreground block"
-            >自动解析的游戏账号 (只读，来自录像上传)</span
+            >已关联的游戏账号 (只读)</span
           >
           <div
             class="flex flex-wrap gap-1 min-h-9 p-1.5 rounded-lg border border-border bg-muted/10"
@@ -858,19 +787,25 @@
       <div class="space-y-4 py-2">
         <div class="space-y-1.5">
           <label
-            for="layout-qq-input"
+            for="layout-contact-input"
             class="text-xs font-semibold text-muted-foreground"
-            >群验证 QQ 群号</label
+            >QQ 号 / Discord 用户名</label
           >
           <Input
-            id="layout-qq-input"
-            bind:value={qqInput}
-            placeholder="请输入群号或 Discord 用户名"
+            id="layout-contact-input"
+            bind:value={contactInput}
+            placeholder="例如: 123456789 或 username"
             class="bg-background border-border text-foreground"
+            onkeydown={(e) => {
+              if (e.key === "Enter") handleSaveId();
+            }}
           />
-          {#if qqError}
+          <p class="text-[10px] text-muted-foreground/70">
+            纯数字视为 QQ 号，其余视为 Discord 用户名；会写入选手资料的联系方式。
+          </p>
+          {#if contactError}
             <p class="text-[10px] text-destructive font-medium animate-pulse">
-              {qqError}
+              {contactError}
             </p>
           {/if}
         </div>
@@ -901,7 +836,10 @@
               {#each activeExistingPlayers as p}
                 <button
                   type="button"
-                  onclick={() => (idInput = p.id)}
+                  onclick={() => {
+                    idInput = p.id;
+                    prefillContactFromPlayer(p);
+                  }}
                   title={p.last_seen_at ? `最近活跃: ${new Date(p.last_seen_at).toLocaleDateString("zh-CN")}` : "无登录记录"}
                   class="text-[11px] px-2 py-0.5 rounded bg-muted hover:bg-primary hover:text-primary-foreground border border-border/80 transition-colors cursor-pointer {idInput ===
                   p.id
@@ -930,7 +868,10 @@
                   {#each inactiveExistingPlayers as p}
                     <button
                       type="button"
-                      onclick={() => (idInput = p.id)}
+                      onclick={() => {
+                        idInput = p.id;
+                        prefillContactFromPlayer(p);
+                      }}
                       title={p.last_seen_at ? `最近活跃: ${new Date(p.last_seen_at).toLocaleDateString("zh-CN")}` : "无登录记录"}
                       class="text-[11px] px-2 py-0.5 rounded bg-muted/70 hover:bg-primary hover:text-primary-foreground border border-border/80 transition-colors cursor-pointer {idInput ===
                       p.id

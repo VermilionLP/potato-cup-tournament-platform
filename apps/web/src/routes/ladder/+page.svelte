@@ -14,6 +14,7 @@
   import MmrChart from "$lib/components/ladder/mmr-chart.svelte";
   import { formatWinRate, daysAgo } from "$lib/ladder.js";
   import TierBadge from "$lib/components/TierBadge.svelte";
+  import Flag from "$lib/components/Flag.svelte";
 
   let data = $state(null);
   let loading = $state(true);
@@ -25,15 +26,7 @@
   let detail = $state(null);
   let detailLoading = $state(false);
 
-  const flagEmoji = (f) =>
-    ({
-      cn: "🇨🇳",
-      hk: "🇭🇰",
-      tw: "🇹🇼",
-      us: "🇺🇸",
-      kr: "🇰🇷",
-      eu: "🇪🇺",
-    })[f] || "🏳️";
+  // Flag rendering lives in $lib/components/Flag.svelte (SVG assets).
 
   let filteredPlayers = $derived.by(() => {
     const players = data?.players || [];
@@ -230,7 +223,7 @@
                   </td>
                   <td class="py-2.5 px-3 font-semibold max-w-52">
                     <div class="flex items-center gap-1.5 min-w-0">
-                      <span class="text-sm shrink-0">{flagEmoji(p.flag)}</span>
+                      <Flag code={p.flag} size={18} />
                       {#if p.team}
                         <span class="text-[9px] text-muted-foreground font-bold font-mono shrink-0">[{p.team}]</span>
                       {/if}
@@ -286,7 +279,7 @@
               </span>
               <div class="flex-1 min-w-0">
                 <div class="flex items-center gap-1.5 min-w-0">
-                  <span class="text-sm shrink-0">{flagEmoji(p.flag)}</span>
+                  <Flag code={p.flag} size={18} />
                   {#if p.team}
                     <span class="text-[9px] text-muted-foreground font-bold font-mono shrink-0">[{p.team}]</span>
                   {/if}
@@ -326,7 +319,7 @@
         <Card.Header class="p-5 pb-3">
           <div class="flex flex-wrap items-center justify-between gap-3">
             <div class="flex items-center gap-3">
-              <div class="text-2xl">{flagEmoji(selected.flag)}</div>
+              <div class="text-2xl"><Flag code={selected.flag} size={32} /></div>
               <div>
                 <div class="text-base font-bold flex items-center gap-2 flex-wrap">
                   {selected.display_name}

@@ -2,7 +2,7 @@
 
 ## Role
 
-`apps/api` is the StarCraft 2 tournament API. Fastify 5, PostgreSQL via `@fastify/postgres`, Postgrator migrations, SSE (`@fastify/sse`), Swagger, and an optional Python SC2 replay parser.
+`apps/api` is the StarCraft 2 tournament API. Fastify 5, PostgreSQL via `@fastify/postgres`, Postgrator migrations, SSE (`@fastify/sse`), and Swagger.
 
 Read this guide before editing files under `apps/api`.
 

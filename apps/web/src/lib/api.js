@@ -116,15 +116,9 @@ export const API = {
   removeCustomVote: (tournamentId, player_id, topic, value) =>
     request(`/tournaments/${enc(tournamentId)}/custom-vote`, { method: 'DELETE', body: JSON.stringify({ player_id, topic, value }) }),
 
-  // Replays
+  // QQ group verification (player sign-in)
   verifyQQ: (qqGroup) =>
     request('/verify-qq', { method: 'POST', body: JSON.stringify({ qqGroup }) }),
-  uploadReplays: (matchId, replays, qqGroup) =>
-    request(`/matches/${matchId}/replays`, { method: 'POST', body: JSON.stringify({ replays, qqGroup }) }),
-  uploadBatchReplays: (tournamentId, replays, qqGroup) =>
-    request(`/tournaments/${enc(tournamentId)}/replays/batch`, { method: 'POST', body: JSON.stringify({ replays, qqGroup }) }),
-  getReplays: (matchId) => request(`/matches/${matchId}/replays`),
-  deleteReplay: (replayId) => request(`/replays/${replayId}`, { method: 'DELETE' }),
 
   // Tournament-scoped account links (temporary / borrowed accounts)
   getTournamentAccounts: (tournamentId) => request(`/tournaments/${enc(tournamentId)}/accounts`),
@@ -142,6 +136,5 @@ export const API = {
     request('/players/cleanup-empty-accounts', { method: 'POST', body: JSON.stringify({ player_ids }) }),
 
   // Wiki Generation
-  getWikiScript: (tournamentId) => request(`/tournaments/${enc(tournamentId)}/wiki`),
-  reparseReplays: (tournamentId) => request(`/tournaments/${enc(tournamentId)}/replays/reparse`, { method: 'POST' })
+  getWikiScript: (tournamentId) => request(`/tournaments/${enc(tournamentId)}/wiki`)
 };

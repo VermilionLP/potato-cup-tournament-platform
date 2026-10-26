@@ -3,25 +3,20 @@
   import { toast } from "svelte-sonner";
   import { API } from "$lib/api.js";
   import RaceIcon from "$lib/components/RaceIcon.svelte";
+  import Flag from "$lib/components/Flag.svelte";
   import { Badge } from "$lib/components/ui/badge/index.js";
   import SearchIcon from "@lucide/svelte/icons/search";
   import UsersIcon from "@lucide/svelte/icons/users";
   import TrendingUpIcon from "@lucide/svelte/icons/trending-up";
   import TrophyIcon from "@lucide/svelte/icons/trophy";
-  import ZapIcon from "@lucide/svelte/icons/zap";
   import ClockIcon from "@lucide/svelte/icons/clock";
   import ActivityIcon from "@lucide/svelte/icons/activity";
   import ShieldAlertIcon from "@lucide/svelte/icons/shield-alert";
   import AwardIcon from "@lucide/svelte/icons/award";
-  import MapIcon from "@lucide/svelte/icons/map";
 
   // Stats Data States
   let statsData = $state(null);
-  let playTimes = $state(null);
   let statsLoading = $state(true);
-  let playTimeMax = $derived(
-    playTimes ? Math.max(1, ...playTimes.weekdays) : 1,
-  );
   let selectedStatPlayer = $state(null);
   let statsSearchQuery = $state("");
   let minMatchesFilter = $state(0); // 0 = all, 2, 5, 10
@@ -69,12 +64,7 @@
   async function loadStats() {
     statsLoading = true;
     try {
-      const [stats, times] = await Promise.all([
-        API.getPlayerStatistics(),
-        API.getPlayTimes().catch(() => null),
-      ]);
-      statsData = stats;
-      playTimes = times;
+      statsData = await API.getPlayerStatistics();
       if (statsData?.players?.length > 0) {
         const sorted = [...statsData.players].sort((a, b) => {
           if (a.matches_played < 2 && b.matches_played >= 2) return 1;
@@ -121,18 +111,7 @@
     return `${m}分${s}秒`;
   }
 
-  const flagEmoji = (f) => {
-    const map = {
-      cn: "🇨🇳",
-      hk: "🇭🇰",
-      tw: "🇹🇼",
-      us: "🇺🇸",
-      kr: "🇰🇷",
-      de: "🇩🇪",
-      fr: "🇫🇷",
-    };
-    return map[(f || "").toLowerCase()] ?? "🏳️";
-  };
+  // Flag rendering lives in $lib/components/Flag.svelte (SVG assets).
 
   const avatarColors = [
     "from-amber-500 to-orange-500",
@@ -171,7 +150,7 @@
   {:else}
     {#if statsData}
       <!-- Global stats cards -->
-      <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+      <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
         <div class="bg-card border border-border rounded-xl p-4 flex items-center gap-3 shadow-sm hover:border-primary/20 transition-colors">
           <div class="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
             <UsersIcon class="w-4 h-4" />
@@ -199,70 +178,7 @@
             <span class="text-lg font-black text-foreground">{statsData.global.total_matches} <span class="text-xs font-normal text-muted-foreground">场</span></span>
           </div>
         </div>
-        <div class="bg-card border border-border rounded-xl p-4 flex items-center gap-3 shadow-sm hover:border-primary/20 transition-colors">
-          <div class="w-9 h-9 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-400 shrink-0">
-            <ZapIcon class="w-4 h-4" />
-          </div>
-          <div>
-            <span class="text-[10px] text-muted-foreground uppercase tracking-wider block font-bold">录像备份</span>
-            <span class="text-lg font-black text-foreground">{statsData.global.total_replays} <span class="text-xs font-normal text-muted-foreground">局</span></span>
-          </div>
-        </div>
-        <div class="bg-card border border-border rounded-xl p-4 flex items-center gap-3 shadow-sm hover:border-primary/20 transition-colors col-span-2 md:col-span-1">
-          <div class="w-9 h-9 rounded-lg bg-purple-500/10 flex items-center justify-center text-purple-400 shrink-0">
-            <ClockIcon class="w-4 h-4" />
-          </div>
-          <div class="min-w-0">
-            <span class="text-[10px] text-muted-foreground uppercase tracking-wider block font-bold truncate">局均耗时</span>
-            <span class="text-sm font-black text-foreground block truncate mt-0.5">{formatSeconds(statsData.global.avg_game_length)}</span>
-          </div>
-        </div>
       </div>
-
-      {#if playTimes && playTimes.total_nights > 0}
-        <div class="bg-card border border-border rounded-xl p-4 shadow-sm">
-          <div class="flex items-center justify-between gap-3 flex-wrap">
-            <div>
-              <h3 class="text-sm font-bold text-foreground flex items-center gap-2">
-                <ClockIcon class="w-4 h-4 text-purple-400" />
-                大家一般什么时候打
-              </h3>
-              <p class="text-[11px] text-muted-foreground mt-0.5">
-                基于 {playTimes.total_nights} 个比赛夜 / {playTimes.total_games} 场录像的实际开始时间
-              </p>
-            </div>
-            <div class="text-[10px] text-muted-foreground/60 font-mono">
-              最常开打：{playTimes.top_slots[0]
-                ? `${["周日", "周一", "周二", "周三", "周四", "周五", "周六"][playTimes.top_slots[0].weekday]} ${playTimes.top_slots[0].time}`
-                : "暂无"}
-            </div>
-          </div>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mt-4">
-            <div class="space-y-1.5">
-              {#each ["周日", "周一", "周二", "周三", "周四", "周五", "周六"] as label, idx}
-                <div class="flex items-center gap-2 text-[11px]">
-                  <span class="w-8 text-muted-foreground shrink-0">{label}</span>
-                  <div class="flex-1 h-2 bg-muted rounded-full overflow-hidden">
-                    <div
-                      class="h-full bg-gradient-to-r from-purple-500 to-cyan-400 rounded-full"
-                      style="width: {Math.round(((playTimes.weekdays[idx] || 0) / playTimeMax) * 100)}%"
-                    ></div>
-                  </div>
-                  <span class="w-7 text-right font-mono text-muted-foreground">{playTimes.weekdays[idx] || 0}</span>
-                </div>
-              {/each}
-            </div>
-            <div class="flex flex-wrap content-start gap-1.5">
-              {#each playTimes.top_slots.slice(0, 6) as slot}
-                <span class="text-[10px] px-2 py-1 rounded-full border border-border/70 bg-muted/30 font-mono text-muted-foreground">
-                  {["周日", "周一", "周二", "周三", "周四", "周五", "周六"][slot.weekday]} {slot.time}
-                  <span class="text-primary font-bold ml-1">{slot.count}</span>
-                </span>
-              {/each}
-            </div>
-          </div>
-        </div>
-      {/if}
 
       <!-- Main statistics layout -->
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -377,7 +293,7 @@
                     >
                       <td class="py-2 px-3 font-semibold max-w-36">
                         <div class="flex items-center gap-1 min-w-0">
-                           <span class="text-sm shrink-0">{flagEmoji(p.flag)}</span>
+                           <Flag code={p.flag} size={18} />
                            {#if p.team}
                              <span class="text-[9px] text-muted-foreground font-bold font-mono shrink-0">[{p.team}]</span>
                            {/if}
@@ -437,7 +353,7 @@
                 >
                   <div class="flex-1 min-w-0">
                     <div class="flex items-center gap-1.5 min-w-0">
-                      <span class="text-sm shrink-0">{flagEmoji(p.flag)}</span>
+                      <Flag code={p.flag} size={18} />
                       {#if p.team}
                         <span class="text-[9px] text-muted-foreground font-bold font-mono shrink-0">[{p.team}]</span>
                       {/if}
@@ -482,7 +398,7 @@
                   <div>
                     <div class="flex items-center gap-2">
                       <h3 class="text-base font-extrabold text-foreground">{selectedStatPlayer.display_name}</h3>
-                      <span class="text-sm shrink-0">{flagEmoji(selectedStatPlayer.flag)}</span>
+                      <Flag code={selectedStatPlayer.flag} size={18} />
                       <Badge variant="outline" class="gap-1 text-[9px] px-1.5 py-0 uppercase tracking-wider {getRaceColorClass(selectedStatPlayer.main_race)}">
                         <RaceIcon race={selectedStatPlayer.main_race} size={14} />
                         {getRaceName(selectedStatPlayer.main_race)}
@@ -639,7 +555,7 @@
                 <div class="flex items-center justify-between p-2 rounded-lg bg-muted/10 border border-border/40 text-xs">
                   <div class="flex items-center gap-2">
                     <span class="w-5 h-5 rounded-full bg-amber-500/10 text-amber-500 flex items-center justify-center font-mono font-bold text-[10px]">{idx + 1}</span>
-                    <span class="text-sm shrink-0">{flagEmoji(p.flag)}</span>
+                    <Flag code={p.flag} size={18} />
                     <span class="font-bold truncate max-w-28">{p.display_name}</span>
                   </div>
                   <span class="font-mono font-black text-amber-500">{Math.round(p.match_win_rate * 100)}% <span class="text-[9px] font-normal text-muted-foreground">({p.matches_won}/{p.matches_played})</span></span>
@@ -662,7 +578,7 @@
                 <div class="flex items-center justify-between p-2 rounded-lg bg-muted/10 border border-border/40 text-xs">
                   <div class="flex items-center gap-2">
                     <span class="w-5 h-5 rounded-full bg-blue-500/10 text-blue-400 flex items-center justify-center font-mono font-bold text-[10px]">{idx + 1}</span>
-                    <span class="text-sm shrink-0">{flagEmoji(p.flag)}</span>
+                    <Flag code={p.flag} size={18} />
                     <span class="font-bold truncate max-w-28">{p.display_name}</span>
                   </div>
                   <span class="font-mono font-black text-blue-400">{p.matches_played} <span class="text-[9px] font-normal text-muted-foreground">场</span></span>
@@ -685,7 +601,7 @@
                 <div class="flex items-center justify-between p-2 rounded-lg bg-muted/10 border border-border/40 text-xs">
                   <div class="flex items-center gap-2">
                     <span class="w-5 h-5 rounded-full bg-purple-500/10 text-purple-400 flex items-center justify-center font-mono font-bold text-[10px]">{idx + 1}</span>
-                    <span class="text-sm shrink-0">{flagEmoji(p.flag)}</span>
+                    <Flag code={p.flag} size={18} />
                     <span class="font-bold truncate max-w-28">{p.display_name}</span>
                   </div>
                   <span class="font-mono font-black text-purple-400">{p.walkover_losses} <span class="text-[9px] font-normal text-muted-foreground">次</span></span>
@@ -697,63 +613,6 @@
             </div>
           </div>
 
-          <!-- Board 4: Game Lengths -->
-          <div class="bg-card border border-border rounded-xl p-4.5 shadow-sm space-y-4">
-            <h3 class="text-xs font-black text-foreground uppercase tracking-wider flex items-center gap-1.5">
-              <ClockIcon class="w-4 h-4 text-emerald-500" />
-              对局时间两极榜
-            </h3>
-            <div class="space-y-3">
-              {#if statsData.rankings.longest_player}
-                <div class="space-y-1">
-                  <span class="text-[9px] text-muted-foreground block font-bold">⏱️ 最能磨 · 膀胱局大师 (最长局均)</span>
-                  <div class="flex items-center justify-between p-2 rounded-lg bg-muted/10 border border-border/40 text-xs">
-                    <div class="flex items-center gap-1.5">
-                      <span class="text-sm shrink-0">{flagEmoji(statsData.rankings.longest_player.flag)}</span>
-                      <span class="font-bold">{statsData.rankings.longest_player.display_name}</span>
-                    </div>
-                    <span class="font-mono font-black text-foreground">{formatSeconds(statsData.rankings.longest_player.avg_game_length)}</span>
-                  </div>
-                </div>
-              {/if}
-              {#if statsData.rankings.shortest_player}
-                <div class="space-y-1">
-                  <span class="text-[9px] text-muted-foreground block font-bold">⚡ 闪电战 · 效率神速者 (最短局均)</span>
-                  <div class="flex items-center justify-between p-2 rounded-lg bg-muted/10 border border-border/40 text-xs">
-                    <div class="flex items-center gap-1.5">
-                      <span class="text-sm shrink-0">{flagEmoji(statsData.rankings.shortest_player.flag)}</span>
-                      <span class="font-bold">{statsData.rankings.shortest_player.display_name}</span>
-                    </div>
-                    <span class="font-mono font-black text-foreground">{formatSeconds(statsData.rankings.shortest_player.avg_game_length)}</span>
-                  </div>
-                </div>
-              {/if}
-              {#if !statsData.rankings.longest_player && !statsData.rankings.shortest_player}
-                <div class="text-center py-4 text-[10px] text-muted-foreground italic">暂无时长排行 (需上传录像)</div>
-              {/if}
-            </div>
-          </div>
-
-          <!-- Board 5: Top Maps -->
-          <div class="bg-card border border-border rounded-xl p-4.5 shadow-sm space-y-4">
-            <h3 class="text-xs font-black text-foreground uppercase tracking-wider flex items-center gap-1.5">
-              <MapIcon class="w-4 h-4 text-primary" />
-              热门地图排行
-            </h3>
-            <div class="space-y-2">
-              {#each statsData.global.top_maps as map, idx}
-                <div class="flex items-center justify-between p-2 rounded-lg bg-muted/10 border border-border/40 text-xs">
-                  <span class="font-semibold truncate pr-2 font-mono">{idx + 1}. {map.name}</span>
-                  <span class="font-mono font-bold text-emerald-400 shrink-0">{map.count} 局</span>
-                </div>
-              {/each}
-              {#if statsData.global.top_maps.length === 0}
-                <div class="text-center py-4 border border-dashed border-border rounded-lg text-[10px] text-muted-foreground italic">
-                  暂无地图数据 (需上传录像)
-                </div>
-              {/if}
-            </div>
-          </div>
         </div>
       </div>
     {/if}

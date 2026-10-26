@@ -16,7 +16,8 @@ import playersRoutes from './routes/players.js';
 import matchesRoutes from './routes/matches.js';
 import votesRoutes from './routes/votes.js';
 import ladderRoutes from './routes/ladder.js';
-import replaysRoutes, { checkPythonEnvironment } from './routes/replays.js';
+import qqRoutes from './routes/qq.js';
+import wikiRoutes from './routes/wiki.js';
 import pushRoutes from './routes/push.js';
 import adminRoutes from './routes/admin.js';
 import { startPushScheduler } from './lib/push-scheduler.js';
@@ -48,20 +49,11 @@ await fastify.register(playersRoutes, { prefix: '/api' });
 await fastify.register(matchesRoutes, { prefix: '/api' });
 await fastify.register(votesRoutes, { prefix: '/api' });
 await fastify.register(ladderRoutes, { prefix: '/api' });
-await fastify.register(replaysRoutes, { prefix: '/api' });
+await fastify.register(qqRoutes, { prefix: '/api' });
+await fastify.register(wikiRoutes, { prefix: '/api' });
 await fastify.register(pushRoutes, { prefix: '/api' });
 await fastify.register(adminRoutes, { prefix: '/api' });
 startPushScheduler(fastify);
-
-// Runtime Python check on startup
-checkPythonEnvironment().then((status) => {
-  if (status.ok) {
-    console.log('✅ Python environment verified: sc2reader and spawningtool are available.');
-  } else {
-    console.warn('⚠️ WARNING: Server Python environment check failed. SC2 replay parsing will not be available.');
-    console.warn(`Reason: ${status.error}`);
-  }
-});
 
 fastify.get('/api/ping', async () => ({ pong: true }));
 

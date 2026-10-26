@@ -3,6 +3,13 @@
   import { toast } from "svelte-sonner";
   import { API } from "$lib/api.js";
   import { defaultVehiclePools } from "$lib/data/vehiclePools.js";
+  import {
+    BRACKET_FORMATS,
+    GAME_MODES,
+    advancementLabel,
+    formatLabel,
+    gameModeLabel,
+  } from "$lib/tournament.js";
   import { goto } from "$app/navigation";
   import { userState } from "$lib/user.svelte.js";
   import * as Card from "$lib/components/ui/card/index.js";
@@ -58,7 +65,7 @@
   }
 
   function ruleLabel(t) {
-    return t?.loser_advances ? "败者晋级" : "胜者晋级";
+    return advancementLabel(t?.loser_advances);
   }
 
   function scheduledDateTime(t) {
@@ -135,8 +142,11 @@
   let showCreateDialog = $state(false);
   let newName = $state("");
   let newCapacity = $state(128);
-  let newLoserAdvances = $state(true);
+  let newLoserAdvances = $state(false);
   let newScheduledTime = $state("");
+  let newGameMode = $state("rb");
+  let newFormat = $state("single_elim");
+  let newGrandFinalReset = $state(true);
   let selectedVehiclePool = $state("proleague");
   let vehiclePools = $state(defaultVehiclePools);
   let creating = $state(false);
@@ -167,14 +177,18 @@
       return;
     }
     if (!userState.qqGroup || !userState.id) {
-      toast.error("创建赛事需要先验证 QQ 群号与选手 ID。已为您打开配置面板！");
+      toast.error("创建赛事需要先填写 QQ / Discord 联系方式与选手 ID。已为您打开配置面板！");
       document.getElementById("header-profile-button")?.click();
       return;
     }
     newName = "";
     newCapacity = 128;
-      newScheduledTime = "";
-    newLoserAdvances = true;
+    newScheduledTime = "";
+    newLoserAdvances = false;
+    newGameMode = "rb";
+    newFormat = "single_elim";
+    newGrandFinalReset = true;
+    selectedVehiclePool = "proleague";
     showCreateDialog = true;
   }
 
@@ -199,12 +213,24 @@
         player_capacity: newCapacity,
         hold_third_place: 0,
         loser_advances: newLoserAdvances ? 1 : 0,
-        scheduled_time: newScheduledTime || null
+        scheduled_time: newScheduledTime || null,
+        game_mode: newGameMode,
+        vehicle_pool: selectedVehiclePool,
+        format: newFormat,
+        grand_final_reset: newFormat === "double_elim" ? newGrandFinalReset : false,
       });
-      toast.success(`赛事创建成功！(生成 ID: ${generatedId})`);
+      toast.success(
+        newScheduledTime
+          ? `赛事创建成功！已直接开启报名 (生成 ID: ${generatedId})`
+          : `赛事创建成功！(生成 ID: ${generatedId})`,
+      );
       newName = "";
       newCapacity = 128;
       newScheduledTime = "";
+      newLoserAdvances = false;
+      newGameMode = "rb";
+      newFormat = "single_elim";
+      newGrandFinalReset = true;
       showCreateDialog = false;
       await load();
     } catch (e) {
@@ -361,7 +387,7 @@
                   <span class="text-[10px] text-muted-foreground font-mono bg-muted/60 px-1.5 py-0.25 rounded shrink-0">ID: {t.id}</span>
                 </div>
                 <p class="text-xs text-muted-foreground mt-1 flex items-center gap-1.5 flex-wrap">
-                  <span>WarThunder 单败淘汰赛</span>
+                  <span>WarThunder {gameModeLabel(t.game_mode)} · {formatLabel(t.format)}</span>
                   <span>·</span>
                   <span>{ruleLabel(t)}</span>
                 </p>
@@ -459,7 +485,7 @@
                     <span class="text-[10px] text-muted-foreground font-mono bg-muted/60 px-1.5 py-0.25 rounded shrink-0">ID: {t.id}</span>
                   </div>
                   <p class="text-[11px] text-muted-foreground mt-0.5 flex items-center gap-1.5 flex-wrap">
-                    <span>WarThunder 单败淘汰赛</span>
+                    <span>WarThunder {gameModeLabel(t.game_mode)} · {formatLabel(t.format)}</span>
                     <span>·</span>
                     <span>{ruleLabel(t)}</span>
                   </p>
@@ -518,7 +544,7 @@
         创建新赛事
       </Dialog.Title>
       <Dialog.Description class="text-xs text-muted-foreground">
-        输入基本信息以初始化新单淘 WarThunder 赛事。
+        输入基本信息以初始化新 WarThunder 赛事。填写比赛时间会跳过时间投票，直接开启报名。
       </Dialog.Description>
     </Dialog.Header>
     <div class="space-y-4 py-3">
@@ -559,10 +585,70 @@
           bind:value={newScheduledTime}
           class="bg-background border-border text-foreground"
         />
-        <p class="text-[10px] text-muted-foreground/60">设置后将直接开启报名，无需时间投票。</p>
+        <p class="text-[10px] text-muted-foreground/60">设置后将直接开启报名，无需时间投票；留空则先进行时间投票。</p>
       </div>
 
-      
+      <div class="space-y-1.5">
+        <span class="text-xs font-bold text-muted-foreground">比赛模式</span>
+        <div class="grid grid-cols-3 gap-2">
+          {#each GAME_MODES as mode (mode.id)}
+            <button
+              type="button"
+              onclick={() => (newGameMode = mode.id)}
+              title={mode.full}
+              class="px-2 py-2 rounded-md border text-xs font-semibold transition-colors cursor-pointer {newGameMode ===
+              mode.id
+                ? 'bg-primary text-primary-foreground border-primary'
+                : 'bg-background text-muted-foreground border-border hover:text-foreground'}"
+            >
+              <div>{mode.code}</div>
+              <div
+                class="text-[10px] font-normal {newGameMode === mode.id
+                  ? 'text-primary-foreground/80'
+                  : 'text-muted-foreground/70'}"
+              >
+                {mode.name}
+              </div>
+            </button>
+          {/each}
+        </div>
+        <p class="text-[10px] text-muted-foreground/60">
+          AB 街机模式 / RB 历史模式 / SB 全真模式，赛事级设置。
+        </p>
+      </div>
+
+      <div class="space-y-1.5">
+        <span class="text-xs font-bold text-muted-foreground">赛制</span>
+        <div class="grid grid-cols-3 gap-2">
+          {#each BRACKET_FORMATS as bracketFormat (bracketFormat.id)}
+            <button
+              type="button"
+              disabled={!bracketFormat.available}
+              onclick={() => (newFormat = bracketFormat.id)}
+              title={bracketFormat.available ? bracketFormat.label : "后续版本开放"}
+              class="px-2 py-2 rounded-md border text-xs font-semibold transition-colors
+                {newFormat === bracketFormat.id
+                  ? 'bg-primary text-primary-foreground border-primary cursor-pointer'
+                  : 'bg-background text-muted-foreground border-border hover:text-foreground cursor-pointer'}
+                {!bracketFormat.available ? 'opacity-45 cursor-not-allowed hover:text-muted-foreground' : ''}"
+            >
+              {bracketFormat.label}
+            </button>
+          {/each}
+        </div>
+        {#if newFormat === "double_elim"}
+          <label class="flex items-start gap-2 text-[11px] text-muted-foreground cursor-pointer pt-1">
+            <input type="checkbox" bind:checked={newGrandFinalReset} class="accent-primary mt-0.5" />
+            <span>
+              总决赛重置：败者组冠军赢下首场后加赛一场定冠军
+            </span>
+          </label>
+          <p class="text-[10px] text-muted-foreground/60">
+            双败至少需要 4 名选手；胜者组败者进入败者组，败者组再败即淘汰。
+          </p>
+        {/if}
+      </div>
+
       <div class="space-y-1.5">
         <label class="text-xs font-bold text-muted-foreground">载具池</label>
         <select bind:value={selectedVehiclePool} class="w-full bg-background border border-border rounded-md px-3 py-2 text-sm text-foreground">
@@ -573,19 +659,31 @@
 
       </div>
 
-      <div class="space-y-1.5">
-        <label class="text-xs font-bold text-muted-foreground block">晋级规则</label>
-        <div class="flex items-center gap-4 text-xs pt-1">
-          <label class="flex items-center gap-1.5 cursor-pointer text-foreground font-semibold">
-            <input type="radio" bind:group={newLoserAdvances} value={false} class="accent-primary" />
-            <span>胜者晋级</span>
-          </label>
-          <label class="flex items-center gap-1.5 cursor-pointer text-muted-foreground hover:text-foreground">
-            <input type="radio" bind:group={newLoserAdvances} value={true} class="accent-primary" />
-            <span>败者晋级</span>
-          </label>
+      {#if newFormat === "single_elim"}
+        <div class="space-y-1.5">
+          <label class="text-xs font-bold text-muted-foreground block">晋级规则</label>
+          <div class="flex items-center gap-4 text-xs pt-1">
+            <label class="flex items-center gap-1.5 cursor-pointer text-foreground font-semibold">
+              <input type="radio" bind:group={newLoserAdvances} value={false} class="accent-primary" />
+              <span>胜者晋级</span>
+            </label>
+            <label class="flex items-center gap-1.5 cursor-pointer text-muted-foreground hover:text-foreground">
+              <input type="radio" bind:group={newLoserAdvances} value={true} class="accent-primary" />
+              <span>败者晋级</span>
+            </label>
+          </div>
+          <p class="text-[10px] text-muted-foreground/60">
+            通常选「胜者晋级」；「败者晋级」会反转每场的晋级者，仅用于特殊玩法。
+          </p>
         </div>
-      </div>
+      {:else}
+        <div class="space-y-1.5">
+          <span class="text-xs font-bold text-muted-foreground block">晋级规则</span>
+          <p class="text-[11px] text-muted-foreground/80">
+            双败淘汰固定为胜者晋级：胜者留在胜者组，败者进入败者组，再败淘汰。
+          </p>
+        </div>
+      {/if}
     </div>
     <Dialog.Footer class="flex flex-col sm:flex-row gap-2 mt-2">
       <Button
