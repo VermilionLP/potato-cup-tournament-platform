@@ -20,9 +20,10 @@
     poolName = "",
     player1 = { name: "A", flag: "" },
     player2 = { name: "B", flag: "" },
+    // Owned by the page so its header can confirm the result and so reopening
+    // the same match keeps the Ban/Pick progress.
+    bp = $bindable(initialBanPick()),
   } = $props();
-
-  let bp = $state(initialBanPick());
   let rolling = $state(false);
   let rollingLabel = $state("");
 
@@ -37,7 +38,10 @@
     { id: "drawGroup", label: "抽大组" },
     { id: "drawVehicle", label: "抽载具" },
   ];
-  const stepIndex = $derived(steps.findIndex((s) => s.id === bp.phase));
+  const stepIndex = $derived(
+    bp.phase === "done" ? steps.length : steps.findIndex((s) => s.id === bp.phase),
+  );
+  const vehicleCount = $derived(grouped.reduce((n, g) => n + g.vehicles.length, 0));
   const banning = $derived(bp.phase === "banA" || bp.phase === "banB");
 
   // Short slot-machine effect before showing a random result.
@@ -150,7 +154,9 @@
         </div>
       </div>
       <div class="flex flex-wrap gap-1.5">
-        {#if bp.phase === "drawGroup"}
+        {#if bp.phase === "done"}
+          <span class="rounded-full bg-primary px-3 py-1 text-xs font-bold text-primary-foreground">已确认</span>
+        {:else if bp.phase === "drawGroup"}
           <button
             type="button"
             disabled={rolling || !groupsLeft.length}
@@ -217,7 +223,7 @@
   <!-- Vehicle groups -->
   <div class="flex items-center justify-between text-[10px] text-muted-foreground">
     <span>
-      {poolName ? `${poolName} · ` : ""}{grouped.length} 个大组 · {vehicles.length} 架
+      {poolName ? `${poolName} · ` : ""}{grouped.length} 个大组 · {vehicleCount} 架
       {#if banning}· 点击大组名或载具即可禁用整组{/if}
     </span>
     <button

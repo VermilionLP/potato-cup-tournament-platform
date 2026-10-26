@@ -6,7 +6,7 @@
 // accepted group a vehicle is drawn; a drawn vehicle can be removed and
 // another drawn. Removed groups and vehicles never come up again.
 
-export const BP_PHASES = ["banA", "banB", "drawGroup", "drawVehicle"];
+export const BP_PHASES = ["banA", "banB", "drawGroup", "drawVehicle", "done"];
 
 /** Vehicles of the tournament's pool; unknown ids fall back to the first pool. */
 export function poolVehicles(poolId, pools = []) {
@@ -118,4 +118,14 @@ export function drawVehicle(state, grouped, rand = Math.random) {
 export function removeVehicle(state) {
   if (state.phase !== "drawVehicle" || !state.vehicle) return state;
   return { ...state, removedVehicles: [...state.removedVehicles, state.vehicle], vehicle: null };
+}
+
+/** The drawn vehicle can be confirmed once there is one. */
+export function canConfirm(state) {
+  return state.phase === "drawVehicle" && Boolean(state.vehicle);
+}
+
+/** Locks the result; no further bans or draws until reset. */
+export function confirmResult(state) {
+  return canConfirm(state) ? { ...state, phase: "done" } : state;
 }

@@ -103,3 +103,19 @@ test("every bundled pool groups without duplicate names", async () => {
     }
   }
 });
+
+test("a drawn vehicle can be confirmed, which locks the result", async () => {
+  const { canConfirm, confirmResult } = await import("../src/lib/banpick.js");
+  let s = ban(ban(initialBanPick(), null), null);
+  s = confirmGroup(drawGroup(s, grouped, first));
+  assert.equal(canConfirm(s), false, "nothing drawn yet");
+  assert.equal(confirmResult(s), s);
+  s = drawVehicle(s, grouped, first);
+  assert.equal(canConfirm(s), true);
+  s = confirmResult(s);
+  assert.equal(s.phase, "done");
+  assert.equal(s.vehicle, "A1");
+  assert.equal(drawVehicle(s, grouped, first), s, "locked");
+  assert.equal(removeVehicle(s), s, "locked");
+  assert.equal(backToGroups(s), s, "locked");
+});

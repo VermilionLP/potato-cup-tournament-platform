@@ -25,7 +25,7 @@
   import DoubleElimBracket from "$lib/components/DoubleElimBracket.svelte";
   import SwissView from "$lib/components/SwissView.svelte";
   import BanPickPanel from "$lib/components/BanPickPanel.svelte";
-  import { poolVehicles } from "$lib/banpick.js";
+  import { canConfirm, confirmResult, initialBanPick, poolVehicles } from "$lib/banpick.js";
   import { defaultVehiclePools } from "$lib/data/vehiclePools.js";
   import {
     advancementLabel,
@@ -336,6 +336,9 @@
   let reportStep = $state("banpick");
   // True while an admin is correcting a match that already has a result.
   let correctingMatch = $state(false);
+  // Ban/Pick progress for the match it was started on.
+  let bpState = $state(initialBanPick());
+  let bpMatchId = $state(null);
   let score1Input = $state(0);
   let score2Input = $state(0);
   let selectedMatch = $state(null);
@@ -966,6 +969,10 @@
   // Match report modal triggers
   // Clicking a card opens the score form; the card's BP button opens Ban/Pick.
   function openMatchReport(match, step = "score") {
+    if (bpMatchId !== match.id) {
+      bpState = initialBanPick();
+      bpMatchId = match.id;
+    }
     selectedMatch = match;
     correctingMatch = false;
     reportStep = step === "banpick" && banpickEnabled ? "banpick" : "score";
@@ -3911,12 +3918,24 @@
       <Dialog.Title class="text-base font-bold text-foreground">
         {#if correctingMatch}
           <div class="mb-1">修正比赛结果</div>
-        {:else if !banpickEnabled}
-          <div class="mb-1">填报比分</div>
+        {:else if reportStep === "banpick" && banpickEnabled}
+          <div class="flex flex-wrap items-center gap-2 mb-1 pr-6">
+            <span>Ban / Pick</span>
+            {#if bpState.phase === "done"}
+              <Button size="sm" onclick={() => (reportStep = "score")}>填报比分 →</Button>
+            {:else}
+              <Button size="sm" disabled={!canConfirm(bpState)} onclick={() => (bpState = confirmResult(bpState))}
+                title={canConfirm(bpState) ? "锁定本场载具" : "抽到载具后才能确认"}>确认抽取结果</Button>
+            {/if}
+          </div>
         {:else}
-          <div class="flex gap-1 mb-3">
-            <Button size="sm" variant={reportStep === "banpick" ? "default" : "outline"} onclick={() => reportStep = "banpick"}>Ban / Pick</Button>
-            <Button size="sm" variant={reportStep === "score" ? "default" : "outline"} onclick={() => reportStep = "score"}>填报比分</Button>
+          <div class="flex flex-wrap items-center gap-2 mb-1 pr-6">
+            <span>填报比分</span>
+            {#if banpickEnabled && bpMatchId === selectedMatch?.id && bpState.phase === "done"}
+              <span class="rounded-full border border-primary/40 bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary">
+                本场载具：{bpState.vehicle}
+              </span>
+            {/if}
           </div>
         {/if}
       </Dialog.Title>
@@ -3930,6 +3949,7 @@
         <div class="py-2">
           {#key selectedMatch.id}
             <BanPickPanel
+              bind:bp={bpState}
               vehicles={poolVehicles(tournament?.vehicle_pool, defaultVehiclePools)}
               poolName={defaultVehiclePools.find((p) => p.id === tournament?.vehicle_pool)?.name || ""}
               player1={{ name: playerName(selectedMatch.player1_id), flag: tournament?.players?.find((p) => p.id === selectedMatch.player1_id)?.flag }}
