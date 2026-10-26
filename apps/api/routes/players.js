@@ -1,4 +1,4 @@
-import { PlayerRepo } from '../repositories/player-repo.js';
+import { PlayerRepo, mergePlayerInto } from '../repositories/player-repo.js';
 import { TournamentRepo } from '../repositories/tournament-repo.js';
 import { LadderRepo } from '../repositories/ladder-repo.js';
 import { bnetEntryKey } from '../lib/bnet.js';
@@ -503,68 +503,7 @@ export default async function playersRoutes(fastify) {
     const client = await fastify.db.connect();
     try {
       await client.query('BEGIN');
-
-      // 1. Merge tournament_players
-      const oldRegistrations = (await client.query('SELECT tournament_id, seed, registered_at FROM axsuck.tournament_players WHERE player_id = $1', [oldId])).rows;
-      for (const reg of oldRegistrations) {
-        const targetExists = (await client.query('SELECT 1 FROM axsuck.tournament_players WHERE tournament_id = $1 AND player_id = $2', [reg.tournament_id, targetId])).rows[0];
-        if (!targetExists) {
-          await client.query('UPDATE axsuck.tournament_players SET player_id = $1 WHERE tournament_id = $2 AND player_id = $3', [targetId, reg.tournament_id, oldId]);
-        } else {
-          await client.query('DELETE FROM axsuck.tournament_players WHERE tournament_id = $1 AND player_id = $2', [reg.tournament_id, oldId]);
-        }
-      }
-
-      // 2. Merge time_votes
-      const oldVotes = (await client.query('SELECT tournament_id, proposed_time FROM axsuck.time_votes WHERE player_id = $1', [oldId])).rows;
-      for (const vote of oldVotes) {
-        const targetVoteExists = (await client.query('SELECT 1 FROM axsuck.time_votes WHERE tournament_id = $1 AND player_id = $2 AND proposed_time = $3', [vote.tournament_id, targetId, vote.proposed_time])).rows[0];
-        if (!targetVoteExists) {
-          await client.query('UPDATE axsuck.time_votes SET player_id = $1 WHERE tournament_id = $2 AND player_id = $3 AND proposed_time = $4', [targetId, vote.tournament_id, oldId, vote.proposed_time]);
-        } else {
-          await client.query('DELETE FROM axsuck.time_votes WHERE tournament_id = $1 AND player_id = $2 AND proposed_time = $3', [vote.tournament_id, oldId, vote.proposed_time]);
-        }
-      }
-
-      // 3. Merge custom_votes
-      const oldCustomVotes = (await client.query('SELECT tournament_id, topic, value FROM axsuck.custom_votes WHERE player_id = $1', [oldId])).rows;
-      for (const cv of oldCustomVotes) {
-        const targetCvExists = (await client.query('SELECT 1 FROM axsuck.custom_votes WHERE tournament_id = $1 AND player_id = $2 AND topic = $3 AND value = $4', [cv.tournament_id, targetId, cv.topic, cv.value])).rows[0];
-        if (!targetCvExists) {
-          await client.query('UPDATE axsuck.custom_votes SET player_id = $1 WHERE tournament_id = $2 AND player_id = $3 AND topic = $4 AND value = $5', [targetId, cv.tournament_id, oldId, cv.topic, cv.value]);
-        } else {
-          await client.query('DELETE FROM axsuck.custom_votes WHERE tournament_id = $1 AND player_id = $2 AND topic = $3 AND value = $4', [cv.tournament_id, oldId, cv.topic, cv.value]);
-        }
-      }
-
-      // 4. Merge matches
-      await client.query('UPDATE axsuck.matches SET player1_id = $1 WHERE player1_id = $2', [targetId, oldId]);
-      await client.query('UPDATE axsuck.matches SET player2_id = $1 WHERE player2_id = $2', [targetId, oldId]);
-      await client.query('UPDATE axsuck.matches SET winner_id = $1 WHERE winner_id = $2', [targetId, oldId]);
-
-      // 5. Merge bnet_ids
-      let targetBnet = [];
-      try {
-        targetBnet = typeof targetPlayer.bnet_ids === 'string' ? JSON.parse(targetPlayer.bnet_ids || '[]') : (targetPlayer.bnet_ids || []);
-      } catch (e) {}
-      let oldBnet = [];
-      try {
-        oldBnet = typeof oldPlayer.bnet_ids === 'string' ? JSON.parse(oldPlayer.bnet_ids || '[]') : (oldPlayer.bnet_ids || []);
-      } catch (e) {}
-      
-      const mergedBnet = [...targetBnet];
-      oldBnet.forEach(item => {
-        const itemId = typeof item === 'string' ? item : item.id;
-        const exists = mergedBnet.some(t => (typeof t === 'string' ? t : t.id) === itemId);
-        if (!exists) {
-          mergedBnet.push(item);
-        }
-      });
-      await client.query('UPDATE axsuck.players SET bnet_ids = $1 WHERE id = $2', [JSON.stringify(mergedBnet), targetId]);
-
-      // 6. Delete old player
-      await client.query('DELETE FROM axsuck.players WHERE id = $1', [oldId]);
-
+      await mergePlayerInto(client, oldId, targetId);
       await client.query('COMMIT');
     } catch (e) {
       await client.query('ROLLBACK');

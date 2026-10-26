@@ -19,7 +19,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import dotenv from 'dotenv';
 import { createClient, userAgentFor } from '../lib/liquipedia/fetch.js';
-import { downloadDump, planImport, writeEvent } from '../lib/liquipedia/importer.js';
+import { downloadDump, mergePlayers, planImport, writeEvent } from '../lib/liquipedia/importer.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.join(__dirname, '../.env') });
@@ -74,6 +74,14 @@ function report(plan) {
     console.log('\n== 名字相近、已合并为同一选手 ==');
     for (const m of plan.merged) console.log(`${m.from.join(', ')} -> ${m.into}`);
   }
+  if (plan.playerMerges.length) {
+    console.log('\n== 数据库里已有的同名选手资料，将合并（对局、报名、投票都转到保留的名字上） ==');
+    for (const m of plan.playerMerges) console.log(`${m.from} -> ${m.into}`);
+  }
+  if (plan.accountClashes.length) {
+    console.log('\n== 两个名字都在平台上用过，没有自动合并（需要的话在选手管理里手动合并） ==');
+    for (const c of plan.accountClashes) console.log(`${c.other}  /  ${c.kept}`);
+  }
   if (plan.similar.length) {
     console.log('\n== 名字相近但未合并 ==');
     for (const g of plan.similar) console.log(g.join(' / '));
@@ -86,15 +94,26 @@ async function main() {
 
   let db = null;
   let existingIds = [];
+  let platformIds = [];
   if (process.env.DATABASE_URL) {
     const pg = (await import('pg')).default;
     db = new pg.Pool({ connectionString: process.env.DATABASE_URL });
-    existingIds = (await db.query('SELECT id FROM axsuck.players')).rows.map((r) => r.id);
+    const rows = (await db.query(`
+      SELECT p.id,
+        (p.last_ip IS NOT NULL
+         OR EXISTS (SELECT 1 FROM axsuck.tournament_players tp
+                    WHERE tp.player_id = p.id AND tp.tournament_id NOT LIKE 'lp-%')
+         OR EXISTS (SELECT 1 FROM axsuck.time_votes v WHERE v.player_id = p.id)
+         OR EXISTS (SELECT 1 FROM axsuck.custom_votes v WHERE v.player_id = p.id)) AS platform
+      FROM axsuck.players p
+    `)).rows;
+    existingIds = rows.map((r) => r.id);
+    platformIds = rows.filter((r) => r.platform).map((r) => r.id);
   } else if (args.apply) {
     throw new Error('DATABASE_URL is not set');
   }
 
-  const plan = planImport({ pages: dump.pages, templates: dump.templates, existingIds });
+  const plan = planImport({ pages: dump.pages, templates: dump.templates, existingIds, platformIds });
   if (args.only) plan.events = plan.events.filter((e) => e.sourceTitle.includes(args.only));
   report(plan);
 
@@ -104,6 +123,10 @@ async function main() {
     for (const [i, e] of plan.events.entries()) {
       await writeEvent(db, e);
       console.log(`[${i + 1}/${plan.events.length}] 已导入 ${e.id}`);
+    }
+    for (const m of plan.playerMerges) {
+      await mergePlayers(db, m.from, m.into);
+      console.log(`已合并 ${m.from} -> ${m.into}`);
     }
     console.log(`\n完成：导入 ${plan.events.length} 个赛事。`);
   }

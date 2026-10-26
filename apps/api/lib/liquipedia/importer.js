@@ -5,6 +5,7 @@
 import { parseBracketTemplate } from './bracket-template.js';
 import { convertPage, nameKey, similarNames } from './convert.js';
 import { parseBlocks } from './page.js';
+import { mergePlayerInto } from '../../repositories/player-repo.js';
 
 export const SOURCE_BASE = 'https://liquipedia.net/warthunder/';
 
@@ -40,12 +41,20 @@ export async function downloadDump(client, log = () => {}) {
 /**
  * Converts every page and settles player ids.
  *
- * `existingIds`: ids already on the platform. Names that only differ in
- * letter case, spaces/underscores/dashes/dots or look-alike Cyrillic letters
- * ("steve_i400" / "Steve_i400", "NST" / "NST_", "ComRad" / "ComRаd") are one
- * player: an existing platform id wins, otherwise the spelling used most.
+ * Names that only differ in letter case, spaces/underscores/dashes/dots or
+ * look-alike Cyrillic letters ("steve_i400" / "Steve_i400", "NST" / "NST_",
+ * "ComRad" / "ComRаd") are one player.
+ *
+ * `existingIds`: player ids already in the database. `platformIds`: those
+ * of them that people use on the platform itself (entered a live event,
+ * voted, logged in). The kept id is a platform id when the group has one,
+ * otherwise the spelling the import uses most. Other existing ids of the
+ * group (e.g. left over from an earlier import) are listed in
+ * `playerMerges` so their data can be moved onto the kept id. Two platform
+ * ids in one group are never merged automatically; they are listed in
+ * `accountClashes` instead.
  */
-export function planImport({ pages, templates, existingIds = [], today = new Date() }) {
+export function planImport({ pages, templates, existingIds = [], platformIds = [], today = new Date() }) {
   const parsedTemplates = new Map(
     Object.entries(templates).map(([name, text]) => [name, parseBracketTemplate(text)])
   );
@@ -60,15 +69,20 @@ export function planImport({ pages, templates, existingIds = [], today = new Dat
   }
   events.sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')) || a.id.localeCompare(b.id));
 
-  // Canonical ids per look-alike group: an existing platform id wins,
-  // otherwise the spelling used most often in the import.
+  // Canonical ids per look-alike group.
   const counts = new Map();
   for (const e of events) {
     for (const r of e.matches) {
       for (const id of [r.player1_id, r.player2_id]) if (id) counts.set(id, (counts.get(id) || 0) + 1);
     }
   }
-  const existingByKey = new Map(existingIds.map((id) => [nameKey(id), id]));
+  const platform = new Set(platformIds);
+  const existingByKey = new Map();
+  for (const id of existingIds) {
+    const k = nameKey(id);
+    if (!existingByKey.has(k)) existingByKey.set(k, []);
+    existingByKey.get(k).push(id);
+  }
   const variants = new Map();
   for (const name of counts.keys()) {
     const k = nameKey(name);
@@ -77,12 +91,21 @@ export function planImport({ pages, templates, existingIds = [], today = new Dat
   }
   const canonical = new Map();
   const merged = [];
+  const playerMerges = [];
+  const accountClashes = [];
+  const byUse = (a, b) => (counts.get(b) || 0) - (counts.get(a) || 0) || a.localeCompare(b);
   for (const [k, names] of variants) {
-    const target = existingByKey.get(k)
-      || [...names].sort((a, b) => counts.get(b) - counts.get(a) || a.localeCompare(b))[0];
+    const existing = existingByKey.get(k) || [];
+    const onPlatform = existing.filter((id) => platform.has(id)).sort(byUse);
+    const target = onPlatform[0] || [...names].sort(byUse)[0];
     for (const n of names) canonical.set(n, target);
     const others = names.filter((n) => n !== target);
     if (others.length) merged.push({ into: target, from: others });
+    for (const id of existing) {
+      if (id === target) continue;
+      if (platform.has(id)) accountClashes.push({ kept: target, other: id });
+      else playerMerges.push({ from: id, into: target });
+    }
   }
   const mapId = (id) => (id ? canonical.get(id) || id : id);
 
@@ -108,6 +131,8 @@ export function planImport({ pages, templates, existingIds = [], today = new Dat
     skipped,
     warnings,
     merged,
+    playerMerges,
+    accountClashes,
     similar: similarNames(playerIds),
     newPlayers: playerIds.filter((id) => !existing.has(id)).sort(),
     playerCount: playerIds.length,
@@ -221,6 +246,21 @@ export async function writeEvent(db, event) {
   } catch (err) {
     await client.query('ROLLBACK').catch(() => {});
     throw new Error(`${event.id}: ${err.message}`);
+  } finally {
+    client.release();
+  }
+}
+
+/** Moves player `from` onto `into` (see mergePlayerInto) in one transaction. */
+export async function mergePlayers(db, from, into) {
+  const client = await db.connect();
+  try {
+    await client.query('BEGIN');
+    await mergePlayerInto(client, from, into);
+    await client.query('COMMIT');
+  } catch (err) {
+    await client.query('ROLLBACK').catch(() => {});
+    throw new Error(`合并 ${from} -> ${into} 失败：${err.message}`);
   } finally {
     client.release();
   }

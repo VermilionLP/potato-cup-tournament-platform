@@ -16,7 +16,7 @@ test('template names and source links', () => {
 });
 
 test('events in date order; case variants map onto existing platform ids', () => {
-  const plan = planImport({ pages, templates, existingIds: ['jksockscollect'] });
+  const plan = planImport({ pages, templates, existingIds: ['jksockscollect'], platformIds: ['jksockscollect'] });
   assert.deepEqual(plan.events.map((e) => e.date), ['2024-10-06', '2025-06-22']);
   const de = plan.events[0];
   assert.ok(de.players.some((p) => p.id === 'jksockscollect'));
@@ -43,4 +43,28 @@ test('look-alike names (underscores, Cyrillic letters, spaces) become one player
   assert.ok(ids.has('ComRad') && !ids.has('ComRаd'));
   assert.equal([...ids].filter((id) => id.startsWith('NST')).length, 1);
   assert.deepEqual(plan.similar, []);
+});
+
+test('leftover look-alike players from an earlier import are merged; two platform accounts are not', () => {
+  const plan = planImport({
+    pages,
+    templates,
+    existingIds: ['JKsocksCollect', 'jksockscollect', 'JKsocks_Collect', 'Vermilion'],
+    platformIds: ['Vermilion'],
+  });
+  const kept = plan.events[0].players.find((p) => p.id.toLowerCase().startsWith('jksocks')).id;
+  assert.equal(kept, 'JKsocksCollect'); // the spelling the pages use most
+  assert.deepEqual(plan.playerMerges.sort((a, b) => a.from.localeCompare(b.from)), [
+    { from: 'JKsocks_Collect', into: 'JKsocksCollect' },
+    { from: 'jksockscollect', into: 'JKsocksCollect' },
+  ]);
+
+  const clash = planImport({
+    pages,
+    templates,
+    existingIds: ['jksockscollect', 'JKsocks_Collect'],
+    platformIds: ['jksockscollect', 'JKsocks_Collect'],
+  });
+  assert.equal(clash.playerMerges.length, 0);
+  assert.equal(clash.accountClashes.length, 1);
 });
