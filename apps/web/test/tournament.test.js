@@ -76,3 +76,17 @@ test("score outcome follows the server's winner and advancement rules", async ()
   assert.equal(scoreOutcome(2, 0, { format: "double_elim", loserAdvances: 1 }).advancer, 1);
   assert.equal(scoreOutcome(2, 0, { format: "swiss", loserAdvances: true }).advancer, 1);
 });
+
+test("two-stage start rules match the server", async () => {
+  const { startBlockedMessage, groupCountFor, groupLabel } = await import("../src/lib/tournament.js");
+  const two = { groupSize: 8, perGroup: 2, playoffFormat: "single_elim" };
+  assert.equal(startBlockedMessage("swiss", 32, 3, two), null);
+  assert.equal(startBlockedMessage("swiss", 9, 4, two), "最小的组只有 4 人，最多打 3 轮（当前 4 轮）");
+  assert.equal(startBlockedMessage("swiss", 9, 3, { ...two, perGroup: 5 }), "每组晋级 5 人，但最小的组只有 4 人");
+  assert.equal(
+    startBlockedMessage("swiss", 8, 3, { ...two, playoffFormat: "double_elim" }),
+    "淘汰赛至少需要 4 名晋级选手（当前 1 组 × 2 = 2 人）",
+  );
+  assert.equal(groupCountFor(30, 8), 4);
+  assert.equal(groupLabel(3), "C");
+});

@@ -63,10 +63,13 @@ export function isValidSwissRounds(value) {
 }
 
 /** Why the start button is disabled, or null when the tournament can start. */
-export function startBlockedMessage(format, playerCount, swissRounds = null) {
+export function startBlockedMessage(format, playerCount, swissRounds = null, twoStage = null) {
   const min = minPlayersForFormat(format);
   const count = Number(playerCount) || 0;
   if (count < min) return `至少 ${min} 人才能开赛（当前 ${count} 人）`;
+  if (format === "swiss" && twoStage?.playoffFormat) {
+    return twoStageStartMessage(count, { rounds: swissRounds, ...twoStage });
+  }
   if (format === "swiss") {
     if (!isValidSwissRounds(swissRounds)) return "请先设置瑞士轮轮数";
     if (swissRounds > count - 1) {
@@ -99,3 +102,37 @@ export const SCORE_PRESETS = [
   [0, 2],
   [0, 1],
 ];
+
+// Two-stage events (Swiss group stage + playoff). Mirrors apps/api/lib/group-stage.js.
+export const PLAYOFF_FORMATS = [
+  { id: "single_elim", label: "单败淘汰" },
+  { id: "double_elim", label: "双败淘汰" },
+];
+
+export function groupLabel(group) {
+  return String.fromCharCode(64 + Number(group || 1));
+}
+
+export function groupCountFor(playerCount, groupSize) {
+  const n = Number(playerCount) || 0;
+  const size = Number(groupSize) || 0;
+  if (!size || n <= 0) return 1;
+  return Math.max(1, Math.ceil(n / size));
+}
+
+/** Why a two-stage event cannot start yet, or null. */
+export function twoStageStartMessage(playerCount, { rounds, groupSize, perGroup, playoffFormat }) {
+  const count = Number(playerCount) || 0;
+  if (!isValidSwissRounds(rounds)) return "请先设置瑞士轮轮数";
+  const groups = groupCountFor(count, groupSize);
+  const smallest = Math.floor(count / groups);
+  if (smallest < 2) return `分成 ${groups} 组后每组不足 2 人（当前 ${count} 人）`;
+  if (rounds > smallest - 1) return `最小的组只有 ${smallest} 人，最多打 ${smallest - 1} 轮（当前 ${rounds} 轮）`;
+  const k = Number(perGroup) || 0;
+  if (k < 1) return "请先设置每组晋级人数";
+  if (k > smallest) return `每组晋级 ${k} 人，但最小的组只有 ${smallest} 人`;
+  const total = groups * k;
+  const min = playoffFormat === "double_elim" ? 4 : 2;
+  if (total < min) return `淘汰赛至少需要 ${min} 名晋级选手（当前 ${groups} 组 × ${k} = ${total} 人）`;
+  return null;
+}

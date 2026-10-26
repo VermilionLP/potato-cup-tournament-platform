@@ -19,7 +19,7 @@ function fakeDb(rows, tournament) {
     if (text.startsWith("SELECT loser_advances, format FROM axsuck.tournaments")) {
       return { rows: [tournament] };
     }
-    if (text.startsWith("SELECT format, grand_final_reset FROM axsuck.tournaments")) {
+    if (text.startsWith("SELECT format, playoff_format, grand_final_reset FROM axsuck.tournaments")) {
       return { rows: [tournament] };
     }
     if (

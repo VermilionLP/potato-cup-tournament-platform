@@ -1,4 +1,5 @@
 import { swissStartBlockedReason } from './swiss.js';
+import { twoStageStartBlockedReason } from './group-stage.js';
 
 // Shared rules for creating a tournament. Kept free of database access so the
 // behaviour can be unit tested without PostgreSQL.
@@ -46,10 +47,13 @@ export function minPlayersForFormat(format) {
  * Returns the reason a tournament cannot start yet, or null when it can.
  * Used to refuse the switch to `in_progress` with too few players.
  */
-export function startBlockedReason(format, playerCount, swissRounds = null) {
+export function startBlockedReason(format, playerCount, swissRounds = null, twoStage = null) {
   const min = minPlayersForFormat(format);
   const count = Number(playerCount) || 0;
   if (count < min) return `至少需要 ${min} 名选手才能开赛（当前 ${count} 人）`;
+  if (format === 'swiss' && twoStage?.playoffFormat) {
+    return twoStageStartBlockedReason(count, { rounds: swissRounds, ...twoStage });
+  }
   if (format === 'swiss') return swissStartBlockedReason(count, swissRounds);
   return null;
 }

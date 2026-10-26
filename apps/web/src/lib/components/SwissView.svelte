@@ -18,10 +18,27 @@
     banpickEnabled = false,
     onBanPick = () => {},
     onEditRounds = () => {},
+    // Two-stage events: [{ group, label, rows }] standings per group, how many
+    // advance from each group, and whether results are frozen (playoff started).
+    groups = [],
+    perGroup = 0,
+    locked = false,
   } = $props();
 
+  let selectedGroup = $state(1);
+  const hasGroups = $derived(groups.length > 1);
+  const activeGroup = $derived(
+    groups.length ? groups.find((g) => g.group === selectedGroup) || groups[0] : null,
+  );
+  const shownStandings = $derived(activeGroup ? activeGroup.rows : standings);
+  const shownMatches = $derived(
+    activeGroup && hasGroups
+      ? matches.filter((m) => (m.swiss_group || 1) === activeGroup.group)
+      : matches,
+  );
+
   const playerById = $derived(new Map((players || []).map((p) => [p.id, p])));
-  const rounds = $derived(groupSwissRounds(matches));
+  const rounds = $derived(groupSwissRounds(shownMatches));
   const currentRound = $derived(rounds.length ? rounds[rounds.length - 1].round : 0);
   const finished = $derived(
     rounds.length > 0 &&
@@ -96,7 +113,7 @@
     </div>
   {:else}
     {@const playable = isPlayable(match)}
-    {@const editable = isAdmin && canCorrectResult(match)}
+    {@const editable = isAdmin && !locked && canCorrectResult(match)}
     {@const clickable = playable || editable}
     {@const active = activeMatchId === match.id}
     <div
@@ -168,7 +185,9 @@
         {finished ? "全部轮次已完成" : `当前第 ${currentRound} 轮`}
       </span>
     {/if}
-    {#if isAdmin && status !== "completed"}
+    {#if locked}
+      <span class="rounded-full border border-border px-2 py-0.5 text-muted-foreground" title="淘汰赛已开始，小组赛结果已锁定">已锁定</span>
+    {:else if isAdmin && status !== "completed"}
       <button
         type="button"
         onclick={onEditRounds}
@@ -182,9 +201,29 @@
     </span>
   </div>
 
-  {#if standings.length}
+  {#if hasGroups}
+    <div class="flex flex-wrap gap-1.5">
+      {#each groups as g (g.group)}
+        <button
+          type="button"
+          onclick={() => (selectedGroup = g.group)}
+          class="rounded-full border px-3 py-0.5 text-xs font-semibold transition-colors cursor-pointer
+            {activeGroup?.group === g.group ? 'border-primary bg-primary text-primary-foreground' : 'border-border text-foreground/80 hover:border-foreground/40'}"
+        >
+          {g.label} 组 · {g.rows.length} 人
+        </button>
+      {/each}
+    </div>
+  {/if}
+
+  {#if shownStandings.length}
     <section>
-      <div class="mb-2 text-xs font-bold text-foreground">积分榜</div>
+      <div class="mb-2 flex items-center gap-2 text-xs font-bold text-foreground">
+        {activeGroup && hasGroups ? `${activeGroup.label} 组积分榜` : "积分榜"}
+        {#if perGroup}
+          <span class="text-[10px] font-normal text-muted-foreground">前 {perGroup} 名晋级淘汰赛</span>
+        {/if}
+      </div>
       <div class="overflow-x-auto rounded-xl border border-border/50 bg-background/25">
         <table class="w-full border-collapse text-left text-xs text-foreground/95">
           <thead>
@@ -198,8 +237,11 @@
             </tr>
           </thead>
           <tbody class="divide-y divide-border/30">
-            {#each standings as row (row.player_id)}
-              <tr class="{row.player_id === userId ? 'bg-primary/5' : ''} hover:bg-background/40">
+            {#each shownStandings as row (row.player_id)}
+              <tr
+                class="{row.player_id === userId ? 'bg-primary/5' : ''} hover:bg-background/40
+                  {perGroup && row.rank === perGroup ? 'border-b-2 border-dashed border-b-emerald-500/50' : ''}"
+              >
                 <td class="px-3 py-2 text-center font-bold {row.rank === 1 && finished ? 'text-amber-500' : 'text-primary'}">
                   {row.rank}
                 </td>
@@ -207,8 +249,11 @@
                   <div class="flex items-center gap-1.5">
                     <Flag code={playerById.get(row.player_id)?.flag} size={14} />
                     <span class="truncate font-semibold">{nameOf(row.player_id)}</span>
-                    {#if row.rank === 1 && finished}
+                    {#if row.rank === 1 && finished && !perGroup}
                       <CrownIcon class="h-3 w-3 text-amber-500" />
+                    {/if}
+                    {#if perGroup && row.rank <= perGroup}
+                      <span class="rounded bg-emerald-500/15 px-1 text-[9px] font-bold text-emerald-600 dark:text-emerald-400">晋级</span>
                     {/if}
                     {#if row.byes > 0}
                       <span class="text-[9px] text-muted-foreground" title="轮空计一胜">轮空</span>

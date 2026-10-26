@@ -26,6 +26,7 @@
   import SwissView from "$lib/components/SwissView.svelte";
   import BanPickPanel from "$lib/components/BanPickPanel.svelte";
   import ScoreForm from "$lib/components/ScoreForm.svelte";
+  import PlayoffPanel from "$lib/components/PlayoffPanel.svelte";
   import { canConfirm, confirmResult, initialBanPick, poolVehicles } from "$lib/banpick.js";
   import { defaultVehiclePools } from "$lib/data/vehiclePools.js";
   import {
@@ -37,6 +38,7 @@
     MAX_SWISS_ROUNDS,
     MIN_SWISS_ROUNDS,
     startBlockedMessage,
+    groupLabel,
   } from "$lib/tournament.js";
   import TierBadge from "$lib/components/TierBadge.svelte";
   import Flag from "$lib/components/Flag.svelte";
@@ -80,24 +82,43 @@
 
   let tid = $derived(page.params.id);
   let tournament = $state(null);
-  let totalRounds = $derived(maxRound(tournament?.matches || []));
+  // Two-stage events: Swiss group stage, then an elimination playoff. The
+  // elimination views and placements only ever see playoff matches.
+  let isTwoStage = $derived(tournament?.format === "swiss" && Boolean(tournament?.playoff_format));
+  let inPlayoffs = $derived(isTwoStage && tournament?.current_stage === "playoff");
+  let bracketMatches = $derived(
+    (tournament?.matches || []).filter((m) => (isTwoStage || tournament?.format !== "swiss") ? m.bracket !== "sw" : true),
+  );
+  // Overlay round controls need a non-empty list even before a playoff exists.
+  let overlayMatches = $derived(bracketMatches.length ? bracketMatches : tournament?.matches || []);
+  let stageView = $state(null); // "group" | "playoff"; null follows the current stage
+  // Before the playoff exists only the group stage can be shown.
+  let shownStage = $derived(inPlayoffs ? stageView || "playoff" : "group");
+  let playoffBusy = $state(false);
+  let totalRounds = $derived(maxRound(bracketMatches || []));
   let matchOrder = $derived(buildMatchOrder(tournament?.matches || []));
-  let isDoubleElim = $derived(tournament?.format === "double_elim");
+  let isDoubleElim = $derived(
+    tournament?.format === "double_elim" || (isTwoStage && tournament?.playoff_format === "double_elim"),
+  );
   let isSwiss = $derived(tournament?.format === "swiss");
   let banpickEnabled = $derived(tournament?.banpick_enabled !== false);
   let registeredCount = $derived(tournament?.players?.length || 0);
   let startBlocked = $derived(
-    startBlockedMessage(tournament?.format, registeredCount, tournament?.swiss_rounds),
+    startBlockedMessage(tournament?.format, registeredCount, tournament?.swiss_rounds, isTwoStage ? {
+      groupSize: tournament?.swiss_group_size,
+      perGroup: tournament?.advance_per_group,
+      playoffFormat: tournament?.playoff_format,
+    } : null),
   );
   let canStartTournament = $derived(!startBlocked);
   let wbTotalRounds = $derived(
-    bracketRoundTotal(tournament?.matches || [], "wb"),
+    bracketRoundTotal(bracketMatches || [], "wb"),
   );
   let lbTotalRounds = $derived(
-    bracketRoundTotal(tournament?.matches || [], "lb"),
+    bracketRoundTotal(bracketMatches || [], "lb"),
   );
   let grandFinalMatches = $derived(
-    (tournament?.matches || [])
+    (bracketMatches || [])
       .filter((m) => m.bracket === "gf")
       .sort((a, b) => a.position - b.position),
   );
@@ -557,7 +578,7 @@
   function currentOverlayRound() {
     return (
       tournament?.overlay_round ||
-      Math.max(...(tournament?.matches?.map((m) => m.round) || [1]))
+      Math.max(...(overlayMatches?.map((m) => m.round) || [1]))
     );
   }
 
@@ -715,8 +736,8 @@
       allPlayers = await API.listPlayers();
       initializeSeedOrder();
 
-      if (tournament?.matches?.length) {
-        obsIntroRound = Math.max(...tournament.matches.map((m) => m.round));
+      if (bracketMatches?.length) {
+        obsIntroRound = Math.max(...bracketMatches.map((m) => m.round));
       }
 
       // Auto-generate/refresh bracket preview on page load in registration phase
@@ -1004,6 +1025,48 @@
     }
   }
 
+  async function startPlayoffs() {
+    if (!ensureAdmin()) return;
+    const q = tournament?.group_stage?.qualifiers?.length || 0;
+    const warn = tournament?.group_stage?.warnings?.length
+      ? "\n\n注意：晋级线上有同分，由报名种子决定（详见名单上方提示）。"
+      : "";
+    if (!confirm(`按当前名单生成淘汰赛（${q} 人）？生成后小组赛结果将被锁定。${warn}`)) return;
+    playoffBusy = true;
+    try {
+      await API.startPlayoffs(tid);
+      stageView = null;
+      toast.success("淘汰赛已生成");
+      await load();
+    } catch (e) {
+      toast.error(e.message);
+    } finally {
+      playoffBusy = false;
+    }
+  }
+
+  async function withdrawPlayoffs() {
+    if (!ensureAdmin()) return;
+    const played = bracketMatches.some(
+      (m) => (m.status === "completed" || m.status === "walkover") && m.player1_id && m.player2_id,
+    );
+    const msg = played
+      ? "【警告】淘汰赛已有比赛打完！撤回会删除整个淘汰赛对阵和比分，回到小组赛（可修改小组赛结果）。确定继续吗？"
+      : "撤回淘汰赛并回到小组赛？淘汰赛对阵会被删除。";
+    if (!confirm(msg)) return;
+    playoffBusy = true;
+    try {
+      await API.withdrawPlayoffs(tid);
+      stageView = null;
+      toast.success("已撤回淘汰赛，回到小组赛");
+      await load();
+    } catch (e) {
+      toast.error(e.message);
+    } finally {
+      playoffBusy = false;
+    }
+  }
+
   async function editSwissRounds() {
     if (!ensureAdmin()) return;
     const current = tournament?.swiss_rounds ?? "";
@@ -1079,7 +1142,10 @@
     // Later Swiss rounds were paired from this result.
     if (match.bracket === "sw") {
       return tournament.matches.filter(
-        (x) => x.bracket === "sw" && x.round > match.round,
+        (x) =>
+          x.bracket === "sw" &&
+          x.round > match.round &&
+          (x.swiss_group ?? null) === (match.swiss_group ?? null),
       );
     }
     const ids = [];
@@ -1502,9 +1568,9 @@
   }
 
   function rounds() {
-    if (!tournament?.matches?.length) return [];
+    if (!bracketMatches?.length) return [];
     const map = {};
-    tournament.matches.forEach((m) => {
+    bracketMatches.forEach((m) => {
       if (m.round === 0) return; // Exclude Third Place Match from main columns
       if (!map[m.round]) map[m.round] = [];
       map[m.round].push(m);
@@ -1519,7 +1585,11 @@
 
   function matchRoundLabel(match) {
     if (!match) return "";
-    if (match.bracket === "sw") return `瑞士轮 第 ${match.round} 轮`;
+    if (match.bracket === "sw") {
+      return isTwoStage && match.swiss_group
+        ? `小组赛 ${groupLabel(match.swiss_group)} 组 第 ${match.round} 轮`
+        : `瑞士轮 第 ${match.round} 轮`;
+    }
     if (match.bracket === "wb") {
       return bracketRoundLabel("wb", match.round, wbTotalRounds);
     }
@@ -1546,7 +1616,7 @@
   // Find the match that decides the title: the grand final (or its reset) for
   // double elimination, the last match of the main bracket otherwise.
   let championshipMatch = $derived.by(() => {
-    if (!tournament?.matches?.length) return null;
+    if (!bracketMatches?.length) return null;
     if (isDoubleElim) {
       const played = grandFinalMatches.filter(
         (m) =>
@@ -1555,15 +1625,15 @@
       return played.length ? played[played.length - 1] : grandFinalMatches[0] || null;
     }
     return (
-      tournament.matches.find((m) => m.round === 1 && m.position === 1) || null
+      bracketMatches.find((m) => m.round === 1 && m.position === 1) || null
     );
   });
 
   // Find overall champion and runner-up
   let podium = $derived.by(() => {
-    if (!tournament?.matches?.length || tournament.status !== "completed")
+    if (!bracketMatches?.length || tournament.status !== "completed")
       return null;
-    if (isSwiss) {
+    if (isSwiss && !isTwoStage) {
       const table = tournament.standings || [];
       if (!table.length) return null;
       return { champion: table[0].player_id, runnerUp: table[1]?.player_id ?? null };
@@ -1580,10 +1650,10 @@
 
   // Derive standings for completed/in-progress stages
   let standings = $derived.by(() => {
-    if (!tournament?.matches?.length) return [];
+    if (!bracketMatches?.length) return [];
 
     // Swiss placements come straight from the server-side standings.
-    if (isSwiss) {
+    if (isSwiss && !isTwoStage) {
       const byId = new Map((tournament.players || []).map((p) => [p.id, p]));
       return (tournament.standings || []).map((row) => {
         const p = byId.get(row.player_id) || {};
@@ -1617,7 +1687,7 @@
       };
     });
 
-    const matches = tournament.matches || [];
+    const matches = bracketMatches || [];
     const finalMatch = championshipMatch;
 
     matches.forEach((m) => {
@@ -1705,7 +1775,34 @@
       }
     });
 
-    return Object.values(playersMap).sort((a, b) => {
+    let placed = Object.values(playersMap);
+    // Two-stage events: playoff placements for qualifiers; everyone else is
+    // listed after them by group rank.
+    let groupStageOut = [];
+    if (isTwoStage) {
+      const qualified = new Set((tournament.group_stage?.qualifiers || []).map((q) => q.player_id));
+      const rowsById = new Map();
+      for (const g of tournament.group_stage?.groups || []) {
+        for (const row of g.rows) rowsById.set(row.player_id, { ...row, label: g.label });
+      }
+      for (const p of placed) {
+        const row = rowsById.get(p.id);
+        if (row) {
+          p.matchesWon += row.wins;
+          p.matchesPlayed += row.wins + row.losses;
+        }
+      }
+      groupStageOut = placed
+        .filter((p) => !qualified.has(p.id))
+        .map((p) => {
+          const row = rowsById.get(p.id);
+          return { ...p, rank: row ? `小组赛出局（${row.label} 组第 ${row.rank} 名）` : "小组赛出局", groupRank: row?.rank ?? 99 };
+        })
+        .sort((a, b) => a.groupRank - b.groupRank || b.matchesWon - a.matchesWon);
+      placed = placed.filter((p) => qualified.has(p.id));
+    }
+
+    return placed.sort((a, b) => {
       const getPriority = (rankStr) => {
         if (rankStr.includes("1")) return 1;
         if (rankStr.includes("2")) return 2;
@@ -1716,7 +1813,7 @@
         return 100;
       };
       return getPriority(a.rank) - getPriority(b.rank);
-    });
+    }).concat(groupStageOut);
   });
 
   // Dynamic layout variables based on bracket size (exactly like overlay/+page.svelte)
@@ -1887,7 +1984,7 @@
 
   let adjustedTotalHeight = $derived.by(() => {
     let base = matchPositions.totalHeight;
-    if (tournament.hold_third_place && tournament.matches?.some(m => m.round === 0)) {
+    if (tournament.hold_third_place && bracketMatches?.some(m => m.round === 0)) {
       return Math.max(base, 190);
     }
     return base;
@@ -1897,7 +1994,7 @@
   let alivePlayerIds = $derived.by(() => {
     if (!tournament?.players) return new Set();
     const alive = new Set(tournament.players.map((p) => p.id));
-    (tournament.matches || []).forEach((m) => {
+    (bracketMatches || []).forEach((m) => {
       if (m.status === "completed" || m.status === "walkover") {
         const loserId =
           m.winner_id === m.player1_id ? m.player2_id : m.player1_id;
@@ -2222,7 +2319,7 @@
                 onchange={async (e) => {
                   const val = e.target.value;
                   try {
-                    await API.setOverlayState(tid, val, tournament.overlay_round || Math.max(...(tournament?.matches?.map(m => m.round) || [1])));
+                    await API.setOverlayState(tid, val, tournament.overlay_round || Math.max(...(overlayMatches?.map(m => m.round) || [1])));
                     clearAutoHudTimer();
                     toast.success("大屏显示场景已切换为: " + val.toUpperCase());
                   } catch (err) {
@@ -2244,7 +2341,7 @@
                 <span class="text-[11px] font-semibold text-muted-foreground shrink-0">展示轮次:</span>
                 <select
                   class="h-7 rounded border border-input bg-background px-2 text-[10px] cursor-pointer"
-                  value={tournament.overlay_round || Math.max(...(tournament?.matches?.map(m => m.round) || [1]))}
+                  value={tournament.overlay_round || Math.max(...(overlayMatches?.map(m => m.round) || [1]))}
                   onchange={async (e) => {
                     const val = parseInt(e.target.value);
                     try {
@@ -2255,7 +2352,7 @@
                     }
                   }}
                 >
-                  {#each Array.from({length: Math.max(...(tournament?.matches?.map(m => m.round) || [1]))}, (_, i) => i + 1).reverse() as r}
+                  {#each Array.from({length: Math.max(...(overlayMatches?.map(m => m.round) || [1]))}, (_, i) => i + 1).reverse() as r}
                     <option value={r}>{roundLabel(r, totalRounds)}</option>
                   {/each}
                 </select>
@@ -2308,7 +2405,7 @@
                     class="h-5 rounded border border-input bg-background px-1 text-[10px]"
                     bind:value={obsIntroRound}
                   >
-                    {#each Array.from({length: Math.max(...(tournament?.matches?.map(m => m.round) || [1]))}, (_, i) => i + 1).reverse() as r}
+                    {#each Array.from({length: Math.max(...(overlayMatches?.map(m => m.round) || [1]))}, (_, i) => i + 1).reverse() as r}
                       <option value={r}>{roundLabel(r, totalRounds)}</option>
                     {/each}
                   </select>
@@ -2439,7 +2536,7 @@
         {/if}
       </Card.Header>
 
-      {#if sectionCount > 1 && !isDoubleElim && !isSwiss}
+      {#if sectionCount > 1 && !isDoubleElim && !(isSwiss && (!isTwoStage || shownStage === "group"))}
         <div
           class="flex flex-wrap items-center gap-2 px-3 sm:px-6 pt-4"
         >
@@ -2493,7 +2590,37 @@
       {/if}
 
       <Card.Content class="p-3 sm:p-6 overflow-x-auto relative min-h-100">
-        {#if isSwiss}
+        {#if isTwoStage}
+          <div class="mb-4 space-y-3">
+            <div class="flex flex-wrap items-center gap-1.5">
+              {#each [{ id: "group", label: "小组赛" }, { id: "playoff", label: "淘汰赛" }] as st (st.id)}
+                <button
+                  type="button"
+                  disabled={st.id === "playoff" && !inPlayoffs}
+                  onclick={() => (stageView = st.id)}
+                  class="rounded-full border px-3 py-1 text-xs font-bold transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-40
+                    {shownStage === st.id ? 'border-primary bg-primary text-primary-foreground' : 'border-border text-foreground/80 hover:border-foreground/40'}"
+                >
+                  {st.label}
+                </button>
+              {/each}
+            </div>
+            {#if tournament.status !== "registration"}
+              <PlayoffPanel
+                groupStage={tournament.group_stage}
+                players={tournament.players || []}
+                playoffFormat={tournament.playoff_format}
+                {inPlayoffs}
+                status={tournament.status}
+                {isAdmin}
+                busy={playoffBusy}
+                onStart={startPlayoffs}
+                onWithdraw={withdrawPlayoffs}
+              />
+            {/if}
+          </div>
+        {/if}
+        {#if isSwiss && (!isTwoStage || shownStage === "group")}
           <SwissView
             matches={tournament.matches || []}
             players={tournament.players || []}
@@ -2508,10 +2635,13 @@
             onEditRounds={editSwissRounds}
             banpickEnabled={banpickEnabled}
             onBanPick={openBanPick}
+            groups={isTwoStage ? tournament.group_stage?.groups || [] : []}
+            perGroup={isTwoStage ? tournament.advance_per_group || 0 : 0}
+            locked={inPlayoffs}
           />
         {:else if isDoubleElim}
           <DoubleElimBracket
-            matches={tournament.matches || []}
+            matches={bracketMatches || []}
             players={tournament.players || []}
             status={tournament.status}
             activeMatchId={tournament.active_match_id}
@@ -2524,7 +2654,7 @@
             onBanPick={openBanPick}
           />
         {:else}
-        {#if tournament.matches?.length > 0}
+        {#if bracketMatches?.length > 0}
           <div class="flex justify-start items-stretch min-w-max py-4 {bracketSpecs.colGap}">
             {#each displayRounds as r, colIdx (r.round)}
               <div class="shrink-0 flex flex-col justify-start h-full {bracketSpecs.cardWidth}">
@@ -2720,7 +2850,7 @@
                   {/each}
 
                   {#if colIdx === displayRounds.length - 1}
-                    {@const thirdPlaceMatch = tournament.matches.find(m => m.round === 0)}
+                    {@const thirdPlaceMatch = bracketMatches.find(m => m.round === 0)}
                     {#if thirdPlaceMatch}
                       {@const tp1 = tournament.players?.find(p => p.id === thirdPlaceMatch.player1_id)}
                       {@const tp2 = tournament.players?.find(p => p.id === thirdPlaceMatch.player2_id)}
@@ -2901,7 +3031,9 @@
           • 创建于 {new Date(
             tournament.created_at,
           ).toLocaleDateString("zh-CN")}
-          • {isSwiss ? "计分规则" : "晋级规则"}: <span class="font-bold text-primary">{isSwiss ? `积分制 · ${tournament.swiss_rounds ?? "?"} 轮` : advancementLabel(tournament.loser_advances)}</span>
+          • {isSwiss ? "赛制结构" : "晋级规则"}: <span class="font-bold text-primary">{isTwoStage
+            ? `小组赛 ${tournament.swiss_rounds ?? "?"} 轮（${tournament.swiss_group_size ? `每组 ${tournament.swiss_group_size} 人` : "不分组"}，每组前 ${tournament.advance_per_group} 名晋级）→ ${tournament.playoff_format === "double_elim" ? "双败" : "单败"}淘汰赛`
+            : isSwiss ? `积分制 · ${tournament.swiss_rounds ?? "?"} 轮` : advancementLabel(tournament.loser_advances)}</span>
         </p>
         {#if tournament.scheduled_time}
           <div

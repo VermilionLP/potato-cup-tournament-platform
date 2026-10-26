@@ -4,6 +4,19 @@ import { requireAdmin, requireMatchPlayerOrAdmin } from '../lib/admin.js';
 export default async function matchesRoutes(fastify) {
   const repo = MatchRepo(fastify.db);
 
+  // Playoff seeding came from the group stage, so its results are frozen
+  // until the playoff is withdrawn.
+  async function rejectGroupEditDuringPlayoffs(match) {
+    if (match.bracket !== 'sw') return;
+    const res = await fastify.db.query(
+      'SELECT current_stage FROM axsuck.tournaments WHERE id = $1',
+      [match.tournament_id],
+    );
+    if (res.rows[0]?.current_stage === 'playoff') {
+      throw fastify.httpErrors.badRequest('淘汰赛已开始，修改小组赛结果前请先撤回淘汰赛');
+    }
+  }
+
   fastify.post('/tournaments/:id/matches/:matchId/result', async (req) => {
     const { score1, score2 } = req.body;
     if (score1 == null || score2 == null) {
@@ -15,6 +28,7 @@ export default async function matchesRoutes(fastify) {
       throw fastify.httpErrors.notFound('Match not found in this tournament');
     }
     requireMatchPlayerOrAdmin(fastify, req, match);
+    await rejectGroupEditDuringPlayoffs(match);
 
     const updated = await repo.submitResult(match.id, score1, score2);
     const advanced = await repo.advanceWinner(req.params.id, match.id);
@@ -35,6 +49,7 @@ export default async function matchesRoutes(fastify) {
       throw fastify.httpErrors.notFound('Match not found in this tournament');
     }
     requireMatchPlayerOrAdmin(fastify, req, match);
+    await rejectGroupEditDuringPlayoffs(match);
     if (winner_id !== match.player1_id && winner_id !== match.player2_id) {
       throw fastify.httpErrors.badRequest('winner_id must be one of the match players');
     }
@@ -88,6 +103,7 @@ export default async function matchesRoutes(fastify) {
     const matchId = parseInt(req.params.matchId);
     const match = await repo.getById(matchId);
     if (!match) throw fastify.httpErrors.notFound('Match not found');
+    await rejectGroupEditDuringPlayoffs(match);
 
     const client = await fastify.db.connect();
     try {
@@ -162,13 +178,15 @@ export default async function matchesRoutes(fastify) {
         }
       }
 
-      // Swiss rounds after this one were paired from its result, so they go.
+      // Swiss rounds after this one were paired from its result, so they go
+      // (only in the match's own group for two-stage events).
       if (match.bracket === 'sw') {
         const later = await client.query(`
           DELETE FROM axsuck.matches
           WHERE tournament_id = $1 AND bracket = 'sw' AND round > $2
+            AND swiss_group IS NOT DISTINCT FROM $3
           RETURNING id
-        `, [match.tournament_id, match.round]);
+        `, [match.tournament_id, match.round, match.swiss_group ?? null]);
         const removed = later.rows.map((r) => r.id);
         if (removed.length > 0) {
           await client.query(`

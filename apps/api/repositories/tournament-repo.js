@@ -7,6 +7,7 @@ import {
   SUPPORTED_FORMATS,
 } from '../lib/tournament-config.js';
 import { parseSwissRounds } from '../lib/swiss.js';
+import { PLAYOFF_FORMATS } from '../lib/group-stage.js';
 
 export function TournamentRepo(db) {
   async function list() {
@@ -41,13 +42,15 @@ export function TournamentRepo(db) {
     return res.rows[0] || null;
   }
 
-  async function create({ id, name, description, player_capacity, hold_third_place, loser_advances, scheduled_time, game_mode, vehicle_pool, format, grand_final_reset, swiss_rounds, banpick_enabled }) {
+  async function create({ id, name, description, player_capacity, hold_third_place, loser_advances, scheduled_time, game_mode, vehicle_pool, format, grand_final_reset, swiss_rounds, banpick_enabled, playoff_format, swiss_group_size, advance_per_group }) {
     const scheduledTime = String(scheduled_time || '').trim();
     const bracketFormat = SUPPORTED_FORMATS.includes(format) ? format : SUPPORTED_FORMATS[0];
+    const playoffFormat = bracketFormat === 'swiss' && PLAYOFF_FORMATS.includes(playoff_format) ? playoff_format : null;
     await db.query(`
       INSERT INTO axsuck.tournaments
-        (id, name, description, status, player_capacity, hold_third_place, loser_advances, scheduled_time, game_mode, vehicle_pool, format, grand_final_reset, swiss_rounds, banpick_enabled)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+        (id, name, description, status, player_capacity, hold_third_place, loser_advances, scheduled_time, game_mode, vehicle_pool, format, grand_final_reset, swiss_rounds, banpick_enabled,
+         playoff_format, swiss_group_size, advance_per_group)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
     `, [
       id,
       name,
@@ -60,9 +63,12 @@ export function TournamentRepo(db) {
       normalizeGameMode(game_mode),
       normalizeVehiclePool(vehicle_pool),
       bracketFormat,
-      bracketFormat === 'double_elim' && grand_final_reset !== false,
+      (bracketFormat === 'double_elim' || playoffFormat === 'double_elim') && grand_final_reset !== false,
       bracketFormat === 'swiss' ? parseSwissRounds(swiss_rounds) : null,
       banpick_enabled !== false,
+      playoffFormat,
+      playoffFormat && Number(swiss_group_size) ? Number(swiss_group_size) : null,
+      playoffFormat ? Number(advance_per_group) || null : null,
     ]);
     return getById(id);
   }
@@ -114,6 +120,7 @@ export function TournamentRepo(db) {
         COALESCE(NULLIF(tp.link, ''), p.link, '') AS link, 
         p.bnet_ids,
         tp.seed, 
+        tp.swiss_group,
         tp.registered_at
       FROM axsuck.tournament_players tp
       JOIN axsuck.players p ON p.id = tp.player_id

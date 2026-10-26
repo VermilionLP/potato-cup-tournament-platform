@@ -13,6 +13,15 @@ import {
   SUPPORTED_FORMATS,
 } from '../lib/tournament-config.js';
 import {
+  groupStageComplete,
+  groupStandings,
+  MAX_GROUP_SIZE,
+  MIN_GROUP_SIZE,
+  PLAYOFF_FORMATS,
+  seedPlayoffs,
+  selectQualifiers,
+} from '../lib/group-stage.js';
+import {
   computeStandings,
   currentSwissRound,
   MAX_SWISS_ROUNDS,
@@ -20,6 +29,31 @@ import {
   parseSwissRounds,
   SWISS_BRACKET,
 } from '../lib/swiss.js';
+
+// Group standings, qualifiers (in playoff seed order) and tie warnings of a
+// two-stage event.
+function buildGroupStage(t, players, swissMatches) {
+  const field = players.map((p) => ({ id: p.id, seed: p.seed, swiss_group: p.swiss_group }));
+  const groups = groupStandings(field, swissMatches);
+  const perGroup = Number(t.advance_per_group) || 1;
+  const { qualifiers, warnings } = selectQualifiers(groups, perGroup);
+  const { seeded, sameGroupPairs } = seedPlayoffs(qualifiers);
+  const complete = swissMatches.length > 0 && groupStageComplete(field, swissMatches, Number(t.swiss_rounds) || 0);
+  return {
+    groups,
+    per_group: perGroup,
+    complete,
+    qualifiers: seeded.map((q, i) => ({
+      player_id: q.player_id,
+      group: q.group,
+      group_label: q.group_label,
+      group_rank: q.group_rank,
+      playoff_seed: i + 1,
+    })),
+    warnings,
+    same_group_pairs: sameGroupPairs,
+  };
+}
 
 export default async function tournamentsRoutes(fastify) {
   const repo = TournamentRepo(fastify.db);
@@ -70,11 +104,12 @@ export default async function tournamentsRoutes(fastify) {
       };
     });
 
-    const standings = t.format === 'swiss'
-      ? computeStandings(
-          players.map((p) => ({ id: p.id, seed: p.seed })),
-          ms.filter((m) => m.bracket === SWISS_BRACKET),
-        )
+    const swissMatches = ms.filter((m) => m.bracket === SWISS_BRACKET);
+    const standings = t.format === 'swiss' && !t.playoff_format
+      ? computeStandings(players.map((p) => ({ id: p.id, seed: p.seed })), swissMatches)
+      : undefined;
+    const groupStage = t.format === 'swiss' && t.playoff_format
+      ? buildGroupStage(t, players, swissMatches)
       : undefined;
 
     return {
@@ -82,6 +117,7 @@ export default async function tournamentsRoutes(fastify) {
       players: playersWithLadder,
       matches: ms,
       standings,
+      group_stage: groupStage,
       votes,
       custom_votes,
       accounts: tournamentAccounts
@@ -174,6 +210,9 @@ export default async function tournamentsRoutes(fastify) {
       grand_final_reset,
       swiss_rounds,
       banpick_enabled,
+      playoff_format,
+      swiss_group_size,
+      advance_per_group,
     } = req.body;
     if (!id || !name) throw fastify.httpErrors.badRequest('id and name are required');
     const existing = await repo.getById(id);
@@ -193,6 +232,23 @@ export default async function tournamentsRoutes(fastify) {
     if (format === 'swiss' && !parseSwissRounds(swiss_rounds)) {
       throw fastify.httpErrors.badRequest(`瑞士轮需要设置轮数（${MIN_SWISS_ROUNDS}-${MAX_SWISS_ROUNDS}）`);
     }
+    if (format === 'swiss' && playoff_format) {
+      if (!PLAYOFF_FORMATS.includes(playoff_format)) {
+        throw fastify.httpErrors.badRequest(`playoff_format must be one of: ${PLAYOFF_FORMATS.join(', ')}`);
+      }
+      const size = swiss_group_size === null || swiss_group_size === undefined || swiss_group_size === ''
+        ? null : Number(swiss_group_size);
+      if (size !== null && (!Number.isInteger(size) || size < MIN_GROUP_SIZE || size > MAX_GROUP_SIZE)) {
+        throw fastify.httpErrors.badRequest(`每组人数必须在 ${MIN_GROUP_SIZE}-${MAX_GROUP_SIZE} 之间（留空表示不分组）`);
+      }
+      const k = Number(advance_per_group);
+      if (!Number.isInteger(k) || k < 1 || k > MAX_GROUP_SIZE) {
+        throw fastify.httpErrors.badRequest('请设置每组晋级人数（至少 1 人）');
+      }
+      if (size !== null && k > size) {
+        throw fastify.httpErrors.badRequest(`每组晋级人数（${k}）不能多于每组人数（${size}）`);
+      }
+    }
     return await repo.create({
       id,
       name,
@@ -207,6 +263,9 @@ export default async function tournamentsRoutes(fastify) {
       grand_final_reset,
       swiss_rounds,
       banpick_enabled,
+      playoff_format,
+      swiss_group_size,
+      advance_per_group,
     });
   });
 
@@ -257,7 +316,11 @@ export default async function tournamentsRoutes(fastify) {
     const wasVoting = t.status === 'voting';
 
     if (status === 'in_progress' && t.status !== 'in_progress') {
-      const reason = startBlockedReason(t.format, t.player_count, t.swiss_rounds);
+      const reason = startBlockedReason(t.format, t.player_count, t.swiss_rounds, t.playoff_format ? {
+        groupSize: t.swiss_group_size,
+        perGroup: t.advance_per_group,
+        playoffFormat: t.playoff_format,
+      } : null);
       if (reason) throw fastify.httpErrors.badRequest(reason);
     }
 
@@ -265,7 +328,7 @@ export default async function tournamentsRoutes(fastify) {
     try {
       await client.query('BEGIN');
       if (status === 'registration' || status === 'voting') {
-        await client.query('UPDATE axsuck.tournaments SET active_match_id = NULL WHERE id = $1', [req.params.id]);
+        await client.query(`UPDATE axsuck.tournaments SET active_match_id = NULL, current_stage = 'group' WHERE id = $1`, [req.params.id]);
         await client.query('DELETE FROM axsuck.matches WHERE tournament_id = $1', [req.params.id]);
       }
       await client.query('COMMIT');
@@ -312,6 +375,7 @@ export default async function tournamentsRoutes(fastify) {
     if (!t) throw fastify.httpErrors.notFound('Tournament not found');
     if (t.format !== 'swiss') throw fastify.httpErrors.badRequest('该赛事不是瑞士轮');
     if (t.status === 'completed') throw fastify.httpErrors.badRequest('赛事已结束，不能修改轮数');
+    if (t.current_stage === 'playoff') throw fastify.httpErrors.badRequest('淘汰赛已开始，不能再修改小组赛轮数');
     const rounds = parseSwissRounds(req.body?.swiss_rounds);
     if (!rounds) {
       throw fastify.httpErrors.badRequest(`轮数必须是 ${MIN_SWISS_ROUNDS}-${MAX_SWISS_ROUNDS} 之间的整数`);
@@ -324,6 +388,35 @@ export default async function tournamentsRoutes(fastify) {
     if (t.status === 'in_progress') await matches.advanceSwiss(req.params.id);
     fastify.tournamentEvents.emit(`update:${req.params.id}`, { type: 'swiss_rounds_changed', swiss_rounds: rounds });
     return updated;
+  });
+
+  // Two-stage events: build the playoff from the group-stage qualifiers.
+  fastify.post('/tournaments/:id/playoffs', async (req) => {
+    requireAdmin(fastify, req);
+    const t = await repo.getById(req.params.id);
+    if (!t) throw fastify.httpErrors.notFound('Tournament not found');
+    if (t.format !== 'swiss' || !t.playoff_format) throw fastify.httpErrors.badRequest('该赛事没有淘汰赛阶段');
+    if (t.status !== 'in_progress') throw fastify.httpErrors.badRequest('赛事进行中才能进入淘汰赛');
+    if (t.current_stage === 'playoff') throw fastify.httpErrors.badRequest('淘汰赛已经生成');
+    const players = await repo.getPlayers(req.params.id);
+    const swissMatches = (await repo.getMatches(req.params.id)).filter((m) => m.bracket === SWISS_BRACKET);
+    const stage = buildGroupStage(t, players, swissMatches);
+    if (!stage.complete) throw fastify.httpErrors.badRequest('小组赛还没有全部打完');
+    await matches.generatePlayoffs(req.params.id, stage.qualifiers.map((q) => q.player_id), t.playoff_format);
+    fastify.tournamentEvents.emit(`update:${req.params.id}`, { type: 'playoffs_generated' });
+    return await repo.getById(req.params.id);
+  });
+
+  // Back to the group stage: deletes the playoff bracket and its results.
+  fastify.delete('/tournaments/:id/playoffs', async (req) => {
+    requireAdmin(fastify, req);
+    const t = await repo.getById(req.params.id);
+    if (!t) throw fastify.httpErrors.notFound('Tournament not found');
+    if (t.current_stage !== 'playoff') throw fastify.httpErrors.badRequest('淘汰赛还没有开始');
+    if (t.status === 'completed') throw fastify.httpErrors.badRequest('赛事已结束，请先重新打开比赛');
+    await matches.clearPlayoffs(req.params.id);
+    fastify.tournamentEvents.emit(`update:${req.params.id}`, { type: 'playoffs_cleared' });
+    return { success: true };
   });
 
   fastify.post('/tournaments/:id/overlay-state', async (req) => {

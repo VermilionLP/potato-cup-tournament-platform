@@ -9,6 +9,7 @@ import {
   SWISS_BRACKET,
   swissRoundComplete,
 } from '../lib/swiss.js';
+import { assignGroups, groupCountFor } from '../lib/group-stage.js';
 
 export function MatchRepo(db) {
   async function getById(id, runner = db) {
@@ -166,45 +167,7 @@ export function MatchRepo(db) {
       const rows = resolveDoubleElimRows(players.map((p) => p.id));
 
       await client.query('DELETE FROM axsuck.matches WHERE tournament_id = $1', [tournamentId]);
-
-      const idByKey = new Map();
-      for (const row of rows) {
-        const res = await client.query(`
-          INSERT INTO axsuck.matches
-            (tournament_id, round, position, bracket, player1_id, player2_id,
-             winner_id, status, slot1_void, slot2_void)
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-          RETURNING id
-        `, [
-          tournamentId,
-          row.round,
-          row.position,
-          row.bracket,
-          row.player1_id,
-          row.player2_id,
-          row.winner_id,
-          row.status,
-          row.slot1_void,
-          row.slot2_void,
-        ]);
-        idByKey.set(row.key, res.rows[0].id);
-      }
-
-      for (const row of rows) {
-        if (!row.next_key && !row.loser_next_key) continue;
-        await client.query(`
-          UPDATE axsuck.matches
-          SET next_match_id = $1, next_slot = $2,
-              loser_next_match_id = $3, loser_next_slot = $4
-          WHERE id = $5
-        `, [
-          row.next_key ? idByKey.get(row.next_key) : null,
-          row.next_slot ?? null,
-          row.loser_next_key ? idByKey.get(row.loser_next_key) : null,
-          row.loser_next_slot ?? null,
-          idByKey.get(row.key),
-        ]);
-      }
+      await insertDoubleElimRows(client, tournamentId, rows);
 
       await client.query('COMMIT');
     } catch (err) {
@@ -217,15 +180,21 @@ export function MatchRepo(db) {
     return getByTournament(tournamentId);
   }
 
-  async function insertSwissRound(client, tournamentId, round, pairs) {
-    let position = 0;
+  // Inserts one Swiss round for one group. Positions are numbered across all
+  // groups of the round, continuing after the boards already in it.
+  async function insertSwissRound(client, tournamentId, round, pairs, group = null) {
+    const posRes = await client.query(`
+      SELECT COALESCE(MAX(position), 0) AS max FROM axsuck.matches
+      WHERE tournament_id = $1 AND bracket = $2 AND round = $3
+    `, [tournamentId, SWISS_BRACKET, round]);
+    let position = Number(posRes.rows[0]?.max) || 0;
     for (const pair of pairs) {
       position += 1;
       const isBye = !pair.player2_id;
       await client.query(`
         INSERT INTO axsuck.matches
-          (tournament_id, round, position, bracket, player1_id, player2_id, winner_id, status)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+          (tournament_id, round, position, bracket, player1_id, player2_id, winner_id, status, swiss_group)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
       `, [
         tournamentId,
         round,
@@ -235,20 +204,40 @@ export function MatchRepo(db) {
         pair.player2_id ?? null,
         isBye ? pair.player1_id : null,
         isBye ? 'completed' : 'pending',
+        group,
       ]);
     }
   }
 
   // Swiss round 1 is generated (and regenerated as a preview) like any other
   // bracket; later rounds are created as soon as the previous one finishes.
+  // Two-stage events split the field into groups (snake order by seed) first.
   async function generateSwissFirstRound(tournamentId) {
     const client = await db.connect();
     try {
       await client.query('BEGIN');
       const players = await loadSeededPlayers(client, tournamentId);
       if (players.length < 2) throw new Error('瑞士轮至少需要 2 名选手');
+      const tRes = await client.query(
+        'SELECT playoff_format, swiss_group_size FROM axsuck.tournaments WHERE id = $1',
+        [tournamentId],
+      );
+      const t = tRes.rows[0] || {};
+      const groupCount = t.playoff_format ? groupCountFor(players.length, t.swiss_group_size) : 1;
+      const groups = assignGroups(players, groupCount);
+
       await client.query('DELETE FROM axsuck.matches WHERE tournament_id = $1', [tournamentId]);
-      await insertSwissRound(client, tournamentId, 1, pairSwissRound(players, [], 1));
+      await client.query(`UPDATE axsuck.tournaments SET current_stage = 'group' WHERE id = $1`, [tournamentId]);
+      for (const p of players) {
+        await client.query(`
+          UPDATE axsuck.tournament_players SET swiss_group = $1
+          WHERE tournament_id = $2 AND player_id = $3
+        `, [groups.get(p.id), tournamentId, p.id]);
+      }
+      for (let g = 1; g <= groupCount; g += 1) {
+        const own = players.filter((p) => groups.get(p.id) === g);
+        await insertSwissRound(client, tournamentId, 1, pairSwissRound(own, [], 1), g);
+      }
       await client.query('COMMIT');
     } catch (err) {
       await client.query('ROLLBACK');
@@ -260,10 +249,10 @@ export function MatchRepo(db) {
   }
 
   /**
-   * Creates the next Swiss round when the current one is finished and the
-   * tournament has rounds left. Returns the new round number, or null.
-   * Serialised per tournament so two results finishing a round at the same
-   * time cannot both create it.
+   * Creates the next Swiss round for every group whose current round is
+   * finished and that has rounds left. Returns the lowest new round number,
+   * or null. Serialised per tournament so two results finishing a round at the
+   * same time cannot both create it.
    */
   async function advanceSwiss(tournamentId) {
     const client = await db.connect();
@@ -271,28 +260,135 @@ export function MatchRepo(db) {
       await client.query('BEGIN');
       await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', [`swiss:${tournamentId}`]);
       const tRes = await client.query(
-        'SELECT swiss_rounds FROM axsuck.tournaments WHERE id = $1',
+        'SELECT swiss_rounds, current_stage FROM axsuck.tournaments WHERE id = $1',
         [tournamentId],
       );
       const totalRounds = Number(tRes.rows[0]?.swiss_rounds) || 0;
+      if (tRes.rows[0]?.current_stage === 'playoff') {
+        await client.query('COMMIT');
+        return null;
+      }
       const mRes = await client.query(
         'SELECT * FROM axsuck.matches WHERE tournament_id = $1 AND bracket = $2',
         [tournamentId, SWISS_BRACKET],
       );
-      const matches = mRes.rows;
-      const round = currentSwissRound(matches);
-      if (round === 0 || round >= totalRounds || !swissRoundComplete(matches, round)) {
-        await client.query('COMMIT');
-        return null;
-      }
       const pRes = await client.query(`
-        SELECT player_id AS id, seed FROM axsuck.tournament_players
+        SELECT player_id AS id, seed, swiss_group FROM axsuck.tournament_players
         WHERE tournament_id = $1
         ORDER BY seed IS NULL, seed ASC, registered_at ASC
       `, [tournamentId]);
-      await insertSwissRound(client, tournamentId, round + 1, pairSwissRound(pRes.rows, matches, round + 1));
+      const groupIds = [...new Set(pRes.rows.map((p) => p.swiss_group || 1))].sort((a, b) => a - b);
+      let created = null;
+      for (const g of groupIds) {
+        const own = mRes.rows.filter((m) => (m.swiss_group || 1) === g);
+        const round = currentSwissRound(own);
+        if (round === 0 || round >= totalRounds || !swissRoundComplete(own, round)) continue;
+        const ownPlayers = pRes.rows.filter((p) => (p.swiss_group || 1) === g);
+        const groupValue = own[0]?.swiss_group ?? null;
+        await insertSwissRound(client, tournamentId, round + 1, pairSwissRound(ownPlayers, own, round + 1), groupValue);
+        created = created === null ? round + 1 : Math.min(created, round + 1);
+      }
       await client.query('COMMIT');
-      return round + 1;
+      return created;
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+  }
+
+  async function insertDoubleElimRows(client, tournamentId, rows) {
+    const idByKey = new Map();
+    for (const row of rows) {
+      const res = await client.query(`
+        INSERT INTO axsuck.matches
+          (tournament_id, round, position, bracket, player1_id, player2_id,
+           winner_id, status, slot1_void, slot2_void)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        RETURNING id
+      `, [
+        tournamentId,
+        row.round,
+        row.position,
+        row.bracket,
+        row.player1_id,
+        row.player2_id,
+        row.winner_id,
+        row.status,
+        row.slot1_void,
+        row.slot2_void,
+      ]);
+      idByKey.set(row.key, res.rows[0].id);
+    }
+    for (const row of rows) {
+      if (!row.next_key && !row.loser_next_key) continue;
+      await client.query(`
+        UPDATE axsuck.matches
+        SET next_match_id = $1, next_slot = $2,
+            loser_next_match_id = $3, loser_next_slot = $4
+        WHERE id = $5
+      `, [
+        row.next_key ? idByKey.get(row.next_key) : null,
+        row.next_slot ?? null,
+        row.loser_next_key ? idByKey.get(row.loser_next_key) : null,
+        row.loser_next_slot ?? null,
+        idByKey.get(row.key),
+      ]);
+    }
+  }
+
+  /**
+   * Builds the playoff of a two-stage event from qualifier ids in seed order.
+   * Swiss matches are kept; any previous playoff is replaced.
+   */
+  async function generatePlayoffs(tournamentId, seededIds, format) {
+    const client = await db.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query(`
+        UPDATE axsuck.tournaments SET active_match_id = NULL
+        WHERE id = $1 AND active_match_id IN (
+          SELECT id FROM axsuck.matches WHERE tournament_id = $1 AND bracket <> $2)
+      `, [tournamentId, SWISS_BRACKET]);
+      await client.query(
+        'DELETE FROM axsuck.matches WHERE tournament_id = $1 AND bracket <> $2',
+        [tournamentId, SWISS_BRACKET],
+      );
+      if (format === 'double_elim') {
+        await insertDoubleElimRows(client, tournamentId, resolveDoubleElimRows(seededIds));
+      } else {
+        const bracket = describeBracket(seededIds.length);
+        const slots = seedingOrder(bracket.size).map((seed) => seededIds[seed - 1] ?? null);
+        await buildRounds(tournamentId, slots, bracket.totalRounds, client);
+      }
+      await client.query(`UPDATE axsuck.tournaments SET current_stage = 'playoff' WHERE id = $1`, [tournamentId]);
+      await client.query('COMMIT');
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+    return getByTournament(tournamentId);
+  }
+
+  /** Removes the playoff and returns a two-stage event to its group stage. */
+  async function clearPlayoffs(tournamentId) {
+    const client = await db.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query(`
+        UPDATE axsuck.tournaments SET active_match_id = NULL
+        WHERE id = $1 AND active_match_id IN (
+          SELECT id FROM axsuck.matches WHERE tournament_id = $1 AND bracket <> $2)
+      `, [tournamentId, SWISS_BRACKET]);
+      await client.query(
+        'DELETE FROM axsuck.matches WHERE tournament_id = $1 AND bracket <> $2',
+        [tournamentId, SWISS_BRACKET],
+      );
+      await client.query(`UPDATE axsuck.tournaments SET current_stage = 'group' WHERE id = $1`, [tournamentId]);
+      await client.query('COMMIT');
     } catch (err) {
       await client.query('ROLLBACK');
       throw err;
@@ -411,11 +507,12 @@ export function MatchRepo(db) {
     if (match.bracket !== 'gf' || match.position !== 1) return null;
 
     const info = await db.query(
-      'SELECT format, grand_final_reset FROM axsuck.tournaments WHERE id = $1',
+      'SELECT format, playoff_format, grand_final_reset FROM axsuck.tournaments WHERE id = $1',
       [tournamentId],
     );
     const tournament = info.rows[0];
-    if (!tournament || tournament.format !== 'double_elim' || !tournament.grand_final_reset) {
+    const doubleElim = tournament?.format === 'double_elim' || tournament?.playoff_format === 'double_elim';
+    if (!tournament || !doubleElim || !tournament.grand_final_reset) {
       return null;
     }
 
@@ -457,7 +554,7 @@ export function MatchRepo(db) {
     await db.query('DELETE FROM axsuck.matches WHERE tournament_id = $1', [tournamentId]);
   }
 
-  return { getById, getByTournament, create, submitResult, generateBracket, advanceWinner, advanceSwiss, clearMatches };
+  return { getById, getByTournament, create, submitResult, generateBracket, advanceWinner, advanceSwiss, generatePlayoffs, clearPlayoffs, clearMatches };
 }
 
 function isBranchEmpty(slots, round, pos, branchNum, totalRounds) {

@@ -12,6 +12,7 @@
     isValidSwissRounds,
     MAX_SWISS_ROUNDS,
     MIN_SWISS_ROUNDS,
+    PLAYOFF_FORMATS,
   } from "$lib/tournament.js";
   import { goto } from "$app/navigation";
   import { userState } from "$lib/user.svelte.js";
@@ -68,6 +69,9 @@
   }
 
   function ruleLabel(t) {
+    if (t?.format === "swiss" && t.playoff_format) {
+      return `小组赛 ${t.swiss_rounds ?? "?"} 轮 → ${t.playoff_format === "double_elim" ? "双败" : "单败"}淘汰赛`;
+    }
     if (t?.format === "swiss") return t.swiss_rounds ? `积分制 · ${t.swiss_rounds} 轮` : "积分制";
     return advancementLabel(t?.loser_advances);
   }
@@ -153,6 +157,11 @@
   let newGrandFinalReset = $state(true);
   let newSwissRounds = $state(5);
   let newBanpickEnabled = $state(true);
+  // Swiss structure: "single" = standings decide, "two_stage" = groups + playoff.
+  let newSwissStructure = $state("single");
+  let newPlayoffFormat = $state("single_elim");
+  let newGroupSize = $state(8);
+  let newAdvancePerGroup = $state(2);
   let selectedVehiclePool = $state("proleague");
   let vehiclePools = $state(defaultVehiclePools);
   let creating = $state(false);
@@ -196,6 +205,10 @@
     newGrandFinalReset = true;
     newSwissRounds = 5;
     newBanpickEnabled = true;
+    newSwissStructure = "single";
+    newPlayoffFormat = "single_elim";
+    newGroupSize = 8;
+    newAdvancePerGroup = 2;
     selectedVehiclePool = "proleague";
     showCreateDialog = true;
   }
@@ -215,6 +228,16 @@
     if (newFormat === "swiss" && !isValidSwissRounds(newSwissRounds)) {
       return toast.error(`瑞士轮轮数必须在 ${MIN_SWISS_ROUNDS} 至 ${MAX_SWISS_ROUNDS} 之间`);
     }
+    const twoStage = newFormat === "swiss" && newSwissStructure === "two_stage";
+    const groupSizeValue = newGroupSize === "" || newGroupSize === null ? null : Number(newGroupSize);
+    if (twoStage) {
+      if (groupSizeValue !== null && (!Number.isInteger(groupSizeValue) || groupSizeValue < 2 || groupSizeValue > 64)) {
+        return toast.error("每组人数必须在 2 至 64 之间，留空表示不分组");
+      }
+      const k = Number(newAdvancePerGroup);
+      if (!Number.isInteger(k) || k < 1) return toast.error("请设置每组晋级人数（至少 1 人）");
+      if (groupSizeValue !== null && k > groupSizeValue) return toast.error("每组晋级人数不能多于每组人数");
+    }
 
     creating = true;
     try {
@@ -228,9 +251,16 @@
         game_mode: newGameMode,
         vehicle_pool: selectedVehiclePool,
         format: newFormat,
-        grand_final_reset: newFormat === "double_elim" ? newGrandFinalReset : false,
+        grand_final_reset:
+          newFormat === "double_elim" ||
+          (twoStage && newPlayoffFormat === "double_elim")
+            ? newGrandFinalReset
+            : false,
         swiss_rounds: newFormat === "swiss" ? Number(newSwissRounds) : null,
         banpick_enabled: newBanpickEnabled,
+        playoff_format: twoStage ? newPlayoffFormat : null,
+        swiss_group_size: twoStage ? groupSizeValue : null,
+        advance_per_group: twoStage ? Number(newAdvancePerGroup) : null,
       });
       toast.success(
         newScheduledTime
@@ -672,9 +702,63 @@
             />
             <span>轮</span>
           </div>
-          <p class="text-[10px] text-muted-foreground/60">
-            建议轮数约为 log₂(人数)：8 人 3 轮、16 人 4 轮、32 人 5 轮；开赛时人数需多于轮数。积分榜第一即冠军，开赛后仍可修改轮数。
-          </p>
+          <div class="grid grid-cols-2 gap-2 pt-1">
+            {#each [{ id: "single", label: "单阶段", hint: "积分榜第一即冠军" }, { id: "two_stage", label: "小组赛 + 淘汰赛", hint: "分组打瑞士轮，各组前几名进淘汰赛" }] as opt (opt.id)}
+              <button
+                type="button"
+                onclick={() => (newSwissStructure = opt.id)}
+                class="rounded-md border px-2 py-1.5 text-left transition-colors cursor-pointer
+                  {newSwissStructure === opt.id ? 'border-primary bg-primary/10' : 'border-border hover:border-foreground/40'}"
+              >
+                <div class="text-xs font-semibold text-foreground">{opt.label}</div>
+                <div class="text-[10px] text-muted-foreground">{opt.hint}</div>
+              </button>
+            {/each}
+          </div>
+          {#if newSwissStructure === "two_stage"}
+            <div class="space-y-2 rounded-md border border-border/60 bg-background/40 p-2">
+              <div class="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+                <span>淘汰赛</span>
+                {#each PLAYOFF_FORMATS as pf (pf.id)}
+                  <button
+                    type="button"
+                    onclick={() => (newPlayoffFormat = pf.id)}
+                    class="rounded-full border px-2.5 py-0.5 text-xs cursor-pointer
+                      {newPlayoffFormat === pf.id ? 'border-primary bg-primary text-primary-foreground' : 'border-border text-foreground/80'}"
+                  >
+                    {pf.label}
+                  </button>
+                {/each}
+              </div>
+              <div class="flex flex-wrap items-center gap-x-4 gap-y-2 text-[11px] text-muted-foreground">
+                <label class="flex items-center gap-1.5" for="new-group-size">
+                  每组
+                  <input id="new-group-size" type="number" min="2" max="64" placeholder="不分组" bind:value={newGroupSize}
+                    class="w-16 rounded-md border border-border bg-background px-2 py-1 text-center text-sm text-foreground" />
+                  人
+                </label>
+                <label class="flex items-center gap-1.5" for="new-advance">
+                  每组晋级
+                  <input id="new-advance" type="number" min="1" max="64" bind:value={newAdvancePerGroup}
+                    class="w-14 rounded-md border border-border bg-background px-2 py-1 text-center text-sm text-foreground" />
+                  人
+                </label>
+              </div>
+              {#if newPlayoffFormat === "double_elim"}
+                <label class="flex items-start gap-2 text-[11px] text-muted-foreground cursor-pointer">
+                  <input type="checkbox" bind:checked={newGrandFinalReset} class="accent-primary mt-0.5" />
+                  <span>总决赛重置：败者组冠军赢下首场后加赛一场</span>
+                </label>
+              {/if}
+              <p class="text-[10px] text-muted-foreground/70">
+                开赛时按报名人数分组（例如 30 人、每组 8 人 → 4 组），按种子蛇形分配。各组打完全部轮次后，由管理员确认进入淘汰赛：按小组名次排种子，同组选手首轮尽量不相遇，人数不是 2 的幂时排名靠前者轮空。
+              </p>
+            </div>
+          {:else}
+            <p class="text-[10px] text-muted-foreground/60">
+              建议轮数约为 log₂(人数)：8 人 3 轮、16 人 4 轮、32 人 5 轮；开赛时人数需多于轮数。积分榜第一即冠军，开赛后仍可修改轮数。
+            </p>
+          {/if}
         {/if}
       </div>
 

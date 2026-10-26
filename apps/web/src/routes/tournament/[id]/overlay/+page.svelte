@@ -15,6 +15,13 @@
   );
 
   let tournament = $state(null);
+  let stageMatches = $derived(
+    (tournament?.matches || []).filter((m) =>
+      tournament?.format === "swiss" && tournament?.playoff_format
+        ? (tournament?.current_stage === "playoff") === (m.bracket !== "sw")
+        : true,
+    ),
+  );
   let loading = $state(true);
   let errorMsg = $state("");
 
@@ -32,7 +39,7 @@
 
   // Ticker completed matches
   let completedMatches = $derived(
-    (tournament?.matches || []).filter(
+    (stageMatches || []).filter(
       (m) =>
         (m.status === "completed" || m.status === "walkover") &&
         m.player1_id &&
@@ -46,7 +53,7 @@
 
   // Real matches exclude byes; used for progress and the side panel.
   let realMatches = $derived(
-    (tournament?.matches || []).filter((m) => {
+    (stageMatches || []).filter((m) => {
       const completed = m.status === "completed" || m.status === "walkover";
       const bye = completed && m.winner_id && (!m.player1_id || !m.player2_id);
       return !bye;
@@ -65,7 +72,7 @@
 
   // Playable matches for intermission scene, in recommended bracket order
   let playableMatches = $derived.by(() => {
-    const matches = tournament?.matches || [];
+    const matches = stageMatches || [];
     const order = buildMatchOrder(matches);
     return matches
       .filter(
@@ -114,9 +121,9 @@
 
   // Computed rounds structure for bracket display
   let overlayRounds = $derived.by(() => {
-    if (!tournament?.matches?.length) return [];
+    if (!stageMatches?.length) return [];
     const map = {};
-    tournament.matches.forEach((m) => {
+    stageMatches.forEach((m) => {
       if (!map[m.round]) map[m.round] = [];
       map[m.round].push(m);
     });
@@ -130,7 +137,12 @@
 
   // Swiss rounds count up from 1 and have no finals; elimination rounds count
   // down to the final.
-  let isSwiss = $derived(tournament?.format === "swiss");
+  // Two-stage events show the group stage (Swiss) until the playoff starts,
+  // then only the playoff bracket.
+  let inPlayoffs = $derived(
+    tournament?.format === "swiss" && Boolean(tournament?.playoff_format) && tournament?.current_stage === "playoff",
+  );
+  let isSwiss = $derived(tournament?.format === "swiss" && !inPlayoffs);
   function roundTitle(round, total) {
     return isSwiss ? `瑞士轮 第 ${round} 轮` : roundLabel(round, total);
   }
@@ -141,7 +153,7 @@
   let maxRound = $derived(
     overlayRounds.length ? Math.max(...overlayRounds.map((r) => r.round)) : 1,
   );
-  let matchOrder = $derived(buildMatchOrder(tournament?.matches || []));
+  let matchOrder = $derived(buildMatchOrder(stageMatches || []));
 
   // Selected round: URL round param takes highest precedence, then tournament.overlay_round, then maxRound
   let selectedRound = $derived.by(() => {
@@ -151,7 +163,7 @@
   });
 
   let introMatches = $derived(
-    (tournament?.matches || [])
+    (stageMatches || [])
       .filter((m) => {
         if (m.round !== selectedRound) return false;
         const isCompleted = m.status === "completed" || m.status === "walkover";
@@ -292,7 +304,7 @@
   let alivePlayerIds = $derived.by(() => {
     if (!tournament?.players) return new Set();
     const alive = new Set(tournament.players.map((p) => p.id));
-    (tournament.matches || []).forEach((m) => {
+    (stageMatches || []).forEach((m) => {
       if (m.status === "completed" || m.status === "walkover") {
         const loserId =
           m.winner_id === m.player1_id ? m.player2_id : m.player1_id;
