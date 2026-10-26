@@ -50,8 +50,18 @@ pnpm dev
 
 ## 配置
 
-- `apps/api/.env.example` — 端口、`DATABASE_URL`、QQ 群白名单、Web Push（VAPID）密钥
+- `apps/api/.env.example` — 端口、`DATABASE_URL`、QQ 群白名单、Web Push（VAPID）密钥、管理员令牌、Elasticsearch 日志
 - 仓库里没有任何真实凭证；`apps/api/.env` 已被 gitignore
+
+### 管理员令牌
+
+在 `apps/api/.env` 设置 `ADMIN_TOKEN`（留空则管理员功能关闭）。赛事管理（创建/编辑/删除、阶段切换、种子排序、对阵生成、直播对局与大屏控制、账号关联）、比分修改/回滚/弃权判定、录像批量导入/重解析/删除、选手改名/合并等破坏性接口都需要在请求头携带 `x-admin-token`；前端点击右上角盾牌图标登录，令牌只存在当前标签页的 `sessionStorage`。
+
+普通用户仍可自助完成：报名/取消报名、维护自己的资料与账号关联、投时间票/自定义票，以及由对局双方选手本人提交该场比分或弃权。后端会校验 `x-player-id` 与目标选手/对局是否匹配。
+
+### Elasticsearch 日志
+
+API 把请求日志和管理员审计日志异步写入 ES（默认 `http://127.0.0.1:9200`，按天索引 `suck-api-logs-YYYY.MM.DD`），可用 `ES_URL` / `ES_USERNAME` / `ES_PASSWORD` / `ES_INDEX` 覆盖；ES 不可用时只丢日志，不影响业务。详见 `apps/api/README.md`。
 
 ## 历史
 

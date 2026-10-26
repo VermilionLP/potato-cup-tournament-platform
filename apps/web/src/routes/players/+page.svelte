@@ -22,6 +22,7 @@
   let players = $state([]);
   let loading = $state(true);
   let searchQuery = $state("");
+  let isAdmin = $derived(!!userState.adminToken);
 
   let filteredPlayers = $derived(
     players.filter((p) => {
@@ -73,6 +74,10 @@
   }
 
   function openCreate() {
+    if (!isAdmin) {
+      toast.error("新增选手需要管理员权限，请先点击右上角盾牌图标登录");
+      return;
+    }
     if (!userState.qqGroup || !userState.id) {
       toast.error("此操作需要先验证 QQ 群号与选手 ID。");
       document.getElementById("header-profile-button")?.click();
@@ -91,6 +96,10 @@
   }
 
   function openEdit(p) {
+    if (!isAdmin && p.id !== userState.id) {
+      toast.error("编辑其他选手需要管理员权限，请先点击右上角盾牌图标登录");
+      return;
+    }
     if (!userState.qqGroup || !userState.id) {
       toast.error("此操作需要先验证 QQ 群号与选手 ID。");
       document.getElementById("header-profile-button")?.click();
@@ -151,6 +160,10 @@
         editingId = cleanNewId;
       } else {
         if (cleanNewId !== editingId) {
+          if (!isAdmin) {
+            toast.error("修改选手 ID 需要管理员权限，请先点击右上角盾牌图标登录");
+            return;
+          }
           const isMe = editingId === userState.id;
           if (isMe) {
             const confirmed = confirm(
@@ -280,13 +293,15 @@
         共 {players.length} 名选手 · 管理全局选手档案与关联信息
       </p>
     </div>
-    <Button
-      onclick={openCreate}
-      class="gap-1.5 font-bold hover:scale-[1.02] transition-transform text-xs"
-    >
-      <PlusIcon class="w-4 h-4" />
-      新增选手
-    </Button>
+    {#if isAdmin}
+      <Button
+        onclick={openCreate}
+        class="gap-1.5 font-bold hover:scale-[1.02] transition-transform text-xs"
+      >
+        <PlusIcon class="w-4 h-4" />
+        新增选手
+      </Button>
+    {/if}
   </div>
 
   <!-- Search bar -->
@@ -453,14 +468,16 @@
 
                 <!-- Actions -->
                 <td class="px-5 py-3 text-right">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onclick={() => openEdit(p)}
-                    class="w-7 h-7 opacity-50 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-primary hover:bg-primary/10"
-                  >
-                    <Edit2Icon class="w-3.5 h-3.5" />
-                  </Button>
+                  {#if isAdmin || p.id === userState.id}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onclick={() => openEdit(p)}
+                      class="w-7 h-7 opacity-50 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-primary hover:bg-primary/10"
+                    >
+                      <Edit2Icon class="w-3.5 h-3.5" />
+                    </Button>
+                  {/if}
                 </td>
               </tr>
             {/each}
@@ -550,14 +567,16 @@
               </div>
             </div>
 
-            <Button
-              variant="outline"
-              size="icon"
-              onclick={() => openEdit(p)}
-              class="w-7.5 h-7.5 text-muted-foreground hover:text-primary hover:bg-primary/10 border-border"
-            >
-              <Edit2Icon class="w-3.5 h-3.5" />
-            </Button>
+            {#if isAdmin || p.id === userState.id}
+              <Button
+                variant="outline"
+                size="icon"
+                onclick={() => openEdit(p)}
+                class="w-7.5 h-7.5 text-muted-foreground hover:text-primary hover:bg-primary/10 border-border"
+              >
+                <Edit2Icon class="w-3.5 h-3.5" />
+              </Button>
+            {/if}
           </div>
 
           <!-- Body details: Flag & Wiki -->
@@ -952,7 +971,7 @@
       </div>
 
       <!-- Merge section (edit only) -->
-      {#if !isCreating}
+      {#if !isCreating && isAdmin}
         <div class="space-y-2 pt-2 border-t border-border/60">
           <label
             class="text-xs font-bold text-muted-foreground flex items-center gap-1.5"
@@ -989,7 +1008,7 @@
     </div>
 
     <Dialog.Footer class="flex items-center gap-2 pt-1">
-      {#if !isCreating}
+      {#if !isCreating && isAdmin}
         <Button
           variant="destructive"
           size="sm"

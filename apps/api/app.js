@@ -18,7 +18,9 @@ import votesRoutes from './routes/votes.js';
 import ladderRoutes from './routes/ladder.js';
 import replaysRoutes, { checkPythonEnvironment } from './routes/replays.js';
 import pushRoutes from './routes/push.js';
+import adminRoutes from './routes/admin.js';
 import { startPushScheduler } from './lib/push-scheduler.js';
+import { createEsLogger, registerRequestLogging } from './lib/es-logger.js';
 import fastifySse from '@fastify/sse';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -28,6 +30,10 @@ const pkg = JSON.parse(readFileSync(join(__dirname, 'package.json'), 'utf-8'));
 const fastify = Fastify({ logger: true, trustProxy: true, bodyLimit: 104857600 });
 const tournamentEvents = new EventEmitter();
 fastify.decorate('tournamentEvents', tournamentEvents);
+
+const esLogger = createEsLogger();
+fastify.decorate('esLogger', esLogger);
+registerRequestLogging(fastify, esLogger);
 
 await fastify.register(cors, { origin: true, credentials: true });
 await fastify.register(sensible);
@@ -44,6 +50,7 @@ await fastify.register(votesRoutes, { prefix: '/api' });
 await fastify.register(ladderRoutes, { prefix: '/api' });
 await fastify.register(replaysRoutes, { prefix: '/api' });
 await fastify.register(pushRoutes, { prefix: '/api' });
+await fastify.register(adminRoutes, { prefix: '/api' });
 startPushScheduler(fastify);
 
 // Runtime Python check on startup
@@ -85,6 +92,22 @@ if (staticRoot) {
 }
 
 const port = parseInt(process.env.PORT || '3100');
+
+if (esLogger.enabled) {
+  console.log(`Elasticsearch logging enabled: ${esLogger.url} (index ${esLogger.indexPrefix})`);
+}
+
+for (const signal of ['SIGINT', 'SIGTERM']) {
+  process.once(signal, async () => {
+    try {
+      await fastify.close();
+    } catch (err) {
+      fastify.log.error(err);
+      process.exitCode = 1;
+    }
+    process.exit();
+  });
+}
 
 try {
   await fastify.listen({ port, host: '0.0.0.0' });

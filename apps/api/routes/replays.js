@@ -9,6 +9,7 @@ import { MatchRepo } from '../repositories/match-repo.js';
 import { getPlayerDisplayName } from '../repositories/player-repo.js';
 import { TournamentAccountRepo } from '../repositories/tournament-account-repo.js';
 import { liquipediaBracketTemplate } from '../lib/bracket.js';
+import { requireAdmin, requireMatchPlayerOrAdmin } from '../lib/admin.js';
 
 const execPromise = util.promisify(exec);
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -350,11 +351,12 @@ export default async function replaysRoutes(fastify) {
     }
 
     // Check if match exists
-    const matchRes = await db.query('SELECT id FROM axsuck.matches WHERE id = $1', [matchId]);
+    const matchRes = await db.query('SELECT id, player1_id, player2_id FROM axsuck.matches WHERE id = $1', [matchId]);
     const match = matchRes.rows[0];
     if (!match) {
       throw fastify.httpErrors.notFound('Match not found.');
     }
+    requireMatchPlayerOrAdmin(fastify, req, match);
 
     // Verify python is available
     const envCheck = await checkPythonEnvironment();
@@ -510,6 +512,7 @@ export default async function replaysRoutes(fastify) {
 
   // Batch upload and auto-match replays for a tournament
   fastify.post('/tournaments/:id/replays/batch', async (req) => {
+    requireAdmin(fastify, req);
     const { id: tournamentId } = req.params;
     const { replays, qqGroup } = req.body; // replays is array of { filename, content (base64) }
 
@@ -781,6 +784,7 @@ export default async function replaysRoutes(fastify) {
 
   // Delete a replay
   fastify.delete('/replays/:replayId', async (req) => {
+    requireAdmin(fastify, req);
     const { replayId } = req.params;
     const matchInfoRes = await db.query(`
       SELECT m.tournament_id FROM axsuck.match_replays mr
@@ -803,6 +807,7 @@ export default async function replaysRoutes(fastify) {
 
   // Reparse all replays for a tournament from raw compressed data
   fastify.post('/tournaments/:id/replays/reparse', async (req) => {
+    requireAdmin(fastify, req);
     const { id: tournamentId } = req.params;
     const matchesRes = await db.query('SELECT id FROM axsuck.matches WHERE tournament_id = $1', [tournamentId]);
     const matches = matchesRes.rows;

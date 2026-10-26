@@ -45,7 +45,7 @@ pnpm test         # web + api 单元测试（不需要数据库）
 
 ## Credentials
 
-- `apps/api/.env` — `DATABASE_URL`、`PORT`、`ALLOWED_QQ_GROUPS`、VAPID keys
+- `apps/api/.env` — `DATABASE_URL`、`PORT`、`ALLOWED_QQ_GROUPS`、VAPID keys、`ADMIN_TOKEN`、`ES_*`
 
 ## History
 

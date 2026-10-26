@@ -1,4 +1,5 @@
 import { MatchRepo } from '../repositories/match-repo.js';
+import { requireAdmin, requireMatchPlayerOrAdmin } from '../lib/admin.js';
 
 export default async function matchesRoutes(fastify) {
   const repo = MatchRepo(fastify.db);
@@ -10,6 +11,10 @@ export default async function matchesRoutes(fastify) {
     }
     const match = await repo.getById(parseInt(req.params.matchId));
     if (!match) throw fastify.httpErrors.notFound('Match not found');
+    if (match.tournament_id !== req.params.id) {
+      throw fastify.httpErrors.notFound('Match not found in this tournament');
+    }
+    requireMatchPlayerOrAdmin(fastify, req, match);
 
     const updated = await repo.submitResult(match.id, score1, score2);
     const advanced = await repo.advanceWinner(req.params.id, match.id);
@@ -26,6 +31,13 @@ export default async function matchesRoutes(fastify) {
 
     const match = await repo.getById(parseInt(req.params.matchId));
     if (!match) throw fastify.httpErrors.notFound('Match not found');
+    if (match.tournament_id !== req.params.id) {
+      throw fastify.httpErrors.notFound('Match not found in this tournament');
+    }
+    requireMatchPlayerOrAdmin(fastify, req, match);
+    if (winner_id !== match.player1_id && winner_id !== match.player2_id) {
+      throw fastify.httpErrors.badRequest('winner_id must be one of the match players');
+    }
 
     await fastify.db.query(`
       UPDATE axsuck.matches SET status = 'walkover', winner_id = $1, score1 = 0, score2 = 0
@@ -42,6 +54,7 @@ export default async function matchesRoutes(fastify) {
   });
 
   fastify.post('/tournaments/:id/matches/manual', async (req) => {
+    requireAdmin(fastify, req);
     const { round, position, player1_id, player2_id } = req.body;
     if (round == null || position == null) {
       throw fastify.httpErrors.badRequest('round and position are required');
@@ -61,6 +74,7 @@ export default async function matchesRoutes(fastify) {
   });
 
   fastify.delete('/tournaments/:id/matches', async (req) => {
+    requireAdmin(fastify, req);
     await repo.clearMatches(req.params.id);
 
     // Trigger real-time broadcast
@@ -70,6 +84,7 @@ export default async function matchesRoutes(fastify) {
   });
 
   fastify.post('/tournaments/:id/matches/:matchId/rollback', async (req) => {
+    requireAdmin(fastify, req);
     const matchId = parseInt(req.params.matchId);
     const match = await repo.getById(matchId);
     if (!match) throw fastify.httpErrors.notFound('Match not found');
@@ -127,6 +142,7 @@ export default async function matchesRoutes(fastify) {
   });
 
   fastify.post('/tournaments/:id/matches/:matchId/score', async (req) => {
+    requireAdmin(fastify, req);
     const { score1, score2 } = req.body;
     const match = await repo.getById(parseInt(req.params.matchId));
     if (!match) throw fastify.httpErrors.notFound('Match not found');

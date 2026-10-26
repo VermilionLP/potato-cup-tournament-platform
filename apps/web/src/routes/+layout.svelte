@@ -21,6 +21,7 @@
   import SwordsIcon from "@lucide/svelte/icons/swords";
   import BellIcon from "@lucide/svelte/icons/bell";
   import BellOffIcon from "@lucide/svelte/icons/bell-off";
+  import ShieldCheckIcon from "@lucide/svelte/icons/shield-check";
 
   let { children } = $props();
 
@@ -39,6 +40,9 @@
   let verifying = $state(false);
   let pushEnabled = $state(false);
   let pushBusy = $state(false);
+  let openAdminDialog = $state(false);
+  let adminTokenInput = $state("");
+  let adminBusy = $state(false);
 
   function urlBase64ToUint8Array(base64String) {
     const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
@@ -117,6 +121,46 @@
     }
   }
 
+  // Admin token handling
+  function handleOpenAdminDialog() {
+    adminTokenInput = "";
+    openAdminDialog = true;
+  }
+
+  async function handleAdminLogin() {
+    const token = adminTokenInput.trim();
+    if (!token) {
+      toast.error("请输入管理员令牌");
+      return;
+    }
+    adminBusy = true;
+    try {
+      userState.setAdminToken(token);
+      await API.verifyAdmin();
+      toast.success("管理员登录成功");
+      openAdminDialog = false;
+      adminTokenInput = "";
+    } catch (err) {
+      userState.setAdminToken("");
+      if (err.status === 401) {
+        toast.error("管理员登录失败: 令牌不正确");
+      } else if (err.status === 503) {
+        toast.error("管理员登录失败: 服务器未配置 ADMIN_TOKEN");
+      } else {
+        toast.error("管理员登录失败: " + err.message);
+      }
+    } finally {
+      adminBusy = false;
+    }
+  }
+
+  function handleAdminLogout() {
+    userState.setAdminToken("");
+    adminTokenInput = "";
+    openAdminDialog = false;
+    toast.success("已退出管理员");
+  }
+
   // Profile fields state
   let editFlag = $state("cn");
   let editTeam = $state("");
@@ -149,6 +193,9 @@
         console.warn("touch player failed:", e);
       });
       checkProfileCompleteness(userState.id);
+    }
+    if (userState.adminToken) {
+      API.verifyAdmin().catch(() => userState.setAdminToken(""));
     }
     if (typeof navigator !== "undefined" && "serviceWorker" in navigator) {
       navigator.serviceWorker
@@ -272,13 +319,13 @@
     try {
       const res = await API.verifyQQ(trimmedQQ);
       if (res.valid) {
+        userState.setQQGroup(trimmedQQ);
+        userState.setId(trimmedId);
         try {
           await API.touchPlayer(trimmedId);
         } catch (e) {
           console.warn("touch player failed:", e);
         }
-        userState.setQQGroup(trimmedQQ);
-        userState.setId(trimmedId);
         openIdDialog = false;
         toast.success("身份配置已保存并激活权限！");
         checkProfileCompleteness(trimmedId);
@@ -337,6 +384,10 @@
     // 2. Handle Player ID rename ("两边一起改")
     const oldId = userState.id;
     if (trimmedId !== oldId) {
+      if (!userState.adminToken) {
+        toast.error("修改选手 ID 需要管理员权限，请先点击右上角盾牌图标登录");
+        return;
+      }
       const confirmed = confirm(
         `确定要将选手 ID 从 "${oldId}" 修改为 "${trimmedId}" 吗？\n此操作将同步更新所有历史赛事对阵、报名和投票数据。`,
       );
@@ -513,6 +564,22 @@
             <span class="sr-only">Toggle theme</span>
           </button>
 
+          <!-- Admin login -->
+          <button
+            id="header-admin-button"
+            onclick={handleOpenAdminDialog}
+            title={userState.adminToken
+              ? "管理员已登录（点击管理）"
+              : "管理员登录"}
+            aria-label="管理员登录"
+            class="relative w-8 h-8 flex items-center justify-center rounded-md transition-colors cursor-pointer
+              {userState.adminToken
+                ? 'text-emerald-500 bg-emerald-500/10 hover:bg-emerald-500/15'
+                : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'}"
+          >
+            <ShieldCheckIcon class="h-4 w-4" />
+          </button>
+
           <!-- Divider -->
           <div class="w-px h-5 bg-border"></div>
 
@@ -608,8 +675,14 @@
             <Input
               id="player-id-input"
               bind:value={idInput}
+              disabled={!!userState.id && !userState.adminToken}
               class="text-xs h-8 bg-background border-border text-foreground"
             />
+            {#if userState.id && !userState.adminToken}
+              <p class="text-[9px] text-muted-foreground/70">
+                修改选手 ID 需要管理员权限；普通用户只能维护资料。
+              </p>
+            {/if}
           </div>
         </div>
 
@@ -903,6 +976,85 @@
       >
         {#if verifying}正在保存...{:else}保存{/if}
       </Button>
+    </Dialog.Footer>
+  </Dialog.Content>
+</Dialog.Root>
+
+<!-- Admin Token Dialog -->
+<Dialog.Root bind:open={openAdminDialog}>
+  <Dialog.Content class="max-w-85 sm:max-w-95 bg-card border border-border">
+    <Dialog.Header>
+      <Dialog.Title
+        class="text-lg font-bold tracking-tight text-foreground flex items-center gap-2"
+      >
+        <ShieldCheckIcon class="w-5 h-5 text-primary" />
+        管理员权限
+      </Dialog.Title>
+      <Dialog.Description class="text-xs text-muted-foreground">
+        {#if userState.adminToken}
+          当前标签页已保存管理员令牌，可执行删除、批量导入、重解析等破坏性操作。
+        {:else}
+          输入服务器 .env 中配置的 ADMIN_TOKEN，以解锁删除、批量导入、重解析等破坏性操作。令牌只保存在本标签页。
+        {/if}
+      </Dialog.Description>
+    </Dialog.Header>
+
+    {#if !userState.adminToken}
+      <div class="space-y-1.5 py-1">
+        <label
+          for="admin-token-input"
+          class="text-xs font-bold text-muted-foreground">管理员令牌</label
+        >
+        <Input
+          id="admin-token-input"
+          type="password"
+          bind:value={adminTokenInput}
+          placeholder="ADMIN_TOKEN"
+          autocomplete="off"
+          class="text-xs h-8 bg-background border-border text-foreground"
+          onkeydown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              handleAdminLogin();
+            }
+          }}
+        />
+        <p class="text-[10px] text-muted-foreground/60">
+          令牌由部署者在 <code>apps/api/.env</code> 的 ADMIN_TOKEN 中设置。
+        </p>
+      </div>
+    {/if}
+
+    <Dialog.Footer class="flex flex-col sm:flex-row gap-2 mt-2">
+      {#if userState.adminToken}
+        <Button
+          variant="destructive"
+          size="sm"
+          onclick={handleAdminLogout}
+          class="w-full sm:w-auto text-xs"
+        >
+          退出管理员
+        </Button>
+      {/if}
+      <div class="flex-1"></div>
+      <Button
+        variant="outline"
+        size="sm"
+        onclick={() => (openAdminDialog = false)}
+        class="w-full sm:w-auto text-xs"
+      >
+        关闭
+      </Button>
+      {#if !userState.adminToken}
+        <Button
+          size="sm"
+          onclick={handleAdminLogin}
+          disabled={adminBusy}
+          class="w-full sm:w-auto text-xs font-semibold"
+        >
+          {#if adminBusy}正在验证...{:else}登录{/if}
+        </Button>
+      {/if}
     </Dialog.Footer>
   </Dialog.Content>
 </Dialog.Root>

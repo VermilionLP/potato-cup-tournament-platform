@@ -2,6 +2,7 @@ import { PlayerRepo } from '../repositories/player-repo.js';
 import { TournamentRepo } from '../repositories/tournament-repo.js';
 import { LadderRepo } from '../repositories/ladder-repo.js';
 import { getPlayerInfoFromReplay, bnetEntryKey } from './replays.js';
+import { requireAdmin, requireSelfOrAdmin } from '../lib/admin.js';
 
 export default async function playersRoutes(fastify) {
   const repo = PlayerRepo(fastify.db);
@@ -364,12 +365,14 @@ export default async function playersRoutes(fastify) {
   fastify.post('/players/:id/touch', async (req) => {
     const id = String(req.params.id || '').trim();
     if (!id) throw fastify.httpErrors.badRequest('id is required');
+    requireSelfOrAdmin(fastify, req, id);
     return await repo.touch(id);
   });
 
   // ---- Global (permanent) Battle.net account links ----
   fastify.post('/players/:id/accounts', async (req) => {
     const { id } = req.params;
+    requireSelfOrAdmin(fastify, req, id);
     const { accounts } = req.body;
     if (!Array.isArray(accounts) || accounts.length === 0) {
       throw fastify.httpErrors.badRequest('accounts array is required');
@@ -422,6 +425,7 @@ export default async function playersRoutes(fastify) {
 
   fastify.delete('/players/:id/accounts', async (req) => {
     const { id } = req.params;
+    requireSelfOrAdmin(fastify, req, id);
     const { account_key, name } = req.body || {};
     if (!account_key && !name) throw fastify.httpErrors.badRequest('account_key or name is required');
     const p = await repo.getById(id);
@@ -453,6 +457,7 @@ export default async function playersRoutes(fastify) {
   // Remove account entries that have no resolvable Battle.net URL/toon
   // (legacy display-name-only aliases that never appear in any replay).
   fastify.post('/players/cleanup-empty-accounts', async (req) => {
+    requireAdmin(fastify, req);
     const { player_ids } = req.body || {};
     const rows = Array.isArray(player_ids) && player_ids.length
       ? (await fastify.db.query('SELECT id, bnet_ids FROM axsuck.players WHERE id = ANY($1)', [player_ids])).rows
@@ -481,6 +486,7 @@ export default async function playersRoutes(fastify) {
   });
 
   fastify.post('/players/:id/change-id', async (req) => {
+    requireAdmin(fastify, req);
     const { id: oldId } = req.params;
     const { newId } = req.body;
     if (!newId) throw fastify.httpErrors.badRequest('newId is required');
@@ -537,6 +543,7 @@ export default async function playersRoutes(fastify) {
   });
 
   fastify.delete('/players/:id', async (req) => {
+    requireAdmin(fastify, req);
     const { id } = req.params;
     
     const p = await repo.getById(id);
@@ -576,6 +583,7 @@ export default async function playersRoutes(fastify) {
   });
 
   fastify.post('/players/:id/merge', async (req) => {
+    requireAdmin(fastify, req);
     const { id: oldId } = req.params;
     const { targetId } = req.body;
     if (!targetId) throw fastify.httpErrors.badRequest('targetId is required');
@@ -670,6 +678,7 @@ export default async function playersRoutes(fastify) {
   fastify.post('/players', async (req) => {
     const { id, flag, team, link, battle_tags, bnet_ids, tournament_id } = req.body;
     if (!id) throw fastify.httpErrors.badRequest('id is required');
+    requireSelfOrAdmin(fastify, req, id);
 
     let battleTagsStr = '{}';
     if (battle_tags) {
@@ -710,6 +719,7 @@ export default async function playersRoutes(fastify) {
   fastify.post('/tournaments/:id/register', async (req) => {
     const { player_id } = req.body;
     if (!player_id) throw fastify.httpErrors.badRequest('player_id is required');
+    requireSelfOrAdmin(fastify, req, player_id);
 
     const t = await tourneyRepo.getById(req.params.id);
     if (!t) throw fastify.httpErrors.notFound('Tournament not found');
@@ -745,6 +755,7 @@ export default async function playersRoutes(fastify) {
   fastify.delete('/tournaments/:id/register', async (req) => {
     const { player_id } = req.body;
     if (!player_id) throw fastify.httpErrors.badRequest('player_id is required');
+    requireSelfOrAdmin(fastify, req, player_id);
     const t = await tourneyRepo.getById(req.params.id);
     if (!t) throw fastify.httpErrors.notFound('Tournament not found');
     await tourneyRepo.removePlayer(req.params.id, player_id);

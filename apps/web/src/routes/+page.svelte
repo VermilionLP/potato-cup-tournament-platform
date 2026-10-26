@@ -19,6 +19,7 @@
 
   let tournaments = $state([]);
   let loading = $state(true);
+  let isAdmin = $derived(!!userState.adminToken);
 
   // Relative day helper (past and future).
   function relativeDay(value) {
@@ -161,6 +162,10 @@
   }
 
   function openCreateDialog() {
+    if (!isAdmin) {
+      toast.error("创建赛事需要管理员权限，请先点击右上角盾牌图标登录");
+      return;
+    }
     if (!userState.qqGroup || !userState.id) {
       toast.error("创建赛事需要先验证 QQ 群号与选手 ID。已为您打开配置面板！");
       document.getElementById("header-profile-button")?.click();
@@ -254,11 +259,11 @@
   async function deleteTournament(id) {
     if (!confirm("确定删除该赛事？")) return;
     try {
-      await fetch(`/api/tournaments/${id}`, { method: "DELETE" });
+      await API.deleteTournament(id);
       toast.success("已删除");
       await load();
     } catch (e) {
-      toast.error("删除失败");
+      toast.error("删除失败: " + e.message);
     }
   }
 
@@ -278,13 +283,15 @@
       </p>
     </div>
     <div class="flex items-center gap-2 shrink-0">
-      <Button
-        onclick={openCreateDialog}
-        class="gap-1.5 font-bold hover:scale-[1.02] transition-transform text-xs"
-      >
-        <PlusIcon class="w-4 h-4" />
-        创建赛事
-      </Button>
+      {#if isAdmin}
+        <Button
+          onclick={openCreateDialog}
+          class="gap-1.5 font-bold hover:scale-[1.02] transition-transform text-xs"
+        >
+          <PlusIcon class="w-4 h-4" />
+          创建赛事
+        </Button>
+      {/if}
     </div>
   </div>
 
@@ -318,13 +325,15 @@
             </div>
           {/if}
         </div>
-        <Button
-          onclick={openCreateDialog}
-          class="gap-1.5 font-bold text-xs shrink-0"
-        >
-          <PlusIcon class="w-4 h-4" />
-          发起下一场锦标赛
-        </Button>
+        {#if isAdmin}
+          <Button
+            onclick={openCreateDialog}
+            class="gap-1.5 font-bold text-xs shrink-0"
+          >
+            <PlusIcon class="w-4 h-4" />
+            发起下一场锦标赛
+          </Button>
+        {/if}
       </div>
     {:else}
       <div class="divide-y divide-border border border-border bg-card/30 rounded-2xl overflow-hidden shadow-sm">
@@ -344,7 +353,7 @@
               <div class="min-w-0">
                 <div class="flex items-center gap-2 flex-wrap">
                   <h3 class="font-bold text-base text-foreground group-hover:text-primary transition-colors truncate max-w-[280px] sm:max-w-[400px]">
-                    {t.name}<button onclick={(e)=>{e.stopPropagation();deleteTournament(t.id)}} class="ml-2 px-2 py-0.5 text-[10px] font-medium text-red-500/80 hover:text-red-500 hover:bg-red-500/10 rounded transition-colors">删除</button>
+                    {t.name}{#if userState.adminToken}<button onclick={(e)=>{e.stopPropagation();deleteTournament(t.id)}} class="ml-2 px-2 py-0.5 text-[10px] font-medium text-red-500/80 hover:text-red-500 hover:bg-red-500/10 rounded transition-colors">删除</button>{/if}
                   </h3>
                   <Badge variant="outline" class="text-[9px] px-2 py-0 font-bold uppercase tracking-wider {getStatusStyle(t.status)} shrink-0">
                     {getStatusLabel(t.status)}
@@ -444,7 +453,7 @@
                 <div class="min-w-0">
                   <div class="flex items-center gap-2 flex-wrap">
                     <h3 class="font-bold text-sm text-foreground group-hover:text-primary transition-colors truncate max-w-[240px] sm:max-w-[360px]">
-                      {t.name}<button onclick={(e)=>{e.stopPropagation();deleteTournament(t.id)}} class="ml-2 px-2 py-0.5 text-[10px] font-medium text-red-500/80 hover:text-red-500 hover:bg-red-500/10 rounded transition-colors">删除</button>
+                      {t.name}{#if userState.adminToken}<button onclick={(e)=>{e.stopPropagation();deleteTournament(t.id)}} class="ml-2 px-2 py-0.5 text-[10px] font-medium text-red-500/80 hover:text-red-500 hover:bg-red-500/10 rounded transition-colors">删除</button>{/if}
                     </h3>
                     <Badge variant="outline" class="text-[9px] px-1.5 py-0 bg-zinc-500/10 text-zinc-400 border-zinc-500/20 shrink-0">已完结</Badge>
                     <span class="text-[10px] text-muted-foreground font-mono bg-muted/60 px-1.5 py-0.25 rounded shrink-0">ID: {t.id}</span>

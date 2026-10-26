@@ -63,6 +63,7 @@
   let playTimes = $state(null);
   let voteWeekOffset = $state(0);
   let loading = $state(true);
+  let isAdmin = $derived(!!userState.adminToken);
   let editingTitle = $state(false);
   let titleDraft = $state("");
   let savingTitle = $state(false);
@@ -86,6 +87,12 @@
     selectedRegIds = selectedRegIds.includes(playerId)
       ? selectedRegIds.filter((id) => id !== playerId)
       : [...selectedRegIds, playerId];
+  }
+
+  function ensureAdmin() {
+    if (isAdmin) return true;
+    toast.error("此操作需要管理员权限，请先点击右上角盾牌图标登录");
+    return false;
   }
 
   // Replays integration states
@@ -152,6 +159,7 @@
   }
 
   async function unlinkTournamentAccount(accountKey) {
+    if (!ensureAdmin()) return;
     if (!confirm("解除该账号在本赛事的临时关联？（若该账号也不在该选手全局资料里，本届将退回按名字判断）")) return;
     try {
       accountsBusy = true;
@@ -166,6 +174,7 @@
   }
 
   async function removeGlobalAccount(playerId, g) {
+    if (!ensureAdmin()) return;
     if (!confirm("从该选手的全局资料中移除该账号？所有赛事都会受影响。")) return;
     try {
       accountsBusy = true;
@@ -181,6 +190,7 @@
   }
 
   async function makeTemporary(playerId, g) {
+    if (!ensureAdmin()) return;
     try {
       accountsBusy = true;
       const e = globalEntryPayload(g);
@@ -196,6 +206,7 @@
   }
 
   async function makePermanent(playerId, s) {
+    if (!ensureAdmin()) return;
     try {
       accountsBusy = true;
       await API.linkPlayerAccounts(playerId, [{
@@ -217,11 +228,7 @@
   }
 
   async function reparseAndBackfillAccounts() {
-    if (!userState.qqGroup || !userState.id) {
-      toast.error("此操作需要先验证 QQ 群号与选手 ID。");
-      document.getElementById("header-profile-button")?.click();
-      return;
-    }
+    if (!ensureAdmin()) return;
     try {
       accountsBusy = true;
       toast.loading("正在重新解析并补充账号 URL...", { id: "acct-backfill" });
@@ -241,6 +248,7 @@
   }
 
   async function cleanupEmptyAccounts() {
+    if (!ensureAdmin()) return;
     const ids = (tournament?.players || []).map((p) => p.id);
     if (ids.length === 0) return;
     if (!confirm("移除本赛事选手名下所有「无 URL」旧账号条目？（这些是补不出 URL 的历史名字）")) return;
@@ -426,7 +434,8 @@
 
   // "Going live" mode: only this browser forces the next-match flow, so other viewers are unaffected
   let streamMode = $state(
-    typeof window !== "undefined" &&
+    isAdmin &&
+      typeof window !== "undefined" &&
       localStorage.getItem("suck_stream_mode") === "1",
   );
   let showStreamChecklist = $state(false);
@@ -634,6 +643,7 @@
   }
 
   async function switchOverlayToHud() {
+    if (!ensureAdmin()) return;
     try {
       await API.setOverlayState(tid, "ingame", currentOverlayRound());
       toast.success("已自动切换大屏到游戏内 HUD 场景");
@@ -644,6 +654,7 @@
 
   // Keep showing the bracket while waiting for the game to start
   async function showHybridScene() {
+    if (!ensureAdmin()) return;
     try {
       await API.setOverlayState(tid, "hybrid", currentOverlayRound());
     } catch (e) {
@@ -671,6 +682,7 @@
   }
 
   async function chooseNextMatch(matchId) {
+    if (!ensureAdmin()) return;
     try {
       // Keep the bracket on screen first, then mark the match live so the overlay never flashes ingame
       await showHybridScene();
@@ -717,7 +729,7 @@
 
   // When a hand-off is required, force the blocking modal open and cancel any stale countdown
   $effect(() => {
-    if (needsNextMatch) {
+    if (needsNextMatch && isAdmin) {
       clearAutoHudTimer();
       nextMatchModalOpen = true;
     } else {
@@ -810,11 +822,7 @@
   }
 
   async function changeStatus(status) {
-    if (!userState.qqGroup || !userState.id) {
-      toast.error("此操作需要先验证 QQ 群号与选手 ID。已为您打开配置面板！");
-      document.getElementById("header-profile-button")?.click();
-      return;
-    }
+    if (!ensureAdmin()) return;
     try {
       tournament = await API.updateStatus(tid, status);
       toast.success(`赛事状态已切换至: ${statusLabel(status)}`);
@@ -830,6 +838,7 @@
   }
 
   async function saveTitle() {
+    if (!ensureAdmin()) return;
     const name = titleDraft.trim();
     if (!name) return toast.error("赛事标题不能为空");
     savingTitle = true;
@@ -845,11 +854,7 @@
   }
 
   async function confirmEndVoting() {
-    if (!userState.qqGroup || !userState.id) {
-      toast.error("此操作需要先验证 QQ 群号与选手 ID。已为您打开配置面板！");
-      document.getElementById("header-profile-button")?.click();
-      return;
-    }
+    if (!ensureAdmin()) return;
     if (!selectedFinalTime.trim()) {
       return toast.error("请选择或输入确定的比赛时间");
     }
@@ -874,12 +879,14 @@
 
   // Registration
   async function doRegister() {
-    if (!userState.qqGroup || !userState.id) {
+    const targetId = regInput.trim();
+    if (targetId && targetId !== userState.id && !ensureAdmin()) return;
+    if (!targetId && (!userState.qqGroup || !userState.id)) {
       toast.error("此操作需要先验证 QQ 群号与选手 ID。已为您打开配置面板！");
       document.getElementById("header-profile-button")?.click();
       return;
     }
-    const id = regInput.trim() || userState.id;
+    const id = targetId || userState.id;
     if (!id) return toast.error("请输入选手 ID");
     try {
       const players = await API.register(tid, id);
@@ -888,8 +895,8 @@
       regInput = "";
       await load();
 
-      // Auto-update bracket preview
-      if (tournament.players?.length >= 2) {
+      // Auto-update bracket preview (admin only; server rejects it for other users)
+      if (isAdmin && tournament.players?.length >= 2) {
         const matches = await API.generateBracket(tid);
         tournament = { ...tournament, matches };
       }
@@ -899,11 +906,7 @@
   }
 
   async function doBatchRegister() {
-    if (!userState.qqGroup || !userState.id) {
-      toast.error("此操作需要先验证 QQ 群号与选手 ID。已为您打开配置面板！");
-      document.getElementById("header-profile-button")?.click();
-      return;
-    }
+    if (!ensureAdmin()) return;
     if (selectedRegIds.length === 0) return toast.error("请先选择选手");
     const ids = [...selectedRegIds];
     let ok = 0;
@@ -931,7 +934,9 @@
   }
 
   async function doUnregister(pid) {
-    if (!userState.qqGroup || !userState.id) {
+    if (pid !== userState.id) {
+      if (!ensureAdmin()) return;
+    } else if (!userState.qqGroup || !userState.id) {
       toast.error("此操作需要先验证 QQ 群号与选手 ID。已为您打开配置面板！");
       document.getElementById("header-profile-button")?.click();
       return;
@@ -941,11 +946,11 @@
       toast.success(`选手 ${pid} 已取消报名`);
       await load();
 
-      // Auto-update bracket preview
-      if (tournament.players?.length >= 2) {
+      // Auto-update bracket preview (admin only)
+      if (isAdmin && tournament.players?.length >= 2) {
         const matches = await API.generateBracket(tid);
         tournament = { ...tournament, matches };
-      } else {
+      } else if (!isAdmin) {
         tournament = { ...tournament, matches: [] };
       }
     } catch (e) {
@@ -955,11 +960,7 @@
 
   // Seeding setup
   async function autoSeed() {
-    if (!userState.qqGroup || !userState.id) {
-      toast.error("此操作需要先验证 QQ 群号与选手 ID。已为您打开配置面板！");
-      document.getElementById("header-profile-button")?.click();
-      return;
-    }
+    if (!ensureAdmin()) return;
     try {
       await API.autoSeeds(tid);
       await load();
@@ -970,11 +971,7 @@
   }
 
   async function randomizeSeed() {
-    if (!userState.qqGroup || !userState.id) {
-      toast.error("此操作需要先验证 QQ 群号与选手 ID。已为您打开配置面板！");
-      document.getElementById("header-profile-button")?.click();
-      return;
-    }
+    if (!ensureAdmin()) return;
     if (!confirm("随机微调会打乱 MMR 相近的选手（保留前 2 和后 2 名），继续？")) return;
     try {
       await API.randomizeSeeds(tid, { band: 80, keep_top: 2, keep_bottom: 2 });
@@ -986,11 +983,7 @@
   }
 
   async function moveSeed(idx, dir) {
-    if (!userState.qqGroup || !userState.id) {
-      toast.error("此操作需要先验证 QQ 群号与选手 ID。已为您打开配置面板！");
-      document.getElementById("header-profile-button")?.click();
-      return;
-    }
+    if (!ensureAdmin()) return;
     const target = idx + dir;
     if (target < 0 || target >= seedOrder.length) return;
     [seedOrder[idx], seedOrder[target]] = [seedOrder[target], seedOrder[idx]];
@@ -1008,11 +1001,7 @@
 
   // Bracket generation
   async function doGenerateBracket() {
-    if (!userState.qqGroup || !userState.id) {
-      toast.error("此操作需要先验证 QQ 群号与选手 ID。已为您打开配置面板！");
-      document.getElementById("header-profile-button")?.click();
-      return;
-    }
+    if (!ensureAdmin()) return;
     try {
       const matches = await API.generateBracket(tid);
       tournament = { ...tournament, matches };
@@ -1126,11 +1115,7 @@
   }
 
   async function handleBatchUpload(event) {
-    if (!userState.qqGroup || !userState.id) {
-      toast.error("此操作需要先验证 QQ 群号与选手 ID。已为您打开配置面板！");
-      document.getElementById("header-profile-button")?.click();
-      return;
-    }
+    if (!ensureAdmin()) return;
     const files = event.target.files;
     if (!files || files.length === 0) return;
 
@@ -1361,11 +1346,7 @@
   }
 
   async function handleDeleteReplay(replayId) {
-    if (!userState.qqGroup || !userState.id) {
-      toast.error("此操作需要先验证 QQ 群号与选手 ID。已为您打开配置面板！");
-      document.getElementById("header-profile-button")?.click();
-      return;
-    }
+    if (!ensureAdmin()) return;
     if (!confirm("确定要删除这个录像吗？此操作不可逆。")) return;
     try {
       await API.deleteReplay(replayId);
@@ -1400,6 +1381,7 @@
 
   let reparsing = $state(false);
   async function triggerReparseReplays() {
+    if (!ensureAdmin()) return;
     if (!confirm("确定要重新对该赛事的所有录像进行一遍底层解析吗？这会覆盖并修复时区等解析字段，整个过程可能耗时数秒。")) return;
     reparsing = true;
     try {
@@ -1527,7 +1509,7 @@
       toast.success(
         `已判定游戏获胜者为 ${playerName(winnerId)}，${isLoserAdvances ? "败者" : "胜者"} ${advancerName} 晋级`,
       );
-      if (tournament && tournament.active_match_id === selectedMatch.id) {
+      if (isAdmin && tournament && tournament.active_match_id === selectedMatch.id) {
         await API.setActiveMatch(tid, null);
         if (streamMode) await showHybridScene();
       }
@@ -1565,7 +1547,7 @@
     try {
       await API.submitWalkover(tid, selectedMatch.id, winnerId);
       toast.success("已记录弃权并晋级胜者");
-      if (tournament && tournament.active_match_id === selectedMatch.id) {
+      if (isAdmin && tournament && tournament.active_match_id === selectedMatch.id) {
         await API.setActiveMatch(tid, null);
         if (streamMode) await showHybridScene();
       }
@@ -1580,11 +1562,7 @@
   }
 
   async function doRollback() {
-    if (!userState.qqGroup || !userState.id) {
-      toast.error("此操作需要先验证 QQ 群号与选手 ID。已为您打开配置面板！");
-      document.getElementById("header-profile-button")?.click();
-      return;
-    }
+    if (!ensureAdmin()) return;
     if (!selectedMatch) return;
 
     let confirmMsg = "确定要回滚这场比赛的比分并将其重设为未开始状态吗？";
@@ -1610,6 +1588,7 @@
 
   // Time voting
   async function postponeVoteWeek() {
+    if (!ensureAdmin()) return;
     try {
       const res = await API.deletePastVotes(tid);
       voteWeekOffset += 1;
@@ -1738,6 +1717,7 @@
   }
 
   function openEditPlayer(p) {
+    if (!ensureAdmin()) return;
     editingPlayerId = p.id;
     editPlayerNewId = p.id;
     editPlayerFlag = p.flag || "cn";
@@ -1794,11 +1774,7 @@
   }
 
   async function handleSavePlayer() {
-    if (!userState.qqGroup || !userState.id) {
-      toast.error("此操作需要先验证 QQ 群号与选手 ID。已为您打开配置面板！");
-      document.getElementById("header-profile-button")?.click();
-      return;
-    }
+    if (!ensureAdmin()) return;
 
     try {
       const cleanNewId = editPlayerNewId.trim();
@@ -2361,21 +2337,23 @@
                 {/if}
               </span>
               <div class="flex items-center gap-1 shrink-0">
-                <button
-                  onclick={() => openEditPlayer(p)}
-                  class="text-muted-foreground hover:text-primary p-1 rounded transition-colors cursor-pointer"
-                  title="编辑选手资料"
-                >
-                  <SettingsIcon class="w-3.5 h-3.5" />
-                </button>
-                {#if tournament.status === "registration"}
+                {#if isAdmin}
                   <button
-                    onclick={() => doUnregister(p.id)}
-                    class="text-muted-foreground hover:text-red-400 p-1 rounded transition-colors cursor-pointer"
-                    title="注销此选手"
+                    onclick={() => openEditPlayer(p)}
+                    class="text-muted-foreground hover:text-primary p-1 rounded transition-colors cursor-pointer"
+                    title="编辑选手资料"
                   >
-                    <TrashIcon class="w-3.5 h-3.5" />
+                    <SettingsIcon class="w-3.5 h-3.5" />
                   </button>
+                  {#if tournament.status === "registration"}
+                    <button
+                      onclick={() => doUnregister(p.id)}
+                      class="text-muted-foreground hover:text-red-400 p-1 rounded transition-colors cursor-pointer"
+                      title="注销此选手"
+                    >
+                      <TrashIcon class="w-3.5 h-3.5" />
+                    </button>
+                  {/if}
                 {/if}
               </div>
             </div>
@@ -2399,6 +2377,7 @@
         </Card.Title>
       </Card.Header>
       <Card.Content class="p-5 pt-0 space-y-4 text-xs">
+        {#if isAdmin}
         <div
           class="flex items-center justify-between gap-3 rounded-xl border p-3 {streamMode
             ? 'border-red-500/40 bg-red-500/10'
@@ -2481,7 +2460,10 @@
           {/if}
         </div>
 
+        {/if}
+
         <div class="border-t border-border/40 pt-3 space-y-3">
+          {#if isAdmin}
           <span class="font-semibold text-muted-foreground block">直播大屏控制 (Overlay Control):</span>
           <div class="flex flex-col gap-2.5 bg-primary/5 p-3 rounded-xl border border-primary/20">
             <!-- Scene selector -->
@@ -2533,6 +2515,7 @@
               </div>
             {/if}
           </div>
+          {/if}
         </div>
 
         <div class="border-t border-border/40 pt-3 space-y-3">
@@ -2681,7 +2664,7 @@
             {/if}
           </Card.Description>
         </div>
-        {#if ["in_progress", "completed"].includes(tournament.status)}
+        {#if ["in_progress", "completed"].includes(tournament.status) && isAdmin}
           <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 shrink-0 w-full sm:w-auto">
             <label
               class="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl border border-primary/30 bg-primary/5 text-primary text-xs font-bold shadow hover:bg-primary hover:text-black transition-all cursor-pointer w-full sm:w-auto h-8"
@@ -2818,7 +2801,7 @@
                           <div class="px-2 py-1 bg-neutral-100 dark:bg-neutral-900 text-[8px] font-mono text-neutral-500 dark:text-neutral-400 flex items-center justify-between border-b border-neutral-200 dark:border-neutral-800/80 shrink-0">
                             <span>#{matchOrder.get(m.id)} · 场次 {m.position}</span>
                             <div class="flex items-center gap-1.5">
-                              {#if isPlayable}
+                              {#if isAdmin && isPlayable}
                                 {@const isActive = tournament.active_match_id === m.id}
                                 <button
                                   onclick={async (e) => {
@@ -3094,7 +3077,7 @@
             >
               {tournament.name}
             </h1>
-            {#if userState.id}
+            {#if isAdmin}
               <button
                 type="button"
                 onclick={startTitleEdit}
@@ -3144,7 +3127,8 @@
       </div>
 
       <!-- Admin Status Stepper Controls -->
-      <div class="flex items-center gap-2 flex-wrap">
+      {#if isAdmin}
+        <div class="flex items-center gap-2 flex-wrap">
         {#if tournament.status === "voting"}
           <Button
             size="sm"
@@ -3213,7 +3197,8 @@
             重新打开比赛
           </Button>
         {/if}
-      </div>
+        </div>
+      {/if}
     </div>
 
     <!-- Phase Stepper Graphic -->
@@ -3375,6 +3360,7 @@
               </div>
 
               <!-- Admin/Organizer Manual registration -->
+              {#if isAdmin}
               <div class="space-y-2.5">
                 <label
                   for="reg-id-input"
@@ -3487,11 +3473,12 @@
                   </div>
                 {/if}
               </div>
+              {/if}
             </Card.Content>
           </Card.Root>
 
           <!-- Seeding Panel -->
-          {#if (tournament.players?.length || 0) >= 2}
+          {#if isAdmin && (tournament.players?.length || 0) >= 2}
             <Card.Root class="border-border bg-card/40">
               <Card.Header class="p-6">
                 <div>
@@ -3615,6 +3602,7 @@
                 点击对应的时间框来投出赞成票。我们会根据票数最高的时间来安排赛程。
                 投票后，如果该时间最终当选，会自动为你报名；不想参赛可在报名阶段取消。
               </Card.Description>
+              {#if isAdmin}
               <div class="flex flex-wrap items-center gap-2 mt-3">
                 <Button
                   variant="outline"
@@ -3641,6 +3629,7 @@
                   顺延会作废已过期投票；未过期选项保留
                 </span>
               </div>
+              {/if}
             </Card.Header>
             <Card.Content class="p-6 pt-0 space-y-4">
               {#if pastVotes.length > 0}
@@ -4396,6 +4385,7 @@
           </div>
 
           <!-- Upload Area -->
+          {#if isAdmin || (userState.id && (selectedMatch?.player1_id === userState.id || selectedMatch?.player2_id === userState.id))}
           <div class="pt-2">
             <label
               class="w-full h-24 border border-dashed border-border/80 hover:border-primary/50 bg-background/30 hover:bg-background/50 rounded-xl flex flex-col items-center justify-center gap-1.5 cursor-pointer transition-all p-3 text-center relative overflow-hidden"
@@ -4431,6 +4421,7 @@
               {/if}
             </label>
           </div>
+          {/if}
         </div>
 
         <!-- Replay Content Area -->
@@ -4553,6 +4544,7 @@
                   >
                     <DownloadIcon class="w-3.5 h-3.5" /> 下载 SC2Replay
                   </Button>
+                  {#if isAdmin}
                   <Button
                     variant="destructive"
                     size="sm"
@@ -4561,6 +4553,7 @@
                   >
                     <TrashIcon class="w-3.5 h-3.5" /> 删除录像
                   </Button>
+                  {/if}
                 </div>
               </div>
 
@@ -4782,7 +4775,7 @@
     <Dialog.Footer
       class="mt-2 border-t border-border pt-3 flex flex-row items-center justify-between gap-3"
     >
-      {#if tournament.status === "in_progress"}
+      {#if tournament.status === "in_progress" && (isAdmin || (userState.id && (selectedMatch?.player1_id === userState.id || selectedMatch?.player2_id === userState.id)))}
         <Button
           variant="outline"
           size="sm"

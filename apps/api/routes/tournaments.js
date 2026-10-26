@@ -5,6 +5,7 @@ import { LadderRepo } from '../repositories/ladder-repo.js';
 import { Readable } from 'stream';
 import { getPlayerInfoFromReplay, bnetEntryKey } from './replays.js';
 import { buildCalendarFeed, buildTournamentIcs } from '../lib/calendar.js';
+import { requireAdmin } from '../lib/admin.js';
 
 export default async function tournamentsRoutes(fastify) {
   const repo = TournamentRepo(fastify.db);
@@ -138,6 +139,7 @@ export default async function tournamentsRoutes(fastify) {
   });
 
   fastify.post('/tournaments/:id/accounts', async (req) => {
+    requireAdmin(fastify, req);
     const { id: tournamentId } = req.params;
     const { player_id, accounts } = req.body;
     if (!player_id) throw fastify.httpErrors.badRequest('player_id is required');
@@ -163,6 +165,7 @@ export default async function tournamentsRoutes(fastify) {
   });
 
   fastify.delete('/tournaments/:id/accounts', async (req) => {
+    requireAdmin(fastify, req);
     const { id: tournamentId } = req.params;
     const { account_key } = req.body || {};
     if (!account_key) throw fastify.httpErrors.badRequest('account_key is required');
@@ -172,6 +175,7 @@ export default async function tournamentsRoutes(fastify) {
   });
 
   fastify.post('/tournaments', async (req) => {
+    requireAdmin(fastify, req);
     const { id, name, description, player_capacity, hold_third_place, loser_advances, scheduled_time } = req.body;
     if (!id || !name) throw fastify.httpErrors.badRequest('id and name are required');
     const existing = await repo.getById(id);
@@ -210,6 +214,7 @@ export default async function tournamentsRoutes(fastify) {
   });
 
   fastify.patch('/tournaments/:id', async (req) => {
+    requireAdmin(fastify, req);
     const name = String(req.body?.name || '').trim();
     if (!name) throw fastify.httpErrors.badRequest('name is required');
     const updated = await repo.rename(req.params.id, name);
@@ -219,6 +224,7 @@ export default async function tournamentsRoutes(fastify) {
   });
 
   fastify.post('/tournaments/:id/status', async (req) => {
+    requireAdmin(fastify, req);
     const { status, scheduled_time, created_at, updated_at } = req.body;
     const valid = ['registration', 'voting', 'in_progress', 'completed'];
     if (!valid.includes(status)) throw fastify.httpErrors.badRequest('Invalid status');
@@ -270,6 +276,7 @@ export default async function tournamentsRoutes(fastify) {
   });
 
   fastify.post('/tournaments/:id/overlay-state', async (req) => {
+    requireAdmin(fastify, req);
     const { overlay_scene, overlay_round } = req.body;
     const valid = ['auto', 'intro', 'ingame', 'intermission', 'hybrid'];
     if (overlay_scene && !valid.includes(overlay_scene)) throw fastify.httpErrors.badRequest('Invalid overlay_scene');
@@ -286,6 +293,7 @@ export default async function tournamentsRoutes(fastify) {
   });
 
   fastify.post('/tournaments/:id/seeds', async (req) => {
+    requireAdmin(fastify, req);
     const { player_ids } = req.body;
     if (!Array.isArray(player_ids)) throw fastify.httpErrors.badRequest('player_ids array required');
     const t = await repo.getById(req.params.id);
@@ -300,6 +308,7 @@ export default async function tournamentsRoutes(fastify) {
   });
 
   fastify.post('/tournaments/:id/seeds/auto', async (req) => {
+    requireAdmin(fastify, req);
     const t = await repo.getById(req.params.id);
     if (!t) throw fastify.httpErrors.notFound('Tournament not found');
     const seeded = await ladderRepo.autoSeeds(req.params.id);
@@ -308,6 +317,7 @@ export default async function tournamentsRoutes(fastify) {
   });
 
   fastify.post('/tournaments/:id/seeds/randomize', async (req) => {
+    requireAdmin(fastify, req);
     const t = await repo.getById(req.params.id);
     if (!t) throw fastify.httpErrors.notFound('Tournament not found');
     const body = req.body || {};
@@ -327,6 +337,7 @@ export default async function tournamentsRoutes(fastify) {
   });
 
   fastify.post('/tournaments/:id/bracket', async (req) => {
+    requireAdmin(fastify, req);
     const t = await repo.getById(req.params.id);
     if (!t) throw fastify.httpErrors.notFound('Tournament not found');
     const bracket = await matches.generateBracket(req.params.id);
@@ -344,6 +355,7 @@ export default async function tournamentsRoutes(fastify) {
   });
 
   fastify.post('/tournaments/:id/active-match', async (req) => {
+    requireAdmin(fastify, req);
     const { active_match_id } = req.body;
     const t = await repo.getById(req.params.id);
     if (!t) throw fastify.httpErrors.notFound('Tournament not found');
@@ -359,6 +371,7 @@ export default async function tournamentsRoutes(fastify) {
   });
 
   fastify.post('/tournaments/:id/import', async (req) => {
+    requireAdmin(fastify, req);
     const { id } = req.params;
     const { name, description, status, player_capacity, hold_third_place, scheduled_time, created_at, updated_at, players, matches: rawMatches } = req.body;
     if (player_capacity != null && (!Number.isInteger(Number(player_capacity)) || Number(player_capacity) < 2 || Number(player_capacity) > 128)) {
@@ -552,6 +565,7 @@ export default async function tournamentsRoutes(fastify) {
   });
 
   fastify.delete('/tournaments/:id', async (req) => {
+    requireAdmin(fastify, req);
     const { id } = req.params;
     const t = await repo.getById(id);
     if (!t) throw fastify.httpErrors.notFound('Tournament not found');

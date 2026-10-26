@@ -16,6 +16,10 @@ async function request(path, options = {}) {
     if (playerId) {
       headers['x-player-id'] = encodeURIComponent(playerId);
     }
+    const adminToken = sessionStorage.getItem('suck_admin_token');
+    if (adminToken) {
+      headers['x-admin-token'] = adminToken;
+    }
   }
 
   const res = await fetch(`${BASE}${path}`, {
@@ -24,7 +28,15 @@ async function request(path, options = {}) {
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }));
-    throw new Error(err.error || err.message || 'Request failed');
+    const message =
+      res.status === 401
+        ? '需要管理员权限，请先点击右上角盾牌图标登录'
+        : res.status === 403
+          ? err.message || '没有权限执行此操作'
+          : err.message || err.error || 'Request failed';
+    const error = new Error(message);
+    error.status = res.status;
+    throw error;
   }
   return res.json();
 }
@@ -32,10 +44,14 @@ async function request(path, options = {}) {
 const enc = encodeURIComponent;
 
 export const API = {
+  // Admin
+  verifyAdmin: () => request('/admin/session'),
+
   // Tournaments
   listTournaments: () => request('/tournaments'),
   getTournament: (id) => request(`/tournaments/${enc(id)}`),
   createTournament: (data) => request('/tournaments', { method: 'POST', body: JSON.stringify(data) }),
+  deleteTournament: (id) => request(`/tournaments/${enc(id)}`, { method: 'DELETE' }),
   updateStatus: (id, status, scheduled_time) => request(`/tournaments/${enc(id)}/status`, { method: 'POST', body: JSON.stringify({ status, scheduled_time }) }),
   updateTournament: (id, data) => request(`/tournaments/${enc(id)}`, { method: 'PATCH', body: JSON.stringify(data) }),
   setSeeds: (id, player_ids) => request(`/tournaments/${enc(id)}/seeds`, { method: 'POST', body: JSON.stringify({ player_ids }) }),

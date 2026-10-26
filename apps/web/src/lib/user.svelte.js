@@ -3,11 +3,13 @@ import { browser } from '$app/environment';
 class UserState {
   id = $state('');
   qqGroup = $state('');
+  adminToken = $state('');
 
   constructor() {
     if (browser) {
       this.id = localStorage.getItem('suck_player_id') || '';
       this.qqGroup = localStorage.getItem('suck_qq_group') || '';
+      this.adminToken = sessionStorage.getItem('suck_admin_token') || '';
     }
   }
 
@@ -29,6 +31,17 @@ class UserState {
         localStorage.setItem('suck_qq_group', newQQGroup);
       } else {
         localStorage.removeItem('suck_qq_group');
+      }
+    }
+  }
+
+  setAdminToken(token) {
+    this.adminToken = token;
+    if (browser) {
+      if (token) {
+        sessionStorage.setItem('suck_admin_token', token);
+      } else {
+        sessionStorage.removeItem('suck_admin_token');
       }
     }
   }
