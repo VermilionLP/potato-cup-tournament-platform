@@ -83,11 +83,11 @@ function report(plan) {
     for (const w of warnings) console.log(`${w.title}: ${w.message}`);
   }
   if (plan.merged.length) {
-    console.log('\n== 仅大小写不同、已合并为同一选手 ==');
+    console.log('\n== 名字相近、已合并为同一选手 ==');
     for (const m of plan.merged) console.log(`${m.from.join(', ')} -> ${m.into}`);
   }
   if (plan.similar.length) {
-    console.log('\n== 名字相近但未合并（请确认是否同一人） ==');
+    console.log('\n== 名字相近但未合并 ==');
     for (const g of plan.similar) console.log(g.join(' / '));
   }
 }

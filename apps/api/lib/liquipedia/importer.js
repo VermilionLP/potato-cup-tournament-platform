@@ -3,7 +3,7 @@
 // (writeEvent) so the plan can be shown as a dry run first.
 
 import { parseBracketTemplate } from './bracket-template.js';
-import { convertPage, similarNames } from './convert.js';
+import { convertPage, nameKey, similarNames } from './convert.js';
 import { parseBlocks } from './page.js';
 
 export const SOURCE_BASE = 'https://liquipedia.net/warthunder/';
@@ -26,10 +26,10 @@ export function templateNames(pages) {
 /**
  * Converts every page and settles player ids.
  *
- * `existingIds`: ids already on the platform. A Liquipedia name that differs
- * from one of them (or from another imported name) only by letter case is
- * mapped onto it, so "steve_i400" and "Steve_i400" become one player. Other
- * look-alikes (extra underscores, Cyrillic letters) are only reported.
+ * `existingIds`: ids already on the platform. Names that only differ in
+ * letter case, spaces/underscores/dashes/dots or look-alike Cyrillic letters
+ * ("steve_i400" / "Steve_i400", "NST" / "NST_", "ComRad" / "ComRаd") are one
+ * player: an existing platform id wins, otherwise the spelling used most.
  */
 export function planImport({ pages, templates, existingIds = [], today = new Date() }) {
   const parsedTemplates = new Map(
@@ -46,25 +46,25 @@ export function planImport({ pages, templates, existingIds = [], today = new Dat
   }
   events.sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')) || a.id.localeCompare(b.id));
 
-  // Case-insensitive canonical ids: an existing platform id wins, otherwise
-  // the spelling used most often in the import.
+  // Canonical ids per look-alike group: an existing platform id wins,
+  // otherwise the spelling used most often in the import.
   const counts = new Map();
   for (const e of events) {
     for (const r of e.matches) {
       for (const id of [r.player1_id, r.player2_id]) if (id) counts.set(id, (counts.get(id) || 0) + 1);
     }
   }
-  const existingByLower = new Map(existingIds.map((id) => [id.toLowerCase(), id]));
+  const existingByKey = new Map(existingIds.map((id) => [nameKey(id), id]));
   const variants = new Map();
   for (const name of counts.keys()) {
-    const k = name.toLowerCase();
+    const k = nameKey(name);
     if (!variants.has(k)) variants.set(k, []);
     variants.get(k).push(name);
   }
   const canonical = new Map();
   const merged = [];
   for (const [k, names] of variants) {
-    const target = existingByLower.get(k)
+    const target = existingByKey.get(k)
       || [...names].sort((a, b) => counts.get(b) - counts.get(a) || a.localeCompare(b))[0];
     for (const n of names) canonical.set(n, target);
     const others = names.filter((n) => n !== target);

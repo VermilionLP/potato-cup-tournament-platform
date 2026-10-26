@@ -57,8 +57,9 @@ node scripts/import-liquipedia.js --refresh  # download again instead of using t
 ```
 
 Set `LIQUIPEDIA_CONTACT` (e.g. an e-mail) so Liquipedia can reach you about
-the requests. Names that differ from an existing player only in letter case
-are merged onto that player; other look-alikes are only listed. Imported
+the requests. Names that only differ in letter case, spaces, underscores,
+dashes, dots or look-alike Cyrillic letters are merged into one player (an
+existing platform id wins, otherwise the most used spelling). Imported
 events are `completed`, carry `played_at`/`source_url`, and link back to
 their Liquipedia page (CC-BY-SA 3.0). The ladder rates all games in date
 order; `GET /api/ladder?window=year` rates only the last 365 days.
