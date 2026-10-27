@@ -25,6 +25,7 @@ import pointsRoutes from './routes/points.js';
 import { startPushScheduler } from './lib/push-scheduler.js';
 import { createEsLogger, registerRequestLogging } from './lib/es-logger.js';
 import { registerRateLimit } from './lib/rate-limit.js';
+import { staticCacheHeaders } from './lib/static-cache.js';
 import fastifySse from '@fastify/sse';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -81,7 +82,13 @@ if (staticRoot) {
   await fastify.register(fastifyStatic, {
     root: staticRoot,
     prefix: '/',
-    wildcard: false
+    wildcard: false,
+    // Serve the build's .br / .gz copies when the browser accepts them.
+    preCompressed: true,
+    // Cache-Control comes from staticCacheHeaders (hashed files: a year;
+    // pages: revalidate).
+    cacheControl: false,
+    setHeaders: staticCacheHeaders
   });
 
   fastify.setNotFoundHandler((req, reply) => {

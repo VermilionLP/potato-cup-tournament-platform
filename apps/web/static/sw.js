@@ -9,11 +9,11 @@ self.addEventListener('push', (event) => {
     data = { body: event.data ? event.data.text() : '' };
   }
   event.waitUntil(
-    self.registration.showNotification(data.title || 'SUCK 比赛提醒', {
+    self.registration.showNotification(data.title || 'Potato Cup 比赛提醒', {
       body: data.body || '',
       icon: '/favicon-96x96.png',
       badge: '/favicon-96x96.png',
-      tag: data.tag || 'suck-reminder',
+      tag: data.tag || 'potato-cup-reminder',
       data: { url: data.url || '/' },
     }),
   );

@@ -6,7 +6,10 @@ const config = {
   kit: {
     adapter: adapter({
       fallback: 'index.html',
-      strict: false
+      strict: false,
+      // Also write .br / .gz copies; the API serves them to browsers that
+      // accept them (see staticCacheHeaders in apps/api/lib/static-cache.js).
+      precompress: true
     })
   }
 };

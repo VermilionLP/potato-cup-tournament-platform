@@ -297,6 +297,9 @@ check players            localhost:3100/api/players            200
 check players/statistics localhost:3100/api/players/statistics 200
 check tournaments        localhost:3100/api/tournaments        200
 check "flag cn.svg"      localhost:3100/flags/cn.svg           200
+# Compression and caching of the web app (informational).
+ENC=$(curl -s -o /dev/null -D - -H 'Accept-Encoding: br, gzip' localhost:3100/ | tr -d '\r' | grep -i '^content-encoding:' | cut -d' ' -f2 || true)
+printf '%-20s %s\n' "compression" "${ENC:-none (rebuild with precompress?)}"
 
 echo
 if [ "$FAILED" -ne 0 ]; then
