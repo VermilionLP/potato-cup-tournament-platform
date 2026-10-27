@@ -2333,7 +2333,7 @@
                 <option value="">-- 未选择对局 --</option>
                 {#each (tournament.matches || []).filter(m => m.player1_id && m.player2_id) as m}
                   <option value={m.id}>
-                    #{matchOrder.get(m.id)} 场次 {m.position} ({roundLabel(m.round, totalRounds)}): {playerName(m.player1_id)} vs {playerName(m.player2_id)} [{m.status === 'completed' ? '完赛' : m.status === 'walkover' ? '弃权' : '待赛'}]
+                    #{matchOrder.get(m.id)} 场次 {m.position} ({matchRoundLabel(m)}): {playerName(m.player1_id)} vs {playerName(m.player2_id)} [{m.status === 'completed' ? '完赛' : m.status === 'walkover' ? '弃权' : '待赛'}]
                   </option>
                 {/each}
               </select>
@@ -4836,7 +4836,7 @@
         >
           <div class="flex items-center justify-between gap-3">
             <span class="text-xs font-semibold text-foreground">
-              #{matchOrder.get(m.id)} · {roundLabel(m.round, totalRounds)} · 场次 {m.position}
+              #{matchOrder.get(m.id)} · {matchRoundLabel(m)} · 场次 {m.position}
             </span>
             <Badge variant="outline" class="text-[10px]">待赛</Badge>
           </div>
