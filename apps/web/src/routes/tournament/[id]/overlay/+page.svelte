@@ -597,8 +597,7 @@
 
     es.onmessage = async (event) => {
       try {
-        const msg = JSON.parse(event.data);
-        console.log("Overlay received update message:", msg);
+        JSON.parse(event.data); // malformed messages are skipped below
         await refreshData();
       } catch (e) {
         console.error("Overlay failed to parse event message", e);

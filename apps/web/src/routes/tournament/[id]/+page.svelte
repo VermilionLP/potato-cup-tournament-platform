@@ -634,8 +634,7 @@
 
     es.onmessage = async (event) => {
       try {
-        const msg = JSON.parse(event.data);
-        console.log("实时接收到服务器推送的赛事变动事件:", msg);
+        JSON.parse(event.data); // malformed messages are skipped below
         const updated = await API.getTournament(tid);
         tournament = updated;
         initializeSeedOrder();

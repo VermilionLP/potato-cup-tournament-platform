@@ -31,6 +31,7 @@ Read this guide before editing files under `apps/web`.
 - Lint/typecheck: none defined; the build below is the closest check.
 - Tests: `pnpm --filter suck-tournament-web test` (`node --test`; pure helpers such as bracket/round labels).
 - Build: `pnpm --filter suck-tournament-web build`
+- Compile check without npm (sandboxes that only reach GitHub): `bash scripts/svelte-check-offline.sh [file...]` compiles every `.svelte` / `.svelte.js` file with the locked Svelte version; it reports compile errors only (no a11y warnings, no type check).
 - Dev server: `pnpm dev:suck` (port 5175; proxies `/api` to `http://127.0.0.1:3100`)
 - UI flow: verify routes with the Playwright CLI and skill when UI behavior changes.
 
