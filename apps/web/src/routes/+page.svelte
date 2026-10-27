@@ -4,7 +4,6 @@
   import { API } from "$lib/api.js";
   import { defaultVehiclePools } from "$lib/data/vehiclePools.js";
   import {
-    BRACKET_FORMATS,
     GAME_MODES,
     advancementLabel,
     gameModeLabel,
@@ -184,6 +183,87 @@
   let autoRoundsBasis = $derived(
     isNewTwoStage && Number(newGroupSize) >= 2 ? Number(newGroupSize) : null,
   );
+  // The create dialog is a wizard: basics, format, then one page per stage
+  // of a two-stage event, then vehicles and a summary.
+  let createStep = $state(0);
+  let createSteps = $derived([
+    { id: "basics", label: "基本信息" },
+    { id: "format", label: "赛制" },
+    ...(isNewTwoStage
+      ? [
+          { id: "group", label: "第一阶段 · 小组赛" },
+          { id: "playoff", label: "第二阶段 · 淘汰赛" },
+        ]
+      : []),
+    { id: "extras", label: "载具与确认" },
+  ]);
+  let currentStepIndex = $derived(Math.min(createStep, createSteps.length - 1));
+  let currentStepId = $derived(createSteps[currentStepIndex].id);
+  let isLastStep = $derived(currentStepIndex === createSteps.length - 1);
+
+  // What blocks leaving a step, or "" when it is complete.
+  function stepError(id) {
+    if (id === "basics") {
+      if (!newName.trim()) return "请输入赛事名称";
+      if (!newName.trim().toLowerCase().replace(/[^a-z0-9]/g, "")) {
+        return "赛事名称需包含英文或数字（用来生成赛事 ID）";
+      }
+      if (!(Number(newCapacity) >= 2 && Number(newCapacity) <= 128)) return "选手容量必须在 2 至 128 人之间";
+    }
+    if ((id === "format" && newFormat === "swiss") || (id === "group" && newGroupFormat === "swiss")) {
+      if (newSwissRoundsMode === "manual" && !isValidSwissRounds(newSwissRounds)) {
+        return `瑞士轮轮数必须在 ${MIN_SWISS_ROUNDS} 至 ${MAX_SWISS_ROUNDS} 之间`;
+      }
+    }
+    if (id === "group") {
+      const size = newGroupSize === "" || newGroupSize === null ? null : Number(newGroupSize);
+      if (newGroupFormat !== "swiss" && size === null) return "淘汰制小组需要设置每组人数";
+      if (size !== null && (!Number.isInteger(size) || size < 2 || size > 64)) return "每组人数必须在 2 至 64 之间";
+      const k = Number(newAdvancePerGroup);
+      if (!Number.isInteger(k) || k < 1) return "请设置每组晋级人数（至少 1 人）";
+      if (size !== null && k > size) return "每组晋级人数不能多于每组人数";
+      if (newGroupProblem) return newGroupProblem;
+    }
+    return "";
+  }
+  let currentStepError = $derived(stepError(currentStepId));
+  // A step's hint shows once "下一步" has been tried there.
+  let triedStep = $state(-1);
+
+  function goToStep(index) {
+    // Moving forward checks every step on the way.
+    for (let i = currentStepIndex; i < index; i += 1) {
+      const err = stepError(createSteps[i].id);
+      if (err) {
+        createStep = i;
+        triedStep = i;
+        toast.error(err);
+        return;
+      }
+    }
+    createStep = index;
+  }
+
+  // Example numbers for the two-stage pages, based on a full field.
+  let groupPreview = $derived.by(() => {
+    if (!isNewTwoStage) return null;
+    const n = Number(newCapacity) || 0;
+    const size = Number(newGroupSize) || 0;
+    const k = Number(newAdvancePerGroup) || 0;
+    if (n < 2 || k < 1) return null;
+    const groups = size >= 2 ? Math.max(1, Math.ceil(n / size)) : 1;
+    const qualifiers = groups * k;
+    const bracket = 2 ** Math.ceil(Math.log2(Math.max(2, qualifiers)));
+    return {
+      players: n,
+      groups,
+      smallest: Math.floor(n / groups),
+      largest: Math.ceil(n / groups),
+      qualifiers,
+      byes: bracket - qualifiers,
+    };
+  });
+
   // Live check of an elimination group set-up (the server checks again at start).
   let newGroupProblem = $derived(
     isNewTwoStage && newGroupFormat !== "swiss" && Number(newGroupSize) >= 2
@@ -235,6 +315,8 @@
     newBanpickEnabled = true;
     newGroupFormat = "swiss";
     newSwissRoundsMode = "auto";
+    createStep = 0;
+    triedStep = -1;
     newSwissRounds = 3;
     newPlayoffFormat = "single_elim";
     newGroupSize = 4;
@@ -719,7 +801,30 @@
           </div>
       {/snippet}
 
-      <!-- Basics -->
+      <!-- Steps -->
+      <ol class="flex flex-wrap items-center gap-1.5" aria-label="创建步骤">
+        {#each createSteps as step, i (step.id)}
+          <li>
+            <button
+              type="button"
+              onclick={() => goToStep(i)}
+              aria-current={i === currentStepIndex ? "step" : undefined}
+              class="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-colors cursor-pointer
+                {i === currentStepIndex
+                ? 'border-primary bg-primary text-primary-foreground'
+                : i < currentStepIndex
+                  ? 'border-primary/40 bg-primary/10 text-primary'
+                  : 'border-border text-muted-foreground hover:text-foreground'}"
+            >
+              <span class="inline-flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-bold
+                {i === currentStepIndex ? 'bg-primary-foreground/20' : 'bg-muted'}">{i + 1}</span>
+              {step.label}
+            </button>
+          </li>
+        {/each}
+      </ol>
+
+      {#if currentStepId === "basics"}
       <section class="space-y-3 rounded-xl border border-border/60 bg-background/30 p-3">
         <div class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">基本信息</div>
         <div class="space-y-1.5">
@@ -760,18 +865,27 @@
         </div>
       </section>
 
-      <!-- Format -->
+      {:else if currentStepId === "format"}
       <section class="space-y-3 rounded-xl border border-border/60 bg-background/30 p-3">
-        <div class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">赛制</div>
-        {@render segmented(
-          [
-            ...BRACKET_FORMATS.map((f) => ({ id: f.id, label: f.label, disabled: !f.available, title: f.available ? f.label : "后续版本开放" })),
-            { id: "two_stage", label: "小组赛 + 淘汰赛", title: "先分组比赛，各组前几名进入淘汰赛" },
-          ],
-          newFormat,
-          (id) => (newFormat = id),
-          "grid-cols-2 sm:grid-cols-4"
-        )}
+        <div class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">赛制结构</div>
+        <div class="grid grid-cols-2 gap-2">
+          {#each [
+            { id: "single_elim", label: "单败淘汰", hint: "输一场即出局" },
+            { id: "double_elim", label: "双败淘汰", hint: "输两场才出局，含总决赛" },
+            { id: "swiss", label: "瑞士轮", hint: "积分制，积分榜第一夺冠" },
+            { id: "two_stage", label: "小组赛 + 淘汰赛", hint: "分两个阶段，分别设置" },
+          ] as opt (opt.id)}
+            <button
+              type="button"
+              onclick={() => (newFormat = opt.id)}
+              class="rounded-lg border px-2.5 py-2 text-left transition-colors cursor-pointer
+                {newFormat === opt.id ? 'border-primary bg-primary/10 ring-1 ring-primary/30' : 'border-border hover:border-foreground/40'}"
+            >
+              <div class="text-xs font-bold text-foreground">{opt.label}</div>
+              <div class="text-[10px] text-muted-foreground">{opt.hint}</div>
+            </button>
+          {/each}
+        </div>
 
         {#if newFormat === "single_elim"}
           <div class="flex flex-wrap items-center gap-2">
@@ -795,64 +909,92 @@
           </label>
         {:else if newFormat === "swiss"}
           {@render swissRoundsPicker()}
-        {:else if isNewTwoStage}
-          <div class="space-y-1.5">
-            <span class="block text-xs text-foreground/80">小组赛赛制</span>
-            {@render segmented(
-              GROUP_FORMATS.map((f) => ({ id: f.id, label: f.label, title: f.hint })),
-              newGroupFormat,
-              (id) => (newGroupFormat = id)
-            )}
-            <p class="text-[10px] text-muted-foreground">
-              {GROUP_FORMATS.find((f) => f.id === newGroupFormat)?.hint}
-              {#if newGroupFormat === "double_elim"}
-                ；每组晋级 2 人 = 胜者组冠军 + 败者组冠军（可选 2、3、4、8 人）
-              {:else if newGroupFormat === "single_elim"}
-                ；晋级 3 人及以上时加打三四名决赛
-              {/if}
-            </p>
-          </div>
-          <div class="grid grid-cols-2 gap-3 sm:grid-cols-[auto_auto_1fr]">
-            <label class="space-y-1.5" for="new-group-size">
-              <span class="block text-xs text-foreground/80">每组人数</span>
-              <input id="new-group-size" type="number" min="2" max="64" placeholder={newGroupFormat === "swiss" ? "不分组" : "必填"} bind:value={newGroupSize}
-                class="h-8 w-20 rounded-md border border-border bg-background px-2 text-center text-sm text-foreground" />
-            </label>
-            <label class="space-y-1.5" for="new-advance">
-              <span class="block text-xs text-foreground/80">每组晋级</span>
-              <input id="new-advance" type="number" min="1" max="64" bind:value={newAdvancePerGroup}
-                class="h-8 w-20 rounded-md border border-border bg-background px-2 text-center text-sm text-foreground" />
-            </label>
-            <div class="col-span-2 space-y-1.5 sm:col-span-1">
-              <span class="block text-xs text-foreground/80">淘汰赛</span>
-              {@render segmented(
-                PLAYOFF_FORMATS.map((f) => ({ id: f.id, label: f.label })),
-                newPlayoffFormat,
-                (id) => (newPlayoffFormat = id),
-                "grid-cols-2"
-              )}
-            </div>
-          </div>
-          {#if newGroupProblem}
-            <p class="text-[11px] font-semibold text-amber-600 dark:text-amber-400">⚠ {newGroupProblem}</p>
-          {/if}
-          {#if newPlayoffFormat === "double_elim"}
-            <label class="flex items-start gap-2 text-xs text-foreground/80 cursor-pointer">
-              <input type="checkbox" bind:checked={newGrandFinalReset} class="accent-primary mt-0.5" />
-              <span>总决赛重置 <span class="text-muted-foreground">· 败者组冠军赢下首场后加赛一场</span></span>
-            </label>
-          {/if}
-          {#if newGroupFormat === "swiss"}
-            {@render swissRoundsPicker()}
-          {:else}
-            <p class="text-[10px] leading-relaxed text-muted-foreground">
-              开赛时按种子蛇形分组，每组各打一个{newGroupFormat === "double_elim" ? "双败" : "单败"}对阵；所有小组打完后由管理员确认名单进入淘汰赛，种子按小组名次排列，同组选手首轮尽量分开。
-            </p>
-          {/if}
+        {:else}
+          <p class="text-[11px] leading-relaxed text-muted-foreground">
+            第一阶段分组比赛，各组前几名进入第二阶段淘汰赛。点「下一步」分别设置两个阶段。
+          </p>
         {/if}
       </section>
 
-      <!-- Vehicles -->
+      {:else if currentStepId === "group"}
+      <section class="space-y-3 rounded-xl border border-border/60 bg-background/30 p-3">
+        <div class="flex items-center justify-between gap-2">
+          <div class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">第一阶段 · 小组赛</div>
+          <span class="text-[10px] text-muted-foreground">开赛时按种子蛇形分组</span>
+        </div>
+        <div class="space-y-1.5">
+          <span class="block text-xs text-foreground/80">小组赛赛制</span>
+          {@render segmented(
+            GROUP_FORMATS.map((f) => ({ id: f.id, label: f.label, title: f.hint })),
+            newGroupFormat,
+            (id) => (newGroupFormat = id)
+          )}
+          <p class="text-[10px] text-muted-foreground">
+            {GROUP_FORMATS.find((f) => f.id === newGroupFormat)?.hint}
+            {#if newGroupFormat === "double_elim"}
+              ；每组晋级 2 人 = 胜者组冠军 + 败者组冠军（可选 2、3、4、8 人）
+            {:else if newGroupFormat === "single_elim"}
+              ；晋级 3 人及以上时加打三四名决赛
+            {/if}
+          </p>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <label class="space-y-1.5" for="new-group-size">
+            <span class="block text-xs text-foreground/80">每组人数</span>
+            <input id="new-group-size" type="number" min="2" max="64" placeholder={newGroupFormat === "swiss" ? "不分组" : "必填"} bind:value={newGroupSize}
+              class="h-8 w-24 rounded-md border border-border bg-background px-2 text-center text-sm text-foreground" />
+          </label>
+          <label class="space-y-1.5" for="new-advance">
+            <span class="block text-xs text-foreground/80">每组晋级</span>
+            <input id="new-advance" type="number" min="1" max="64" bind:value={newAdvancePerGroup}
+              class="h-8 w-24 rounded-md border border-border bg-background px-2 text-center text-sm text-foreground" />
+          </label>
+        </div>
+        {#if newGroupProblem}
+          <p class="text-[11px] font-semibold text-amber-600 dark:text-amber-400">⚠ {newGroupProblem}</p>
+        {:else if groupPreview}
+          <p class="rounded-lg bg-muted/40 px-2.5 py-1.5 text-[11px] text-foreground/80">
+            若报满 {groupPreview.players} 人：分 {groupPreview.groups} 组（每组 {groupPreview.smallest === groupPreview.largest ? groupPreview.smallest : `${groupPreview.smallest}–${groupPreview.largest}`} 人），共 <b>{groupPreview.qualifiers}</b> 人进入淘汰赛。
+          </p>
+        {/if}
+        {#if newGroupFormat === "swiss"}
+          {@render swissRoundsPicker()}
+        {:else}
+          <p class="text-[10px] leading-relaxed text-muted-foreground">
+            每组各打一个{newGroupFormat === "double_elim" ? "双败（组内不打总决赛）" : "单败"}对阵，各组独立进行。
+          </p>
+        {/if}
+      </section>
+
+      {:else if currentStepId === "playoff"}
+      <section class="space-y-3 rounded-xl border border-border/60 bg-background/30 p-3">
+        <div class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">第二阶段 · 淘汰赛</div>
+        <div class="space-y-1.5">
+          <span class="block text-xs text-foreground/80">淘汰赛赛制</span>
+          {@render segmented(
+            PLAYOFF_FORMATS.map((f) => ({ id: f.id, label: f.label })),
+            newPlayoffFormat,
+            (id) => (newPlayoffFormat = id),
+            "grid-cols-2"
+          )}
+        </div>
+        {#if newPlayoffFormat === "double_elim"}
+          <label class="flex items-start gap-2 text-xs text-foreground/80 cursor-pointer">
+            <input type="checkbox" bind:checked={newGrandFinalReset} class="accent-primary mt-0.5" />
+            <span>总决赛重置 <span class="text-muted-foreground">· 败者组冠军赢下首场后加赛一场</span></span>
+          </label>
+        {/if}
+        {#if groupPreview}
+          <p class="rounded-lg bg-muted/40 px-2.5 py-1.5 text-[11px] text-foreground/80">
+            若报满 {groupPreview.players} 人：{groupPreview.qualifiers} 人进入{newPlayoffFormat === "double_elim" ? "双败" : "单败"}淘汰赛{groupPreview.byes ? `，前 ${groupPreview.byes} 号种子首轮轮空` : ""}{newPlayoffFormat === "double_elim" && groupPreview.qualifiers < 4 ? "（双败至少需要 4 人，请增加每组晋级人数）" : ""}。
+          </p>
+        {/if}
+        <p class="text-[10px] leading-relaxed text-muted-foreground">
+          所有小组打完后由管理员确认晋级名单进入淘汰赛：种子先按小组名次排（各组第一，再各组第二……），同组选手首轮尽量分开。
+        </p>
+      </section>
+
+      {:else}
       <section class="space-y-2 rounded-xl border border-border/60 bg-background/30 p-3">
         <div class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">载具与 Ban / Pick</div>
         <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -869,25 +1011,62 @@
         </div>
         <p class="text-[10px] text-muted-foreground">启用后每张对阵卡片上显示 BP 按钮，按所选载具池禁用和抽取。</p>
       </section>
+
+      <section class="space-y-1.5 rounded-xl border border-border/60 bg-background/30 p-3 text-xs">
+        <div class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">确认</div>
+        <dl class="grid grid-cols-[5.5rem_1fr] gap-x-2 gap-y-1">
+          <dt class="text-muted-foreground">名称</dt><dd class="font-semibold text-foreground break-all">{newName.trim() || "—"}</dd>
+          <dt class="text-muted-foreground">人数 / 模式</dt><dd class="text-foreground">{newCapacity} 人 · {gameModeLabel(newGameMode)}</dd>
+          <dt class="text-muted-foreground">比赛时间</dt><dd class="text-foreground">{newScheduledTime || "先进行时间投票"}</dd>
+          {#if isNewTwoStage}
+            <dt class="text-muted-foreground">第一阶段</dt>
+            <dd class="text-foreground">{GROUP_FORMATS.find((f) => f.id === newGroupFormat)?.label}小组 · {newGroupSize ? `每组 ${newGroupSize} 人` : "不分组"} · 每组前 {newAdvancePerGroup} 名晋级{newGroupFormat === "swiss" ? ` · ${newSwissRoundsMode === "auto" ? "单循环" : `${newSwissRounds} 轮`}` : ""}</dd>
+            <dt class="text-muted-foreground">第二阶段</dt>
+            <dd class="text-foreground">{newPlayoffFormat === "double_elim" ? `双败淘汰${newGrandFinalReset ? " · 总决赛重置" : ""}` : "单败淘汰"}</dd>
+          {:else}
+            <dt class="text-muted-foreground">赛制</dt>
+            <dd class="text-foreground">
+              {#if newFormat === "single_elim"}单败淘汰 · {newLoserAdvances ? "败者晋级" : "胜者晋级"}
+              {:else if newFormat === "double_elim"}双败淘汰{newGrandFinalReset ? " · 总决赛重置" : ""}
+              {:else}瑞士轮 · {newSwissRoundsMode === "auto" ? "单循环" : `${newSwissRounds} 轮`}{/if}
+            </dd>
+          {/if}
+          <dt class="text-muted-foreground">Ban / Pick</dt><dd class="text-foreground">{newBanpickEnabled ? "启用" : "不启用"}</dd>
+        </dl>
+      </section>
+      {/if}
     </div>
     <Dialog.Footer class="shrink-0 flex flex-col sm:flex-row gap-2">
+      {#if currentStepError && !isLastStep && triedStep === currentStepIndex}
+        <span class="text-[11px] text-amber-600 dark:text-amber-400 sm:mr-auto self-center">{currentStepError}</span>
+      {/if}
       <Button
         variant="outline"
         size="sm"
-        onclick={() => (showCreateDialog = false)}
+        onclick={() => (currentStepIndex === 0 ? (showCreateDialog = false) : (createStep = currentStepIndex - 1))}
         disabled={creating}
         class="w-full sm:w-auto text-xs"
       >
-        取消
+        {currentStepIndex === 0 ? "取消" : "上一步"}
       </Button>
-      <Button
-        size="sm"
-        onclick={createTournament}
-        disabled={creating}
-        class="w-full sm:w-auto text-xs font-bold"
-      >
-        {#if creating}创建中...{:else}创建赛事{/if}
-      </Button>
+      {#if isLastStep}
+        <Button
+          size="sm"
+          onclick={createTournament}
+          disabled={creating}
+          class="w-full sm:w-auto text-xs font-bold"
+        >
+          {#if creating}创建中...{:else}创建赛事{/if}
+        </Button>
+      {:else}
+        <Button
+          size="sm"
+          onclick={() => goToStep(currentStepIndex + 1)}
+          class="w-full sm:w-auto text-xs font-bold"
+        >
+          下一步
+        </Button>
+      {/if}
     </Dialog.Footer>
   </Dialog.Content>
 </Dialog.Root>
