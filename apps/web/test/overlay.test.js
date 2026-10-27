@@ -29,7 +29,7 @@ test("picking a stage: key, legacy round, else the current one", () => {
   const stages = overlayStages(de);
   assert.equal(pickStage(stages, "lb:2").key, "lb:2");
   assert.equal(pickStage(stages, "").key, "lb:1", "first stage with unplayed matches");
-  assert.equal(pickStage(stages, "2").key, "wb:2", "legacy round number");
+  assert.equal(pickStage(stages, "2").key, "lb:1", "a bare round number is ambiguous in double elimination");
   const sw = overlayStages([m("sw", 1, 1, "a", "b", "a"), m("sw", 2, 1, "a", "c")]);
   assert.deepEqual(sw.map((s) => [s.key, s.label, s.short]), [["sw:1", "瑞士轮 第 1 轮", "R1"], ["sw:2", "瑞士轮 第 2 轮", "R2"]]);
   assert.equal(pickStage(sw, "2").key, "sw:2");
@@ -48,4 +48,12 @@ test("who is still in", () => {
   const se = [m("main", 2, 1, "a", "b", "a"), m("main", 2, 2, "c", "d", "c")];
   assert.deepEqual([...playersStillIn(players, se)].sort(), ["a", "c"]);
   assert.equal(playersStillIn(players, [m("sw", 1, 1, "a", "b", "a")], { swiss: true }), null);
+});
+
+test("a finished event shows its last played stage, not an empty reset match", () => {
+  const done = [
+    m("wb", 1, 1, "a", "b", "a"), m("lb", 1, 1, "b", "c", "b"),
+    m("gf", 1, 1, "a", "b", "a"), m("gf", 1, 2, null, null),
+  ];
+  assert.equal(pickStage(overlayStages(done), "6").key, "gf:1");
 });

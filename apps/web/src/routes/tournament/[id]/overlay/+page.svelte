@@ -2,7 +2,7 @@
   import { onMount } from "svelte";
   import { page } from "$app/state";
   import { API } from "$lib/api.js";
-  import { buildMatchOrder } from "$lib/bracket.js";
+  import { bracketConnectorPath, buildMatchOrder, layoutBracketBand } from "$lib/bracket.js";
   import { matchStageLabels, overlayStages, pickStage, playersStillIn } from "$lib/overlay.js";
   import { fade, fly } from "svelte/transition";
 
@@ -325,12 +325,66 @@
     return alivePlayerIds ? alivePlayerIds.has(playerId) : true;
   }
 
-  // Stage board (double elimination, Swiss, group stages): bands of columns,
+  // Double elimination: a Challonge-style tree like the single-elimination
+  // one — winners bracket on top, losers bracket below, grand final on the
+  // right — with connectors between a match and the one its winner goes to.
+  let isDoubleTree = $derived(
+    (stageMatches || []).length > 0 &&
+      (stageMatches || []).every((m) => ["wb", "lb", "gf"].includes(m.bracket)),
+  );
+  const DT = { cardHeight: 66, slotHeight: 82, columnWidth: 250, columnGap: 56 };
+  const DT_HEADER = 40;
+  const DT_BAND_GAP = 36;
+  let deTree = $derived.by(() => {
+    if (!isDoubleTree) return null;
+    const matches = stageMatches || [];
+    const wb = layoutBracketBand(matches, "wb", DT);
+    const lb = layoutBracketBand(matches, "lb", DT);
+    const items = [];
+    const headers = [];
+    const place = (band, top) => {
+      for (const col of band.columns) {
+        const first = col.matches[0]?.match;
+        if (first) headers.push({ key: stageKeyOf(first), x: col.x, y: top - DT_HEADER, label: stageLabel(first) });
+        for (const it of col.matches) items.push({ match: it.match, x: it.x, y: top + it.y });
+      }
+    };
+    const wbTop = DT_HEADER;
+    const lbTop = wbTop + wb.height + DT_BAND_GAP + DT_HEADER;
+    place(wb, wbTop);
+    place(lb, lbTop);
+    // Grand final (and its reset once it has players) right of both bands.
+    const gfX = Math.max(wb.width, lb.width) + DT.columnGap;
+    const wbFinal = items.find((i) => i.match.bracket === "wb" && i.match.round === 1);
+    const lbFinal = items.find((i) => i.match.bracket === "lb" && i.match.round === 1);
+    const gfY = wbFinal && lbFinal ? (wbFinal.y + lbFinal.y) / 2 : wbFinal?.y ?? DT.cardHeight;
+    const gfs = matches
+      .filter((m) => m.bracket === "gf" && (m.position === 1 || m.player1_id || m.player2_id))
+      .sort((a, b) => a.position - b.position);
+    gfs.forEach((m, i) => items.push({ match: m, x: gfX + i * (DT.columnWidth + DT.columnGap), y: gfY }));
+    if (gfs.length) headers.push({ key: "gf:1", x: gfX, y: gfY - DT.cardHeight / 2 - DT_HEADER, label: stageLabel(gfs[0]) });
+    // Connectors: winner of a match -> the match it feeds.
+    const byId = new Map(items.map((i) => [i.match.id, i]));
+    const paths = [];
+    for (const it of items) {
+      const target = byId.get(it.match.next_match_id);
+      if (target) paths.push(bracketConnectorPath(it, target, DT.columnWidth));
+    }
+    const width = gfX + gfs.length * (DT.columnWidth + DT.columnGap) - DT.columnGap;
+    const height = lbTop + lb.height;
+    return { items, headers, paths, width, height };
+  });
+  let deScale = $derived(deTree ? Math.min(1.3, 1440 / deTree.width, 820 / deTree.height) : 1);
+  function stageKeyOf(m) {
+    return `${m.bracket || "main"}:${m.round}`;
+  }
+
+  // Stage board (Swiss and group stages): bands of columns,
   // one band per bracket, scaled to fit next to the side panel.
   const BAND_ORDER = ["sw", "gse", "gwb", "glb", "wb", "lb", "gf"];
   const BAND_NAMES = { sw: "SWISS", gse: "GROUPS", gwb: "GROUPS · UPPER", glb: "GROUPS · LOWER", wb: "UPPER BRACKET", lb: "LOWER BRACKET", gf: "GRAND FINAL" };
   let boardBands = $derived.by(() => {
-    if (isTree) return [];
+    if (isTree || isDoubleTree) return [];
     const bands = new Map();
     for (const s of stages) {
       if (!bands.has(s.bracket)) bands.set(s.bracket, []);
@@ -1324,9 +1378,54 @@
             </div>
           </div>
 
+          {:else if deTree}
+          <!-- Double-elimination tree -->
+          <div class="flex-1 min-h-0 flex items-center justify-center overflow-hidden py-2">
+            <div
+              class="relative shrink-0"
+              style="width: {deTree.width}px; height: {deTree.height}px; transform: scale({deScale}); transform-origin: center center;"
+            >
+              <svg class="absolute inset-0 overflow-visible pointer-events-none" width={deTree.width} height={deTree.height}>
+                {#each deTree.paths as d, i (i)}
+                  <path {d} fill="none" stroke="rgba(34, 211, 238, 0.35)" stroke-width="2" />
+                {/each}
+              </svg>
+              {#each deTree.headers as h (h.key)}
+                <div
+                  class="absolute text-center text-sm font-extrabold font-orbitron tracking-wider uppercase border-b-2 pb-1
+                    {h.key === selectedStage?.key ? 'text-amber-400 border-amber-500/40' : 'text-cyan-400 border-cyan-500/20'}"
+                  style="left: {h.x}px; top: {h.y}px; width: {DT.columnWidth}px;"
+                >{h.label}</div>
+              {/each}
+              {#each deTree.items as it (it.match.id)}
+                {@const m = it.match}
+                {@const done = m.status === "completed" || m.status === "walkover"}
+                {@const live = m.id === tournament.active_match_id}
+                {@const bye = done && (!m.player1_id || !m.player2_id)}
+                <div
+                  class="absolute rounded-xl border-2 px-3.5 flex flex-col justify-center gap-0.5 shadow-xl
+                    {bye ? 'opacity-35 border-slate-800 bg-slate-950/50' : live ? 'border-amber-500 bg-amber-950/40' : done ? 'border-slate-800 bg-slate-950/80' : 'border-slate-700/60 bg-slate-900/80'}"
+                  style="left: {it.x}px; top: {it.y - DT.cardHeight / 2}px; width: {DT.columnWidth}px; height: {DT.cardHeight}px;"
+                >
+                  {#each [[m.player1_id, m.score1], [m.player2_id, m.score2]] as [pid, score], slot (slot)}
+                    {@const won = done && m.winner_id && m.winner_id === pid}
+                    <div class="flex items-center justify-between gap-2 text-base leading-tight">
+                      <span
+                        class="truncate font-bold
+                          {!pid ? 'text-slate-600 italic' : won ? 'text-amber-300' : !isAlive(pid) ? 'text-slate-500' : 'text-white'}"
+                      >{pid ? getPlayerName(pid) : bye ? "—" : "TBD"}</span>
+                      <span class="font-orbitron font-black text-sm shrink-0 {won ? 'text-amber-400' : 'text-slate-400'}">
+                        {#if bye}{:else if m.status === "walkover"}{won ? "W" : "FF"}{:else if done || live}{score ?? 0}{/if}
+                      </span>
+                    </div>
+                  {/each}
+                </div>
+              {/each}
+            </div>
+          </div>
           {:else}
-          <!-- Stage board: double elimination, Swiss and group stages. One band
-               per bracket, one column per round, the shown stage highlighted. -->
+          <!-- Stage board: Swiss and group stages. One band per bracket, one
+               column per round, the shown stage highlighted. -->
           <div class="flex-1 min-h-0 flex items-start justify-center overflow-hidden py-2">
             <div class="flex flex-col gap-4" style="transform: scale({boardScale}); transform-origin: top center;">
               {#each boardBands as band (band.bracket)}

@@ -81,9 +81,10 @@ export function matchStageLabels(match, matches = []) {
 }
 
 /**
- * The stage to show: an explicit key (or a legacy round number) when it
- * exists, otherwise the first stage that still has unplayed matches, or the
- * last stage once everything is played.
+ * The stage to show: an explicit key (or, for single elimination and Swiss,
+ * a plain round number) when it exists; otherwise the first stage with a
+ * match ready to play, then the first with players still to play, and once
+ * everything is played the last stage that was played.
  */
 export function pickStage(stages = [], wanted = null) {
   if (!stages.length) return null;
@@ -91,14 +92,19 @@ export function pickStage(stages = [], wanted = null) {
     const text = String(wanted);
     const exact = stages.find((s) => s.key === text);
     if (exact) return exact;
+    // A bare round number is ambiguous in double elimination: ignored there.
     if (/^-?\d+$/.test(text)) {
       const round = Number(text);
-      const legacy = stages.find((s) => s.round === round && ["main", "sw"].includes(s.bracket))
-        || stages.find((s) => s.round === round);
+      const legacy = stages.find((s) => s.round === round && ["main", "sw"].includes(s.bracket));
       if (legacy) return legacy;
     }
   }
-  return stages.find((s) => s.matches.some((m) => !decided(m))) || stages[stages.length - 1];
+  const ready = stages.find((s) => s.matches.some((m) => !decided(m) && m.player1_id && m.player2_id));
+  if (ready) return ready;
+  const waiting = stages.find((s) => s.matches.some((m) => !decided(m) && (m.player1_id || m.player2_id)));
+  if (waiting) return waiting;
+  const played = stages.filter((s) => s.matches.some(decided));
+  return played[played.length - 1] || stages[0];
 }
 
 /**
