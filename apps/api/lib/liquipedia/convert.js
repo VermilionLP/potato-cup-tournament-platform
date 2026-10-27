@@ -282,6 +282,58 @@ function bracketStage(block, templates, warnings) {
   return rows ? { format: 'single_elim', rows, reset: false, thirdPlace: rows.some((r) => r.round === 0) } : null;
 }
 
+// Group brackets: a group stage played as one bracket per group whose
+// template ends in qualifier slots ("Bracket/8-1Q-U-4L2DSL1D-1Q",
+// "Bracket/2L1D-1Q-U-2-1Q", "Bracket/16-1Q"). The roots of such a bracket
+// are its qualifying spots.
+export function isQualifierTemplate(name) {
+  return /\d+Q(?:$|-)/.test(String(name || '').replace(/^Bracket\//i, ''));
+}
+
+/**
+ * One group's bracket as platform group rows ('gwb' / 'glb' for double
+ * elimination, 'gse' for single elimination), keys prefixed with the group
+ * so several groups can share one event. Returns { format, rows, qualifiers }.
+ */
+function groupBracketStage(block, templates, group, warnings) {
+  const template = templates.get(block.template);
+  if (!template) {
+    warnings.push(`缺少对阵模板 ${block.template}`);
+    return null;
+  }
+  const roots = [...template.matches.values()].filter((n) => n.R !== null && !n.parent && n.side !== 'tp').length;
+  const prefix = (key) => (key ? `g${group}:${key}` : key);
+  const relabel = (row, bracket) => ({
+    ...row,
+    key: prefix(row.key),
+    bracket,
+    swiss_group: group,
+    next_key: prefix(row.next_key ?? null),
+    loser_next_key: prefix(row.loser_next_key ?? null),
+  });
+  if (isDoubleElimination(template)) {
+    const out = doubleElimRows(block, template, warnings);
+    if (!out) return null;
+    return {
+      format: 'double_elim',
+      qualifiers: roots,
+      rows: out.rows.map((r) => relabel(r, r.bracket === 'lb' ? 'glb' : 'gwb')),
+    };
+  }
+  const rows = singleElimRows(block, template, []);
+  if (!rows) return null;
+  // Single-elimination group rows carry explicit winner links (the group
+  // views follow them); bye stubs stay unlinked.
+  for (const r of rows) {
+    const node = template.matches.get(r.key);
+    if (node?.parent) {
+      r.next_key = node.parent.key;
+      r.next_slot = node.parent.slot;
+    }
+  }
+  return { format: 'single_elim', qualifiers: roots, rows: rows.map((r) => relabel(r, 'gse')) };
+}
+
 // ---------------------------------------------------------------- page
 
 function groupStages(blocks) {
@@ -402,7 +454,31 @@ export function convertPage({ title, wikitext, templates = new Map(), today = ne
     return { rows, rounds, groups: numbered };
   };
 
-  if (brackets.length === 1 && groups.length) {
+  const groupBrackets = brackets.filter((b) => isQualifierTemplate(b.template));
+  const playoffBrackets = brackets.filter((b) => !isQualifierTemplate(b.template));
+  if (groupBrackets.length >= 2 && playoffBrackets.length === 1) {
+    // Group stage of brackets (one per group) + one playoff bracket.
+    const stages = groupBrackets.map((b, i) => groupBracketStage(b, templates, i + 1, warnings));
+    const playoff = bracketStage(playoffBrackets[0], templates, warnings);
+    if (!playoff || stages.some((st) => !st)) return { title, skipped: '对阵无法转换', events: [], warnings };
+    const formats = new Set(stages.map((st) => st.format));
+    if (formats.size > 1) warnings.push('各小组的对阵赛制不一致，按第一组处理');
+    const rows = stages.flatMap((st) => st.rows);
+    const groupsOut = stages.map((st, i) => ({
+      group: i + 1,
+      players: [...new Set(st.rows.flatMap((r) => [r.player1_id, r.player2_id]).filter(Boolean))],
+    }));
+    makeEvent(null, {
+      format: stages[0].format,
+      playoffFormat: playoff.format,
+      rows: [...rows, ...playoff.rows],
+      groups: groupsOut,
+      swissGroupSize: Math.max(...groupsOut.map((g) => g.players.length)),
+      advancePerGroup: Math.max(...stages.map((st) => st.qualifiers)),
+      reset: playoff.reset,
+      thirdPlace: playoff.thirdPlace,
+    });
+  } else if (brackets.length === 1 && groups.length) {
     const gs = groupStage();
     const playoff = bracketStage(brackets[0], templates, warnings);
     if (!playoff) return { title, skipped: '对阵无法转换', events: [], warnings };

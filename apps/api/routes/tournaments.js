@@ -101,8 +101,11 @@ function buildBracketGroupStage(t, players, groupMatches) {
   };
 }
 
-// Group stage of a two-stage event, whatever format it is played in.
-function groupStageOf(t, players, allMatches) {
+// Group stage of a two-stage event, whatever format it is played in. Once
+// groups are drawn, players without a group (invited straight into the
+// playoff, as in some imported events) are not part of it.
+function groupStageOf(t, allPlayers, allMatches) {
+  const players = allPlayers.some((p) => p.swiss_group) ? allPlayers.filter((p) => p.swiss_group) : allPlayers;
   if (t.format === 'swiss') {
     return { kind: 'swiss', ...buildGroupStage(t, players, allMatches.filter((m) => m.bracket === SWISS_BRACKET)) };
   }

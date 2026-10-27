@@ -1844,7 +1844,12 @@
     // listed after them by group rank.
     let groupStageOut = [];
     if (isTwoStage) {
+      // In the playoff: group qualifiers, plus anyone invited straight into it.
       const qualified = new Set((tournament.group_stage?.qualifiers || []).map((q) => q.player_id));
+      for (const m of bracketMatches) {
+        if (m.player1_id) qualified.add(m.player1_id);
+        if (m.player2_id) qualified.add(m.player2_id);
+      }
       const rowsById = new Map();
       for (const g of tournament.group_stage?.groups || []) {
         for (const row of g.rows) rowsById.set(row.player_id, { ...row, label: g.label });

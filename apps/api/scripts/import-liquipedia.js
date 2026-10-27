@@ -56,7 +56,7 @@ async function loadDump(args) {
 function report(plan) {
   console.log('\n== 将导入的赛事 ==');
   for (const e of plan.events) {
-    const fmt = e.playoffFormat ? `swiss+${e.playoffFormat}` : e.format;
+    const fmt = e.playoffFormat ? `${e.format}组+${e.playoffFormat}` : e.format;
     const games = e.matches.filter((r) => r.player1_id && r.player2_id).length;
     console.log(`${e.date || '????-??-??'}  ${e.id.padEnd(48)} ${fmt.padEnd(18)} ${String(e.players.length).padStart(3)} 人 ${String(games).padStart(4)} 场  ${e.name}`);
   }
@@ -100,6 +100,7 @@ async function main() {
   let existingIds = [];
   let platformIds = [];
   let aliases = {};
+  let importedBefore = [];
   if (process.env.DATABASE_URL) {
     const pg = (await import('pg')).default;
     db = new pg.Pool({ connectionString: process.env.DATABASE_URL });
@@ -114,6 +115,9 @@ async function main() {
     `)).rows;
     existingIds = rows.map((r) => r.id);
     platformIds = rows.filter((r) => r.platform).map((r) => r.id);
+    importedBefore = (await db.query(
+      `SELECT id, source_title FROM axsuck.tournaments WHERE id LIKE 'lp-%'`
+    )).rows;
     aliases = Object.fromEntries(
       (await db.query('SELECT alias, player_id FROM axsuck.player_aliases')).rows.map((r) => [r.alias, r.player_id])
     );
@@ -125,12 +129,27 @@ async function main() {
   if (args.only) plan.events = plan.events.filter((e) => e.sourceTitle.includes(args.only));
   report(plan);
 
+  // Events imported earlier from these pages that the import no longer
+  // produces (e.g. a group stage that used to be split into one event per
+  // group) are removed.
+  const covered = (title) => title in dump.pages && (!args.only || title.includes(args.only));
+  const planned = new Set(plan.events.map((e) => e.id));
+  const stale = importedBefore.filter((t) => covered(t.source_title) && !planned.has(t.id));
+  if (stale.length) {
+    console.log(`\n== 将删除的旧导入赛事（${stale.length}，已不再单独成赛） ==`);
+    for (const t of stale) console.log(`${t.id}  （来自 ${t.source_title}）`);
+  }
+
   if (!args.apply) {
     console.log('\n这是预览，没有写入数据库。确认无误后加 --apply 导入。');
   } else {
     for (const [i, e] of plan.events.entries()) {
       await writeEvent(db, e);
       console.log(`[${i + 1}/${plan.events.length}] 已导入 ${e.id}`);
+    }
+    for (const t of stale) {
+      await db.query('DELETE FROM axsuck.tournaments WHERE id = $1', [t.id]);
+      console.log(`已删除 ${t.id}`);
     }
     for (const m of plan.playerMerges) {
       await mergePlayers(db, m.from, m.into);

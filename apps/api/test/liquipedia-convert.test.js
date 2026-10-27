@@ -150,3 +150,34 @@ test('future and unplayed events are skipped', async () => {
   assert.equal(nameKey('Vitalij_Bеast'), nameKey('Vitalij_Beast'));
   assert.deepEqual(similarNames(['RussianShark', 'RussianShark_', 'Neon_Uni', 'neon uni', 'Solo']), [['RussianShark', 'RussianShark_'], ['Neon_Uni', 'neon uni']]);
 });
+
+test('group brackets (2023 Spring): one two-stage event, double-elimination groups + playoff', async () => {
+  const { groupBracketPlacings } = await import('../lib/group-brackets.js');
+  const t = new Map([
+    ['Bracket/2L1D-1Q-U-2-1Q', parseBracketTemplate(fixture('template-2L1D-1Q-U-2-1Q.wiki'))],
+    ['Bracket/16U8L4DSL2DSL1D', parseBracketTemplate(fixture('template-16U8L4DSL2DSL1D.wiki'))],
+  ]);
+  const out = convertPage({ title: 'Potato Cup/2023/Spring', wikitext: fixture('groups-bracket-2023-spring.wiki'), templates: t });
+  assert.equal(out.skipped, null);
+  assert.equal(out.events.length, 1, 'groups are not separate events');
+  const [e] = out.events;
+  assert.equal(e.id, 'lp-pc-2023-spring');
+  assert.deepEqual([e.format, e.playoffFormat, e.advancePerGroup, e.swissGroupSize, e.currentStage], ['double_elim', 'double_elim', 2, 3, 'playoff']);
+  const groupRows = e.matches.filter((m) => ['gwb', 'glb'].includes(m.bracket));
+  assert.equal(groupRows.length, 18);
+  assert.deepEqual([...new Set(groupRows.map((m) => m.swiss_group))], [1, 2, 3, 4, 5, 6]);
+  // Group A: 不会开飞机的郭子 wins the winners side, 吃荔枝的狐狸 the losers side.
+  const a = groupRows.filter((m) => m.swiss_group === 1);
+  const aPlayers = e.players.filter((p) => p.swiss_group === 1).map((p) => ({ id: p.id, seed: p.seed }));
+  const placings = groupBracketPlacings('double_elim', aPlayers, a, 2);
+  assert.deepEqual(placings.filter((p) => p.qualified).map((p) => p.player_id), ['不会开飞机的郭子', '吃荔枝的狐狸']);
+  // The first winners match feeds the second; both winners-side losers drop to the losers match.
+  const r1 = a.find((m) => m.key === 'g1:R1M1');
+  assert.deepEqual([r1.next_key, r1.next_slot, r1.loser_next_key], ['g1:R2M1', 2, 'g1:R2M2']);
+  assert.equal(a.find((m) => m.key === 'g1:R2M1').loser_next_key, 'g1:R2M2');
+  // Playoff: double elimination with a bracket reset; invited players have no group.
+  const playoff = e.matches.filter((m) => !['gwb', 'glb'].includes(m.bracket));
+  assert.ok(playoff.some((m) => m.bracket === 'gf' && m.position === 2));
+  assert.equal(e.players.find((p) => p.id === '_Arcturus_').swiss_group, null);
+  assert.equal(e.grandFinalReset, true);
+});

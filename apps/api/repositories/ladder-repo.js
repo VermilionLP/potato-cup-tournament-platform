@@ -27,8 +27,9 @@ export function LadderRepo(db) {
   )`;
 
   // Games in the order they were played: events by date; inside an event
-  // the Swiss stage first (round 1 up), then the elimination brackets from
-  // their first round (highest number) to the final (round 1), grand final last.
+  // the group stage first (Swiss round 1 up, group brackets from their first
+  // round), then the elimination brackets from their first round (highest
+  // number) to the final (round 1), grand final last.
   async function loadGames() {
     const res = await db.query(`
       SELECT
@@ -52,7 +53,7 @@ export function LadderRepo(db) {
       ORDER BY ${PLAYED_AT} ASC,
         t.created_at ASC,
         t.id ASC,
-        CASE m.bracket WHEN 'sw' THEN 0 WHEN 'gf' THEN 2 ELSE 1 END,
+        CASE WHEN m.bracket IN ('sw', 'gse', 'gwb', 'glb') THEN 0 WHEN m.bracket = 'gf' THEN 2 ELSE 1 END,
         CASE WHEN m.bracket = 'sw' THEN m.round ELSE -m.round END,
         m.position ASC,
         m.id ASC

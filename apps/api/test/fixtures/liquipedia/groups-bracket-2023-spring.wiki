@@ -1,0 +1,245 @@
+{{Infobox league
+|name=Potato Cup 2023 Spring
+|series=Potato Cup
+|format=1v1<br>Group Stages<br>Playoffs
+|sdate=2023-04-28
+|edate=2023-05-03
+}}
+<!-- Trimmed copy of the Liquipedia page "Potato Cup/2023/Spring" (CC-BY-SA 3.0): infobox and results only. -->
+==Results==
+==={{Stage|Group Stage}}===
+===={{HiddenSort|Group A}}====
+{{GroupTableLeague|id=PaC4GroupA
+|title=Group A
+}}
+{{bracket|Bracket/2L1D-1Q-U-2-1Q|id=PaC4GroupA|title=Group A Matches
+|R1M1={{Match|bestof=3
+    |opponent1={{1Opponent|吃荔枝的狐狸|score=0}}
+    |opponent2={{1Opponent|_354634980|score=2}}
+}}
+|R2M1={{Match|bestof=3
+    |opponent1={{1Opponent|不会开飞机的郭子|score=2}}
+    |opponent2={{1Opponent|_354634980|score=1}}
+}}
+|R2M2={{Match|bestof=3
+    |opponent1={{1Opponent|_354634980|score=1}}
+    |opponent2={{1Opponent|吃荔枝的狐狸|score=2}}
+}}
+}}
+===={{HiddenSort|Group B}}====
+{{GroupTableLeague|id=PaC4GroupB
+|title=Group B
+}}
+{{bracket|Bracket/2L1D-1Q-U-2-1Q|id=PaC4GroupB|title=Group B Matches
+|R1M1={{Match|bestof=3
+    |opponent1={{1Opponent|Horsewhite|score=2}}
+    |opponent2={{1Opponent|w2rw1ck|score=0}}
+}}
+|R2M1={{Match|bestof=3
+    |opponent1={{1Opponent|激昂金狮子|score=0}}
+    |opponent2={{1Opponent|Horsewhite|score=2}}
+}}
+|R2M2={{Match|bestof=3
+    |opponent1={{1Opponent|激昂金狮子|score=2}}
+    |opponent2={{1Opponent|w2rw1ck|score=0}}
+}}
+}}
+===={{HiddenSort|Group C}}====
+{{GroupTableLeague|id=PaC4GroupC
+|title=Group C
+}}
+{{bracket|Bracket/2L1D-1Q-U-2-1Q|id=PaC4GroupC|title=Group C Matches
+|R1M1={{Match|bestof=3
+    |opponent1={{1Opponent|DBbr406|score=0}}
+    |opponent2={{1Opponent|bbqlbbql|score=2}}
+}}
+|R2M1={{Match|bestof=3
+    |opponent1={{1Opponent|KON169|score=0}}
+    |opponent2={{1Opponent|bbqlbbql|score=2}}
+}}
+|R2M2={{Match|bestof=3
+    |opponent1={{1Opponent|KON169|score=W}}
+    |opponent2={{1Opponent|DBbr406|score=FF}}
+}}
+}}
+===={{HiddenSort|Group D}}====
+{{GroupTableLeague|id=PaC4GroupD
+|title=Group D
+}}
+{{bracket|Bracket/2L1D-1Q-U-2-1Q|id=PaC4GroupD|title=Group D Matches
+|R1M1={{Match|bestof=3
+    |opponent1={{1Opponent|RideOn_GBRknight|score=1}}
+    |opponent2={{1Opponent|Vermilion|score=2}}
+}}
+|R2M1={{Match|bestof=3
+    |opponent1={{1Opponent|RUSH251|score=0}}
+    |opponent2={{1Opponent|Vermilion|score=2}}
+}}
+|R2M2={{Match|bestof=3
+    |opponent1={{1Opponent|RUSH251|score=0}}
+    |opponent2={{1Opponent|RideOn_GBRknight|score=2}}
+}}
+}}
+===={{HiddenSort|Group E}}====
+{{GroupTableLeague|id=PaC4GroupE
+|title=Group E
+}}
+{{bracket|Bracket/2L1D-1Q-U-2-1Q|id=PaC4GroupE|title=Group E Matches
+|R1M1={{Match|bestof=3
+    |opponent1={{1Opponent|Garuda5|score=2}}
+    |opponent2={{1Opponent|本土|score=1}}
+}}
+|R2M1={{Match|bestof=3
+    |opponent1={{1Opponent|CyberCharlie|score=0}}
+    |opponent2={{1Opponent|Garuda5|score=2}}
+}}
+|R2M2={{Match|bestof=3
+    |opponent1={{1Opponent|CyberCharlie|score=0}}
+    |opponent2={{1Opponent|本土|score=2}}
+}}
+}}
+===={{HiddenSort|Group F}}====
+{{GroupTableLeague|id=PaC4GroupF
+|title=Group F
+}}
+{{bracket|Bracket/2L1D-1Q-U-2-1Q|id=PaC4GroupF|title=Group F Matches
+|R1M1={{Match|bestof=3
+    |opponent1={{1Opponent|虚空怪兽马保国|score=W}}
+    |opponent2={{1Opponent|roysbrd|score=FF}}
+}}
+|R2M1={{Match|bestof=3
+    |opponent1={{1Opponent|老李|score=2}}
+    |opponent2={{1Opponent|虚空怪兽马保国|score=1}}
+}}
+|R2M2={{Match|bestof=3
+    |opponent1={{1Opponent|虚空怪兽马保国|score=W}}
+    |opponent2={{1Opponent|roysbrd|score=FF}}
+}}
+}}
+==={{Stage|Playoffs}}===
+{{Bracket|Bracket/16U8L4DSL2DSL1D|id=patcplyof4
+|R1M1={{Match|bestof=3|date=2023-05-03
+    |opponent1={{1Opponent|_Arcturus_|score=W}}
+    |opponent2={{1Opponent|虚空怪兽马保国|score=FF}}
+}}
+|R1M2={{Match|bestof=3|date=2023-05-03
+    |opponent1={{1Opponent|KON169|score=2}}
+    |opponent2={{1Opponent|不会开飞机的郭子|score=1}}
+}}
+|R1M3={{Match|bestof=3|date=2023-05-03
+    |opponent1={{1Opponent|Eddy_810|score=FF}}
+    |opponent2={{1Opponent|Garuda5|score=W}}
+}}
+|R1M4={{Match|bestof=3|date=2023-05-03
+    |opponent1={{1Opponent|Horsewhite|score=2}}
+    |opponent2={{1Opponent|bbqlbbql|score=0}}
+}}
+|R1M5={{Match|bestof=3|date=2023-05-03
+    |opponent1={{1Opponent|SANNIANJIANG|score=1}}
+    |opponent2={{1Opponent|Vermilion|score=2}}
+}}
+|R1M6={{Match|bestof=3|date=2023-05-03
+    |opponent1={{1Opponent|本土|score=0}}
+    |opponent2={{1Opponent|激昂金狮子|score=2}}
+}}
+|R1M7={{Match|bestof=3|date=2023-05-03
+    |opponent1={{1Opponent|Rheinberg|score=0}}
+    |opponent2={{1Opponent|吃荔枝的狐狸|score=2}}
+}}
+|R1M8={{Match|bestof=3|date=2023-05-03
+    |opponent1={{1Opponent|RideOn_GBRknight|score=2}}
+    |opponent2={{1Opponent|老李|score=0}}
+}}
+|R2M1={{Match|bestof=3|date=2023-05-03
+    |opponent1={{1Opponent|_Arcturus_|score=2}}
+    |opponent2={{1Opponent|KON169|score=1}}
+}}
+|R2M2={{Match|bestof=3|date=2023-05-03
+    |opponent1={{1Opponent|Garuda5|score=0}}
+    |opponent2={{1Opponent|Horsewhite|score=2}}
+}}
+|R2M3={{Match|bestof=3|date=2023-05-03
+    |opponent1={{1Opponent|Vermilion|score=2}}
+    |opponent2={{1Opponent|激昂金狮子|score=0}}
+}}
+|R2M4={{Match|bestof=3|date=2023-05-03
+    |opponent1={{1Opponent|吃荔枝的狐狸|score=0}}
+    |opponent2={{1Opponent|RideOn_GBRknight|score=2}}
+}}
+|R4M1={{Match|bestof=3|date=2023-05-03
+    |opponent1={{1Opponent|_Arcturus_|score=1}}
+    |opponent2={{1Opponent|Horsewhite|score=2}}
+}}
+|R4M2={{Match|bestof=3|date=2023-05-03
+    |opponent1={{1Opponent|Vermilion|score=2}}
+    |opponent2={{1Opponent|RideOn_GBRknight|score=1}}
+}}
+|R6M1={{Match|bestof=3|date=2023-05-03
+    |opponent1={{1Opponent|Horsewhite|score=2}}
+    |opponent2={{1Opponent|Vermilion|score=0}}
+}}
+|R1M9={{Match|bestof=3|date=2023-05-03
+    |opponent1={{1Opponent|虚空怪兽马保国|score=FF}}
+    |opponent2={{1Opponent|不会开飞机的郭子|score=W}}
+}}
+|R1M10={{Match|bestof=3|date=2023-05-03
+    |opponent1={{1Opponent|Eddy_810|score=FF}}
+    |opponent2={{1Opponent|bbqlbbql|score=W}}
+}}
+|R1M11={{Match|bestof=3|date=2023-05-03
+    |opponent1={{1Opponent|SANNIANJIANG|score=1}}
+    |opponent2={{1Opponent|本土|score=2}}
+}}
+|R1M12={{Match|bestof=3|date=2023-05-03
+    |opponent1={{1Opponent|Rheinberg|score=W}}
+    |opponent2={{1Opponent|老李|score=FF}}
+}}
+|R2M5={{Match|bestof=3|date=2023-05-03
+    |opponent1={{1Opponent|KON169|score=2}}
+    |opponent2={{1Opponent|不会开飞机的郭子|score=0}}
+}}
+|R2M6={{Match|bestof=3|date=2023-05-03
+    |opponent1={{1Opponent|激昂金狮子|score=2}}
+    |opponent2={{1Opponent|bbqlbbql|score=1}}
+}}
+|R2M7={{Match|bestof=3|date=2023-05-03
+    |opponent1={{1Opponent|Garuda5|score=2}}
+    |opponent2={{1Opponent|本土|score=0}}
+}}
+|R2M8={{Match|bestof=3|date=2023-05-03
+    |opponent1={{1Opponent|吃荔枝的狐狸|score=1}}
+    |opponent2={{1Opponent|Rheinberg|score=2}}
+}}
+|R3M1={{Match|bestof=3|date=2023-05-03
+    |opponent1={{1Opponent|KON169|score=2}}
+    |opponent2={{1Opponent|激昂金狮子|score=0}}
+}}
+|R3M2={{Match|bestof=3|date=2023-05-03
+    |opponent1={{1Opponent|Garuda5|score=1}}
+    |opponent2={{1Opponent|Rheinberg|score=2}}
+}}
+|R4M3={{Match|bestof=3|date=2023-05-03
+    |opponent1={{1Opponent|_Arcturus_|score=2}}
+    |opponent2={{1Opponent|KON169|score=0}}
+}}
+|R4M4={{Match|bestof=3|date=2023-05-03
+    |opponent1={{1Opponent|RideOn_GBRknight|score=0}}
+    |opponent2={{1Opponent|Rheinberg|score=2}}
+}}
+|R5M1={{Match|bestof=3|date=2023-05-03
+    |opponent1={{1Opponent|_Arcturus_|score=2}}
+    |opponent2={{1Opponent|Rheinberg|score=1}}
+}}
+|R6M2={{Match|bestof=3|date=2023-05-03
+    |opponent1={{1Opponent|Vermilion|score=0}}
+    |opponent2={{1Opponent|_Arcturus_|score=2}}
+}}
+|R7M1={{Match|bestof=3|date=2023-05-03
+    |opponent1={{1Opponent|Horsewhite|score=1}}
+    |opponent2={{1Opponent|_Arcturus_|score=2}}
+}}
+|RxMBR={{Match|bestof=3|date=2023-05-03
+    |opponent1={{1Opponent|Horsewhite|score=2}}
+    |opponent2={{1Opponent|_Arcturus_|score=1}}
+}}
+}}
