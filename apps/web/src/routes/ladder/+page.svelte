@@ -42,8 +42,11 @@
 
   // Flag rendering lives in $lib/components/Flag.svelte (SVG assets).
 
+  // Minimum games, as on the statistics page (0 = all). Ranks stay those of
+  // the full board.
+  let minGames = $state(0);
   let filteredPlayers = $derived.by(() => {
-    const players = data?.players || [];
+    const players = (data?.players || []).filter((p) => !minGames || (p.games || 0) >= minGames);
     const q = query.trim().toLowerCase();
     if (!q) return players;
     return players.filter(
@@ -276,6 +279,16 @@
             />
             显示不活跃
           </label>
+          <select
+            bind:value={minGames}
+            aria-label="场次"
+            class="h-7 text-[11px] rounded-md bg-muted/40 border border-border focus:border-primary/50 outline-none text-foreground px-2 pr-6 cursor-pointer"
+          >
+            <option value={0}>全部场次</option>
+            <option value={2}>≥ 2 场</option>
+            <option value={5}>≥ 5 场</option>
+            <option value={10}>≥ 10 场</option>
+          </select>
           <div class="relative w-full sm:w-56">
             <SearchIcon class="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
             <Input bind:value={query} placeholder="搜索选手 / 战队" class="pl-8 h-8 text-xs" />

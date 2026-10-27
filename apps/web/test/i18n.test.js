@@ -27,6 +27,11 @@ test("patterns with values, spacing variants and nested labels", () => {
   // {0:n} only takes a number, so "加载天梯…" is not read as "<n> 天 <clock>".
   assert.equal(translate("3 天 12:30:00"), "3 d 12:30:00");
   assert.equal(translate("加载天梯数据失败:"), "Couldn't load the ladder:");
+  // Places as English ordinals.
+  assert.equal(translate("第 1 名"), "1st");
+  assert.equal(translate("第 22 名"), "22nd");
+  assert.equal(translate("第 11 名"), "11th");
+  assert.equal(translate("第 17-22 名"), "17th–22nd");
   // The more specific of two equally long patterns wins.
   assert.equal(translate("6 天后"), "In 6 days");
   assert.equal(translate("6 天前完赛"), "Finished 6 days ago");
@@ -40,7 +45,7 @@ test("dictionary is well formed", () => {
   const { exact, patterns } = compile(EN);
   assert.ok(exact.size > 500 && patterns.length > 150);
   for (const [zh, en] of Object.entries(EN)) {
-    assert.deepEqual((zh.replace(/:n\}/g, '}').match(/\{\d+\}/g) || []).sort(), (en.match(/\{\d+\}/g) || []).sort(), zh);
+    assert.deepEqual((zh.replace(/:(?:n|ord)\}/g, '}').match(/\{\d+\}/g) || []).sort(), (en.replace(/:ord\}/g, '}').match(/\{\d+\}/g) || []).sort(), zh);
     assert.ok(!/[一-鿿]/.test(en), `English still has Chinese: ${en}`);
   }
   const t = createTranslator({ "{0} 人": "{0} players" });

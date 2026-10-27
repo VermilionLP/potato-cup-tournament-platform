@@ -1,12 +1,21 @@
 // Chinese → English lookup for UI text. Exact entries match whole strings;
-// entries with {0}, {1}, ... ({0:n}: a number only) become patterns whose captured values (numbers,
+// entries with {0}, {1}, ... ({0:n}: a number only; {0:ord}: a number shown
+// as an English ordinal) become patterns whose captured values (numbers,
 // names, other labels) are translated in turn. Text with no match stays as
 // it is, so player and event names are never changed.
 
 import EN from './en.js';
 
 const HAN = /[一-鿿]/;
-const PLACEHOLDER = /\{(\d+)(?::n)?\}/g;
+const PLACEHOLDER = /\{(\d+)(?::(?:n|ord))?\}/g;
+// English ordinal: 1st, 2nd, 3rd, 4th, 11th, 21st...
+export function ordinal(value) {
+  const n = Number(value);
+  if (!Number.isInteger(n)) return String(value);
+  const tens = n % 100;
+  const suffix = tens >= 11 && tens <= 13 ? 'th' : { 1: 'st', 2: 'nd', 3: 'rd' }[n % 10] || 'th';
+  return `${n}${suffix}`;
+}
 
 const escape = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const collapse = (s) => s.replace(/\s+/g, ' ').trim();
@@ -16,19 +25,19 @@ export function compile(dict) {
   const patterns = [];
   for (const [zh, en] of Object.entries(dict)) {
     const key = collapse(zh);
-    if (!/\{\d+(?::n)?\}/.test(key)) {
+    if (!/\{\d+(?::(?:n|ord))?\}/.test(key)) {
       exact.set(key, en);
       continue;
     }
     const order = [];
     let source = '^';
-    for (const part of key.split(/(\{\d+(?::n)?\})/)) {
-      const m = /^\{(\d+)(:n)?\}$/.exec(part);
+    for (const part of key.split(/(\{\d+(?::(?:n|ord))?\})/)) {
+      const m = /^\{(\d+)(:n|:ord)?\}$/.exec(part);
       if (m) {
         order.push(Number(m[1]));
         // A value never spans a label separator, so "A · B" is not swallowed
         // by a short pattern such as "{0}淘汰".
-        // {0:n} takes a number only.
+        // {0:n} / {0:ord} take a number only.
         source += m[2] ? '(\\d+)' : '([^·•|]+?)';
       } else if (part) {
         // Spacing around numbers varies between the source and the screen.
@@ -62,7 +71,7 @@ export function createTranslator(dict = EN) {
       p.order.forEach((index, i) => {
         values[index] = depth < 3 ? translate(m[i + 1], depth + 1) : m[i + 1];
       });
-      return p.en.replace(PLACEHOLDER, (_, i) => values[i] ?? '');
+      return p.en.replace(/\{(\d+)(:ord)?\}/g, (_, i, ord) => (ord ? ordinal(values[i]) : values[i] ?? ''));
     }
     // "Prefix: message" (toasts show "…失败: " + a server message) and
     // "Label:" on its own. A colon between digits (10:00) is not a label.

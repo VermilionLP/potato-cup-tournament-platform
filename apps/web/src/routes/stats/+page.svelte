@@ -20,6 +20,18 @@
   let selectedStatPlayer = $state(null);
   let statsSearchQuery = $state("");
   let minMatchesFilter = $state(0); // 0 = all, 2, 5, 10
+  // As on the ladder: hide players with no rated game in the last year, and
+  // players with no rated game at all (未定级), unless asked for.
+  let showInactive = $state(false);
+  let showUnrated = $state(false);
+
+  // "第 3 名" / "第 5-8 名"; "" without a placing.
+  const placeText = (p) => (!p ? "" : p.from === p.to ? `第 ${p.from} 名` : `第 ${p.from}-${p.to} 名`);
+  const placeClass = (p) =>
+    !p ? "" : p.from === 1 ? "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30"
+      : p.from === 2 ? "bg-slate-400/15 text-slate-600 dark:text-slate-300 border-slate-400/30"
+      : p.from === 3 ? "bg-orange-700/15 text-orange-700 dark:text-orange-400 border-orange-700/30"
+      : "bg-muted/40 text-muted-foreground border-border/60";
 
   // Sorting Control
   let statsSortField = $state("match_win_rate");
@@ -44,7 +56,8 @@
              p.display_name.toLowerCase().includes(query) ||
              p.team.toLowerCase().includes(query);
       const meetsMinMatches = minMatchesFilter === 0 || p.matches_played >= minMatchesFilter;
-      return matchesSearch && meetsMinMatches;
+      const meetsActivity = (showInactive || p.active !== false) && (showUnrated || p.rated !== false);
+      return matchesSearch && meetsMinMatches && meetsActivity;
     });
 
     return filtered.sort((a, b) => {
@@ -192,6 +205,14 @@
                   <option value={5}>≥ 5 场</option>
                   <option value={10}>≥ 10 场</option>
                 </select>
+                <label class="flex items-center gap-1 text-[10px] text-muted-foreground cursor-pointer select-none whitespace-nowrap" title="显示近 365 天没有对局的选手">
+                  <input type="checkbox" bind:checked={showInactive} class="accent-primary" />
+                  显示不活跃
+                </label>
+                <label class="flex items-center gap-1 text-[10px] text-muted-foreground cursor-pointer select-none whitespace-nowrap" title="显示没有任何计分对局的选手">
+                  <input type="checkbox" bind:checked={showUnrated} class="accent-primary" />
+                  显示未定级
+                </label>
                 <!-- Search -->
                 <div class="relative w-full sm:w-52">
                   <SearchIcon class="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground/60" />
@@ -266,6 +287,14 @@
                         {/if}
                       </div>
                     </th>
+                    <th class="py-2.5 px-2 text-center cursor-pointer hover:bg-muted/20 hover:text-foreground transition-colors" onclick={() => handleStatsSort("honor_score")} title="冠军次数；没有冠军时为最佳名次（不含资格赛）">
+                      <div class="flex items-center justify-center gap-1">
+                        <span>冠军 / 最佳</span>
+                        {#if statsSortField === "honor_score"}
+                          <span class="text-primary">{statsSortOrder === "asc" ? "▲" : "▼"}</span>
+                        {/if}
+                      </div>
+                    </th>
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-border/60">
@@ -311,6 +340,17 @@
                       <td class="py-2 px-2 text-center font-mono font-bold text-muted-foreground">
                         {p.tournaments_played}
                       </td>
+                      <td class="py-2 px-2 text-center whitespace-nowrap">
+                        {#if p.championships > 0}
+                          <span class="inline-flex items-center gap-0.5 font-bold text-amber-500" title="{p.championships} 次冠军">
+                            <TrophyIcon class="w-3 h-3" />×{p.championships}
+                          </span>
+                        {:else if p.best_place}
+                          <span class="text-[10px] text-muted-foreground" title="最佳名次">{placeText(p.best_place)}</span>
+                        {:else}
+                          <span class="text-muted-foreground/50">—</span>
+                        {/if}
+                      </td>
                     </tr>
                   {/each}
                 </tbody>
@@ -342,6 +382,11 @@
                       · 大场 {p.matches_won}-{p.matches_lost}
                       · 单局 {p.maps_won}-{p.maps_lost}
                       · {p.tournaments_played} 届
+                      {#if p.championships > 0}
+                        · 🏆 ×{p.championships}
+                      {:else if p.best_place}
+                        · 最佳 {placeText(p.best_place)}
+                      {/if}
                     </div>
                   </div>
                   <div class="text-right shrink-0">
@@ -527,9 +572,16 @@
                     {#each selectedStatPlayer.tournaments as t}
                       <a
                         href="/tournament/{encodeURIComponent(t.id)}"
-                        class="text-[10px] px-2 py-1 rounded-md bg-muted/30 border border-border/60 hover:bg-primary/10 hover:border-primary/30 hover:text-primary transition-colors font-mono truncate max-w-48"
-                        title={t.name}
-                      >{t.name}</a>
+                        class="inline-flex items-center gap-1 text-[10px] px-2 py-1 rounded-md bg-muted/30 border border-border/60 hover:bg-primary/10 hover:border-primary/30 hover:text-primary transition-colors font-mono max-w-56"
+                        title={t.place ? `${t.name} · ${placeText(t.place)}` : t.name}
+                      >
+                        <span class="truncate">{t.name}</span>
+                        {#if t.place}
+                          <span class="shrink-0 rounded border px-1 text-[9px] font-bold font-sans {placeClass(t.place)}">
+                            {#if t.place.from === 1 && t.place.to === 1}🏆 {/if}{placeText(t.place)}
+                          </span>
+                        {/if}
+                      </a>
                     {/each}
                   </div>
                 </div>

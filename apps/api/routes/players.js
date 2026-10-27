@@ -4,6 +4,8 @@ import { LadderRepo } from '../repositories/ladder-repo.js';
 import { bnetEntryKey } from '../lib/bnet.js';
 import { GAME_MODES, VEHICLE_POOLS } from '../lib/tournament-config.js';
 import { isQualifierEvent, tournamentChampion } from '../lib/champions.js';
+import { betterPlace, eventPlacements } from '../lib/placements.js';
+import { ACTIVE_DAYS } from '../lib/ladder.js';
 import { requireAdmin, requireSelfOrAdmin } from '../lib/admin.js';
 
 export default async function playersRoutes(fastify) {
@@ -166,11 +168,30 @@ export default async function playersRoutes(fastify) {
       if (!playersByEvent.has(reg.tournament_id)) playersByEvent.set(reg.tournament_id, []);
       playersByEvent.get(reg.tournament_id).push({ id: reg.player_id, seed: reg.seed });
     }
+    // Placings of every finished event; the best one (qualifiers excluded)
+    // stands in for titles on the overview.
+    const placeOf = new Map(); // `${tournament}|${player}` -> { from, to }
+    const bestPlace = {};
     for (const t of tournaments) {
-      if (t.status !== 'completed' || isQualifierEvent(t)) continue;
-      const champion = tournamentChampion(t, matchesByEvent.get(t.id) || [], playersByEvent.get(t.id) || []);
-      if (champion && stats[champion]) stats[champion].championships += 1;
+      if (t.status !== 'completed') continue;
+      const evMatches = matchesByEvent.get(t.id) || [];
+      const evPlayers = playersByEvent.get(t.id) || [];
+      const qualifier = isQualifierEvent(t);
+      if (!qualifier) {
+        const champion = tournamentChampion(t, evMatches, evPlayers);
+        if (champion && stats[champion]) stats[champion].championships += 1;
+      }
+      for (const [playerId, place] of eventPlacements(t, evMatches, evPlayers)) {
+        placeOf.set(`${t.id}|${playerId}`, place);
+        if (!qualifier) bestPlace[playerId] = betterPlace(bestPlace[playerId], place);
+      }
     }
+    const qualifierIds = new Set(tournaments.filter(isQualifierEvent).map((t) => t.id));
+
+    // Activity and rating, as on the ladder: last rated game and whether the
+    // player has any rated game at all.
+    const ladder = await ladderRepo.getRatings({ includeInactive: true });
+    const activeSince = Date.now() - ACTIVE_DAYS * 86400000;
 
     const playerStats = Object.values(stats).map(s => {
       let nemesis = null;
@@ -227,7 +248,23 @@ export default async function playersRoutes(fastify) {
         championships: s.championships,
         nemesis: nemesis ? { id: nemesis, display_name: nemesisDisp, count: maxLostMatches } : null,
         favorite: favorite ? { id: favorite, display_name: favoriteDisp, count: maxWonMatches } : null,
-        tournaments: s.tournament_ids.map(tid => ({ id: tid, name: tournamentMap[tid] || tid }))
+        best_place: bestPlace[s.id] || null,
+        // Sort key for the titles column: titles first, then the best placing.
+        honor_score: s.championships > 0
+          ? 100000 + s.championships
+          : bestPlace[s.id] ? 1000 - Math.min(999, bestPlace[s.id].from) : 0,
+        last_game_at: ladder.byId.get(s.id)?.last_game_at ?? null,
+        rated: (ladder.byId.get(s.id)?.games ?? 0) > 0,
+        active: (() => {
+          const at = ladder.byId.get(s.id)?.last_game_at;
+          return at != null && new Date(at).getTime() >= activeSince;
+        })(),
+        tournaments: s.tournament_ids.map(tid => ({
+          id: tid,
+          name: tournamentMap[tid] || tid,
+          place: placeOf.get(`${tid}|${s.id}`) || null,
+          qualifier: qualifierIds.has(tid),
+        }))
       };
     });
 
