@@ -4,6 +4,7 @@
 
 import { getPlayerDisplayName } from '../repositories/player-repo.js';
 import { liquipediaBracketTemplate } from '../lib/bracket.js';
+import { requireAdmin } from '../lib/admin.js';
 
 function toDateOnly(value) {
   if (!value) return new Date().toISOString().split('T')[0];
@@ -19,7 +20,9 @@ function toDateOnly(value) {
 export default async function wikiRoutes(fastify) {
   const db = fastify.db;
 
+  // Admins only: the script carries players' contact details.
   fastify.get('/tournaments/:id/wiki', async (req) => {
+    requireAdmin(fastify, req);
     const { id: tournamentId } = req.params;
     const tourneyRes = await db.query('SELECT * FROM axsuck.tournaments WHERE id = $1', [tournamentId]);
     const tournament = tourneyRes.rows[0];

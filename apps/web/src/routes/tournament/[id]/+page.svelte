@@ -5,6 +5,7 @@
   import { page } from "$app/state";
   import { goto } from "$app/navigation";
   import { userState } from "$lib/user.svelte.js";
+  import { eliminationStandings } from "$lib/standings.js";
   import { Calendar } from "$lib/components/ui/calendar/index.js";
   import {
     Popover,
@@ -1736,110 +1737,12 @@
       });
     }
 
-    const playersMap = {};
-    (tournament.players || []).forEach((p) => {
-      playersMap[p.id] = {
-        id: p.id,
-        display_name: p.display_name,
-        flag: p.flag,
-        team: p.team,
-        link: p.link,
-        rank: "TBD",
-        eliminatedRound: null,
-        matchesPlayed: 0,
-        matchesWon: 0,
-      };
+    let placed = eliminationStandings({
+      matches: bracketMatches || [],
+      players: tournament.players || [],
+      doubleElim: isDoubleElim,
+      championshipMatch,
     });
-
-    const matches = bracketMatches || [];
-    const finalMatch = championshipMatch;
-
-    matches.forEach((m) => {
-      if (m.player1_id && playersMap[m.player1_id])
-        playersMap[m.player1_id].matchesPlayed++;
-      if (m.player2_id && playersMap[m.player2_id])
-        playersMap[m.player2_id].matchesPlayed++;
-
-      if (m.status === "completed" || m.status === "walkover") {
-        const winnerId = m.winner_id;
-        const loserId = winnerId === m.player1_id ? m.player2_id : m.player1_id;
-
-        if (winnerId && playersMap[winnerId]) {
-          playersMap[winnerId].matchesWon++;
-        }
-
-        if (loserId && playersMap[loserId]) {
-          playersMap[loserId].eliminatedRound = m.round;
-        }
-      }
-    });
-
-    if (
-      finalMatch &&
-      (finalMatch.status === "completed" || finalMatch.status === "walkover")
-    ) {
-      const champId = finalMatch.winner_id;
-      const runnerUpId =
-        champId === finalMatch.player1_id
-          ? finalMatch.player2_id
-          : finalMatch.player1_id;
-
-      if (champId && playersMap[champId]) {
-        playersMap[champId].rank = "第 1 名 (冠军)";
-      }
-      if (runnerUpId && playersMap[runnerUpId]) {
-        playersMap[runnerUpId].rank = "第 2 名 (亚军)";
-      }
-
-      // In double elimination the loser of the losers-bracket final is third.
-      if (isDoubleElim) {
-        const firstFinal = matches.find(
-          (m) => m.bracket === "gf" && m.position === 1,
-        );
-        const lbFinal = firstFinal
-          ? matches.find(
-              (m) =>
-                m.next_match_id === firstFinal.id && m.next_slot === 2,
-            )
-          : null;
-        if (lbFinal?.winner_id) {
-          const thirdId =
-            lbFinal.winner_id === lbFinal.player1_id
-              ? lbFinal.player2_id
-              : lbFinal.player1_id;
-          if (thirdId && playersMap[thirdId]) {
-            playersMap[thirdId].rank = "第 3 名";
-          }
-        }
-      }
-    }
-
-    Object.values(playersMap).forEach((p) => {
-      if (p.rank !== "TBD") return;
-      if (isDoubleElim) {
-        p.rank = "已淘汰";
-        return;
-      }
-      if (p.eliminatedRound === null) {
-        p.rank = "未淘汰";
-        return;
-      }
-
-      const r = p.eliminatedRound;
-      if (r === 2) {
-        p.rank = "第 3 - 4 名 (四强)";
-      } else if (r === 3) {
-        p.rank = "第 5 - 8 名 (八强)";
-      } else if (r === 4) {
-        p.rank = "第 9 - 16 名";
-      } else if (r > 4) {
-        const minRank = (1 << (r - 1)) + 1;
-        const maxRank = 1 << r;
-        p.rank = `第 ${minRank} - ${maxRank} 名`;
-      }
-    });
-
-    let placed = Object.values(playersMap);
     // Two-stage events: playoff placements for qualifiers; everyone else is
     // listed after them by group rank.
     let groupStageOut = [];
@@ -1884,18 +1787,7 @@
       placed = placed.filter((p) => qualified.has(p.id));
     }
 
-    return placed.sort((a, b) => {
-      const getPriority = (rankStr) => {
-        if (rankStr.includes("1")) return 1;
-        if (rankStr.includes("2")) return 2;
-        if (rankStr.includes("3")) return 3;
-        if (rankStr.includes("5")) return 4;
-        if (rankStr.includes("9")) return 5;
-        if (rankStr.includes("未淘汰")) return 0;
-        return 100;
-      };
-      return getPriority(a.rank) - getPriority(b.rank);
-    }).concat(groupStageOut);
+    return placed.concat(groupStageOut);
   });
 
   // Dynamic layout variables based on bracket size (exactly like overlay/+page.svelte)
@@ -2105,7 +1997,7 @@
 
   // Direct download export
   function triggerJsonDownload() {
-    if (!tournament) return;
+    if (!tournament || !isAdmin) return;
     const json = JSON.stringify(tournament, null, 2);
     const blob = new Blob([json], { type: "application/json" });
     const url = URL.createObjectURL(blob);
@@ -4061,7 +3953,8 @@
                 </div>
               </div>
 
-              <!-- Export data for SUCK Utilities -->
+              <!-- Export data for SUCK Utilities (admins only) -->
+              {#if isAdmin}
               <div class="pt-2 flex justify-center gap-3">
                 <Button
                   variant="outline"
@@ -4082,6 +3975,7 @@
                   生成 Liquipedia Wiki 脚本
                 </Button>
               </div>
+              {/if}
             </div>
           {/if}
 
