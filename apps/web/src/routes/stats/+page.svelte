@@ -510,30 +510,53 @@
 
         <!-- Right: Rankings & Boards -->
         <div class="space-y-6">
-          <!-- Board 1: Win Rate Ranking -->
+          <!-- Board 1: Championships -->
           <div class="bg-card border border-border rounded-xl p-4.5 shadow-sm space-y-4">
             <h3 class="text-xs font-black text-foreground uppercase tracking-wider flex items-center gap-1.5">
               <TrophyIcon class="w-4 h-4 text-amber-500" />
-              最强战力榜 (胜率)
+              最强战力榜 (冠军次数)
             </h3>
             <div class="space-y-3">
-              {#each statsData.rankings.by_win_rate as p, idx}
+              {#each statsData.rankings.by_championships || [] as p, idx (p.id)}
                 <div class="flex items-center justify-between p-2 rounded-lg bg-muted/10 border border-border/40 text-xs">
                   <div class="flex items-center gap-2">
                     <span class="w-5 h-5 rounded-full bg-amber-500/10 text-amber-500 flex items-center justify-center font-mono font-bold text-[10px]">{idx + 1}</span>
                     <Flag code={p.flag} size={18} />
                     <span class="font-bold truncate max-w-28">{p.display_name}</span>
                   </div>
-                  <span class="font-mono font-black text-amber-500">{Math.round(p.match_win_rate * 100)}% <span class="text-[9px] font-normal text-muted-foreground">({p.matches_won}/{p.matches_played})</span></span>
+                  <span class="font-mono font-black text-amber-500">{p.championships} <span class="text-[9px] font-normal text-muted-foreground">次冠军</span></span>
                 </div>
               {/each}
-              {#if statsData.rankings.by_win_rate.length === 0}
-                <div class="text-center py-4 text-[10px] text-muted-foreground italic">暂无战力排行</div>
+              {#if !statsData.rankings.by_championships?.length}
+                <div class="text-center py-4 text-[10px] text-muted-foreground italic">暂无冠军记录</div>
               {/if}
             </div>
           </div>
 
-          <!-- Board 2: Matches Played Ranking -->
+          <!-- Board 2: Win Rate Ranking -->
+          <div class="bg-card border border-border rounded-xl p-4.5 shadow-sm space-y-4">
+            <h3 class="text-xs font-black text-foreground uppercase tracking-wider flex items-center gap-1.5">
+              <TrendingUpIcon class="w-4 h-4 text-emerald-500" />
+              胜率榜 (胜率)
+            </h3>
+            <div class="space-y-3">
+              {#each statsData.rankings.by_win_rate as p, idx (p.id)}
+                <div class="flex items-center justify-between p-2 rounded-lg bg-muted/10 border border-border/40 text-xs">
+                  <div class="flex items-center gap-2">
+                    <span class="w-5 h-5 rounded-full bg-emerald-500/10 text-emerald-500 flex items-center justify-center font-mono font-bold text-[10px]">{idx + 1}</span>
+                    <Flag code={p.flag} size={18} />
+                    <span class="font-bold truncate max-w-28">{p.display_name}</span>
+                  </div>
+                  <span class="font-mono font-black text-emerald-500">{Math.round(p.match_win_rate * 100)}% <span class="text-[9px] font-normal text-muted-foreground">({p.matches_won}/{p.matches_played})</span></span>
+                </div>
+              {/each}
+              {#if statsData.rankings.by_win_rate.length === 0}
+                <div class="text-center py-4 text-[10px] text-muted-foreground italic">暂无胜率排行（至少 5 场）</div>
+              {/if}
+            </div>
+          </div>
+
+          <!-- Board 3: Matches Played Ranking -->
           <div class="bg-card border border-border rounded-xl p-4.5 shadow-sm space-y-4">
             <h3 class="text-xs font-black text-foreground uppercase tracking-wider flex items-center gap-1.5">
               <ActivityIcon class="w-4 h-4 text-blue-500" />
@@ -556,7 +579,7 @@
             </div>
           </div>
 
-          <!-- Board 3: Walkovers Ranking -->
+          <!-- Board 4: Walkovers Ranking -->
           <div class="bg-card border border-border rounded-xl p-4.5 shadow-sm space-y-4">
             <h3 class="text-xs font-black text-foreground uppercase tracking-wider flex items-center gap-1.5">
               <ShieldAlertIcon class="w-4 h-4 text-purple-500" />

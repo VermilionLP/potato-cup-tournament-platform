@@ -3,6 +3,7 @@ import { TournamentRepo } from '../repositories/tournament-repo.js';
 import { LadderRepo } from '../repositories/ladder-repo.js';
 import { bnetEntryKey } from '../lib/bnet.js';
 import { GAME_MODES } from '../lib/tournament-config.js';
+import { isQualifierEvent, tournamentChampion } from '../lib/champions.js';
 import { requireAdmin, requireSelfOrAdmin } from '../lib/admin.js';
 
 export default async function playersRoutes(fastify) {
@@ -25,7 +26,9 @@ export default async function playersRoutes(fastify) {
     const players = await repo.list();
     const registrations = (await fastify.db.query('SELECT * FROM axsuck.tournament_players')).rows;
     const matches = (await fastify.db.query("SELECT * FROM axsuck.matches WHERE status IN ('completed', 'walkover')")).rows;
-    const tournaments = (await fastify.db.query('SELECT id, name, game_mode FROM axsuck.tournaments')).rows;
+    const tournaments = (await fastify.db.query(
+      'SELECT id, name, game_mode, status, format, playoff_format, source_title FROM axsuck.tournaments'
+    )).rows;
     const tournamentMap = {};
     const modeOf = {};
     for (const t of tournaments) {
@@ -53,6 +56,7 @@ export default async function playersRoutes(fastify) {
         maps_won: 0,
         maps_lost: 0,
         modes: emptyModes(),
+        championships: 0,
         opponents: {},
         tournament_ids: []
       };
@@ -142,6 +146,23 @@ export default async function playersRoutes(fastify) {
       }
     }
 
+    // Titles: the champion of every finished event (qualifiers excluded).
+    const matchesByEvent = new Map();
+    for (const m of matches) {
+      if (!matchesByEvent.has(m.tournament_id)) matchesByEvent.set(m.tournament_id, []);
+      matchesByEvent.get(m.tournament_id).push(m);
+    }
+    const playersByEvent = new Map();
+    for (const reg of registrations) {
+      if (!playersByEvent.has(reg.tournament_id)) playersByEvent.set(reg.tournament_id, []);
+      playersByEvent.get(reg.tournament_id).push({ id: reg.player_id, seed: reg.seed });
+    }
+    for (const t of tournaments) {
+      if (t.status !== 'completed' || isQualifierEvent(t)) continue;
+      const champion = tournamentChampion(t, matchesByEvent.get(t.id) || [], playersByEvent.get(t.id) || []);
+      if (champion && stats[champion]) stats[champion].championships += 1;
+    }
+
     const playerStats = Object.values(stats).map(s => {
       let nemesis = null;
       let maxLostMatches = 0;
@@ -193,6 +214,7 @@ export default async function playersRoutes(fastify) {
         maps_lost: s.maps_lost,
         map_win_rate: s.maps_played > 0 ? (s.maps_won / s.maps_played) : 0,
         modes: s.modes,
+        championships: s.championships,
         nemesis: nemesis ? { id: nemesis, display_name: nemesisDisp, count: maxLostMatches } : null,
         favorite: favorite ? { id: favorite, display_name: favoriteDisp, count: maxWonMatches } : null,
         tournaments: s.tournament_ids.map(tid => ({ id: tid, name: tournamentMap[tid] || tid }))
@@ -211,6 +233,10 @@ export default async function playersRoutes(fastify) {
         total_matches: totalMatches
       },
       rankings: {
+        by_championships: [...playerStats]
+          .filter(p => p.championships > 0)
+          .sort((a, b) => b.championships - a.championships || b.match_win_rate - a.match_win_rate)
+          .slice(0, 5),
         by_win_rate: [...eligibleForRate]
           .sort((a, b) => b.match_win_rate - a.match_win_rate)
           .slice(0, 5),
