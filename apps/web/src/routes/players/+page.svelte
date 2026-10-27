@@ -752,7 +752,7 @@
             <Input
               id="edit-flag"
               bind:value={editFlag}
-              placeholder="cn / hk / tw"
+              placeholder="cn / hk / tw / xx（白旗）"
               class="text-xs h-8 flex-1"
             />
           </div>

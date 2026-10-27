@@ -5,6 +5,7 @@
   import { bracketConnectorPath, buildMatchOrder, layoutBracketBand } from "$lib/bracket.js";
   import { matchStageLabels, overlayStages, pickStage, playersStillIn } from "$lib/overlay.js";
   import { fade, fly } from "svelte/transition";
+  import Flag from "$lib/components/Flag.svelte";
 
   // URL Params & Derived States
   let tid = $derived(page.params.id);
@@ -649,7 +650,7 @@
                 WarThunder • Potato Cup • MATCHES OVERVIEW
               </span>
               <h1
-                class="text-4xl md:text-5xl font-extrabold tracking-tight leading-none bg-linear-to-r from-white via-slate-100 to-cyan-400 bg-clip-text text-transparent uppercase font-orbitron"
+                class="text-4xl md:text-5xl font-extrabold tracking-tight leading-none text-white uppercase font-orbitron"
               >
                 {tournament.name}
               </h1>
@@ -816,7 +817,7 @@
                 WarThunder • Potato Cup • INTERMISSION
               </span>
               <h1
-                class="text-4xl md:text-5xl font-extrabold tracking-wider leading-none bg-linear-to-r from-white via-slate-200 to-cyan-400 bg-clip-text text-transparent uppercase"
+                class="text-4xl md:text-5xl font-extrabold tracking-wider leading-none text-white uppercase"
               >
                 COMING UP NEXT
               </h1>
@@ -1071,7 +1072,7 @@
                 WARTHUNDER • {formatTag}
               </div>
               <h1
-                class="text-3xl md:text-5xl font-black bg-linear-to-r from-white to-cyan-400 bg-clip-text text-transparent uppercase font-orbitron leading-none tracking-wider mt-1"
+                class="text-3xl md:text-5xl font-black text-white uppercase font-orbitron leading-none tracking-wider mt-1"
               >
                 {tournament.name}
               </h1>
@@ -1430,10 +1431,13 @@
                     {@const won = done && m.winner_id && m.winner_id === pid}
                     {@const lost = done && m.winner_id && pid && m.winner_id !== pid}
                     <div class="flex items-center justify-between gap-2 text-base leading-tight {lost ? 'opacity-45' : ''}">
-                      <span
-                        class="truncate font-bold
-                          {!pid ? 'text-slate-600 italic' : won ? 'text-amber-300' : lost ? 'text-slate-400' : 'text-white'}"
-                      >{pid ? getPlayerName(pid) : bye ? "—" : "TBD"}</span>
+                      <span class="flex min-w-0 items-center gap-2">
+                        {#if pid}<Flag code={playerMap.get(pid)?.flag} size={22} />{/if}
+                        <span
+                          class="truncate font-bold
+                            {!pid ? 'text-slate-600 italic' : won ? 'text-amber-300' : lost ? 'text-slate-400' : 'text-white'}"
+                        >{pid ? getPlayerName(pid) : bye ? "—" : "TBD"}</span>
+                      </span>
                       <span class="font-orbitron font-black text-sm shrink-0 {won ? 'text-amber-400' : 'text-slate-500'}">
                         {#if bye}{:else if m.status === "walkover"}{won ? "W" : "FF"}{:else if done || live}{score ?? 0}{/if}
                       </span>
@@ -1473,10 +1477,13 @@
                                 {@const won = done && m.winner_id && m.winner_id === pid}
                                 {@const lost = done && m.winner_id && pid && m.winner_id !== pid}
                                 <div class="flex items-center justify-between gap-2 text-sm {lost ? 'opacity-45' : ''}">
-                                  <span
-                                    class="truncate font-bold
-                                      {!pid ? 'text-slate-600 italic' : won ? 'text-amber-300' : done || !isAlive(pid) ? 'text-slate-500' : 'text-white'}"
-                                  >{getPlayerName(pid)}</span>
+                                  <span class="flex min-w-0 items-center gap-1.5">
+                                    {#if pid}<Flag code={playerMap.get(pid)?.flag} size={18} />{/if}
+                                    <span
+                                      class="truncate font-bold
+                                        {!pid ? 'text-slate-600 italic' : won ? 'text-amber-300' : done || !isAlive(pid) ? 'text-slate-500' : 'text-white'}"
+                                    >{getPlayerName(pid)}</span>
+                                  </span>
                                   <span class="font-orbitron font-black text-xs shrink-0 {won ? 'text-amber-400' : 'text-slate-400'}">
                                     {#if m.status === "walkover"}{won ? "W" : "FF"}{:else if done || live}{score ?? 0}{/if}
                                   </span>
