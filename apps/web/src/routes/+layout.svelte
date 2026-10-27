@@ -462,7 +462,9 @@
       >
         <!-- Left: Logo -->
         <a href="/" class="flex items-center gap-1.5 sm:gap-2.5 shrink-0 group">
-          <img src="/favicon.png" alt="Potato Cup" class="w-7 h-7 object-contain group-hover:scale-105 transition-transform" />
+          <!-- Light / dark versions of the logo, switched with the colour mode. -->
+          <img src="/Potato_Cup_2026_icon_lightmode.png" alt="Potato Cup" class="w-7 h-7 object-contain group-hover:scale-105 transition-transform dark:hidden" />
+          <img src="/Potato_Cup_2026_icon_darkmode.png" alt="Potato Cup" class="hidden w-7 h-7 object-contain group-hover:scale-105 transition-transform dark:block" />
           <span
             class="hidden sm:inline font-bold text-sm sm:text-base tracking-tight text-foreground group-hover:text-primary transition-colors"
           >
