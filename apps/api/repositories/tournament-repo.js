@@ -171,7 +171,6 @@ export function TournamentRepo(db) {
         COALESCE(NULLIF(p.flag, ''), NULLIF(tp.flag, ''), 'cn') AS flag, 
         COALESCE(NULLIF(tp.team, ''), p.team, '') AS team, 
         COALESCE(NULLIF(tp.link, ''), p.link, '') AS link, 
-        p.bnet_ids,
         tp.seed, 
         tp.swiss_group,
         tp.registered_at

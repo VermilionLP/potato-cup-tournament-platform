@@ -158,21 +158,6 @@ export const API = {
   verifyQQ: (qqGroup) =>
     request('/verify-qq', { method: 'POST', body: JSON.stringify({ qqGroup }) }),
 
-  // Tournament-scoped account links (temporary / borrowed accounts)
-  getTournamentAccounts: (tournamentId) => request(`/tournaments/${enc(tournamentId)}/accounts`),
-  linkTournamentAccounts: (tournamentId, player_id, accounts) =>
-    request(`/tournaments/${enc(tournamentId)}/accounts`, { method: 'POST', body: JSON.stringify({ player_id, accounts }) }),
-  unlinkTournamentAccount: (tournamentId, account_key) =>
-    request(`/tournaments/${enc(tournamentId)}/accounts`, { method: 'DELETE', body: JSON.stringify({ account_key }) }),
-
-  // Global (permanent) player account links
-  linkPlayerAccounts: (playerId, accounts) =>
-    request(`/players/${enc(playerId)}/accounts`, { method: 'POST', body: JSON.stringify({ accounts }) }),
-  unlinkPlayerAccount: (playerId, account_key, name) =>
-    request(`/players/${enc(playerId)}/accounts`, { method: 'DELETE', body: JSON.stringify({ account_key, name }) }),
-  cleanupEmptyAccounts: (player_ids) =>
-    request('/players/cleanup-empty-accounts', { method: 'POST', body: JSON.stringify({ player_ids }) }),
-
   // Wiki Generation
   getWikiScript: (tournamentId) => request(`/tournaments/${enc(tournamentId)}/wiki`)
 };

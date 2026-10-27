@@ -2,7 +2,7 @@
 
 ## Role
 
-`apps/web` is the StarCraft 2 tournament web app: a SvelteKit SPA (SSR disabled, static adapter) using Svelte 5 runes, Tailwind CSS v4, shadcn-svelte, and `$lib/api.js` to talk to `suck-tournament-api`.
+`apps/web` is the Potato Cup (WarThunder) tournament web app: a SvelteKit SPA (SSR disabled, static adapter) using Svelte 5 runes, Tailwind CSS v4, shadcn-svelte, and `$lib/api.js` to talk to `suck-tournament-api`.
 
 Read this guide before editing files under `apps/web`.
 
@@ -12,7 +12,7 @@ Read this guide before editing files under `apps/web`.
 - Do not introduce `export let`, `$:` reactive labels, or Svelte 4 store patterns in new components.
 - Keep `export const ssr = false` and `export const prerender = false` in `src/routes/+layout.js`; this is a client-only SPA.
 - Call the backend through the `API` object in `$lib/api.js`. Do not call `fetch` directly from pages or components.
-- Client identity is `localStorage`-backed and injected as headers by `$lib/api.js`: `x-player-id` and `x-qq-group`. Keep that behavior aligned with `$lib/user.svelte.js`.
+- Client identity is `localStorage`-backed and injected as headers by `$lib/api.js`: `x-player-id`, `x-qq-group` and the device key `x-player-key` (`$lib/player-key.js`). Keep that behavior aligned with `$lib/user.svelte.js`.
 - The admin token is `sessionStorage`-backed and injected as `x-admin-token` by `$lib/api.js`; never move it to `localStorage` or a URL.
 - Use shadcn-svelte primitives from `$lib/components/ui`; install new ones only when needed.
 - Use `@lucide/svelte` for icons.

@@ -92,7 +92,7 @@ async function requirePlayerKey(fastify, req, playerId) {
 /**
  * Allows either an admin or the player the request is acting for (with the
  * player's device key once the ID is bound).
- * Used for self-service operations (registration, profile, votes, account links).
+ * Used for self-service operations (registration, profile, votes).
  */
 export async function requireSelfOrAdmin(fastify, req, playerId) {
   if (isAdminRequest(req)) {

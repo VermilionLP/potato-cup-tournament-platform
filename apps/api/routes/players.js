@@ -1,7 +1,6 @@
 import { PlayerRepo, mergePlayerInto } from '../repositories/player-repo.js';
 import { TournamentRepo } from '../repositories/tournament-repo.js';
 import { LadderRepo } from '../repositories/ladder-repo.js';
-import { bnetEntryKey } from '../lib/bnet.js';
 import { GAME_MODES, VEHICLE_POOLS } from '../lib/tournament-config.js';
 import { isQualifierEvent, tournamentChampion } from '../lib/champions.js';
 import { betterPlace, eventPlacements } from '../lib/placements.js';
@@ -358,122 +357,6 @@ export default async function playersRoutes(fastify) {
     return { bound: false };
   });
 
-  // ---- Global (permanent) Battle.net account links ----
-  fastify.post('/players/:id/accounts', async (req) => {
-    const { id } = req.params;
-    await requireSelfOrAdmin(fastify, req, id);
-    const { accounts } = req.body;
-    if (!Array.isArray(accounts) || accounts.length === 0) {
-      throw fastify.httpErrors.badRequest('accounts array is required');
-    }
-    const p = await repo.getById(id);
-    if (!p) throw fastify.httpErrors.notFound('Player not found');
-
-    let bnetIds = [];
-    try { bnetIds = typeof p.bnet_ids === 'string' ? JSON.parse(p.bnet_ids || '[]') : (p.bnet_ids || []); } catch (_) {}
-    if (!Array.isArray(bnetIds)) bnetIds = [];
-
-    for (const a of accounts) {
-      const key = a.account_key || bnetEntryKey(a);
-      const name = (a.name || a.account_name || '').trim();
-      if (!key && !name) continue;
-      const idx = bnetIds.findIndex(item => {
-        const iid = (typeof item === 'string' ? item : item?.id) || '';
-        const k = bnetEntryKey(item);
-        return (key && k === key) || (name && iid.toLowerCase().trim() === name.toLowerCase());
-      });
-      const entry = {
-        id: name || key,
-        url: a.url || '',
-        toon_handle: a.toon_handle || null,
-        region: a.region || null,
-        subregion: a.subregion != null ? a.subregion : null
-      };
-      if (idx >= 0) {
-        if (typeof bnetIds[idx] === 'string') bnetIds[idx] = entry;
-        else bnetIds[idx] = {
-          ...bnetIds[idx],
-          ...entry,
-          url: entry.url || bnetIds[idx].url || '',
-          toon_handle: entry.toon_handle || bnetIds[idx].toon_handle || null
-        };
-      } else {
-        bnetIds.push(entry);
-      }
-    }
-
-    await fastify.db.query('UPDATE axsuck.players SET bnet_ids = $1 WHERE id = $2', [JSON.stringify(bnetIds), id]);
-
-    const activeTournaments = (await fastify.db.query("SELECT id FROM axsuck.tournaments WHERE status != 'completed'")).rows;
-    activeTournaments.forEach(t => {
-      fastify.tournamentEvents.emit(`update:${t.id}`, { type: 'player_updated', id });
-    });
-
-    return { ...p, bnet_ids: bnetIds };
-  });
-
-  fastify.delete('/players/:id/accounts', async (req) => {
-    const { id } = req.params;
-    await requireSelfOrAdmin(fastify, req, id);
-    const { account_key, name } = req.body || {};
-    if (!account_key && !name) throw fastify.httpErrors.badRequest('account_key or name is required');
-    const p = await repo.getById(id);
-    if (!p) throw fastify.httpErrors.notFound('Player not found');
-
-    let bnetIds = [];
-    try { bnetIds = typeof p.bnet_ids === 'string' ? JSON.parse(p.bnet_ids || '[]') : (p.bnet_ids || []); } catch (_) {}
-    if (!Array.isArray(bnetIds)) bnetIds = [];
-
-    const target = (name || '').toLowerCase().trim();
-    const filtered = bnetIds.filter(item => {
-      const k = bnetEntryKey(item);
-      const iid = ((typeof item === 'string' ? item : item?.id) || '').toLowerCase().trim();
-      if (account_key && k === account_key) return false;
-      if (target && iid === target) return false;
-      return true;
-    });
-
-    await fastify.db.query('UPDATE axsuck.players SET bnet_ids = $1 WHERE id = $2', [JSON.stringify(filtered), id]);
-
-    const activeTournaments = (await fastify.db.query("SELECT id FROM axsuck.tournaments WHERE status != 'completed'")).rows;
-    activeTournaments.forEach(t => {
-      fastify.tournamentEvents.emit(`update:${t.id}`, { type: 'player_updated', id });
-    });
-
-    return { success: true, removed: bnetIds.length - filtered.length };
-  });
-
-  // Remove account entries that have no resolvable Battle.net URL/toon
-  // (legacy display-name-only aliases that never appear in any replay).
-  fastify.post('/players/cleanup-empty-accounts', async (req) => {
-    requireAdmin(fastify, req);
-    const { player_ids } = req.body || {};
-    const rows = Array.isArray(player_ids) && player_ids.length
-      ? (await fastify.db.query('SELECT id, bnet_ids FROM axsuck.players WHERE id = ANY($1)', [player_ids])).rows
-      : (await fastify.db.query('SELECT id, bnet_ids FROM axsuck.players')).rows;
-
-    let removed = 0;
-    let playersChanged = 0;
-    for (const p of rows) {
-      let arr = [];
-      try { arr = p.bnet_ids ? (typeof p.bnet_ids === 'string' ? JSON.parse(p.bnet_ids) : p.bnet_ids) : []; } catch (_) {}
-      if (!Array.isArray(arr) || arr.length === 0) continue;
-      const kept = arr.filter(e => bnetEntryKey(e) !== '');
-      if (kept.length !== arr.length) {
-        await fastify.db.query('UPDATE axsuck.players SET bnet_ids = $1 WHERE id = $2', [JSON.stringify(kept), p.id]);
-        removed += arr.length - kept.length;
-        playersChanged++;
-      }
-    }
-
-    const activeTournaments = (await fastify.db.query("SELECT id FROM axsuck.tournaments WHERE status != 'completed'")).rows;
-    activeTournaments.forEach(t => {
-      fastify.tournamentEvents.emit(`update:${t.id}`, { type: 'accounts_cleaned' });
-    });
-
-    return { success: true, removed, players: playersChanged };
-  });
-
   fastify.post('/players/:id/change-id', async (req) => {
     requireAdmin(fastify, req);
     const { id: oldId } = req.params;
@@ -491,7 +374,7 @@ export default async function playersRoutes(fastify) {
       await client.query('BEGIN');
 
       // A rename is a merge into a fresh record: everything (registrations,
-      // matches, votes, per-event accounts, profile) moves over and the old
+      // matches, votes, device key, profile) moves over and the old
       // id is kept as an alias for the Liquipedia import.
       await client.query('INSERT INTO axsuck.players (id, flag) VALUES ($1, $2)', [newId, '']);
       await mergePlayerInto(client, oldId, newId);
@@ -587,7 +470,7 @@ export default async function playersRoutes(fastify) {
   });
 
   fastify.post('/players', async (req) => {
-    const { id, flag, team, link, battle_tags, bnet_ids, tournament_id } = req.body;
+    const { id, flag, team, link, battle_tags, tournament_id } = req.body;
     if (!id) throw fastify.httpErrors.badRequest('id is required');
     await requireSelfOrAdmin(fastify, req, id);
 
@@ -600,12 +483,6 @@ export default async function playersRoutes(fastify) {
     const requesterId = requesterIdRaw ? decodeURIComponent(requesterIdRaw) : undefined;
     const lastIp = (requesterId === id) ? req.ip : null;
     const updatedPlayer = await repo.upsert(id, flag, team, link, battleTagsStr, lastIp);
-
-    if (bnet_ids !== undefined) {
-      const bnetIdsStr = typeof bnet_ids === 'string' ? bnet_ids : JSON.stringify(bnet_ids);
-      await fastify.db.query('UPDATE axsuck.players SET bnet_ids = $1 WHERE id = $2', [bnetIdsStr, id]);
-      updatedPlayer.bnet_ids = bnetIdsStr;
-    }
 
     if (tournament_id) {
       await fastify.db.query(`

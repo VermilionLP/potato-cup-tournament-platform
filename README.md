@@ -1,6 +1,8 @@
-# Suck Utilities
+# Potato Cup 赛事平台
 
-S.U.C.K（StarCraft Ultra Chicken King）水友赛的一整套工具：赛事前端与 API。
+WarThunder Potato Cup 水友赛的赛事平台：报名、时间投票、对阵（单败 / 双败 / 瑞士轮 / 小组赛 + 淘汰赛）、Ban/Pick、比分、OBS 直播遮罩、天梯 MMR、年度积分榜，以及 Liquipedia 导入和 wiki 生成。
+
+仓库最初是星际争霸 2 水友赛工具 S.U.C.K（`suck-utilities`），所以包名、数据库 schema（`axsuck`）、PM2 进程名和部分存储键名还沿用 `suck`。
 
 - `apps/web` — SvelteKit SPA（Svelte 5、Tailwind CSS v4、shadcn-svelte）
 - `apps/api` — Fastify 5 + PostgreSQL（schema `axsuck`），SSE 实时推送、Swagger

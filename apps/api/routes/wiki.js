@@ -38,7 +38,6 @@ export default async function wikiRoutes(fastify) {
     const playersRes = await db.query(`
       SELECT 
         p.id, 
-        p.bnet_ids,
         p.battle_tags,
         COALESCE(NULLIF(p.flag, ''), NULLIF(tp.flag, ''), 'cn') AS flag, 
         COALESCE(NULLIF(tp.team, ''), p.team, '') AS team, 
@@ -58,12 +57,10 @@ export default async function wikiRoutes(fastify) {
     const matchesRes = await db.query(`
       SELECT m.*, 
              p1.battle_tags AS player1_battle_tags,
-             p1.bnet_ids AS player1_bnet_ids,
              COALESCE(tp1.flag, p1.flag) AS player1_flag,
              COALESCE(tp1.team, p1.team) AS player1_team,
              COALESCE(tp1.link, p1.link) AS player1_link,
              p2.battle_tags AS player2_battle_tags,
-             p2.bnet_ids AS player2_bnet_ids,
              COALESCE(tp2.flag, p2.flag) AS player2_flag,
              COALESCE(tp2.team, p2.team) AS player2_team,
              COALESCE(tp2.link, p2.link) AS player2_link,

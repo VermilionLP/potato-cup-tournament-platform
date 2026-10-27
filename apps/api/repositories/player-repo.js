@@ -5,9 +5,9 @@ export function getPlayerDisplayName(player) {
 
 /**
  * Moves everything of player oldId onto targetId and deletes oldId: event
- * registrations, time and custom votes, per-event accounts, matches and
- * bnet ids. Profile fields the target lacks (flag, team, link, contact)
- * are filled in from oldId. Runs on a client inside the caller's transaction.
+ * registrations, time and custom votes, matches and the device key.
+ * Profile fields the target lacks (flag, team, link, contact) are filled
+ * in from oldId. Runs on a client inside the caller's transaction.
  */
 export async function mergePlayerInto(client, oldId, targetId) {
   if (oldId === targetId) throw new Error('Cannot merge a player into themselves');
@@ -51,17 +51,14 @@ export async function mergePlayerInto(client, oldId, targetId) {
   `, [oldId, targetId]);
   await client.query('UPDATE axsuck.custom_votes SET player_id = $2 WHERE player_id = $1', [oldId, targetId]);
 
-  // 4. Per-event accounts.
-  await client.query('UPDATE axsuck.tournament_player_accounts SET player_id = $2 WHERE player_id = $1', [oldId, targetId]);
-
   // 5. Matches.
   await client.query('UPDATE axsuck.matches SET player1_id = $2 WHERE player1_id = $1', [oldId, targetId]);
   await client.query('UPDATE axsuck.matches SET player2_id = $2 WHERE player2_id = $1', [oldId, targetId]);
   await client.query('UPDATE axsuck.matches SET winner_id = $2 WHERE winner_id = $1', [oldId, targetId]);
 
-  // 6. Profile: bnet ids are combined; every other field the target is
-  // missing (flag, team, Liquipedia link, QQ / Discord contact) is taken
-  // from the merged player. last_seen_at keeps the later of the two.
+  // 6. Profile: every field the target is missing (flag, team, Liquipedia
+  // link, QQ / Discord contact) is taken from the merged player.
+  // last_seen_at keeps the later of the two.
   const parse = (v, fallback) => {
     try {
       const out = typeof v === 'string' ? JSON.parse(v || 'null') : v;
@@ -70,11 +67,6 @@ export async function mergePlayerInto(client, oldId, targetId) {
       return fallback;
     }
   };
-  const key = (item) => (typeof item === 'string' ? item : item?.id);
-  const merged = [...parse(targetPlayer.bnet_ids, [])];
-  for (const item of parse(oldPlayer.bnet_ids, [])) {
-    if (!merged.some((t) => key(t) === key(item))) merged.push(item);
-  }
   const blank = (v) => v == null || (typeof v === 'string' && !v.trim()) || (Array.isArray(v) && !v.length);
   const asObject = (v) => {
     const o = parse(v, {});
@@ -86,16 +78,14 @@ export async function mergePlayerInto(client, oldId, targetId) {
   }
   await client.query(`
     UPDATE axsuck.players
-    SET bnet_ids = $2,
-        flag = COALESCE(NULLIF(flag, ''), NULLIF($3, '')),
-        team = COALESCE(NULLIF(team, ''), $4, ''),
-        link = COALESCE(NULLIF(link, ''), $5, ''),
-        battle_tags = $6,
-        last_seen_at = GREATEST(last_seen_at, $7::timestamptz)
+    SET flag = COALESCE(NULLIF(flag, ''), NULLIF($2, '')),
+        team = COALESCE(NULLIF(team, ''), $3, ''),
+        link = COALESCE(NULLIF(link, ''), $4, ''),
+        battle_tags = $5,
+        last_seen_at = GREATEST(last_seen_at, $6::timestamptz)
     WHERE id = $1
   `, [
     targetId,
-    JSON.stringify(merged),
     oldPlayer.flag || '',
     oldPlayer.team || '',
     oldPlayer.link || '',

@@ -11,7 +11,7 @@
   --card-foreground: oklch(0.13 0.02 256);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.13 0.02 256);
-  --primary: oklch(0.72 0.17 76);        /* SC2 Amber Gold */
+  --primary: oklch(0.72 0.17 76);        /* Amber gold */
   --primary-foreground: oklch(0.1 0.02 256);
   --secondary: oklch(0.42 0.19 285);     /* Psionic Purple */
   --secondary-foreground: oklch(0.97 0.01 256);
@@ -34,7 +34,7 @@
   --card-foreground: oklch(0.97 0.01 256);
   --popover: oklch(0.16 0.02 256);
   --popover-foreground: oklch(0.97 0.01 256);
-  --primary: oklch(0.79 0.17 76);        /* Classic SC2 Amber Gold */
+  --primary: oklch(0.79 0.17 76);        /* Amber gold (dark) */
   --primary-foreground: oklch(0.1 0.02 256);
   --secondary: oklch(0.42 0.19 285);     /* Psionic Purple */
   --secondary-foreground: oklch(0.97 0.01 256);

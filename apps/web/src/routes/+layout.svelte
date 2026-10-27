@@ -182,7 +182,6 @@
   let editContactBase = $state({}); // untouched battle_tags keys kept across saves
   let editQQ = $state("");
   let editDiscord = $state("");
-  let editBnetIds = $state([]);
 
   // Avatar gradient derived from player ID
   const avatarColors = [
@@ -278,19 +277,6 @@
     return () => window.removeEventListener("player-key-required", onKeyRequired);
   });
 
-  function parseBnetIds(raw) {
-    if (!raw) return [];
-    try {
-      const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
-      if (Array.isArray(parsed)) {
-        return parsed.map((item) =>
-          typeof item === "string" ? { id: item, url: "" } : item,
-        );
-      }
-    } catch (_) {}
-    return [];
-  }
-
   async function checkProfileCompleteness(playerId) {
     try {
       const player = await API.getPlayer(playerId);
@@ -329,7 +315,6 @@
           editContactBase = contact.base;
           editQQ = contact.qq;
           editDiscord = contact.discord;
-          editBnetIds = parseBnetIds(p.bnet_ids);
         }
       } catch (e) {
         console.error("获取选手资料失败:", e);
@@ -843,7 +828,7 @@
           <Input
             id="edit-link"
             bind:value={editLink}
-            placeholder="例如: User:Bnet"
+            placeholder="例如: Vermilion"
             class="text-xs h-8 bg-background border-border text-foreground"
           />
           <p class="text-[10px] text-muted-foreground/60">
@@ -852,39 +837,6 @@
           </p>
         </div>
 
-        <!-- Battle.net IDs (Read-only) -->
-        <div class="space-y-2 pt-2 border-t border-border/60">
-          <span class="text-xs font-bold text-muted-foreground block"
-            >已关联的游戏账号 (只读)</span
-          >
-          <div
-            class="flex flex-wrap gap-1 min-h-9 p-1.5 rounded-lg border border-border bg-muted/10"
-          >
-            {#each editBnetIds as b}
-              <Badge
-                variant="secondary"
-                class="text-[9px] font-mono bg-muted/65 border border-border/60 px-1.5 py-0.5"
-              >
-                {#if b.url}
-                  <a
-                    href={b.url}
-                    target="_blank"
-                    rel="noopener"
-                    class="text-primary hover:underline">{b.id} ↗</a
-                  >
-                {:else}
-                  {b.id}
-                {/if}
-              </Badge>
-            {/each}
-            {#if editBnetIds.length === 0}
-              <span
-                class="text-[10px] text-muted-foreground/50 italic self-center px-1"
-                >暂无关联的游戏账号</span
-              >
-            {/if}
-          </div>
-        </div>
       </div>
     {:else}
       <!-- Guest verification inputs -->
@@ -923,7 +875,7 @@
           <Input
             id="player-id-input"
             bind:value={idInput}
-            placeholder="例如: Bnet"
+            placeholder="例如: Vermilion"
             class="bg-background border-border text-foreground"
             onkeydown={(e) => {
               if (e.key === "Enter") handleSaveId();

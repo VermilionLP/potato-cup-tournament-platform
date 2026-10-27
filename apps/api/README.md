@@ -1,6 +1,6 @@
 # suck-tournament-api
 
-Standalone StarCraft 2 tournament API: Fastify 5 on PostgreSQL (schema `axsuck`), with Postgrator migrations, SSE live updates, and Swagger docs.
+Potato Cup (WarThunder) tournament API: Fastify 5 on PostgreSQL (schema `axsuck`), with Postgrator migrations, SSE live updates, and Swagger docs.
 
 This app lives in the `suck-utilities` repository; see the root `README.md`.
 
@@ -27,14 +27,14 @@ Administrative operations require `x-admin-token`. In the web app, click the shi
 
 Admin-only endpoints include:
 
-- Tournaments: create, edit, delete, status changes, seeds (manual/auto/randomize), bracket generation, overlay state, active match, tournament-scoped account links, and import.
+- Tournaments: create, edit, delete, status changes, seeds (manual/auto/randomize), bracket generation, overlay state, active match, and import.
 - Matches: manual match creation, score edits, and rollback.
-- Players: rename, merge, delete, and cleanup of empty accounts.
+- Players: rename, merge, delete, and device-key reset.
 - Votes: deleting past vote options.
 
 Self-service endpoints use `requireSelfOrAdmin` and accept either an admin token or a matching `x-player-id` header:
 
-- `POST /players`, `POST /players/:id/touch`, `POST|DELETE /players/:id/accounts`
+- `POST /players`, `POST /players/:id/touch`
 - `POST|DELETE /tournaments/:id/register`
 - `POST|DELETE /tournaments/:id/vote`, `POST|DELETE /tournaments/:id/custom-vote`
 

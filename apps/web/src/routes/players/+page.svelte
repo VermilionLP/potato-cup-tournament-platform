@@ -8,7 +8,6 @@
   import { Input } from "$lib/components/ui/input/index.js";
   import { Badge } from "$lib/components/ui/badge/index.js";
   import Flag from "$lib/components/Flag.svelte";
-  import { accountRegionLabel } from "$lib/utils.js";
   import { buildContact, parseContact } from "$lib/contact.js";
   import PlusIcon from "@lucide/svelte/icons/plus";
   import SearchIcon from "@lucide/svelte/icons/search";
@@ -17,7 +16,6 @@
   import TrashIcon from "@lucide/svelte/icons/trash-2";
   import MergeIcon from "@lucide/svelte/icons/git-merge";
   import SettingsIcon from "@lucide/svelte/icons/settings";
-  import XIcon from "@lucide/svelte/icons/x";
   import PlusCircleIcon from "@lucide/svelte/icons/plus-circle";
   import ChevronDownIcon from "@lucide/svelte/icons/chevron-down";
   import ChevronUpIcon from "@lucide/svelte/icons/chevron-up";
@@ -79,7 +77,6 @@
   let editContactBase = $state({});
   let editQQ = $state("");
   let editDiscord = $state("");
-  let editBnetIds = $state([]); // read-only list of [{ id, url }] account entries
   let mergeTargetId = $state("");
   // In-page confirmation ('merge' | 'delete' | 'rename-self' | null). The
   // native confirm() returns false without showing anything once a browser
@@ -87,19 +84,6 @@
   let pendingAction = $state(null);
   // Admin: whether the edited player's ID is bound to a device key.
   let keyBound = $state(null);
-
-  function parseBnetIds(raw) {
-    try {
-      const arr = typeof raw === "string" ? JSON.parse(raw) : raw || [];
-      return arr.map((b) => (typeof b === "string" ? { id: b, url: "" } : b));
-    } catch {
-      return [];
-    }
-  }
-
-  function removeBnetId(index) {
-    editBnetIds = editBnetIds.filter((_, i) => i !== index);
-  }
 
   function openCreate() {
     if (!isAdmin) {
@@ -120,7 +104,6 @@
     editContactBase = {};
     editQQ = "";
     editDiscord = "";
-    editBnetIds = [];
     mergeTargetId = "";
     pendingAction = null;
     showEditDialog = true;
@@ -148,7 +131,6 @@
     editQQ = contact.qq;
     editDiscord = contact.discord;
 
-    editBnetIds = parseBnetIds(p.bnet_ids);
     mergeTargetId = "";
     pendingAction = null;
     showEditDialog = true;
@@ -224,7 +206,6 @@
           qq: editQQ,
           discord: editDiscord,
         }),
-        bnet_ids: editBnetIds,
       });
 
       toast.dismiss("ps");
@@ -379,7 +360,6 @@
           </thead>
           <tbody class="divide-y divide-border/50">
             {#each shownPlayers as p (p.id)}
-              {@const bnetIds = parseBnetIds(p.bnet_ids)}
               {@const contact = parseContact(p.battle_tags)}
               <tr class="hover:bg-accent/30 transition-colors group {isRecentlySeen(p) ? '' : 'opacity-60'}">
                 <!-- Player identity -->
@@ -527,7 +507,6 @@
     <!-- Mobile Card View -->
     <div class="block sm:hidden space-y-3">
       {#each shownPlayers as p (p.id)}
-        {@const bnetIds = parseBnetIds(p.bnet_ids)}
         {@const contact = parseContact(p.battle_tags)}
         <div
           class="bg-card border border-border rounded-xl p-4.5 space-y-3 shadow-sm hover:border-primary/30 transition-all {isRecentlySeen(p) ? '' : 'opacity-60'}"
@@ -705,7 +684,7 @@
         {isCreating ? "新建选手资料" : `编辑 · ${editingId}`}
       </Dialog.Title>
       <Dialog.Description class="text-xs text-muted-foreground">
-        配置选手全局档案，包含 ID、显示名称、国籍、战队、联系方式及关联 Battle.net 账号。
+        配置选手全局档案，包含 ID、显示名称、国籍、战队和联系方式。
       </Dialog.Description>
     </Dialog.Header>
 
@@ -718,7 +697,7 @@
         <Input
           id="edit-new-id"
           bind:value={editNewId}
-          placeholder="例如: Bnet"
+          placeholder="例如: Vermilion"
           class="text-xs h-8 bg-background"
         />
         <p class="text-[10px] text-muted-foreground/60">
@@ -802,7 +781,7 @@
         <Input
           id="edit-link"
           bind:value={editLink}
-          placeholder="例如: User:Bnet"
+          placeholder="例如: Vermilion"
           class="text-xs h-8"
         />
         <p class="text-[10px] text-muted-foreground/60">
@@ -811,55 +790,6 @@
         </p>
       </div>
 
-      <!-- Battle.net IDs (editable) -->
-      <div class="space-y-2 pt-2 border-t border-border/60">
-        <span class="text-xs font-bold text-muted-foreground block"
-          >已关联的游戏账号 (可移除)</span
-        >
-        <div
-          class="flex flex-wrap gap-1.5 min-h-[40px] p-2 rounded-lg border border-border/80 bg-muted/10"
-        >
-          {#each editBnetIds as b, i (i)}
-            <Badge
-              variant="secondary"
-              class="text-[10px] font-mono bg-muted/65 border border-border/60 px-2 py-0.5 gap-1"
-            >
-              {#if b.url}
-                <a
-                  href={b.url}
-                  target="_blank"
-                  rel="noopener"
-                  class="text-primary hover:underline">{b.id} ↗</a
-                >
-              {:else}
-                {b.id}
-              {/if}
-              {#if accountRegionLabel(b)}
-                <span class="text-muted-foreground/70"
-                  >{accountRegionLabel(b)}</span
-                >
-              {/if}
-              <button
-                type="button"
-                onclick={() => removeBnetId(i)}
-                title="移除该账号关联"
-                class="rounded p-0.5 text-muted-foreground hover:bg-destructive/20 hover:text-destructive cursor-pointer"
-              >
-                <XIcon class="w-3 h-3" />
-              </button>
-            </Badge>
-          {/each}
-          {#if editBnetIds.length === 0}
-            <span
-              class="text-[10px] text-muted-foreground/50 italic self-center px-1"
-              >暂无关联的游戏账号。</span
-            >
-          {/if}
-        </div>
-        <p class="text-[10px] text-muted-foreground/60">
-          此处为全局账号；仅在某届赛事临时使用的账号请到该赛事的「账号关联」里管理。
-        </p>
-      </div>
 
       <!-- Device key (admin, edit only) -->
       {#if !isCreating && isAdmin && keyBound !== null}

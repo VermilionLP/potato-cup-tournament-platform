@@ -2,7 +2,7 @@
 
 ## Role
 
-`apps/api` is the StarCraft 2 tournament API. Fastify 5, PostgreSQL via `@fastify/postgres`, Postgrator migrations, SSE (`@fastify/sse`), and Swagger.
+`apps/api` is the Potato Cup (WarThunder) tournament API. Fastify 5, PostgreSQL via `@fastify/postgres`, Postgrator migrations, SSE (`@fastify/sse`), and Swagger.
 
 Read this guide before editing files under `apps/api`.
 
@@ -16,7 +16,7 @@ Read this guide before editing files under `apps/api`.
 - Repositories are factory functions named `XxxRepo(db)` under `repositories/`.
 - Add `do` and `undo` migrations together for every schema change.
 - Use `fastify.httpErrors` (from `@fastify/sensible`) for HTTP errors.
-- Client identity comes from the `x-player-id` and `x-qq-group` request headers, not JWT.
+- Client identity comes from the `x-player-id` and `x-qq-group` request headers, not JWT; once an ID is bound to a device key (`lib/player-key.js`), self-service requests also need `x-player-key`.
 - Admin-only destructive routes call `requireAdmin(fastify, req)` from `lib/admin.js`; the token comes from `ADMIN_TOKEN` and the `x-admin-token` header. Never allow admin access when `ADMIN_TOKEN` is unset.
 - Self-service routes call `requireSelfOrAdmin(fastify, req, playerId)` and match result reporting calls `requireMatchPlayerOrAdmin(fastify, req, match)`, so ordinary users can only act on their own player ID or their own match.
 - API request/audit logs ship to Elasticsearch through `lib/es-logger.js` (`ES_*` env vars); keep logging non-blocking.

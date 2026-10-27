@@ -51,7 +51,7 @@ await fastify.register(sensible);
 registerRateLimit(fastify);
 await fastify.register(fastifySse, { heartbeatInterval: 20000 });
 await fastify.register(swagger, {
-  openapi: { info: { title: 'S.U.C.K Tournament API', version: pkg.version } }
+  openapi: { info: { title: 'Potato Cup Tournament API', version: pkg.version } }
 });
 await fastify.register(swaggerUi, { routePrefix: '/docs' });
 await fastify.register(databasePlugin);

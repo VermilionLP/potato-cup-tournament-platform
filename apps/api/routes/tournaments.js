@@ -1,9 +1,7 @@
 import { TournamentRepo } from '../repositories/tournament-repo.js';
 import { MatchRepo } from '../repositories/match-repo.js';
-import { TournamentAccountRepo } from '../repositories/tournament-account-repo.js';
 import { LadderRepo } from '../repositories/ladder-repo.js';
 import { Readable } from 'stream';
-import { bnetEntryKey } from '../lib/bnet.js';
 import { buildCalendarFeed, buildTournamentIcs } from '../lib/calendar.js';
 import { requireAdmin } from '../lib/admin.js';
 import { normalizePointsKind, normalizePointsTable, normalizeSeason, pointsFor } from '../lib/points.js';
@@ -31,7 +29,6 @@ import {
 export default async function tournamentsRoutes(fastify) {
   const repo = TournamentRepo(fastify.db);
   const matches = MatchRepo(fastify.db);
-  const accountRepo = TournamentAccountRepo(fastify.db);
   const ladderRepo = LadderRepo(fastify.db);
 
   // Seasons ended on the leaderboard are locked: their events' points
@@ -59,25 +56,10 @@ export default async function tournamentsRoutes(fastify) {
     const votes = await repo.getVotes(req.params.id);
     const custom_votes = await repo.getCustomVotes(req.params.id);
 
-    const tournamentAccounts = await accountRepo.listByTournament(req.params.id);
-    const accountsByPlayer = {};
-    for (const a of tournamentAccounts) {
-      (accountsByPlayer[a.player_id] = accountsByPlayer[a.player_id] || []).push(a);
-    }
-
-    // Player races used to be detected from uploaded replays. Replay support has
-    // been removed, so races stay unknown ('U') like they did when no replay
-    // was ever uploaded.
-    const playersWithRace = players.map(p => ({
-      ...p,
-      race: 'U',
-      tournament_accounts: accountsByPlayer[p.id] || []
-    }));
-
     // MMR of the event's division (game mode + event type), the same ratings
     // automatic seeding uses; players with no games there are unrated.
     const ladder = await ladderRepo.eventRatings(t);
-    const playersWithLadder = playersWithRace.map(p => {
+    const playersWithLadder = players.map(p => {
       const l = ladder.ratingOf(p.id);
       return {
         ...p,
@@ -122,8 +104,7 @@ export default async function tournamentsRoutes(fastify) {
       swiss_rounds_auto: t.format === 'swiss' ? isAutoRounds(t.swiss_rounds) : undefined,
       swiss_rounds_effective: swissRoundsEffective,
       votes,
-      custom_votes,
-      accounts: tournamentAccounts
+      custom_votes
     };
   });
 
@@ -152,49 +133,6 @@ export default async function tournamentsRoutes(fastify) {
     });
 
     await reply.sse.send(stream);
-  });
-
-  // ---- Tournament-scoped Battle.net account links (temporary / borrowed accounts) ----
-  fastify.get('/tournaments/:id/accounts', async (req) => {
-    const t = await repo.getById(req.params.id);
-    if (!t) throw fastify.httpErrors.notFound('Tournament not found');
-    return await accountRepo.listByTournament(req.params.id);
-  });
-
-  fastify.post('/tournaments/:id/accounts', async (req) => {
-    requireAdmin(fastify, req);
-    const { id: tournamentId } = req.params;
-    const { player_id, accounts } = req.body;
-    if (!player_id) throw fastify.httpErrors.badRequest('player_id is required');
-    if (!Array.isArray(accounts) || accounts.length === 0) {
-      throw fastify.httpErrors.badRequest('accounts array is required');
-    }
-    const t = await repo.getById(tournamentId);
-    if (!t) throw fastify.httpErrors.notFound('Tournament not found');
-
-    const rows = accounts.map((a) => ({
-      account_key: a.account_key || bnetEntryKey(a),
-      player_id,
-      account_name: a.name || a.account_name || '',
-      url: a.url || '',
-      toon_handle: a.toon_handle || null,
-      region: a.region || null,
-      subregion: a.subregion != null ? a.subregion : null
-    })).filter(r => r.account_key);
-
-    await accountRepo.upsertMany(tournamentId, rows);
-    fastify.tournamentEvents.emit(`update:${tournamentId}`, { type: 'accounts_updated', player_id });
-    return await accountRepo.listByTournament(tournamentId);
-  });
-
-  fastify.delete('/tournaments/:id/accounts', async (req) => {
-    requireAdmin(fastify, req);
-    const { id: tournamentId } = req.params;
-    const { account_key } = req.body || {};
-    if (!account_key) throw fastify.httpErrors.badRequest('account_key is required');
-    const removed = await accountRepo.remove(tournamentId, account_key);
-    fastify.tournamentEvents.emit(`update:${tournamentId}`, { type: 'accounts_updated' });
-    return { success: true, removed };
   });
 
   fastify.post('/tournaments', async (req) => {
