@@ -6,14 +6,7 @@
   import { goto } from "$app/navigation";
   import { userState } from "$lib/user.svelte.js";
   import { eliminationStandings } from "$lib/standings.js";
-  import { Calendar } from "$lib/components/ui/calendar/index.js";
-  import {
-    Popover,
-    PopoverContent,
-    PopoverTrigger,
-  } from "$lib/components/ui/popover/index.js";
   import { Button } from "$lib/components/ui/button/index.js";
-  import { Input } from "$lib/components/ui/input/index.js";
   import { Badge } from "$lib/components/ui/badge/index.js";
   import {
     bracketRoundLabel,
@@ -24,29 +17,35 @@
   } from "$lib/bracket.js";
   import DoubleElimBracket from "$lib/components/DoubleElimBracket.svelte";
   import SwissView from "$lib/components/SwissView.svelte";
-  import BanPickPanel from "$lib/components/BanPickPanel.svelte";
-  import ScoreForm from "$lib/components/ScoreForm.svelte";
   import PlayoffPanel from "$lib/components/PlayoffPanel.svelte";
-  import ExternalLinkIcon from "@lucide/svelte/icons/external-link";
-  import DateTimePicker from "$lib/components/DateTimePicker.svelte";
-  import MatchTime from "$lib/components/MatchTime.svelte";
+  import VoteBoard from "$lib/components/tournament/VoteBoard.svelte";
+  import VoteProposals from "$lib/components/tournament/VoteProposals.svelte";
+  import { formatVoteTime, suggestedVoteTimes, voteOptionsFrom } from "$lib/votes.js";
+  import RegistrationCard from "$lib/components/tournament/RegistrationCard.svelte";
+  import SeedingCard from "$lib/components/tournament/SeedingCard.svelte";
+  import EventHeader from "$lib/components/tournament/EventHeader.svelte";
+  import StatusControls from "$lib/components/tournament/StatusControls.svelte";
+  import PhaseStepper from "$lib/components/tournament/PhaseStepper.svelte";
+  import MatchResultDialog from "$lib/components/tournament/MatchResultDialog.svelte";
+  import SingleElimBracket from "$lib/components/tournament/SingleElimBracket.svelte";
+  import ResultsPanel from "$lib/components/tournament/ResultsPanel.svelte";
+  import RosterCard from "$lib/components/tournament/RosterCard.svelte";
+  import ObsControlCard from "$lib/components/tournament/ObsControlCard.svelte";
+  import StreamChecklistDialog from "$lib/components/tournament/StreamChecklistDialog.svelte";
+  import NextMatchDialog from "$lib/components/tournament/NextMatchDialog.svelte";
+  import WikiExportDialog from "$lib/components/tournament/WikiExportDialog.svelte";
+  import TimeEditDialog from "$lib/components/tournament/TimeEditDialog.svelte";
+  import FinalTimeDialog from "$lib/components/tournament/FinalTimeDialog.svelte";
+  import PlayerEditDialog from "$lib/components/tournament/PlayerEditDialog.svelte";
   import { formatScheduled, parseLocal } from "$lib/datetime.js";
-  import { canConfirm, confirmResult, initialBanPick, poolVehicles } from "$lib/banpick.js";
+  import { initialBanPick, poolVehicles } from "$lib/banpick.js";
   import { defaultVehiclePools } from "$lib/data/vehiclePools.js";
   import { mergePools } from "$lib/vehicle-pools.js";
   import { copyText } from "$lib/clipboard.js";
   import { overlayStages, pickStage } from "$lib/overlay.js";
-  import PointsEditor from "$lib/components/PointsEditor.svelte";
-  import { POINTS_PRESETS, cleanTable, copyTable, currentSeason, pointsTableProblem } from "$lib/points.js";
   import {
     canCorrectResult,
-    gameModeLabel,
-    gameModeTitle,
-    POOL_TAG,
-    gameModeInfo,
-    vehiclePoolLabel,
     banpickPoolFor,
-    VEHICLE_POOLS,
     isValidSwissRounds,
     MAX_SWISS_ROUNDS,
     MIN_SWISS_ROUNDS,
@@ -57,43 +56,14 @@
     GROUP_STAGE_BRACKETS,
   } from "$lib/tournament.js";
   import GroupBracketsView from "$lib/components/GroupBracketsView.svelte";
-  import TierBadge from "$lib/components/TierBadge.svelte";
-  import Flag from "$lib/components/Flag.svelte";
   import { buildContact, parseContact } from "$lib/contact.js";
-  import { isRecentlySeen } from "$lib/players.js";
   import * as Card from "$lib/components/ui/card/index.js";
   import * as Dialog from "$lib/components/ui/dialog/index.js";
-  import { CalendarDate } from "@internationalized/date";
 
   import TrophyIcon from "@lucide/svelte/icons/trophy";
-  import UserRoundIcon from "@lucide/svelte/icons/user";
-  import UsersIcon from "@lucide/svelte/icons/users";
-  import CalendarIcon from "@lucide/svelte/icons/calendar";
   import ClockIcon from "@lucide/svelte/icons/clock";
-  import CheckIcon from "@lucide/svelte/icons/check";
   import ArrowLeftIcon from "@lucide/svelte/icons/arrow-left";
-  import PlayIcon from "@lucide/svelte/icons/play";
   import ShieldCheckIcon from "@lucide/svelte/icons/shield-check";
-  import RefreshCwIcon from "@lucide/svelte/icons/refresh-cw";
-  import TrashIcon from "@lucide/svelte/icons/trash-2";
-  import CrownIcon from "@lucide/svelte/icons/crown";
-  import DownloadIcon from "@lucide/svelte/icons/download";
-  import FileTextIcon from "@lucide/svelte/icons/file-text";
-  import UnlinkIcon from "@lucide/svelte/icons/unlink";
-  import TrendingUpIcon from "@lucide/svelte/icons/trending-up";
-  import ShuffleIcon from "@lucide/svelte/icons/shuffle";
-  import MessageSquareIcon from "@lucide/svelte/icons/message-square";
-  import ListOrderedIcon from "@lucide/svelte/icons/list-ordered";
-  import CopyIcon from "@lucide/svelte/icons/copy";
-  import SettingsIcon from "@lucide/svelte/icons/settings";
-  import PlusIcon from "@lucide/svelte/icons/plus";
-  import RadioIcon from "@lucide/svelte/icons/radio";
-  import MicIcon from "@lucide/svelte/icons/mic";
-  import HeadphonesIcon from "@lucide/svelte/icons/headphones";
-  import Volume2Icon from "@lucide/svelte/icons/volume-2";
-  import MonitorIcon from "@lucide/svelte/icons/monitor";
-  import LayoutDashboardIcon from "@lucide/svelte/icons/layout-dashboard";
-  import PencilIcon from "@lucide/svelte/icons/pencil";
 
   let tid = $derived(page.params.id);
   let tournament = $state(null);
@@ -150,15 +120,6 @@
   let banpickPoolId = $derived(banpickPoolFor(tournament?.vehicle_pool, tournament?.game_mode));
   // Pools edited on the site replace the bundled ones (loaded on mount).
   let vehiclePools = $state(mergePools({}, defaultVehiclePools));
-  let savingPool = $state(false);
-  // Potato Cup points (积分榜): admins edit an event's table at any time.
-  let editingPoints = $state(false);
-  let pointsDraft = $state([]);
-  let pointsSeasonDraft = $state("");
-  let pointsKindDraft = $state("weekly");
-  let pointsInviteDraft = $state(false);
-  let savingPoints = $state(false);
-  let hasPoints = $derived(Boolean(tournament?.points_table?.length));
   let swissRoundsLabel = $derived(
     tournament?.swiss_rounds_auto
       ? `${tournament?.swiss_rounds_effective ?? "?"} 轮（自动单循环）`
@@ -189,9 +150,6 @@
   let voteWeekOffset = $state(0);
   let loading = $state(true);
   let isAdmin = $derived(!!userState.adminToken);
-  let editingTitle = $state(false);
-  let titleDraft = $state("");
-  let savingTitle = $state(false);
 
   // Derived unregistered players list for quick registration select
   let unregisteredPlayers = $derived(
@@ -199,20 +157,6 @@
       (ap) => !(tournament?.players || []).some((tp) => tp.id === ap.id),
     ),
   );
-  let showInactiveReg = $state(false);
-  let selectedRegIds = $state([]);
-  let activeUnregistered = $derived(
-    unregisteredPlayers.filter((p) => isRecentlySeen(p.last_seen_at)),
-  );
-  let inactiveUnregistered = $derived(
-    unregisteredPlayers.filter((p) => !isRecentlySeen(p.last_seen_at)),
-  );
-
-  function toggleRegSelection(playerId) {
-    selectedRegIds = selectedRegIds.includes(playerId)
-      ? selectedRegIds.filter((id) => id !== playerId)
-      : [...selectedRegIds, playerId];
-  }
 
   function ensureAdmin() {
     if (isAdmin) return true;
@@ -239,46 +183,8 @@
   let loadingWiki = $state(false);
 
   // Registration states
-  let regInput = $state("");
   let seedOrder = $state([]);
   // Intro link stage; "" = whatever stage is current.
-  let obsIntroStage = $state("");
-
-  // Time voting states
-  const today = new Date();
-  let voteDate = $state(
-    new CalendarDate(
-      today.getFullYear(),
-      today.getMonth() + 1,
-      today.getDate(),
-    ),
-  );
-  let voteTime = $state("20:00");
-
-  const timeSlots = [
-    "13:00",
-    "13:30",
-    "14:00",
-    "14:30",
-    "15:00",
-    "15:30",
-    "16:00",
-    "16:30",
-    "17:00",
-    "17:30",
-    "18:00",
-    "18:30",
-    "19:00",
-    "19:30",
-    "20:00",
-    "20:30",
-    "21:00",
-    "21:30",
-    "22:00",
-    "22:30",
-    "23:00",
-    "23:30",
-  ];
 
   // Modal for match results
   let showMatchDialog = $state(false);
@@ -318,164 +224,10 @@
       localStorage.getItem("suck_stream_mode") === "1",
   );
   let showStreamChecklist = $state(false);
-  let streamChecks = $state({
-    mic: false,
-    voice: false,
-    gameSound: false,
-    gameScreen: false,
-    overlay: false,
-  });
-  const STREAM_CHECKLIST_ITEMS = [
-    { key: "mic", label: "麦克风", desc: "麦克风已连接，收音正常", icon: MicIcon },
-    { key: "voice", label: "语音", desc: "语音 / 开黑频道已就绪", icon: HeadphonesIcon },
-    { key: "gameSound", label: "游戏声音", desc: "游戏音效已进入 OBS 混音", icon: Volume2Icon },
-    { key: "gameScreen", label: "游戏画面", desc: "游戏画面采集正常", icon: MonitorIcon },
-    { key: "overlay", label: "Overlay", desc: "直播大屏叠加已设置完成", icon: LayoutDashboardIcon },
-  ];
-  let streamChecklistAllDone = $derived(
-    STREAM_CHECKLIST_ITEMS.every((item) => streamChecks[item.key]),
+  // Suggested times (moved by "顺延一周") merged with the votes cast.
+  let voteOptions = $derived(
+    voteOptionsFrom(tournament?.votes || [], suggestedVoteTimes(playTimes, voteWeekOffset)),
   );
-
-  function nextVoteOccurrence(weekday, hour, minute, now = new Date()) {
-    const d = new Date(now);
-    d.setHours(hour, minute, 0, 0);
-    let delta = (weekday - d.getDay() + 7) % 7;
-    if (delta === 0 && d.getTime() <= now.getTime()) delta = 7;
-    d.setDate(d.getDate() + delta);
-    return d;
-  }
-
-  function voteIso(d) {
-    const pad = (n) => String(n).padStart(2, "0");
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:00`;
-  }
-
-  // Suggested slots are always visible; they double as quick vote buttons.
-  let quickVoteOptions = $derived.by(() => {
-    const fallback = [
-      { weekday: 4, hour: 20, minute: 30 },
-      { weekday: 6, hour: 20, minute: 30 },
-      { weekday: 0, hour: 20, minute: 30 },
-      { weekday: 6, hour: 15, minute: 0 },
-      { weekday: 0, hour: 15, minute: 0 },
-    ];
-    const historical = (playTimes?.top_slots || []).slice(0, 3).map((slot) => {
-      const [hour, minute] = String(slot.time).split(":").map(Number);
-      return { weekday: slot.weekday, hour, minute };
-    });
-    // Keep the usual Thursday 20:30 plus the Saturday/Sunday afternoon slots available.
-    const extra = [
-      { weekday: 4, hour: 20, minute: 30 },
-      { weekday: 6, hour: 15, minute: 0 },
-      { weekday: 0, hour: 15, minute: 0 },
-    ];
-    const specs = [...historical, ...extra, ...fallback];
-    const now = new Date();
-    // Keep the requested time-of-day relative to "now + offset weeks".
-    const anchor = new Date(now.getTime() + voteWeekOffset * 7 * 24 * 3600 * 1000);
-    const seen = new Set();
-    const out = [];
-    for (const spec of specs) {
-      const d = nextVoteOccurrence(spec.weekday, spec.hour, spec.minute, anchor);
-      const iso = voteIso(d);
-      if (seen.has(iso)) continue;
-      seen.add(iso);
-      out.push({ proposed_time: iso, suggested: true });
-      if (out.length >= 6) break;
-    }
-    return out;
-  });
-
-  // Compute votes sorted chronologically by date; merge suggested zero-vote slots.
-  let voteOptions = $derived.by(() => {
-    const map = {};
-    if (tournament?.votes) {
-      for (const v of tournament.votes) {
-        const t = v.proposed_time;
-        if (!map[t]) map[t] = { proposed_time: t, count: 0, voters: [] };
-        map[t].count++;
-        map[t].voters.push(v);
-      }
-    }
-    const suggested = new Set(quickVoteOptions.map((q) => q.proposed_time));
-    for (const q of quickVoteOptions) {
-      if (!map[q.proposed_time]) {
-        map[q.proposed_time] = {
-          proposed_time: q.proposed_time,
-          count: 0,
-          voters: [],
-        };
-      }
-    }
-    return Object.values(map)
-      .map((opt) => ({ ...opt, suggested: suggested.has(opt.proposed_time) }))
-      .sort((a, b) => a.proposed_time.localeCompare(b.proposed_time));
-  });
-
-  let pastVotes = $derived(
-    (tournament?.votes || []).filter((vote) => {
-      const time = new Date(vote.proposed_time).getTime();
-      return Number.isFinite(time) && time < Date.now();
-    }),
-  );
-
-  // Group vote options by date for "Anime Schedule" layout
-  let groupedVoteDates = $derived.by(() => {
-    const datesMap = {};
-    for (const opt of voteOptions) {
-      const parts = opt.proposed_time.split("T");
-      const dateStr = parts[0];
-      const timeStr = parts[1] ? parts[1].substring(0, 5) : "00:00";
-      
-      if (!datesMap[dateStr]) {
-        datesMap[dateStr] = {
-          date: dateStr,
-          formattedDate: formatDateHeader(dateStr),
-          options: []
-        };
-      }
-      datesMap[dateStr].options.push({
-        ...opt,
-        timeOnly: timeStr
-      });
-    }
-    return Object.values(datesMap).sort((a, b) => a.date.localeCompare(b.date));
-  });
-
-  function formatDateHeader(dateStr) {
-    try {
-      const date = new Date(dateStr + "T00:00:00");
-      if (isNaN(date.getTime())) return dateStr;
-      const month = date.getMonth() + 1;
-      const day = date.getDate();
-      const weekdays = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
-      const weekday = weekdays[date.getDay()];
-      return `${month}/${day} ${weekday}`;
-    } catch (e) {
-      return dateStr;
-    }
-  }
-
-  function formatVoteTime(timeStr) {
-    if (!timeStr) return "";
-    try {
-      const date = new Date(timeStr.replace(" ", "T"));
-      if (isNaN(date.getTime())) return timeStr;
-      
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, "0");
-      const day = String(date.getDate()).padStart(2, "0");
-      const hours = String(date.getHours()).padStart(2, "0");
-      const minutes = String(date.getMinutes()).padStart(2, "0");
-      
-      const weekdays = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
-      const weekday = weekdays[date.getDay()];
-      
-      return `${year}-${month}-${day} (${weekday}) ${hours}:${minutes}`;
-    } catch (e) {
-      return timeStr;
-    }
-  }
 
   // Derived properties for stages
   let isRegistered = $derived(
@@ -576,23 +328,15 @@
   }
 
   function requestStreamMode() {
-    streamChecks = {
-      mic: false,
-      voice: false,
-      gameSound: false,
-      gameScreen: false,
-      overlay: false,
-    };
     showStreamChecklist = true;
   }
 
+  // Called by the checklist once every item is ticked.
   function confirmStreamMode() {
-    if (!streamChecklistAllDone) return;
     streamMode = true;
     if (typeof window !== "undefined") {
       localStorage.setItem("suck_stream_mode", "1");
     }
-    showStreamChecklist = false;
     toast.success("已激活直播状态，将强制选择下一场直播对局");
   }
 
@@ -710,79 +454,17 @@
     }
   }
 
-  async function startTitleEdit() {
-    titleDraft = tournament?.name || "";
-    editingTitle = true;
-  }
-
-  // Event type (螺旋桨 / 早期喷气 / Pro League BVR): admins can change it any time.
-  async function saveEventPool(pool) {
-    if (!ensureAdmin() || !pool || pool === tournament?.vehicle_pool) return;
-    savingPool = true;
-    try {
-      const res = await API.updateTournament(tid, { vehicle_pool: pool });
-      tournament = { ...tournament, vehicle_pool: res.vehicle_pool };
-      toast.success(`比赛类型已改为 ${vehiclePoolLabel(res.vehicle_pool)}`);
-    } catch (e) {
-      toast.error(e.message);
-    } finally {
-      savingPool = false;
+  // "结束投票并开启报名": preselect the most voted future time.
+  function openEndVoting() {
+    if (!userState.qqGroup || !userState.id) {
+      toast.error("此操作需要先填写 QQ / Discord 联系方式与选手 ID。已为您打开配置面板！");
+      document.getElementById("header-profile-button")?.click();
+      return;
     }
-  }
-
-  async function openPointsEdit() {
-    pointsDraft = copyTable(tournament?.points_table?.length ? tournament.points_table : POINTS_PRESETS[0].table);
-    pointsSeasonDraft = tournament?.points_season || currentSeason();
-    if (!tournament?.points_season) {
-      // Not on the leaderboard yet: default to the admins' current season.
-      try {
-        const res = await API.getPointsSeasons();
-        if (res.current) pointsSeasonDraft = res.current;
-      } catch {
-        // keep the calendar year
-      }
-    }
-    pointsKindDraft = tournament?.points_kind === "monthly" ? "monthly" : "weekly";
-    pointsInviteDraft = Boolean(tournament?.points_invite);
-    editingPoints = true;
-  }
-
-  async function savePoints(clear = false) {
-    if (!ensureAdmin()) return;
-    if (!clear) {
-      const problem = pointsTableProblem(pointsDraft, pointsSeasonDraft);
-      if (problem) return toast.error(problem);
-    }
-    savingPoints = true;
-    try {
-      await API.updateTournament(tid, clear
-        ? { points_table: null }
-        : { points_table: cleanTable(pointsDraft), points_season: pointsSeasonDraft.trim(), points_kind: pointsKindDraft, points_invite: pointsInviteDraft });
-      // Reload: awarded points are computed with the event.
-      await load();
-      editingPoints = false;
-      toast.success(clear ? "已设为不计入积分榜" : "积分已保存");
-    } catch (e) {
-      toast.error(e.message);
-    } finally {
-      savingPoints = false;
-    }
-  }
-
-  async function saveTitle() {
-    if (!ensureAdmin()) return;
-    const name = titleDraft.trim();
-    if (!name) return toast.error("赛事标题不能为空");
-    savingTitle = true;
-    try {
-      tournament = await API.updateTournament(tid, { name });
-      editingTitle = false;
-      toast.success("赛事标题已更新");
-    } catch (e) {
-      toast.error(e.message);
-    } finally {
-      savingTitle = false;
-    }
+    const future = voteOptions.filter((opt) => new Date(opt.proposed_time).getTime() >= Date.now());
+    const top = [...future].sort((a, b) => b.count - a.count)[0];
+    selectedFinalTime = top ? formatVoteTime(top.proposed_time) : "";
+    showStatusTimeDialog = true;
   }
 
   async function confirmEndVoting() {
@@ -810,8 +492,10 @@
   }
 
   // Registration
-  async function doRegister() {
-    const targetId = regInput.trim();
+  // targetId: another player (admins); "" registers the visitor. Resolves
+  // to true once registered.
+  async function doRegister(targetId = "") {
+    targetId = String(targetId || "").trim();
     if (targetId && targetId !== userState.id && !ensureAdmin()) return;
     if (!targetId && (!userState.qqGroup || !userState.id)) {
       toast.error("此操作需要先填写 QQ / Discord 联系方式与选手 ID。已为您打开配置面板！");
@@ -824,7 +508,6 @@
       const players = await API.register(tid, id);
       tournament = { ...tournament, players };
       toast.success(`选手 ${id} 报名成功`);
-      regInput = "";
       await load();
 
       // Auto-update bracket preview (admin only; server rejects it for other users)
@@ -836,15 +519,15 @@
         const matches = await API.generateBracket(tid);
         tournament = { ...tournament, matches };
       }
+      return true;
     } catch (e) {
       toast.error(e.message);
     }
   }
 
-  async function doBatchRegister() {
+  async function doBatchRegister(ids = []) {
     if (!ensureAdmin()) return;
-    if (selectedRegIds.length === 0) return toast.error("请先选择选手");
-    const ids = [...selectedRegIds];
+    if (ids.length === 0) return toast.error("请先选择选手");
     let ok = 0;
     const errors = [];
     for (const id of ids) {
@@ -855,7 +538,6 @@
         errors.push(`${id}: ${e.message}`);
       }
     }
-    selectedRegIds = [];
     await load();
     if (
       (tournament.players?.length || 0) >=
@@ -1333,136 +1015,6 @@
     }
   }
 
-  // Time voting
-  async function postponeVoteWeek() {
-    if (!ensureAdmin()) return;
-    try {
-      const res = await API.deletePastVotes(tid);
-      voteWeekOffset += 1;
-      if (res.deleted > 0) {
-        toast.info(
-          `已作废 ${res.deleted} 条过期投票，推荐时间已顺延到下周`,
-        );
-      } else {
-        toast.info(`推荐时间已顺延 ${voteWeekOffset} 周`);
-      }
-      await load();
-    } catch (e) {
-      toast.error(e.message);
-    }
-  }
-
-  async function doVote() {
-    if (!userState.qqGroup || !userState.id) {
-      toast.error("此操作需要先填写 QQ / Discord 联系方式与选手 ID。已为您打开配置面板！");
-      document.getElementById("header-profile-button")?.click();
-      return;
-    }
-    if (!voteDate) return toast.error("请选择日期");
-    const timeStr = voteTime || "20:00";
-    const dateStr = voteDate.toString();
-    const iso = `${dateStr}T${timeStr}:00`;
-    try {
-      await API.submitVote(tid, userState.id, iso);
-      toast.success("已投票；若该时间最终当选，会自动为你报名");
-      voteDate = undefined;
-      voteTime = "20:00";
-      await load();
-    } catch (e) {
-      toast.error(e.message);
-    }
-  }
-
-  async function toggleVoteOption(optionTime, voted) {
-    if (!userState.qqGroup || !userState.id) {
-      toast.error("此操作需要先填写 QQ / Discord 联系方式与选手 ID。已为您打开配置面板！");
-      document.getElementById("header-profile-button")?.click();
-      return;
-    }
-    try {
-      if (voted) {
-        await API.removeVote(tid, userState.id, optionTime);
-        toast.success("已取消该时间的投票");
-      } else {
-        await API.submitVote(tid, userState.id, optionTime);
-        toast.success("已投票；若该时间最终当选，会自动为你报名");
-      }
-      await load();
-    } catch (e) {
-      toast.error(e.message);
-    }
-  }
-
-  // Custom voting states
-  let customTopicSelect = $state("服务器");
-  let customTopicInput = $state("");
-  let customOptionInput = $state("");
-
-  let customVoteTopics = $derived.by(() => {
-    if (!tournament?.custom_votes) return [];
-    const topicsMap = {};
-    for (const cv of tournament.custom_votes) {
-      const t = cv.topic;
-      const val = cv.value;
-      if (!topicsMap[t]) {
-        topicsMap[t] = {};
-      }
-      if (!topicsMap[t][val]) {
-        topicsMap[t][val] = { value: val, count: 0, voters: [] };
-      }
-      topicsMap[t][val].count++;
-      topicsMap[t][val].voters.push(cv);
-    }
-    return Object.entries(topicsMap).map(([topic, optsMap]) => {
-      const options = Object.values(optsMap).sort((a, b) => b.count - a.count);
-      return { topic, options };
-    }).sort((a, b) => a.topic.localeCompare(b.topic));
-  });
-
-  async function handleAddCustomVote() {
-    const topic = customTopicSelect === "new" ? customTopicInput : customTopicSelect;
-    await submitCustomVote(topic, customOptionInput);
-  }
-
-  async function submitCustomVote(topic, value) {
-    if (!userState.qqGroup || !userState.id) {
-      toast.error("此操作需要先填写 QQ / Discord 联系方式与选手 ID。已为您打开配置面板！");
-      document.getElementById("header-profile-button")?.click();
-      return;
-    }
-    if (!topic || !topic.trim()) return toast.error("请输入或选择投票主题");
-    if (!value || !value.trim()) return toast.error("请输入选项内容");
-    try {
-      await API.submitCustomVote(tid, userState.id, topic.trim(), value.trim());
-      toast.success("自定义选项已添加并投票");
-      customOptionInput = "";
-      customTopicInput = "";
-      await load();
-    } catch (e) {
-      toast.error(e.message);
-    }
-  }
-
-  async function toggleCustomVote(topic, value, voted) {
-    if (!userState.qqGroup || !userState.id) {
-      toast.error("此操作需要先填写 QQ / Discord 联系方式与选手 ID。已为您打开配置面板！");
-      document.getElementById("header-profile-button")?.click();
-      return;
-    }
-    try {
-      if (voted) {
-        await API.removeCustomVote(tid, userState.id, topic, value);
-        toast.success("已取消该选项的投票");
-      } else {
-        await API.submitCustomVote(tid, userState.id, topic, value);
-        toast.success("已投赞成票");
-      }
-      await load();
-    } catch (e) {
-      toast.error(e.message);
-    }
-  }
-
   function openEditPlayer(p) {
     if (!ensureAdmin()) return;
     editingPlayerId = p.id;
@@ -1789,130 +1341,6 @@
         return { ...r, matches: r.matches.slice(start, start + size) };
       });
   });
-  let displayFirstRoundCount = $derived(
-    displayRounds[0]?.matches?.length || 0,
-  );
-
-  let bracketSpecs = $derived.by(() => {
-    const count = displayFirstRoundCount;
-    if (count >= 8) {
-      // 16 players or more
-      return {
-        H: 64,
-        g: 12,
-        G: 24,
-        cardWidth: "w-40",
-        colGap: "gap-6",
-        slotOffset: 16,
-        connMid: 12,
-        connWidth: 12,
-        connGap: 24,
-      };
-    } else {
-      // 8 players or fewer
-      return {
-        H: 64,
-        g: 20,
-        G: 40,
-        cardWidth: "w-40",
-        colGap: "gap-8",
-        slotOffset: 16,
-        connMid: 16,
-        connWidth: 16,
-        connGap: 32,
-      };
-    }
-  });
-
-  let matchPositions = $derived.by(() => {
-    const rs = displayRounds;
-    if (!rs.length)
-      return { positions: {}, centers: {}, totalHeight: 600 };
-
-    const H = bracketSpecs.H; // Card height
-    const g = bracketSpecs.g; // Intra-pair gap
-    const G = bracketSpecs.G; // Inter-pair gap
-
-    const positions = {}; // map of matchId -> { top, height }
-    const centers = {}; // map of matchId -> center px
-
-    const localMaxRound = Math.max(...rs.map((r) => r.round));
-    const firstRound = rs.find((r) => r.round === localMaxRound);
-    if (!firstRound) return { positions: {}, centers: {}, totalHeight: 600 };
-
-    const firstRoundMatches = firstRound.matches;
-    firstRoundMatches.forEach((m, idx) => {
-      const pairIdx = Math.floor(idx / 2);
-      const isEven = idx % 2 === 0;
-      const top = isEven
-        ? pairIdx * (2 * H + g + G)
-        : pairIdx * (2 * H + g + G) + H + g;
-
-      positions[m.id] = { top, height: H };
-      centers[m.id] = top + H / 2;
-    });
-
-    for (let rNum = localMaxRound - 1; rNum >= 1; rNum--) {
-      const roundData = rs.find((r) => r.round === rNum);
-      const prevRoundData = rs.find((r) => r.round === rNum + 1);
-      if (!roundData || !prevRoundData) continue;
-
-      roundData.matches.forEach((m, idx) => {
-        const parent1 = prevRoundData.matches[idx * 2];
-        const parent2 = prevRoundData.matches[idx * 2 + 1];
-
-        let center = 0;
-        if (parent1 && parent2) {
-          center = (centers[parent1.id] + centers[parent2.id]) / 2;
-        } else if (parent1) {
-          center = centers[parent1.id];
-        } else {
-          center = idx * 300 + 150;
-        }
-
-        const top = center - H / 2;
-        positions[m.id] = { top, height: H };
-        centers[m.id] = center;
-      });
-    }
-
-    const totalHeight =
-      firstRoundMatches.length > 0
-        ? Math.ceil(firstRoundMatches.length / 2) * (2 * H + g + G) - G
-        : 600;
-
-    return { positions, centers, totalHeight };
-  });
-
-  let adjustedTotalHeight = $derived.by(() => {
-    let base = matchPositions.totalHeight;
-    if (tournament.hold_third_place && bracketMatches?.some(m => m.round === 0)) {
-      return Math.max(base, 190);
-    }
-    return base;
-  });
-
-  // Alive player tracking for detailing connector states
-  let alivePlayerIds = $derived.by(() => {
-    if (!tournament?.players) return new Set();
-    const alive = new Set(tournament.players.map((p) => p.id));
-    (bracketMatches || []).forEach((m) => {
-      if (m.status === "completed" || m.status === "walkover") {
-        const loserId =
-          m.winner_id === m.player1_id ? m.player2_id : m.player1_id;
-        if (loserId) {
-          alive.delete(loserId);
-        }
-      }
-    });
-    return alive;
-  });
-
-  function isAlive(playerId) {
-    if (!playerId) return false;
-    return alivePlayerIds.has(playerId);
-  }
-
   // Direct download export
   function triggerJsonDownload() {
     if (!tournament || !isAdmin) return;
@@ -1929,12 +1357,6 @@
     toast.success("赛事 JSON 导出成功");
   }
 
-  function getPlayerRowBgClass(playerId) {
-    if (!playerId) {
-      return 'bg-[#f8f9fa] dark:bg-neutral-900/30 text-neutral-400 dark:text-neutral-500';
-    }
-    return 'bg-[#f8f9fa] dark:bg-neutral-900/60 hover:bg-neutral-200/50 dark:hover:bg-neutral-900/80 text-neutral-800 dark:text-neutral-200 border-l border-neutral-400 dark:border-l-neutral-500';
-  }
 </script>
 
 
@@ -1992,359 +1414,25 @@
   {/if}
 
   {#snippet rosterSidebar()}
-    <Card.Root class="border-border bg-card/40">
-      <Card.Header class="p-5 pb-3">
-        <Card.Title class="text-sm font-bold flex items-center justify-between">
-          <span>选手名册</span>
-          <Badge
-            variant="outline"
-            class="text-[10px] bg-primary/10 text-primary border-primary/20"
-          >
-            {tournament.players?.length || 0} / {tournament.player_capacity}
-            人
-          </Badge>
-        </Card.Title>
-      </Card.Header>
-      <Card.Content class="p-5 pt-0">
-        <div class="space-y-1.5 max-h-100 overflow-y-auto pr-1">
-          {#each tournament.players || [] as p}
-            <div
-              class="flex items-center justify-between px-3 py-1.5 rounded-lg bg-background/40 border border-border/60 hover:bg-background/80 transition-colors"
-            >
-              <span
-                class="text-xs font-medium flex items-center gap-1.5  mr-2"
-              >
-                <div
-                  class="w-2.5 h-2.5 rounded-full bg-primary/30 border border-primary/50"
-                ></div>
-                {#if p.team}
-                  <span class="text-[10px] text-muted-foreground font-mono"
-                    >[{p.team}]</span
-                  >
-                {/if}
-                <span class="">{p.display_name}</span>
-                {#if p.flag}
-                  <span class="flex items-center gap-1">
-                    <Flag code={p.flag} size={16} />
-                    <span
-                      class="text-[9px] font-bold px-1 rounded bg-muted text-muted-foreground uppercase font-mono"
-                      >{p.flag}</span
-                    >
-                  </span>
-                {/if}
-                {#if p.seed}
-                  <span class="text-[10px] text-amber-500 font-bold"
-                    >#{p.seed}</span
-                  >
-                {/if}
-              </span>
-              <div class="flex items-center gap-1 shrink-0">
-                {#if isAdmin}
-                  <button
-                    onclick={() => openEditPlayer(p)}
-                    class="text-muted-foreground hover:text-primary p-1 rounded transition-colors cursor-pointer"
-                    title="编辑选手资料"
-                  >
-                    <SettingsIcon class="w-3.5 h-3.5" />
-                  </button>
-                  {#if tournament.status === "registration"}
-                    <button
-                      onclick={() => doUnregister(p.id)}
-                      class="text-muted-foreground hover:text-red-400 p-1 rounded transition-colors cursor-pointer"
-                      title="注销此选手"
-                    >
-                      <TrashIcon class="w-3.5 h-3.5" />
-                    </button>
-                  {/if}
-                {/if}
-              </div>
-            </div>
-          {/each}
-          {#if (tournament.players || []).length === 0}
-            <p class="text-xs text-muted-foreground/60 italic text-center py-6">
-              暂无选手报名
-            </p>
-          {/if}
-        </div>
-      </Card.Content>
-    </Card.Root>
+    <RosterCard {tournament} {isAdmin} onedit={openEditPlayer} onunregister={doUnregister} />
   {/snippet}
 
   {#snippet obsControl()}
-    <Card.Root class="border-border bg-card/40">
-      <Card.Header class="p-5 pb-3">
-        <Card.Title class="text-sm font-bold flex items-center gap-2">
-          <SettingsIcon class="w-4 h-4 text-primary" />
-          <span>OBS 直播大屏控制</span>
-        </Card.Title>
-      </Card.Header>
-      <Card.Content class="p-5 pt-0 space-y-4 text-xs">
-        {#if isAdmin}
-        <div
-          class="flex items-center justify-between gap-3 rounded-xl border p-3 {streamMode
-            ? 'border-red-500/40 bg-red-500/10'
-            : 'border-border bg-background/40'}"
-        >
-          <div class="flex items-center gap-2.5">
-            <RadioIcon
-              class="w-4 h-4 shrink-0 {streamMode
-                ? 'text-red-500 animate-pulse'
-                : 'text-muted-foreground'}"
-            />
-            <div>
-              <div class="text-[11px] font-bold">
-                {streamMode ? "直播状态已激活" : "直播状态未激活"}
-              </div>
-              <div class="text-[10px] text-muted-foreground leading-normal">
-                激活后本页会强制选择下一场对局并自动切换大屏；仅影响本机，不影响其他访问者。
-              </div>
-            </div>
-          </div>
-          <Button
-            size="sm"
-            variant={streamMode ? "destructive" : "default"}
-            class="h-7 text-xs cursor-pointer shrink-0"
-            onclick={streamMode ? disableStreamMode : requestStreamMode}
-          >
-            {streamMode ? "结束直播" : "我要直播"}
-          </Button>
-        </div>
-
-        <div class="space-y-2">
-          <span class="font-semibold text-muted-foreground block">当前直播对局:</span>
-          {#if tournament?.matches?.length > 0}
-            <div class="flex gap-2">
-              <select
-                class="flex h-8 w-full rounded-md border border-input bg-background px-3 py-1 text-xs shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                value={tournament.active_match_id || ""}
-                onchange={async (e) => {
-                  const val = e.target.value;
-                  try {
-                    await API.setActiveMatch(tid, val ? parseInt(val) : null);
-                    toast.success("当前直播对局已更新");
-                  } catch (err) {
-                    toast.error("更新直播对局失败: " + err.message);
-                  }
-                }}
-              >
-                <option value="">-- 未选择对局 --</option>
-                {#each (tournament.matches || []).filter(m => m.player1_id && m.player2_id) as m}
-                  <option value={m.id}>
-                    #{matchOrder.get(m.id)} 场次 {m.position} ({matchRoundLabel(m)}): {playerName(m.player1_id)} vs {playerName(m.player2_id)} [{m.status === 'completed' ? '完赛' : m.status === 'walkover' ? '弃权' : '待赛'}]
-                  </option>
-                {/each}
-              </select>
-            </div>
-            {#if tournament.active_match_id}
-              {@const currentActive = tournament.matches.find(m => m.id === tournament.active_match_id)}
-              {#if currentActive}
-                <div class="p-2 rounded bg-primary/5 border border-primary/20 text-[11px] text-primary flex items-center justify-between">
-                  <span class="font-medium">直播中: {playerName(currentActive.player1_id)} vs {playerName(currentActive.player2_id)}</span>
-                  <button
-                    onclick={async () => {
-                      try {
-                        await API.setActiveMatch(tid, null);
-                        clearAutoHudTimer();
-                        toast.success("已清除直播对局");
-                      } catch (err) {
-                        toast.error(err.message);
-                      }
-                    }}
-                    class="hover:text-destructive font-bold text-xs shrink-0 cursor-pointer"
-                  >
-                    清除
-                  </button>
-                </div>
-              {/if}
-            {/if}
-          {:else}
-            <p class="text-muted-foreground text-[11px]">暂无对局，请先生成 Bracket</p>
-          {/if}
-        </div>
-
-        {/if}
-
-        <div class="border-t border-border/40 pt-3 space-y-3">
-          {#if isAdmin}
-          <span class="font-semibold text-muted-foreground block">直播大屏控制 (Overlay Control):</span>
-          <div class="flex flex-col gap-2.5 bg-primary/5 p-3 rounded-xl border border-primary/20">
-            <!-- Scene selector -->
-            <div class="flex items-center justify-between gap-2">
-              <span class="font-bold text-primary block text-[11px] shrink-0">当前显示大屏:</span>
-              <select
-                class="flex h-8 rounded border border-primary/30 bg-background px-2 py-1 text-[10px] text-primary font-bold shadow-sm focus-visible:outline-none cursor-pointer"
-                value={tournament.overlay_scene || "auto"}
-                onchange={async (e) => {
-                  const val = e.target.value;
-                  try {
-                    await API.setOverlayState(tid, val, tournament.overlay_round || Math.max(...(overlayMatches?.map(m => m.round) || [1])));
-                    clearAutoHudTimer();
-                    toast.success("大屏显示场景已切换为: " + val.toUpperCase());
-                  } catch (err) {
-                    toast.error("切换大屏场景失败: " + err.message);
-                  }
-                }}
-              >
-                <option value="auto">Auto (智能自动模式)</option>
-                <option value="intro">Intro (开场对阵轮次列表)</option>
-                <option value="hybrid">Hybrid (场间树状对阵图)</option>
-                <option value="intermission">Intermission (场间可打预告)</option>
-                <option value="ingame">HUD (游戏内选手面板)</option>
-              </select>
-            </div>
-
-            <!-- Round selector (Visible if intro is selected) -->
-            {#if tournament.overlay_scene === "intro"}
-              <div class="flex items-center justify-between gap-2 pt-2 border-t border-primary/10">
-                <span class="text-[11px] font-semibold text-muted-foreground shrink-0">展示轮次:</span>
-                <select
-                  class="h-7 rounded border border-input bg-background px-2 text-[10px] cursor-pointer"
-                  value={overlayShownStage?.key || ""}
-                  onchange={async (e) => {
-                    const stage = overlayStageList.find((st) => st.key === e.target.value);
-                    if (!stage) return;
-                    try {
-                      await API.setOverlayState(tid, tournament.overlay_scene || "intro", stage.round, stage.key);
-                      toast.success("大屏展示轮次已更改为: " + stage.label);
-                    } catch (err) {
-                      toast.error("更改大屏轮次失败: " + err.message);
-                    }
-                  }}
-                >
-                  {#each overlayStageList as st (st.key)}
-                    <option value={st.key}>{st.label}</option>
-                  {/each}
-                </select>
-              </div>
-            {/if}
-          </div>
-          {/if}
-        </div>
-
-        <div class="border-t border-border/40 pt-3 space-y-3">
-          <span class="font-semibold text-muted-foreground block">OBS 浏览器源链接:</span>
-          
-          <div class="space-y-2.5">
-            <!-- Unified Auto link -->
-            <div class="space-y-1.5 p-2.5 rounded-xl border border-primary/20 bg-primary/5">
-              <span class="font-bold text-primary block text-[11px]">✨ 推荐：全自动智能切换直播源 (Unified Auto)</span>
-              <span class="text-[10px] text-muted-foreground block leading-normal mb-1">
-                放入 OBS 浏览器源即可。有直播中比赛时自动渲染游戏 HUD（透明底），无直播对局时自动渲染场间统计大屏（深色底，显示待开打对局和本轮详情）。
-              </span>
-              <div class="flex items-center gap-1.5">
-                <input
-                  type="text"
-                  readonly
-                  class="flex-1 h-7 px-2 border border-primary/25 rounded bg-background text-[10px] select-all cursor-default text-primary font-mono"
-                  value={window.location.origin + `/tournament/${tid}/overlay`}
-                />
-                <Button
-                  size="icon-xs"
-                  class="h-7 w-7 cursor-pointer shrink-0 bg-primary text-black hover:bg-primary/90"
-                  onclick={() => {
-                    copyText(window.location.origin + `/tournament/${tid}/overlay`).then((ok) =>
-                      ok ? toast.success("已复制全自动智能直播源链接") : toast.error("复制失败，请手动选中链接复制"),
-                    );
-                  }}
-                >
-                  <CopyIcon class="w-3.5 h-3.5" />
-                </Button>
-              </div>
-            </div>
-
-            <div class="h-px bg-border/40 my-2"></div>
-            <span class="text-[10px] font-bold text-muted-foreground block">特定单场景链接 (如有需要手动配置):</span>
-
-            <div class="space-y-1">
-              <div class="flex justify-between items-center">
-                <span class="font-medium">1. 开场对阵 (Intro / 比赛列表)</span>
-                <!-- Round selector for URL -->
-                <div class="flex items-center gap-1">
-                  <span class="text-[10px] text-muted-foreground">轮次:</span>
-                  <select
-                    class="h-5 rounded border border-input bg-background px-1 text-[10px]"
-                    bind:value={obsIntroStage}
-                  >
-                    <option value="">当前轮次（自动）</option>
-                    {#each overlayStageList as st (st.key)}
-                      <option value={st.key}>{st.label}</option>
-                    {/each}
-                  </select>
-                </div>
-              </div>
-              <div class="flex items-center gap-1.5">
-                <input
-                  type="text"
-                  readonly
-                  class="flex-1 h-7 px-2 border border-input rounded bg-muted/30 text-[10px] select-all cursor-default"
-                  value={window.location.origin + `/tournament/${tid}/overlay?scene=intro${obsIntroStage ? `&stage=${obsIntroStage}` : ""}`}
-                />
-                <Button
-                  size="icon-xs"
-                  variant="outline"
-                  class="h-7 w-7 cursor-pointer shrink-0"
-                  onclick={() => {
-                    copyText(window.location.origin + `/tournament/${tid}/overlay?scene=intro${obsIntroStage ? `&stage=${obsIntroStage}` : ""}`).then((ok) =>
-                      ok ? toast.success("已复制开场对阵链接") : toast.error("复制失败，请手动选中链接复制"),
-                    );
-                  }}
-                >
-                  <CopyIcon class="w-3.5 h-3.5" />
-                </Button>
-              </div>
-            </div>
-
-            <div class="space-y-1">
-              <span class="font-medium block">2. 游戏内 HUD (右上角选手+滚动比分)</span>
-              <div class="flex items-center gap-1.5">
-                <input
-                  type="text"
-                  readonly
-                  class="flex-1 h-7 px-2 border border-input rounded bg-muted/30 text-[10px] select-all cursor-default"
-                  value={window.location.origin + `/tournament/${tid}/overlay?scene=ingame`}
-                />
-                <Button
-                  size="icon-xs"
-                  variant="outline"
-                  class="h-7 w-7 cursor-pointer shrink-0"
-                  onclick={() => {
-                    copyText(window.location.origin + `/tournament/${tid}/overlay?scene=ingame`).then((ok) =>
-                      ok ? toast.success("已复制游戏内 HUD 链接") : toast.error("复制失败，请手动选中链接复制"),
-                    );
-                  }}
-                >
-                  <CopyIcon class="w-3.5 h-3.5" />
-                </Button>
-              </div>
-            </div>
-
-            <div class="space-y-1">
-              <span class="font-medium block">3. 场间 Coming Up (可打比赛)</span>
-              <div class="flex items-center gap-1.5">
-                <input
-                  type="text"
-                  readonly
-                  class="flex-1 h-7 px-2 border border-input rounded bg-muted/30 text-[10px] select-all cursor-default"
-                  value={window.location.origin + `/tournament/${tid}/overlay?scene=intermission`}
-                />
-                <Button
-                  size="icon-xs"
-                  variant="outline"
-                  class="h-7 w-7 cursor-pointer shrink-0"
-                  onclick={() => {
-                    copyText(window.location.origin + `/tournament/${tid}/overlay?scene=intermission`).then((ok) =>
-                      ok ? toast.success("已复制场间 Coming Up 链接") : toast.error("复制失败，请手动选中链接复制"),
-                    );
-                  }}
-                >
-                  <CopyIcon class="w-3.5 h-3.5" />
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </Card.Content>
-    </Card.Root>
+    <ObsControlCard
+      {tournament}
+      {tid}
+      {isAdmin}
+      {streamMode}
+      {matchOrder}
+      roundLabel={matchRoundLabel}
+      {playerName}
+      {overlayMatches}
+      {overlayStageList}
+      {overlayShownStage}
+      onstreamstart={requestStreamMode}
+      onstreamend={disableStreamMode}
+      onclearhud={clearAutoHudTimer}
+    />
   {/snippet}
 
   {#snippet bracketView()}
@@ -2523,290 +1611,19 @@
           />
         {:else}
         {#if bracketMatches?.length > 0}
-          <div class="flex justify-start items-stretch min-w-max py-4 {bracketSpecs.colGap}">
-            {#each displayRounds as r, colIdx (r.round)}
-              <div class="shrink-0 flex flex-col justify-start h-full {bracketSpecs.cardWidth}">
-                <!-- Round Header -->
-                <div class="text-xs text-neutral-200 bg-neutral-800/80 border border-neutral-700/50 py-1.5 px-3 font-bold text-center mb-4 tracking-wider shrink-0 rounded-md shadow-sm">
-                  {roundLabel(r.round, totalRounds)}
-                </div>
-
-
-                <!-- Match cards in round (Absolutely positioned for perfect alignment) -->
-                <div class="relative w-full" style="height: {adjustedTotalHeight}px">
-                  {#each r.matches as m, idx (m.id)}
-                    {@const pos = matchPositions.positions[m.id] || { top: 0, height: 110 }}
-                    {@const userInMatch = userState.id && (m.player1_id === userState.id || m.player2_id === userState.id)}
-                    {@const bothPlayersReady = m.player1_id && m.player2_id}
-                    {@const isPending = m.status === "pending"}
-                    {@const isPlayable = bothPlayersReady && isPending && tournament.status === "in_progress"}
-                    {@const isBye = m.status === "completed" && m.winner_id && (!m.player1_id || !m.player2_id)}
-                    {@const p1 = tournament.players?.find(p => p.id === m.player1_id)}
-                    {@const p2 = tournament.players?.find(p => p.id === m.player2_id)}
-
-                    <div class="absolute left-0 w-full" style="top: {pos.top}px; height: {pos.height}px;">
-                      {#if isBye}
-                        <!-- Bye Card (Hidden from view but occupies layout space) -->
-                        <div class="w-full h-full border border-transparent bg-transparent select-none pointer-events-none opacity-0"></div>
-                      {:else}
-                        <!-- Normal Match Card -->
-                        {@const isCorrectable = isAdmin && canCorrectResult(m)}
-                        {@const isClickable = isPlayable || isCorrectable}
-                        <div
-                          role="button"
-                          tabindex="0"
-                          onclick={() => { if (isClickable) openMatchDetails(m); }}
-                          onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { if (isClickable) openMatchDetails(m); } }}
-                          class="w-full h-full text-left bg-white dark:bg-[#1c1c1c] border border-neutral-300 dark:border-neutral-800 rounded-md transition-all flex flex-col justify-between group/match shadow-md text-xs cursor-default overflow-hidden
-                          {isClickable ? 'hover:border-neutral-400 dark:hover:border-neutral-700 hover:shadow-lg cursor-pointer' : ''}
-                          {isPlayable ? 'ring-2 ring-primary/45 border-primary/20' : ''}"
-                        >
-                          <!-- Tiny Header Bar -->
-                          <div class="px-2 py-1 bg-neutral-100 dark:bg-neutral-900 text-[8px] font-mono text-neutral-500 dark:text-neutral-400 flex items-center justify-between border-b border-neutral-200 dark:border-neutral-800/80 shrink-0">
-                            <span>#{matchOrder.get(m.id)} · 场次 {m.position}</span>
-                            <div class="flex items-center gap-1.5">
-                              {#if isAdmin && isPlayable}
-                                {@const isActive = tournament.active_match_id === m.id}
-                                <button
-                                  onclick={async (e) => {
-                                    e.stopPropagation();
-                                    try {
-                                      await API.setActiveMatch(tid, isActive ? null : m.id);
-                                      toast.success(isActive ? "已取消直播该场次" : "已开启该场次直播！");
-                                    } catch (err) {
-                                      toast.error("更新直播状态失败: " + err.message);
-                                    }
-                                  }}
-                                  class="px-1 py-0.5 rounded font-bold text-[7px] flex items-center gap-0.5 cursor-pointer transition-all
-                                    {isActive ? 'bg-amber-500 text-black hover:bg-amber-400' : 'bg-primary text-primary-foreground hover:bg-primary/85'}"
-                                >
-                                  {isActive ? "直播中" : "推流直播"}
-                                </button>
-                              {/if}
-                              {#if banpickEnabled && isPlayable}
-                                <button
-                                  type="button"
-                                  onclick={(e) => { e.stopPropagation(); openBanPick(m); }}
-                                  class="px-1 py-0.5 rounded font-bold text-[7px] cursor-pointer border border-primary/40 text-primary hover:bg-primary hover:text-primary-foreground transition-all"
-                                  title="打开 Ban / Pick"
-                                >BP</button>
-                              {/if}
-                              {#if userInMatch && isPending}
-                                <span class="text-primary font-bold animate-pulse">我的比赛</span>
-                              {/if}
-                              {#if isCorrectable}
-                                <span class="rounded bg-amber-500/15 px-1 py-0.5 text-[7px] font-bold text-amber-500">修正</span>
-                              {/if}
-                            </div>
-                          </div>
-
-                          <!-- Player 1 Row -->
-                          <div class="flex items-center justify-between w-full h-6 border-b border-neutral-200/50 dark:border-neutral-900/40 transition-colors
-                            {getPlayerRowBgClass(m.player1_id)}">
-                            <div class="flex items-center gap-1.5 pl-1.5  flex-1 min-w-0 h-full py-0">
-                              <span class=" font-semibold flex items-center gap-0.5 text-[10.5px]
-                                {m.winner_id === m.player1_id ? 'text-black dark:text-white font-black' : 'text-neutral-700 dark:text-neutral-300'}
-                                {!m.player1_id ? 'text-neutral-400 dark:text-neutral-500/80' : ''}"
-                              >
-                                {#if m.winner_id === m.player1_id && m.winner_id}
-                                  <CrownIcon class="w-2.5 h-2.5 text-amber-500 dark:text-amber-400 shrink-0" />
-                                {/if}
-                                <span class="">{playerName(m.player1_id, m)}</span>
-                              </span>
-                            </div>
-                            <!-- Score -->
-                            {#if m.status !== "pending"}
-                              <div class="w-6 h-full flex items-center justify-center font-mono font-bold text-[11px] bg-neutral-100/60 dark:bg-black/40 text-center shrink-0 border-l border-neutral-200 dark:border-neutral-900/60
-                                {m.winner_id === m.player1_id ? 'text-primary font-black' : 'text-neutral-400 dark:text-neutral-500'}">
-                                {m.status === 'walkover' ? (m.winner_id === m.player1_id ? 'W' : 'FF') : m.score1}
-                              </div>
-                            {/if}
-                          </div>
-
-                          <!-- Player 2 Row -->
-                          <div class="flex items-center justify-between w-full h-6 transition-colors
-                            {getPlayerRowBgClass(m.player2_id)}">
-                            <div class="flex items-center gap-1.5 pl-1.5  flex-1 min-w-0 h-full py-0">
-                              <span class=" font-semibold flex items-center gap-0.5 text-[10.5px]
-                                {m.winner_id === m.player2_id ? 'text-black dark:text-white font-black' : 'text-neutral-700 dark:text-neutral-300'}
-                                {!m.player2_id ? 'text-neutral-400 dark:text-neutral-500/80' : ''}"
-                              >
-                                {#if m.winner_id === m.player2_id && m.winner_id}
-                                  <CrownIcon class="w-2.5 h-2.5 text-amber-500 dark:text-amber-400 shrink-0" />
-                                {/if}
-                                <span class="">{playerName(m.player2_id, m)}</span>
-                              </span>
-                            </div>
-                            <!-- Score -->
-                            {#if m.status !== "pending"}
-                              <div class="w-6 h-full flex items-center justify-center font-mono font-bold text-[11px] bg-neutral-100/60 dark:bg-black/40 text-center shrink-0 border-l border-neutral-200 dark:border-neutral-900/60
-                                {m.winner_id === m.player2_id ? 'text-primary font-black' : 'text-neutral-400 dark:text-neutral-500'}">
-                                {m.status === 'walkover' ? (m.winner_id === m.player2_id ? 'W' : 'FF') : m.score2}
-                              </div>
-                            {/if}
-                          </div>
-                        </div>
-                      {/if}
-
-                      <!-- Render Connectors to the right (Only if not the last column) -->
-                      {#if colIdx < displayRounds.length - 1}
-                        {@const nextRound = displayRounds[colIdx + 1]}
-                        {@const isEven = idx % 2 === 0}
-
-                        {#if isEven}
-                          {@const sibling = r.matches[idx + 1]}
-                          {#if sibling}
-                            {@const center1 = matchPositions.centers[m.id]}
-                            {@const center2 = matchPositions.centers[sibling.id]}
-                            {@const vHeight = center2 - center1}
-                            {@const isWinner1Alive = m.winner_id && isAlive(m.winner_id)}
-                            {@const isWinner2Alive = sibling.winner_id && isAlive(sibling.winner_id)}
-                            {@const isMBye = m.status === "completed" && m.winner_id && (!m.player1_id || !m.player2_id)}
-                            {@const isSiblingBye = sibling.status === "completed" && sibling.winner_id && (!sibling.player1_id || !sibling.player2_id)}
-
-                            <!-- Top card horizontal right line -->
-                            {#if !isMBye}
-                              <div
-                                class="absolute -translate-y-1/2 z-0 {isWinner1Alive ? 'line-horizontal-active' : 'line-horizontal-inactive'}"
-                                style="right: -{bracketSpecs.connMid}px; width: {bracketSpecs.connWidth}px; top: {bracketSpecs.H / 2}px;"
-                              ></div>
-                            {/if}
-
-                            <!-- Bottom card horizontal right line -->
-                            {#if !isSiblingBye}
-                              <div
-                                class="absolute z-0 {isWinner2Alive ? 'line-horizontal-active' : 'line-horizontal-inactive'}"
-                                style="right: -{bracketSpecs.connMid}px; width: {bracketSpecs.connWidth}px; top: {bracketSpecs.H / 2}px; transform: translateY(calc(-50% + {vHeight}px));"
-                              ></div>
-                            {/if}
-
-                            <!-- Vertical segment 1 (top half) -->
-                            {#if !isMBye}
-                              <div
-                                class="absolute w-0.5 z-0 {isWinner1Alive ? 'line-vertical-active' : 'line-vertical-inactive'}"
-                                style="right: -{bracketSpecs.connMid}px; top: {bracketSpecs.H / 2}px; height: {vHeight / 2 - bracketSpecs.slotOffset}px;"
-                              ></div>
-                            {/if}
-
-                            <!-- Vertical segment 3 (bottom half) -->
-                            {#if !isSiblingBye}
-                              <div
-                                class="absolute w-0.5 z-0 {isWinner2Alive ? 'line-vertical-active' : 'line-vertical-inactive'}"
-                                style="right: -{bracketSpecs.connMid}px; top: calc({bracketSpecs.H / 2}px + {vHeight / 2 + bracketSpecs.slotOffset}px); height: {vHeight / 2 - bracketSpecs.slotOffset}px;"
-                              ></div>
-                            {/if}
-
-                            <!-- Outgoing Branch 1 to next round -->
-                            {#if !isMBye}
-                              <div
-                                class="absolute z-0 {isWinner1Alive ? 'line-horizontal-active' : 'line-horizontal-inactive'}"
-                                style="right: -{bracketSpecs.connGap}px; width: {bracketSpecs.connWidth}px; top: calc({bracketSpecs.H / 2}px + {vHeight / 2 - bracketSpecs.slotOffset}px); transform: translateY(-50%);"
-                              ></div>
-                            {/if}
-
-                            <!-- Outgoing Branch 2 to next round -->
-                            {#if !isSiblingBye}
-                              <div
-                                class="absolute z-0 {isWinner2Alive ? 'line-horizontal-active' : 'line-horizontal-inactive'}"
-                                style="right: -{bracketSpecs.connGap}px; width: {bracketSpecs.connWidth}px; top: calc({bracketSpecs.H / 2}px + {vHeight / 2 + bracketSpecs.slotOffset}px); transform: translateY(-50%);"
-                              ></div>
-                            {/if}
-                          {/if}
-                        {/if}
-                      {/if}
-                    </div>
-                  {/each}
-
-                  {#if colIdx === displayRounds.length - 1}
-                    {@const thirdPlaceMatch = bracketMatches.find(m => m.round === 0)}
-                    {#if thirdPlaceMatch}
-                      {@const tp1 = tournament.players?.find(p => p.id === thirdPlaceMatch.player1_id)}
-                      {@const tp2 = tournament.players?.find(p => p.id === thirdPlaceMatch.player2_id)}
-                      {@const gfMatch = r.matches[0]}
-                      {@const tpClickable = (thirdPlaceMatch.player1_id && thirdPlaceMatch.player2_id && thirdPlaceMatch.status === "pending" && tournament.status === "in_progress") || (isAdmin && canCorrectResult(thirdPlaceMatch))}
-                      {#if gfMatch}
-                        {@const gfPos = matchPositions.positions[gfMatch.id] || { top: 0, height: 64 }}
-                        {@const tpTop = gfPos.top + gfPos.height + 28}
-                        
-                        <!-- Third Place Match Header -->
-                        <div class="absolute left-0 w-full text-[9px] font-bold text-center text-neutral-500 uppercase tracking-wider h-4 flex items-center justify-center gap-1.5"
-                             style="top: {tpTop - 18}px;">
-                          三四名决赛
-                          {#if banpickEnabled && thirdPlaceMatch.player1_id && thirdPlaceMatch.player2_id && thirdPlaceMatch.status === "pending" && tournament.status === "in_progress"}
-                            <button
-                              type="button"
-                              onclick={() => openBanPick(thirdPlaceMatch)}
-                              class="px-1 rounded font-bold text-[7px] cursor-pointer border border-primary/40 text-primary hover:bg-primary hover:text-primary-foreground transition-all normal-case"
-                              title="打开 Ban / Pick"
-                            >BP</button>
-                          {/if}
-                        </div>
-                        
-                        <!-- Third Place Match Card -->
-                        <div class="absolute left-0 w-full" style="top: {tpTop}px; height: {gfPos.height}px;">
-                          <button
-                            type="button"
-                            onclick={() => { if (tpClickable) openMatchDetails(thirdPlaceMatch); }}
-                            class="w-full h-full text-left bg-white dark:bg-[#1c1c1c] border border-neutral-300 dark:border-neutral-800 rounded-md transition-all flex flex-col justify-between group/match shadow-md text-xs cursor-default overflow-hidden
-                            {tpClickable ? 'hover:border-neutral-400 dark:hover:border-neutral-700 hover:shadow-lg cursor-pointer' : ''}"
-                          >
-                            <!-- Tiny Header Bar -->
-                            <div class="px-2 py-0.5 bg-neutral-100 dark:bg-neutral-900 text-[8px] font-mono text-neutral-500 dark:text-neutral-400 flex items-center justify-between border-b border-neutral-200 dark:border-neutral-800/80 shrink-0 h-4">
-                              <span>场次 {thirdPlaceMatch.position}</span>
-                            </div>
-
-                            <!-- Player 1 Row -->
-                            <div class="flex items-center justify-between w-full h-6 border-b border-neutral-200/50 dark:border-neutral-900/40 transition-colors
-                              {getPlayerRowBgClass(thirdPlaceMatch.player1_id)}">
-                              <div class="flex items-center gap-1.5 pl-1.5  flex-1 min-w-0 h-full py-0">
-                                <span class=" font-semibold flex items-center gap-0.5 text-[10.5px]
-                                  {thirdPlaceMatch.winner_id === thirdPlaceMatch.player1_id ? 'text-black dark:text-white font-black' : 'text-neutral-700 dark:text-neutral-300'}
-                                  {!thirdPlaceMatch.player1_id ? 'text-neutral-400 dark:text-neutral-500/80' : ''}"
-                                >
-                                  {#if thirdPlaceMatch.winner_id === thirdPlaceMatch.player1_id && thirdPlaceMatch.winner_id}
-                                    <CrownIcon class="w-2.5 h-2.5 text-amber-500 dark:text-amber-400 shrink-0" />
-                                  {/if}
-                                  <span class="">{playerName(thirdPlaceMatch.player1_id, thirdPlaceMatch)}</span>
-                                </span>
-                              </div>
-                              {#if thirdPlaceMatch.status !== "pending"}
-                                <div class="w-6 h-full flex items-center justify-center font-mono font-bold text-[11px] bg-neutral-100/60 dark:bg-black/40 text-center shrink-0 border-l border-neutral-200 dark:border-neutral-900/60
-                                  {thirdPlaceMatch.winner_id === thirdPlaceMatch.player1_id ? 'text-primary font-black' : 'text-neutral-400 dark:text-neutral-500'}">
-                                  {thirdPlaceMatch.status === 'walkover' ? (thirdPlaceMatch.winner_id === thirdPlaceMatch.player1_id ? 'W' : 'FF') : thirdPlaceMatch.score1}
-                                </div>
-                              {/if}
-                            </div>
-
-                            <!-- Player 2 Row -->
-                            <div class="flex items-center justify-between w-full h-6 transition-colors
-                              {getPlayerRowBgClass(thirdPlaceMatch.player2_id)}">
-                              <div class="flex items-center gap-1.5 pl-1.5  flex-1 min-w-0 h-full py-0">
-                                <span class=" font-semibold flex items-center gap-0.5 text-[10.5px]
-                                  {thirdPlaceMatch.winner_id === thirdPlaceMatch.player2_id ? 'text-black dark:text-white font-black' : 'text-neutral-700 dark:text-neutral-300'}
-                                  {!thirdPlaceMatch.player2_id ? 'text-neutral-400 dark:text-neutral-500/80' : ''}"
-                                >
-                                  {#if thirdPlaceMatch.winner_id === thirdPlaceMatch.player2_id && thirdPlaceMatch.winner_id}
-                                    <CrownIcon class="w-2.5 h-2.5 text-amber-500 dark:text-amber-400 shrink-0" />
-                                  {/if}
-                                  <span class="">{playerName(thirdPlaceMatch.player2_id, thirdPlaceMatch)}</span>
-                                </span>
-                              </div>
-                              {#if thirdPlaceMatch.status !== "pending"}
-                                <div class="w-6 h-full flex items-center justify-center font-mono font-bold text-[11px] bg-neutral-100/60 dark:bg-black/40 text-center shrink-0 border-l border-neutral-200 dark:border-neutral-900/60
-                                  {thirdPlaceMatch.winner_id === thirdPlaceMatch.player2_id ? 'text-primary font-black' : 'text-neutral-400 dark:text-neutral-500'}">
-                                  {thirdPlaceMatch.status === 'walkover' ? (thirdPlaceMatch.winner_id === thirdPlaceMatch.player2_id ? 'W' : 'FF') : thirdPlaceMatch.score2}
-                                </div>
-                              {/if}
-                            </div>
-                          </button>
-                        </div>
-                      {/if}
-                    {/if}
-                  {/if}
-                </div>
-              </div>
-            {/each}
-          </div>
+          <SingleElimBracket
+            {tournament}
+            {tid}
+            rounds={displayRounds}
+            matches={bracketMatches}
+            {totalRounds}
+            {isAdmin}
+            {banpickEnabled}
+            {matchOrder}
+            {playerName}
+            onopen={openMatchDetails}
+            onbanpick={openBanPick}
+          />
         {:else}
           <div class="text-center py-12 text-muted-foreground">
             {#if tournament.status === "registration"}
@@ -2822,331 +1639,32 @@
   {/snippet}
 
   <div class="space-y-6">
-    <!-- Breadcrumb & Status Panel -->
-    <div
-      class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border/60 pb-5"
-    >
-      <div class="space-y-1">
-        <button
-          onclick={() => goto("/")}
-          class="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors mb-1.5 cursor-pointer"
-        >
-          <ArrowLeftIcon class="w-3 h-3" /> 返回大厅
-        </button>
-        <div class="flex items-center gap-3 flex-wrap">
-          {#if editingTitle}
-            <div class="flex items-center gap-1.5 flex-wrap">
-              <Input
-                bind:value={titleDraft}
-                class="h-9 text-base font-bold w-64 max-w-full bg-background border-border"
-                onkeydown={(e) => {
-                  if (e.key === "Enter") saveTitle();
-                  if (e.key === "Escape") editingTitle = false;
-                }}
-              />
-              <Button size="sm" onclick={saveTitle} disabled={savingTitle} class="h-9 text-xs">
-                {savingTitle ? "保存中..." : "保存"}
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onclick={() => (editingTitle = false)}
-                class="h-9 text-xs"
-              >
-                取消
-              </Button>
-            </div>
-          {:else}
-            <h1
-              class="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground"
-            >
-              {tournament.name}
-            </h1>
-            {#if isAdmin}
-              <button
-                type="button"
-                onclick={startTitleEdit}
-                title="修改赛事标题"
-                aria-label="修改赛事标题"
-                class="text-muted-foreground/60 hover:text-primary transition-colors cursor-pointer"
-              >
-                <PencilIcon class="w-4 h-4" />
-              </button>
-            {/if}
-          {/if}
-          <Badge
-            variant="outline"
-            class="text-[10px] px-2 py-0.5 font-bold uppercase tracking-wider bg-primary/10 text-primary border-primary/20"
-          >
-            {statusLabel(tournament.status)}
-          </Badge>
-        </div>
-        <!-- Event tags: mode · type · format · detail, then points. -->
-        <div class="flex flex-wrap items-center gap-1.5 pt-1 text-xs">
-          <span class="rounded-md border border-border bg-muted/60 px-2 py-0.5 font-mono font-bold text-foreground/80" title={gameModeTitle(tournament.game_mode)}>{gameModeLabel(tournament.game_mode)}</span>
-          {#if isAdmin}
-            <select
-              aria-label="比赛类型"
-              title="比赛类型"
-              value={tournament.vehicle_pool}
-              disabled={savingPool}
-              onchange={(e) => saveEventPool(e.currentTarget.value)}
-              class="h-6 rounded-md border px-1.5 text-xs font-semibold cursor-pointer disabled:opacity-60 {POOL_TAG[tournament.vehicle_pool] || 'border-border bg-background text-foreground'}"
-            >
-              {#if !vehiclePoolLabel(tournament.vehicle_pool)}
-                <option value={tournament.vehicle_pool}>未分类</option>
-              {/if}
-              {#each VEHICLE_POOLS as pool (pool.id)}
-                <option value={pool.id}>{pool.name}</option>
-              {/each}
-            </select>
-          {:else if vehiclePoolLabel(tournament.vehicle_pool)}
-            <span class="rounded-md border px-2 py-0.5 font-semibold {POOL_TAG[tournament.vehicle_pool] || 'border-border bg-muted/60 text-muted-foreground'}">{vehiclePoolLabel(tournament.vehicle_pool)}</span>
-          {/if}
-          <span class="rounded-md border border-border bg-muted/60 px-2 py-0.5 font-semibold text-muted-foreground">{isSwiss && !isTwoStage ? `瑞士轮 · ${swissRoundsLabel}` : eventFormatLabel(tournament)}</span>
-          {#if isTwoStage}
-            <span class="text-muted-foreground">{tournament.swiss_group_size ? `每组 ${tournament.swiss_group_size} 人` : "不分组"}{hasGroupBrackets ? "" : ` · ${swissRoundsLabel}`} · 每组前 {tournament.advance_per_group} 名晋级</span>
-          {:else if !isSwiss && tournament.loser_advances}
-            <span class="text-muted-foreground">败者晋级</span>
-          {/if}
-          {#if hasPoints}
-            <a
-              href="/points?season={tournament.points_season}&pool={tournament.vehicle_pool}"
-              class="inline-flex items-center gap-1 rounded-md border border-primary/30 bg-primary/10 px-2 py-0.5 font-semibold text-primary hover:bg-primary/20 transition-colors"
-              title="年度积分榜"
-            >
-              <TrophyIcon class="w-3 h-3" />
-              {tournament.points_season} 赛季{tournament.points_kind === "monthly" ? "月赛" : "周赛"}{tournament.points_invite ? " · 冠军直邀" : ""}
-            </a>
-          {/if}
-          {#if isAdmin}
-            <button type="button" onclick={() => (editingPoints ? (editingPoints = false) : openPointsEdit())} class="text-[11px] font-semibold text-primary hover:underline cursor-pointer">
-              {editingPoints ? "收起积分设置" : hasPoints ? "编辑积分" : "设置积分"}
-            </button>
-          {/if}
-        </div>
-        <!-- Facts: ID, players, date. -->
-        <p class="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground">
-          <span class="font-mono">ID: {tournament.id}</span>
-          <span>选手 <span class="font-semibold text-foreground tabular-nums">{tournament.player_count || 0} / {tournament.player_capacity}</span></span>
-          {#if tournament.status === "voting"}
-            <span>投票 <span class="font-semibold text-foreground tabular-nums">{tournament.voter_count || 0}</span> 人</span>
-          {/if}
-          {#if tournament.source_url}
-            <span>比赛日期 {tournament.scheduled_time || "未知"}</span>
-          {:else}
-            <span>创建于 {new Date(tournament.created_at).toLocaleDateString("zh-CN")}</span>
-          {/if}
-        </p>
-        {#if isAdmin && editingPoints}
-          <div class="mt-3 max-w-xl space-y-2 rounded-xl border border-border bg-card/60 p-3">
-            <div class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">年度积分榜设置</div>
-            <PointsEditor bind:table={pointsDraft} bind:season={pointsSeasonDraft} bind:kind={pointsKindDraft} bind:invite={pointsInviteDraft} compact />
-            <div class="flex flex-wrap items-center gap-2">
-              <Button size="sm" class="h-8 text-xs cursor-pointer" disabled={savingPoints} onclick={() => savePoints(false)}>保存积分</Button>
-              {#if hasPoints}
-                <Button variant="outline" size="sm" class="h-8 text-xs cursor-pointer" disabled={savingPoints} onclick={() => savePoints(true)}>不计入积分榜</Button>
-              {/if}
-              <Button variant="outline" size="sm" class="h-8 text-xs cursor-pointer" disabled={savingPoints} onclick={() => (editingPoints = false)}>取消</Button>
-            </div>
-          </div>
-        {/if}
-        {#if tournament.source_url}
-          <a
-            href={tournament.source_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            class="mt-2.5 inline-flex max-w-full items-center gap-1.5 rounded-xl border border-border bg-muted/30 px-3 py-1.5 text-[11px] text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
-            title="历史赛事，赛果来自 Liquipedia（CC-BY-SA 3.0）"
-          >
-            <ExternalLinkIcon class="w-3.5 h-3.5 shrink-0" />
-            <span class="truncate">数据来源：Liquipedia · {tournament.source_title || tournament.name}</span>
-          </a>
-        {:else if tournament.scheduled_time}
-          <MatchTime value={tournament.scheduled_time} status={tournament.status}>
-            {#snippet actions()}
-              {#if isAdmin && ["registration", "in_progress"].includes(tournament.status)}
-                <button
-                  type="button"
-                  onclick={openTimeEdit}
-                  class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg border border-primary/25 bg-background/50 text-[10px] font-bold text-primary hover:bg-primary hover:text-primary-foreground transition-colors cursor-pointer"
-                  title="调整比赛时间"
-                >
-                  <PencilIcon class="w-3 h-3" />
-                  调整
-                </button>
-              {/if}
-              <a
-                href={`/api/tournaments/${encodeURIComponent(tournament.id)}/calendar.ics`}
-                download={`${tournament.id}.ics`}
-                class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg border border-primary/25 bg-background/50 text-[10px] font-bold text-primary hover:bg-primary hover:text-primary-foreground transition-colors"
-                title="下载 .ics 日历文件，一键导入日历（会按你的时区显示）"
-              >
-                <CalendarIcon class="w-3 h-3" />
-                添加到日历
-              </a>
-            {/snippet}
-          </MatchTime>
-        {/if}
-      </div>
-
-      <!-- Admin Status Stepper Controls -->
+    <!-- Header: title, tags, time; admin stage controls -->
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border/60 pb-5">
+      <EventHeader
+        bind:tournament
+        {tid}
+        {isAdmin}
+        statusText={statusLabel(tournament.status)}
+        {isSwiss}
+        {isTwoStage}
+        {hasGroupBrackets}
+        {swissRoundsLabel}
+        onreload={load}
+        onedittime={openTimeEdit}
+      />
       {#if isAdmin}
-        <div class="flex items-center gap-2 flex-wrap">
-        {#if tournament.status === "voting"}
-          <Button
-            size="sm"
-            onclick={() => {
-              if (!userState.qqGroup || !userState.id) {
-                toast.error(
-                  "此操作需要先填写 QQ / Discord 联系方式与选手 ID。已为您打开配置面板！",
-                );
-                document.getElementById("header-profile-button")?.click();
-                return;
-              }
-              const futureOptions = voteOptions.filter(
-                (opt) => new Date(opt.proposed_time).getTime() >= Date.now(),
-              );
-              if (futureOptions.length > 0) {
-                const highestVoted = [...futureOptions].sort((a, b) => b.count - a.count)[0];
-                selectedFinalTime = formatVoteTime(highestVoted.proposed_time);
-              } else {
-                selectedFinalTime = "";
-              }
-              showStatusTimeDialog = true;
-            }}
-            class="text-xs font-semibold cursor-pointer"
-          >
-            结束投票并开启报名
-          </Button>
-        {:else if tournament.status === "registration"}
-          <Button
-            variant="outline"
-            size="sm"
-            onclick={() => {
-              if (
-                confirm(
-                  "返回时间投票会清空已生成的对阵，确定继续吗？",
-                )
-              ) {
-                changeStatus("voting");
-              }
-            }}
-            class="text-xs border-purple-500/30 text-purple-400 hover:bg-purple-500 hover:text-white cursor-pointer"
-          >
-            改为时间投票
-          </Button>
-          {#if startBlocked}
-            <span class="text-xs text-muted-foreground self-center">
-              {startBlocked}
-            </span>
-          {/if}
-          <Button
-            size="sm"
-            disabled={!canStartTournament}
-            onclick={() => changeStatus("in_progress")}
-            class="text-xs font-semibold cursor-pointer"
-          >
-            结束报名并开赛
-          </Button>
-        {:else if tournament.status === "in_progress"}
-          <Button
-            variant="outline"
-            size="sm"
-            onclick={() => changeStatus("registration")}
-            class="text-xs border-sky-500/30 text-sky-400 hover:bg-sky-500 hover:text-white cursor-pointer"
-          >
-            返回选手报名
-          </Button>
-          <Button
-            size="sm"
-            onclick={() => changeStatus("completed")}
-            class="text-xs font-bold cursor-pointer"
-          >
-            结束赛事
-          </Button>
-        {:else if tournament.status === "completed"}
-          <Button
-            variant="outline"
-            size="sm"
-            onclick={() => changeStatus("in_progress")}
-            class="text-xs border-amber-500/30 text-amber-400 hover:bg-amber-500 hover:text-black cursor-pointer"
-          >
-            重新打开比赛
-          </Button>
-        {/if}
-        </div>
+        <StatusControls
+          status={tournament.status}
+          {startBlocked}
+          canStart={canStartTournament}
+          onendvoting={openEndVoting}
+          onstatus={changeStatus}
+        />
       {/if}
     </div>
 
-    <!-- Phase Stepper Graphic -->
-    <div
-      class="grid grid-cols-5 gap-3 border border-border bg-card/25 p-3 rounded-2xl text-center text-xs"
-    >
-      <div
-        class="space-y-1.5 {tournament.status === 'voting'
-          ? 'text-purple-400 font-bold'
-          : 'text-muted-foreground'}"
-      >
-        <div
-          class="w-6 h-6 rounded-full mx-auto flex items-center justify-center text-[10px] border {tournament.status ===
-          'voting'
-            ? 'bg-purple-500 text-white border-purple-500'
-            : 'bg-muted/40 border-border'}"
-        >
-          1
-        </div>
-        <div>时间投票</div>
-        {#if tournament.scheduled_time && tournament.status !== "voting"}
-          <div class="text-[9px] text-emerald-500 font-semibold">已跳过</div>
-        {/if}
-      </div>
-      <div
-        class="space-y-1.5 {tournament.status === 'registration'
-          ? 'text-primary font-bold'
-          : 'text-muted-foreground'}"
-      >
-        <div
-          class="w-6 h-6 rounded-full mx-auto flex items-center justify-center text-[10px] border {tournament.status ===
-          'registration'
-            ? 'bg-primary text-black border-primary'
-            : 'bg-muted/40 border-border'}"
-        >
-          2
-        </div>
-        <div>选手报名</div>
-      </div>
-      <div
-        class="space-y-1.5 {tournament.status === 'in_progress'
-          ? 'text-amber-500 font-bold'
-          : 'text-muted-foreground'}"
-      >
-        <div
-          class="w-6 h-6 rounded-full mx-auto flex items-center justify-center text-[10px] border {tournament.status ===
-          'in_progress'
-            ? 'bg-amber-500 text-black border-amber-500'
-            : 'bg-muted/40 border-border'}"
-        >
-          3
-        </div>
-        <div>淘汰赛中</div>
-      </div>
-      <div
-        class="space-y-1.5 {tournament.status === 'completed'
-          ? 'text-emerald-400 font-bold'
-          : 'text-muted-foreground'}"
-      >
-        <div
-          class="w-6 h-6 rounded-full mx-auto flex items-center justify-center text-[10px] border {tournament.status ===
-          'completed'
-            ? 'bg-emerald-500 text-black border-emerald-500'
-            : 'bg-muted/40 border-border'}"
-        >
-          4
-        </div>
-        <div>赛事结束</div>
-      </div>
-    </div>
+    <PhaseStepper {tournament} />
 
     <!-- Active Panel based on current stage -->
     {#if tournament.status === "registration"}
@@ -3154,308 +1672,17 @@
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <!-- Join / Seeding Panel -->
         <div class="lg:col-span-2 space-y-6">
-          <Card.Root class="border-border bg-card/40">
-            <Card.Header class="p-6">
-              <Card.Title class="text-base font-bold flex items-center gap-2">
-                <UsersIcon class="w-5 h-5 text-primary" />
-                选手报名管理
-              </Card.Title>
-              <Card.Description class="text-xs">
-                当报名人数达到设定或充足时，组织者可进行种子排序并生成{eventFormatLabel(tournament)} Bracket。
-              </Card.Description>
-            </Card.Header>
-            <Card.Content class="p-6 pt-0 space-y-4">
-              <!-- One-Click Register for Current User -->
-              <div
-                class="p-4 rounded-xl border border-border bg-muted/20 flex flex-col sm:flex-row items-center justify-between gap-4"
-              >
-                {#if userState.id}
-                  <div class="flex items-center gap-3">
-                    <div data-no-i18n
-                      class="w-10 h-10 rounded-full bg-linear-to-br from-amber-500 to-orange-600 flex items-center justify-center text-xs font-bold text-white uppercase"
-                    >
-                      {userState.id.slice(0, 2)}
-                    </div>
-                    <div>
-                      <p class="text-xs text-muted-foreground">
-                        当前浏览器 Gamer ID
-                      </p>
-                      <h4 class="font-bold text-foreground text-sm">
-                        {userState.id}
-                      </h4>
-                    </div>
-                  </div>
-                  {#if isRegistered}
-                    <div class="flex items-center gap-2">
-                      <Badge
-                        class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs gap-1 py-1"
-                      >
-                        <CheckIcon class="w-3.5 h-3.5" /> 已在选手中
-                      </Badge>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onclick={() => doUnregister(userState.id)}
-                        class="text-xs text-red-400 hover:text-red-300 border-red-500/20 hover:bg-red-500/10 h-8 cursor-pointer"
-                      >
-                        取消报名
-                      </Button>
-                    </div>
-                  {:else}
-                    <Button
-                      onclick={doRegister}
-                      size="sm"
-                      class="font-bold text-xs h-8 cursor-pointer"
-                    >
-                      一键快速报名
-                    </Button>
-                  {/if}
-                {:else}
-                  <div class="flex items-center gap-3">
-                    <div
-                      class="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-xs font-bold text-muted-foreground"
-                    >
-                      ?
-                    </div>
-                    <div>
-                      <p class="text-xs text-muted-foreground">
-                        未关联 Gamer ID
-                      </p>
-                      <p class="text-[10px] text-muted-foreground/80 mt-0.5">
-                        请先关联或在右侧输入框注册
-                      </p>
-                    </div>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onclick={() => {
-                      document.getElementById("header-profile-button")?.click();
-                    }}
-                    class="text-xs h-8 cursor-pointer border-primary/30 text-primary animate-pulse"
-                  >
-                    去关联游戏ID
-                  </Button>
-                {/if}
-              </div>
-
-              <!-- Admin/Organizer Manual registration -->
-              {#if isAdmin}
-              <div class="space-y-2.5">
-                <label
-                  for="reg-id-input"
-                  class="text-xs font-bold text-muted-foreground"
-                  >管理员手动为群友报名</label
-                >
-                <div class="flex gap-2">
-                  <Input
-                    id="reg-id-input"
-                    bind:value={regInput}
-                    placeholder="输入群友 ID，如 Vermilion"
-                    class="bg-background border-border text-foreground flex-1 h-9 text-xs"
-                  />
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onclick={doRegister}
-                    class="text-xs h-9 cursor-pointer"
-                  >
-                    添加选手
-                  </Button>
-                </div>
-
-                {#if unregisteredPlayers.length > 0}
-                  <div class="space-y-2 pt-1">
-                    <div
-                      class="flex flex-wrap items-center justify-between gap-2"
-                    >
-                      <span class="text-[10px] font-bold text-muted-foreground">
-                        多选选手批量报名（默认只显示一年内活跃）
-                      </span>
-                      {#if selectedRegIds.length > 0}
-                        <div class="flex items-center gap-1.5">
-                          <Button
-                            size="sm"
-                            onclick={doBatchRegister}
-                            class="h-7 text-[10px] px-2"
-                          >
-                            批量报名 ({selectedRegIds.length})
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onclick={() => (selectedRegIds = [])}
-                            class="h-7 text-[10px] px-2"
-                          >
-                            清空
-                          </Button>
-                        </div>
-                      {/if}
-                    </div>
-                    <div
-                      class="flex flex-wrap gap-1.5 max-h-30 overflow-y-auto pr-1"
-                    >
-                      {#each activeUnregistered as p}
-                        <button
-                          type="button"
-                          onclick={() => toggleRegSelection(p.id)}
-                          title={p.last_seen_at
-                            ? `最近活跃: ${new Date(p.last_seen_at).toLocaleDateString("zh-CN")}`
-                            : "无登录记录"}
-                          class="text-[10px] px-2 py-0.5 rounded border transition-colors cursor-pointer {selectedRegIds.includes(
-                            p.id,
-                          )
-                            ? 'bg-primary text-primary-foreground border-primary font-bold'
-                            : 'bg-muted text-foreground border-border/80 hover:bg-primary/80 hover:text-primary-foreground'}"
-                        >
-                          {selectedRegIds.includes(p.id) ? "✓ " : ""}{p.display_name}
-                        </button>
-                      {:else}
-                        <span
-                          class="text-[10px] text-muted-foreground/60 italic px-1"
-                        >
-                          暂无最近一年活跃的未报名选手
-                        </span>
-                      {/each}
-                    </div>
-                    {#if inactiveUnregistered.length > 0}
-                      <details
-                        class="rounded-lg border border-border/60 bg-muted/20 px-2 py-1.5"
-                        bind:open={showInactiveReg}
-                      >
-                        <summary
-                          class="text-[10px] text-muted-foreground cursor-pointer select-none"
-                        >
-                          显示一年未登录的选手（{inactiveUnregistered.length}）
-                        </summary>
-                        <div
-                          class="flex flex-wrap gap-1.5 max-h-25 overflow-y-auto pr-1 mt-1.5"
-                        >
-                          {#each inactiveUnregistered as p}
-                            <button
-                              type="button"
-                              onclick={() => toggleRegSelection(p.id)}
-                              title={p.last_seen_at
-                                ? `最近活跃: ${new Date(p.last_seen_at).toLocaleDateString("zh-CN")}`
-                                : "无登录记录"}
-                              class="text-[10px] px-2 py-0.5 rounded border transition-colors cursor-pointer {selectedRegIds.includes(
-                                p.id,
-                              )
-                                ? 'bg-primary text-primary-foreground border-primary font-bold'
-                                : 'bg-muted/70 text-muted-foreground border-border/80 hover:bg-primary/80 hover:text-primary-foreground'}"
-                            >
-                              {selectedRegIds.includes(p.id) ? "✓ " : ""}{p.display_name}
-                            </button>
-                          {/each}
-                        </div>
-                      </details>
-                    {/if}
-                  </div>
-                {/if}
-              </div>
-              {/if}
-            </Card.Content>
-          </Card.Root>
-
-          <!-- Seeding Panel -->
+          <RegistrationCard
+            {tournament}
+            {isAdmin}
+            {isRegistered}
+            {unregisteredPlayers}
+            onregister={doRegister}
+            onunregister={doUnregister}
+            onbatch={doBatchRegister}
+          />
           {#if isAdmin && (tournament.players?.length || 0) >= 2}
-            <Card.Root class="border-border bg-card/40">
-              <Card.Header class="p-6">
-                <div>
-                  <Card.Title
-                    class="text-base font-bold flex items-center gap-2"
-                  >
-                    <CrownIcon class="w-5 h-5 text-amber-500" />
-                    种子排序配置
-                  </Card.Title>
-                  <Card.Description class="text-xs">
-                    默认按天梯 MMR 自动排序：高种子在前，空出的轮次优先轮空高种子。手动调整或随机微调后会切换为手动模式。
-                  </Card.Description>
-                  <p class="text-[10px] text-muted-foreground">
-                    使用 {gameModeInfo(tournament.game_mode).code}{vehiclePoolLabel(tournament.vehicle_pool) ? ` ${vehiclePoolLabel(tournament.vehicle_pool)}` : ""} 分榜 MMR；没有该分榜对局的选手不显示 MMR，排在最后。
-                  </p>
-                  <div class="mt-2">
-                    <Badge variant="outline" class="text-[9px] px-1.5 py-0 uppercase tracking-wider
-                      {tournament.seed_mode === 'manual'
-                        ? 'border-amber-500/30 bg-amber-500/10 text-amber-500'
-                        : 'border-primary/30 bg-primary/10 text-primary'}">
-                      {tournament.seed_mode === 'manual' ? '手动模式' : '自动按天梯排序'}
-                    </Badge>
-                  </div>
-                </div>
-              </Card.Header>
-              <Card.Content class="p-6 pt-0 space-y-4">
-                <div class="flex flex-wrap items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onclick={autoSeed}
-                    class="h-7 text-[10px] cursor-pointer gap-1"
-                  >
-                    <RefreshCwIcon class="w-3 h-3" />
-                    按天梯分重排
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onclick={randomizeSeed}
-                    class="h-7 text-[10px] cursor-pointer gap-1"
-                  >
-                    <ShuffleIcon class="w-3 h-3" />
-                    随机微调
-                  </Button>
-                  <span class="text-[10px] text-muted-foreground">
-                    随机只打乱 MMR 相近的选手，前 2 / 后 2 名不动
-                  </span>
-                </div>
-                <div class="space-y-1.5 max-h-75 overflow-y-auto pr-1">
-                  {#each seedOrder as pid, idx}
-                    {@const p = tournament.players?.find((x) => x.id === pid)}
-                    <div
-                      class="flex items-center gap-3 bg-background/50 border border-border rounded-xl px-4 py-2 text-xs"
-                    >
-                      <span class="text-amber-500 font-bold w-6"
-                        >#{idx + 1}</span
-                      >
-                      <div class="flex-1 min-w-0">
-                        <div class="font-semibold ">{playerName(pid)}</div>
-                        <div class="flex items-center gap-1.5 mt-0.5">
-                          <TierBadge tier={p?.ladder_tier} className="text-[9px]" />
-                          {#if p?.ladder_games}
-                            <span class="text-[9px] font-mono text-muted-foreground">
-                              {p.ladder_mmr} MMR · {p.ladder_games} 场
-                            </span>
-                          {/if}
-                          {#if p?.ladder_active === false}
-                            <span class="text-[9px] text-amber-500/80">不活跃</span>
-                          {/if}
-                        </div>
-                      </div>
-                      <div class="flex items-center gap-1.5">
-                        <Button
-                          variant="ghost"
-                          size="icon-xs"
-                          onclick={() => moveSeed(idx, -1)}
-                          disabled={idx === 0}
-                          class="h-6 w-6 cursor-pointer"
-                        >
-                          &uarr;
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon-xs"
-                          onclick={() => moveSeed(idx, 1)}
-                          disabled={idx === seedOrder.length - 1}
-                          class="h-6 w-6 cursor-pointer"
-                        >
-                          &darr;
-                        </Button>
-                      </div>
-                    </div>
-                  {/each}
-                </div>
-              </Card.Content>
-            </Card.Root>
+            <SeedingCard {tournament} {seedOrder} {playerName} onauto={autoSeed} onrandom={randomizeSeed} onmove={moveSeed} />
           {/if}
         </div>
 
@@ -3475,351 +1702,11 @@
     {:else if tournament.status === "voting"}
       <!-- STAGE 2: VOTING -->
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <!-- Voting Slot List -->
         <div class="lg:col-span-2 space-y-6">
-          <Card.Root class="border-border bg-card/40">
-            <Card.Header class="p-6">
-              <Card.Title class="text-base font-bold flex items-center gap-2">
-                <ClockIcon class="w-5 h-5 text-purple-400" />
-                时间偏好点选（可多选）
-              </Card.Title>
-              <Card.Description class="text-xs">
-                点击对应的时间框来投出赞成票。我们会根据票数最高的时间来安排赛程。
-                投票后，如果该时间最终当选，会自动为你报名；不想参赛可在报名阶段取消。
-              </Card.Description>
-              {#if isAdmin}
-              <div class="flex flex-wrap items-center gap-2 mt-3">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onclick={postponeVoteWeek}
-                  class="h-7 text-[10px] px-2"
-                >
-                  顺延一周推荐
-                </Button>
-                {#if voteWeekOffset > 0}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onclick={() => (voteWeekOffset = 0)}
-                    class="h-7 text-[10px] px-2"
-                  >
-                    回到本周
-                  </Button>
-                  <span class="text-[10px] text-amber-500 font-bold">
-                    已顺延 {voteWeekOffset} 周
-                  </span>
-                {/if}
-                <span class="text-[10px] text-muted-foreground/60">
-                  顺延会作废已过期投票；未过期选项保留
-                </span>
-              </div>
-              {/if}
-            </Card.Header>
-            <Card.Content class="p-6 pt-0 space-y-4">
-              {#if pastVotes.length > 0}
-                <div
-                  class="rounded-xl border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-[11px] text-amber-600 dark:text-amber-400"
-                >
-                  有 {pastVotes.length} 条已过期时间投票。点「顺延一周推荐」会作废它们并切到下周。
-                </div>
-              {/if}
-              {#if groupedVoteDates.length > 0}
-                <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                  {#each groupedVoteDates as dayData}
-                    <div class="border border-border/80 bg-background/25 rounded-2xl p-4 space-y-3 flex flex-col">
-                      <!-- Date Header -->
-                      <div class="flex items-center gap-2 pb-2.5 border-b border-border/40 justify-center">
-                        <span class="text-sm font-bold text-foreground">
-                          {dayData.formattedDate}
-                        </span>
-                      </div>
-
-                      <!-- Time slots list under this date -->
-                      <div class="space-y-2 flex-1">
-                        {#each dayData.options as opt}
-                          {@const voted = !!(tournament.votes || []).find(
-                            (v) =>
-                              v.player_id === userState.id &&
-                              v.proposed_time === opt.proposed_time,
-                          )}
-                          <button
-                            onclick={() => toggleVoteOption(opt.proposed_time, voted)}
-                            class="w-full flex flex-col text-left p-3.5 rounded-xl border transition-all text-xs cursor-pointer group/opt {voted
-                              ? 'bg-purple-950/20 border-purple-500 shadow-md shadow-purple-500/5'
-                              : 'bg-background/40 border-border/60 hover:border-purple-500/40 hover:bg-background/80'}"
-                          >
-                            <div class="flex items-center justify-between w-full">
-                              <span class="font-bold font-mono text-sm text-foreground group-hover/opt:text-purple-400 transition-colors">
-                                {opt.timeOnly}
-                              </span>
-                              <div class="flex items-center gap-1.5">
-                                {#if opt.suggested}
-                                  <Badge variant="outline" class="text-[8px] px-1 py-0 text-purple-400 border-purple-500/30">推荐</Badge>
-                                {/if}
-                                {#if voted}
-                                  <Badge class="bg-purple-500 text-white font-bold hover:bg-purple-500 text-[9px] px-1 py-0 shadow">已投</Badge>
-                                {/if}
-                                <span class="bg-primary text-primary-foreground text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center shadow">
-                                  {opt.count}
-                                </span>
-                              </div>
-                            </div>
-
-                            <!-- Voters -->
-                            <div class="flex flex-wrap gap-1 mt-2.5 border-t border-border/40 pt-2 w-full">
-                              {#each opt.voters as voter}
-                                <span class="text-[9px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border/40 font-medium">
-                                  {playerName(voter.player_id)}
-                                </span>
-                              {/each}
-                            </div>
-                          </button>
-                        {/each}
-                      </div>
-                    </div>
-                  {/each}
-                </div>
-              {:else}
-                <div
-                  class="text-center py-10 border border-dashed border-border rounded-xl bg-muted/10"
-                >
-                  <p class="text-xs text-muted-foreground/60 italic">
-                    目前还没有人发起时间选项，请在右侧时间框中添加第一个偏好。
-                  </p>
-                </div>
-              {/if}
-            </Card.Content>
-          </Card.Root>
-
-          {#each customVoteTopics as topicData}
-            <Card.Root class="border-border bg-card/40">
-              <Card.Header class="p-6">
-                <Card.Title class="text-base font-bold flex items-center gap-2">
-                  <span class="w-2.5 h-2.5 rounded-full bg-purple-500 shadow shadow-purple-500/50"></span>
-                  {topicData.topic} 投票偏好
-                </Card.Title>
-                <Card.Description class="text-xs">
-                  点击对应选项投出赞成票。该投票是多选。
-                </Card.Description>
-              </Card.Header>
-              <Card.Content class="p-6 pt-0 space-y-4">
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {#each topicData.options as opt}
-                    {@const voted = !!(tournament.custom_votes || []).find(
-                      (cv) =>
-                        cv.player_id === userState.id &&
-                        cv.topic === topicData.topic &&
-                        cv.value === opt.value,
-                    )}
-                    <button
-                      onclick={() => toggleCustomVote(topicData.topic, opt.value, voted)}
-                      class="flex flex-col text-left p-4 rounded-xl border transition-all text-xs cursor-pointer group/opt {voted
-                        ? 'bg-purple-950/20 border-purple-500 shadow-md shadow-purple-500/5'
-                        : 'bg-background/40 border-border hover:border-purple-500/40 hover:bg-background/80'}"
-                    >
-                      <div class="flex items-center justify-between w-full">
-                        <span class="font-bold text-foreground group-hover/opt:text-purple-400 transition-colors">
-                          {opt.value}
-                        </span>
-                        <div class="flex items-center gap-1.5">
-                          {#if voted}
-                            <Badge class="bg-purple-500 text-white font-bold hover:bg-purple-500 text-[9px] px-1 py-0 shadow">
-                              已投票
-                            </Badge>
-                          {/if}
-                          <span class="bg-primary text-primary-foreground text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center shadow">
-                            {opt.count}
-                          </span>
-                        </div>
-                      </div>
-                      <div class="flex flex-wrap gap-1 mt-3 border-t border-border/50 pt-2 w-full">
-                        {#each opt.voters as voter}
-                          <span class="text-[9px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border/40 font-medium">
-                            {playerName(voter.player_id)}
-                          </span>
-                        {/each}
-                      </div>
-                    </button>
-                  {/each}
-                </div>
-              </Card.Content>
-            </Card.Root>
-          {/each}
+          <VoteBoard {tournament} {tid} {isAdmin} {voteOptions} bind:weekOffset={voteWeekOffset} {playerName} onchanged={load} />
         </div>
-
-        <!-- Add Option Sidebar -->
         <div class="space-y-6">
-          <Card.Root class="border-border bg-card/40">
-            <Card.Header class="p-5 pb-3">
-              <Card.Title class="text-sm font-bold flex items-center gap-2">
-                <CalendarIcon class="w-4 h-4 text-purple-400" />
-                提案一个新的时间
-              </Card.Title>
-            </Card.Header>
-            <Card.Content class="p-4 pt-0 space-y-4">
-              {#if userState.id}
-                <div class="space-y-3">
-                  <!-- Inline Calendar and Time Slots Card -->
-                  <div
-                    class="border border-border bg-background/30 rounded-xl overflow-hidden flex flex-col"
-                  >
-                    <div
-                      class="p-3 border-b border-border/40 bg-muted/5 flex items-center justify-between text-[10px] font-bold text-muted-foreground"
-                    >
-                      <span>当前身份: {userState.id}</span>
-                      <span class="text-primary">不可代投票</span>
-                    </div>
-                    <div class="p-3">
-                      <Calendar
-                        type="single"
-                        bind:value={voteDate}
-                        class="bg-transparent p-0 mx-auto"
-                        weekdayFormat="short"
-                      />
-                    </div>
-                    <!-- Scrollable slots grid in sidebar -->
-                    <div
-                      class="border-t border-border/60 p-3 max-h-40 overflow-y-auto"
-                    >
-                      <span
-                        class="text-[9px] text-muted-foreground font-bold uppercase tracking-wider block mb-2"
-                        >选择具体时段</span
-                      >
-                      <div class="grid grid-cols-3 gap-1.5">
-                        {#each timeSlots as time}
-                          <Button
-                            variant={voteTime === time ? "default" : "outline"}
-                            onclick={() => (voteTime = time)}
-                            class="shadow-none text-[11px] h-7 py-1 px-1.5 cursor-pointer"
-                          >
-                            {time}
-                          </Button>
-                        {/each}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div
-                    class="p-3 bg-muted/20 border border-border rounded-xl text-xs space-y-2"
-                  >
-                    <div
-                      class="text-[11px] text-muted-foreground leading-normal font-medium"
-                    >
-                      {#if voteDate && voteTime}
-                        你选择的提案时间为:
-                        <span class="font-bold text-foreground block mt-0.5">
-                          {voteDate.toString()}
-                          {voteTime}
-                        </span>
-                      {:else}
-                        请在上方日历和时段中选择时间
-                      {/if}
-                    </div>
-                    <Button
-                      disabled={!voteDate || !voteTime}
-                      onclick={doVote}
-                      class="w-full text-xs font-bold h-8 cursor-pointer mt-1"
-                    >
-                      添加此选项并投票
-                    </Button>
-                  </div>
-                </div>
-              {:else}
-                <div
-                  class="p-4 rounded-xl border border-dashed border-border bg-muted/20 text-center space-y-2.5"
-                >
-                  <p class="text-xs text-muted-foreground leading-normal">
-                    您需要先在右上角配置您的 <strong>Gamer ID</strong> 才能发起时间偏好提案。
-                  </p>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onclick={() => {
-                      document.getElementById("header-profile-button")?.click();
-                    }}
-                    class="text-[11px] h-7 cursor-pointer"
-                  >
-                    立即配置游戏ID
-                  </Button>
-                </div>
-              {/if}
-            </Card.Content>
-          </Card.Root>
-
-          <Card.Root class="border-border bg-card/40">
-            <Card.Header class="p-5 pb-3">
-              <Card.Title class="text-sm font-bold flex items-center gap-2">
-                <PlusIcon class="w-4 h-4 text-purple-400" />
-                提案自定义选项投票
-              </Card.Title>
-            </Card.Header>
-            <Card.Content class="p-4 pt-0 space-y-4">
-              {#if userState.id}
-                <div class="space-y-3">
-                  <div class="space-y-1">
-                    <span class="text-[10px] font-bold text-muted-foreground block">选择投票主题</span>
-                    <select
-                      bind:value={customTopicSelect}
-                      class="flex h-8 w-full rounded-md border border-input bg-background px-3 py-1 text-xs ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      <option value="服务器">服务器 (Server)</option>
-                      <option value="游戏版本">游戏版本 (Version)</option>
-                      <option value="比赛地图">比赛地图 (Maps)</option>
-                      <option value="new">新建自定义主题...</option>
-                    </select>
-                  </div>
-
-                  {#if customTopicSelect === "new"}
-                    <div class="space-y-1 animate-in fade-in slide-in-from-top-1 duration-200">
-                      <span class="text-[10px] font-bold text-muted-foreground block">自定义主题名称</span>
-                      <Input
-                        bind:value={customTopicInput}
-                        placeholder="例如: 比赛规则, BP赛制"
-                        class="h-8 text-xs bg-background/50"
-                      />
-                    </div>
-                  {/if}
-
-                  <div class="space-y-1">
-                    <span class="text-[10px] font-bold text-muted-foreground block">选项内容</span>
-                    <Input
-                      bind:value={customOptionInput}
-                      placeholder="例如: 韩服, BO5双败, Neo Sylphid"
-                      class="h-8 text-xs bg-background/50"
-                    />
-                  </div>
-
-                  <Button
-                    disabled={!customOptionInput || (customTopicSelect === 'new' && !customTopicInput)}
-                    onclick={handleAddCustomVote}
-                    class="w-full text-xs font-bold h-8 cursor-pointer mt-1"
-                  >
-                    添加选项并投票
-                  </Button>
-                </div>
-              {:else}
-                <div
-                  class="p-4 rounded-xl border border-dashed border-border bg-muted/20 text-center space-y-2.5"
-                >
-                  <p class="text-xs text-muted-foreground leading-normal">
-                    您需要先在右上角配置您的 <strong>Gamer ID</strong> 才能添加自定义投票提案。
-                  </p>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onclick={() => {
-                      document.getElementById("header-profile-button")?.click();
-                    }}
-                    class="text-[11px] h-7 cursor-pointer"
-                  >
-                    立即配置游戏ID
-                  </Button>
-                </div>
-              {/if}
-            </Card.Content>
-          </Card.Root>
-
+          <VoteProposals {tid} onchanged={load} />
           {@render obsControl()}
           {@render rosterSidebar()}
         </div>
@@ -3828,158 +1715,17 @@
       <!-- STAGE 3 & 4: BRACKET & RESULT -->
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div class="lg:col-span-2 space-y-6">
-          <!-- Winner Podium for Completed stage -->
-          {#if tournament.status === "completed" && podium}
-            <div
-              class="bg-linear-to-r from-amber-500/10 via-background to-amber-500/10 border border-primary/20 rounded-2xl p-6 text-center max-w-2xl mx-auto space-y-4 shadow-lg shadow-primary/5"
-            >
-              <TrophyIcon
-                class="w-12 h-12 text-primary mx-auto animate-bounce"
-              />
-              <div>
-                <h2
-                  class="text-xl font-extrabold tracking-tight bg-linear-to-r from-amber-400 to-amber-200 bg-clip-text text-transparent"
-                >
-                  冠军诞生！恭喜 {playerName(podium.champion)}
-                </h2>
-                <p class="text-xs text-muted-foreground mt-1">
-                  Potato Cup 赛事已完美收官
-                </p>
-              </div>
-
-              <div class="grid grid-cols-2 gap-4 max-w-md mx-auto pt-2">
-                <div class="p-3 bg-card/60 border border-primary/20 rounded-xl">
-                  <CrownIcon class="w-5 h-5 text-amber-400 mx-auto mb-1" />
-                  <p
-                    class="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold"
-                  >
-                    冠军 (Gold)
-                  </p>
-                  <p class="text-sm font-bold text-foreground mt-0.5">
-                    {playerName(podium.champion)}
-                  </p>
-                </div>
-                <div class="p-3 bg-card/60 border border-border rounded-xl">
-                  <div
-                    class="w-5 h-5 rounded-full bg-zinc-400 text-black text-[10px] font-bold mx-auto mb-1 flex items-center justify-center"
-                  >
-                    2
-                  </div>
-                  <p
-                    class="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold"
-                  >
-                    亚军 (Silver)
-                  </p>
-                  <p class="text-sm font-bold text-foreground mt-0.5">
-                    {playerName(podium.runnerUp)}
-                  </p>
-                </div>
-              </div>
-
-              <!-- Export data for wiki utilities (admins only) -->
-              {#if isAdmin}
-              <div class="pt-2 flex justify-center gap-3">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onclick={triggerJsonDownload}
-                  class="text-xs gap-1.5 h-8 hover:bg-primary hover:text-black cursor-pointer border-primary/20"
-                >
-                  <DownloadIcon class="w-3.5 h-3.5" />
-                  导出赛事数据 (JSON)
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onclick={openWikiExport}
-                  class="text-xs gap-1.5 h-8 hover:bg-primary hover:text-black cursor-pointer border-primary/20"
-                >
-                  <FileTextIcon class="w-3.5 h-3.5" />
-                  生成 Liquipedia Wiki 脚本
-                </Button>
-              </div>
-              {/if}
-            </div>
-          {/if}
-
-          <!-- Standings / Rankings Table for Completed stage -->
-          {#if tournament.status === "completed" && standings.length > 0}
-            <Card.Root class="border-border bg-card/40 max-w-2xl mx-auto mt-6">
-              <Card.Header class="p-6 pb-3">
-                <Card.Title class="text-base font-bold flex items-center gap-2">
-                  <ListOrderedIcon class="w-5 h-5 text-primary" />
-                  赛事最终名次排行 (Standings)
-                </Card.Title>
-                <Card.Description class="text-xs">
-                  {isSwiss && !isTwoStage
-                    ? "按瑞士轮积分榜排名：积分 → 小分净胜 → 对手分（对手积分之和）→ 种子。"
-                    : "基于淘汰赛各轮次淘汰情况计算得出的选手最终名次。"}
-                </Card.Description>
-              </Card.Header>
-              <Card.Content class="p-6 pt-0">
-                <div
-                  class="overflow-x-auto border border-border/50 rounded-xl bg-background/25"
-                >
-                  <table
-                    class="w-full border-collapse text-left text-xs text-foreground/95"
-                  >
-                    <thead>
-                      <tr
-                        class="border-b border-border/50 bg-muted/20 text-[10px] uppercase font-bold text-muted-foreground"
-                      >
-                        <th class="py-2.5 px-4 w-40">名次</th>
-                        <th class="py-2.5 px-4">选手 (Player)</th>
-                        <th class="py-2.5 px-4 text-center w-24">胜场/总场</th>
-                        {#if tournament.points_awarded}
-                          <th class="py-2.5 px-4 text-center w-20">积分</th>
-                        {/if}
-                      </tr>
-                    </thead>
-                    <tbody class="divide-y divide-border/30">
-                      {#each standings as item}
-                        <tr class="hover:bg-background/40 transition-colors">
-                          <td class="py-3 px-4 font-bold text-primary">
-                            {item.rank}
-                          </td>
-                          <td class="py-3 px-4">
-                            <span
-                              class="flex items-center gap-1.5 font-semibold"
-                            >
-                              {#if item.team}
-                                <span
-                                  class="text-[10px] text-muted-foreground font-mono"
-                                  >[{item.team}]</span
-                                >
-                              {/if}
-                              <span>{item.display_name || item.id}</span>
-                              {#if item.flag}
-                                <span class="flex items-center gap-1">
-                                  <Flag code={item.flag} size={16} />
-                                  <span
-                                    class="text-[9px] font-bold px-1 rounded bg-muted text-muted-foreground uppercase font-mono"
-                                    >{item.flag}</span
-                                  >
-                                </span>
-                              {/if}
-                            </span>
-                          </td>
-                          <td
-                            class="py-3 px-4 text-center font-mono font-medium text-muted-foreground"
-                          >
-                            {item.matchesWon} / {item.matchesPlayed}
-                          </td>
-                          {#if tournament.points_awarded}
-                            <td class="py-3 px-4 text-center font-mono font-bold {tournament.points_awarded[item.id] ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground/50'}">
-                              {tournament.points_awarded[item.id] || "—"}
-                            </td>
-                          {/if}
-                        </tr>
-                      {/each}
-                    </tbody>
-                  </table>
-                </div>
-              </Card.Content>
-            </Card.Root>
+          {#if tournament.status === "completed"}
+            <ResultsPanel
+              {tournament}
+              {podium}
+              {standings}
+              swissTable={isSwiss && !isTwoStage}
+              {isAdmin}
+              {playerName}
+              onexportjson={triggerJsonDownload}
+              onexportwiki={openWikiExport}
+            />
           {/if}
 
           {@render bracketView()}
@@ -3994,520 +1740,53 @@
 {/if}
 
 <!-- Match Result Submission Dialog -->
-<Dialog.Root bind:open={showMatchDialog}>
-  <Dialog.Content class="{reportStep === 'banpick' && banpickEnabled && !correctingMatch ? '!max-w-4xl' : '!max-w-xl'} w-full max-h-[90vh] overflow-y-auto bg-card border border-border">
-    <Dialog.Header>
-      <Dialog.Title class="text-base font-bold text-foreground">
-        {#if correctingMatch}
-          <div class="mb-1">修正比赛结果</div>
-        {:else if reportStep === "banpick" && banpickEnabled}
-          <div class="flex flex-wrap items-center gap-2 mb-1 pr-6">
-            <span>Ban / Pick</span>
-            {#if bpState.phase === "done"}
-              <Button size="sm" onclick={() => (reportStep = "score")}>填报比分 →</Button>
-            {:else}
-              <Button size="sm" disabled={!canConfirm(bpState)} onclick={() => (bpState = confirmResult(bpState))}
-                title={canConfirm(bpState) ? "锁定本场载具" : "抽到载具后才能确认"}>确认抽取结果</Button>
-            {/if}
-          </div>
-        {:else}
-          <div class="flex flex-wrap items-center gap-2 mb-1 pr-6">
-            <span>填报比分</span>
-            {#if banpickEnabled && bpMatchId === selectedMatch?.id && bpState.phase === "done"}
-              <span class="rounded-full border border-primary/40 bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary">
-                本场载具：{bpState.vehicle}
-              </span>
-            {/if}
-          </div>
-        {/if}
-      </Dialog.Title>
-      <Dialog.Description class="text-xs text-muted-foreground">
-        场次: {selectedMatch?.position} • {selectedMatch ? matchRoundLabel(selectedMatch) : ""}
-      </Dialog.Description>
-    </Dialog.Header>
-
-    {#if selectedMatch}
-      {#if reportStep === "banpick" && banpickEnabled}
-        <div class="py-2">
-          {#key selectedMatch.id}
-            <BanPickPanel
-              bind:bp={bpState}
-              vehicles={poolVehicles(banpickPoolId, vehiclePools)}
-              poolName={vehiclePools.find((p) => p.id === banpickPoolId)?.name || ""}
-              player1={{ name: playerName(selectedMatch.player1_id), flag: tournament?.players?.find((p) => p.id === selectedMatch.player1_id)?.flag }}
-              player2={{ name: playerName(selectedMatch.player2_id), flag: tournament?.players?.find((p) => p.id === selectedMatch.player2_id)?.flag }}
-            />
-          {/key}
-        </div>
-      {:else}
-        <div class="py-3 space-y-4">
-          {#if correctingMatch}
-            <div class="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs space-y-1">
-              <div><span class="font-bold text-amber-500">当前记录：</span>{recordedResultLabel(selectedMatch)}</div>
-              <div class="text-muted-foreground">提交后会先重置本场，再按新结果重新晋级；如果晋级选手已打过后续比赛，那些比赛也会被清空。</div>
-            </div>
-          {/if}
-          <ScoreForm
-            player1={{
-              id: selectedMatch.player1_id,
-              name: playerName(selectedMatch.player1_id),
-              flag: tournament?.players?.find((p) => p.id === selectedMatch.player1_id)?.flag,
-              seed: tournament?.players?.find((p) => p.id === selectedMatch.player1_id)?.seed,
-            }}
-            player2={{
-              id: selectedMatch.player2_id,
-              name: playerName(selectedMatch.player2_id),
-              flag: tournament?.players?.find((p) => p.id === selectedMatch.player2_id)?.flag,
-              seed: tournament?.players?.find((p) => p.id === selectedMatch.player2_id)?.seed,
-            }}
-            bind:score1={score1Input}
-            bind:score2={score2Input}
-            format={tournament?.format}
-            loserAdvances={tournament?.loser_advances === 1 || tournament?.loser_advances === true}
-            disabled={submittingResult}
-            onWalkover={recordWalkover}
-          />
-        </div>
-        <Dialog.Footer class="flex gap-2">
-          {#if correctingMatch}
-            <Button size="sm" variant="outline" disabled={submittingResult} onclick={doRollback}
-              class="border-destructive/40 text-destructive hover:bg-destructive hover:text-white">重置为未开始</Button>
-          {/if}
-          <Button size="sm" disabled={submittingResult || Number(score1Input) === Number(score2Input)} onclick={() => {
-            const winnerId = Number(score1Input) > Number(score2Input) ? selectedMatch.player1_id : selectedMatch.player2_id;
-            selectGameWinner(winnerId);
-          }} class="flex-1 h-9 font-bold">
-            {submittingResult ? "提交中…" : `${correctingMatch ? "提交修正" : "提交比分"}  ${Number(score1Input) || 0} : ${Number(score2Input) || 0}`}
-          </Button>
-        </Dialog.Footer>
-      {/if}
-    {/if}
-  </Dialog.Content>
-</Dialog.Root>
+<MatchResultDialog
+  bind:open={showMatchDialog}
+  bind:step={reportStep}
+  bind:bp={bpState}
+  bind:score1={score1Input}
+  bind:score2={score2Input}
+  match={selectedMatch}
+  {tournament}
+  correcting={correctingMatch}
+  {banpickEnabled}
+  {bpMatchId}
+  vehicles={poolVehicles(banpickPoolId, vehiclePools)}
+  poolName={vehiclePools.find((p) => p.id === banpickPoolId)?.name || ""}
+  submitting={submittingResult}
+  roundLabel={matchRoundLabel}
+  recordedLabel={recordedResultLabel}
+  {playerName}
+  onwalkover={recordWalkover}
+  onrollback={doRollback}
+  onsubmit={selectGameWinner}
+/>
 
 <!-- Admin: adjust the match time -->
-<Dialog.Root bind:open={showTimeEditDialog}>
-  <Dialog.Content class="sm:max-w-[520px] bg-card border border-border">
-    <Dialog.Header>
-      <Dialog.Title class="text-base font-bold text-foreground flex items-center gap-2">
-        <ClockIcon class="w-4 h-4 text-primary" />
-        调整比赛时间
-      </Dialog.Title>
-      <Dialog.Description class="text-xs text-muted-foreground">
-        当前：{tournament?.scheduled_time ? `北京时间 ${formatScheduled(tournament.scheduled_time)}` : "未设置"}。按北京时间填写，选手会自动看到各自时区的时间；日历文件同步更新。
-      </Dialog.Description>
-    </Dialog.Header>
-    {#if showTimeEditDialog}
-      <DateTimePicker bind:value={timeEditValue} clearable={false} startOpen={true} />
-    {/if}
-    <Dialog.Footer class="flex gap-2">
-      <Button variant="outline" size="sm" onclick={() => (showTimeEditDialog = false)} disabled={savingTime}>取消</Button>
-      <Button size="sm" onclick={saveTimeEdit} disabled={savingTime || !parseLocal(timeEditValue)} class="font-bold">
-        {savingTime ? "保存中…" : "保存"}
-      </Button>
-    </Dialog.Footer>
-  </Dialog.Content>
-</Dialog.Root>
+<TimeEditDialog bind:open={showTimeEditDialog} bind:value={timeEditValue} current={tournament?.scheduled_time} saving={savingTime} onsave={saveTimeEdit} />
 
-<!-- Dialog for ending voting and selecting final time -->
-<Dialog.Root bind:open={showStatusTimeDialog}>
-  <Dialog.Content class="max-w-100 bg-card border border-border">
-    <Dialog.Header>
-      <Dialog.Title
-        class="text-lg font-bold tracking-tight text-foreground flex items-center gap-2"
-      >
-        <ClockIcon class="w-5 h-5 text-primary" />
-        确定比赛时间
-      </Dialog.Title>
-      <Dialog.Description class="text-xs text-muted-foreground">
-        请确定比赛最终进行的时间。开启报名后，选手将能看到此时间。
-      </Dialog.Description>
-    </Dialog.Header>
-
-    <div class="space-y-4 py-3">
-      <!-- Custom Input -->
-      <div class="space-y-1.5">
-        <label
-          for="final-time-input"
-          class="text-xs font-bold text-muted-foreground"
-          >确定的比赛时间 (支持输入自定义文字)</label
-        >
-        <Input
-          id="final-time-input"
-          bind:value={selectedFinalTime}
-          placeholder="例如: 2026-06-20 20:00 或 本周六晚8点"
-          class="bg-background border-border text-foreground text-xs"
-        />
-      </div>
-
-      <!-- Voted Options to pick -->
-      {#if voteOptions.length > 0}
-        <div class="space-y-2">
-          <span class="text-xs font-bold text-muted-foreground block"
-            >根据投票结果快捷点选：</span
-          >
-          <div
-            class="grid grid-cols-1 gap-2 max-h-40 overflow-y-auto pr-1"
-          >
-            {#each voteOptions as opt}
-              {@const displayTime = formatVoteTime(opt.proposed_time)}
-              <button
-                type="button"
-                onclick={() => (selectedFinalTime = displayTime)}
-                class="flex items-center justify-between px-3 py-2.5 rounded-xl border transition-all text-xs cursor-pointer text-left
-                {selectedFinalTime === displayTime
-                  ? 'bg-primary/10 border-primary text-primary font-bold'
-                  : 'bg-background/40 border-border hover:border-primary/40 hover:bg-background/80 text-foreground'}"
-              >
-                <span>{displayTime}</span>
-                <Badge
-                  variant="secondary"
-                  class="bg-primary/20 text-primary font-bold text-[10px]"
-                >
-                  {opt.count} 票
-                </Badge>
-              </button>
-            {/each}
-          </div>
-        </div>
-      {/if}
-    </div>
-
-    <Dialog.Footer class="flex flex-col sm:flex-row gap-2 mt-2">
-      <Button
-        variant="outline"
-        size="sm"
-        onclick={() => (showStatusTimeDialog = false)}
-        class="w-full sm:w-auto text-xs"
-      >
-        取消
-      </Button>
-      <Button
-        size="sm"
-        onclick={confirmEndVoting}
-        class="w-full sm:w-auto text-xs font-bold"
-      >
-        确定并开启报名
-      </Button>
-    </Dialog.Footer>
-  </Dialog.Content>
-</Dialog.Root>
+<!-- Ending the vote: pick the final time -->
+<FinalTimeDialog bind:open={showStatusTimeDialog} bind:value={selectedFinalTime} options={voteOptions} formatTime={formatVoteTime} onconfirm={confirmEndVoting} />
 
 <!-- Liquipedia Wiki Export Dialog -->
-<Dialog.Root bind:open={showWikiDialog}>
-  <Dialog.Content
-    class="max-w-125 bg-card border border-border p-6 flex flex-col gap-4"
-  >
-    <Dialog.Header>
-      <Dialog.Title
-        class="text-lg font-bold text-foreground flex items-center gap-2"
-      >
-        <FileTextIcon class="w-5 h-5 text-primary" />
-        Liquipedia Wiki 代码导出
-      </Dialog.Title>
-      <Dialog.Description class="text-xs text-muted-foreground">
-        为您自动统计赛事结果与比分，生成匹配的 Liquipedia Bracket
-        格式代码。
-      </Dialog.Description>
-    </Dialog.Header>
-
-    {#if loadingWiki}
-      <div
-        class="flex flex-col items-center justify-center py-12 gap-2 text-muted-foreground text-xs"
-      >
-        <div
-          class="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin"
-        ></div>
-        <span>正在编译生成代码...</span>
-      </div>
-    {:else}
-      <div class="space-y-4">
-        <div class="relative">
-          <textarea
-            readonly
-            value={generatedWikiText}
-            class="w-full h-64 bg-background border border-border rounded-xl p-3 text-[10px] font-mono text-foreground focus-visible:outline-none resize-none"
-          ></textarea>
-        </div>
-
-        <div class="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onclick={() => (showWikiDialog = false)}
-            class="flex-1 text-xs h-9 cursor-pointer"
-          >
-            取消
-          </Button>
-          <Button
-            size="sm"
-            onclick={copyWikiToClipboard}
-            class="flex-1 text-xs font-semibold h-9 cursor-pointer gap-1.5"
-          >
-            <CopyIcon class="w-3.5 h-3.5" /> 复制 Wiki 代码
-          </Button>
-        </div>
-      </div>
-    {/if}
-  </Dialog.Content>
-</Dialog.Root>
+<WikiExportDialog bind:open={showWikiDialog} loading={loadingWiki} text={generatedWikiText} oncopy={copyWikiToClipboard} />
 
 <!-- Participant Profile Edit Dialog -->
-<Dialog.Root bind:open={showPlayerEditDialog}>
-  <Dialog.Content
-    class="max-w-105 bg-card border border-border p-6 flex flex-col gap-4"
-  >
-    <Dialog.Header>
-      <Dialog.Title
-        class="text-base font-bold text-foreground flex items-center gap-2"
-      >
-        <SettingsIcon class="w-5 h-5 text-primary" />
-        编辑选手资料
-      </Dialog.Title>
-      <Dialog.Description class="text-xs text-muted-foreground">
-        配置选手的展示名称、国籍、战队前缀等 Liquipedia Wiki 导出字段。
-      </Dialog.Description>
-    </Dialog.Header>
-
-    <div class="space-y-4 py-2">
-      <!-- ID -->
-      <div class="space-y-1.5">
-        <label
-          for="edit-player-id"
-          class="text-xs font-bold text-muted-foreground"
-          >选手唯一 ID (Player ID)</label
-        >
-        <Input
-          id="edit-player-id"
-          bind:value={editPlayerNewId}
-          placeholder="选手唯一 ID（修改后会自动刷新全库所有对局和记录）"
-          class="bg-background border-border text-foreground text-xs"
-        />
-      </div>
-
-      <!-- Contact (QQ / Discord) -->
-      <div class="space-y-2.5">
-        <span class="text-xs font-bold text-muted-foreground"
-          >联系方式（QQ / Discord）</span
-        >
-        <div
-          class="grid grid-cols-1 md:grid-cols-2 gap-4 bg-muted/20 border border-border/60 p-4 rounded-xl"
-        >
-          <div class="space-y-1">
-            <label
-              for="edit-contact-qq"
-              class="text-[11px] font-bold text-muted-foreground">QQ 号</label
-            >
-            <Input
-              id="edit-contact-qq"
-              bind:value={editPlayerQQ}
-              placeholder="例如: 123456789"
-              class="text-xs h-8 bg-background border-border text-foreground"
-            />
-          </div>
-          <div class="space-y-1">
-            <label
-              for="edit-contact-discord"
-              class="text-[11px] font-bold text-muted-foreground"
-              >Discord 用户名</label
-            >
-            <Input
-              id="edit-contact-discord"
-              bind:value={editPlayerDiscord}
-              placeholder="例如: username"
-              class="text-xs h-8 bg-background border-border text-foreground"
-            />
-          </div>
-        </div>
-        <p class="text-[10px] text-muted-foreground/60">
-          赛务联系用，会显示在选手列表中。
-        </p>
-      </div>
-      <div class="grid grid-cols-2 gap-3">
-        <div class="space-y-1.5">
-          <label for="edit-flag" class="text-xs font-bold text-muted-foreground"
-            >国籍/地区 (Flag)</label
-          >
-          <div class="flex items-center gap-2">
-            <Flag code={editPlayerFlag} size={20} />
-            <Input
-              id="edit-flag"
-              bind:value={editPlayerFlag}
-              placeholder="例如: cn, hk, tw"
-              class="bg-background border-border text-foreground text-xs flex-1"
-            />
-          </div>
-        </div>
-        <div class="space-y-1.5">
-          <label for="edit-team" class="text-xs font-bold text-muted-foreground"
-            >战队前缀 (Team Tag)</label
-          >
-          <Input
-            id="edit-team"
-            bind:value={editPlayerTeam}
-            placeholder="例如: AlphaX"
-            class="bg-background border-border text-foreground text-xs"
-          />
-        </div>
-      </div>
-
-
-      <!-- Wiki Link -->
-      <div class="space-y-1.5">
-        <label for="edit-link" class="text-xs font-bold text-muted-foreground"
-          >Wiki 个人页链接 (Link)</label
-        >
-        <Input
-          id="edit-link"
-          bind:value={editPlayerLink}
-          placeholder="例如: Vermilion"
-          class="bg-background border-border text-foreground text-xs"
-        />
-        <p class="text-[10px] text-muted-foreground/60">
-          Liquipedia Wiki 页面名称，最终将链接至
-          https://liquipedia.net/warthunder/&lt;名称&gt;
-        </p>
-      </div>
-    </div>
-
-    <Dialog.Footer class="flex flex-col sm:flex-row gap-2 mt-2">
-      <Button
-        variant="outline"
-        size="sm"
-        onclick={() => (showPlayerEditDialog = false)}
-        class="w-full sm:w-auto text-xs"
-      >
-        取消
-      </Button>
-      <Button
-        size="sm"
-        onclick={handleSavePlayer}
-        class="w-full sm:w-auto text-xs font-bold"
-      >
-        保存资料
-      </Button>
-    </Dialog.Footer>
-  </Dialog.Content>
-</Dialog.Root>
+<PlayerEditDialog
+  bind:open={showPlayerEditDialog}
+  bind:id={editPlayerNewId}
+  bind:qq={editPlayerQQ}
+  bind:discord={editPlayerDiscord}
+  bind:flag={editPlayerFlag}
+  bind:team={editPlayerTeam}
+  bind:link={editPlayerLink}
+  onsave={handleSavePlayer}
+/>
 
 <!-- Next Match Hand-off Dialog (blocking while in progress with no live match) -->
-<Dialog.Root bind:open={nextMatchModalOpen}>
-  <Dialog.Content
-    showCloseButton={false}
-    escapeKeydownBehavior="ignore"
-    interactOutsideBehavior="ignore"
-    class="max-w-2xl bg-card border border-primary/30"
-  >
-    <Dialog.Header>
-      <Dialog.Title class="text-base font-bold text-primary flex items-center gap-2">
-        <PlayIcon class="w-4 h-4" /> 请选择下一场直播对局
-      </Dialog.Title>
-      <Dialog.Description class="text-xs text-muted-foreground">
-        赛事进行中，但当前没有正在直播的对局。请从下方候选对局中选择一场；选定后将开始
-        60 秒倒计时，超时自动把大屏切换到游戏内 HUD。
-      </Dialog.Description>
-    </Dialog.Header>
-
-    <div class="max-h-[60vh] overflow-y-auto space-y-2 py-2">
-      {#each nextMatchCandidates as m (m.id)}
-        <button
-          onclick={() => chooseNextMatch(m.id)}
-          class="w-full text-left p-3 rounded-lg border border-border bg-background/40 hover:border-primary/50 hover:bg-primary/5 transition-colors cursor-pointer"
-        >
-          <div class="flex items-center justify-between gap-3">
-            <span class="text-xs font-semibold text-foreground">
-              #{matchOrder.get(m.id)} · {matchRoundLabel(m)} · 场次 {m.position}
-            </span>
-            <Badge variant="outline" class="text-[10px]">待赛</Badge>
-          </div>
-          <div class="mt-1 text-xs text-foreground/90">
-            {playerName(m.player1_id)}
-            <span class="text-muted-foreground"> vs </span>
-            {playerName(m.player2_id)}
-          </div>
-        </button>
-      {/each}
-    </div>
-  </Dialog.Content>
-</Dialog.Root>
+<NextMatchDialog bind:open={nextMatchModalOpen} candidates={nextMatchCandidates} {matchOrder} roundLabel={matchRoundLabel} {playerName} onchoose={chooseNextMatch} />
 
 <!-- Going-live pre-flight checklist -->
-<Dialog.Root bind:open={showStreamChecklist}>
-  <Dialog.Content class="max-w-2xl bg-card border border-primary/30">
-    <Dialog.Header>
-      <Dialog.Title class="text-base font-bold text-primary flex items-center gap-2">
-        <RadioIcon class="w-4 h-4" /> 开播前检查
-      </Dialog.Title>
-      <Dialog.Description class="text-xs text-muted-foreground">
-        请确认以下各项均已设置完成；全部勾选后才能激活直播状态。
-      </Dialog.Description>
-    </Dialog.Header>
+<StreamChecklistDialog bind:open={showStreamChecklist} onconfirm={confirmStreamMode} />
 
-    <div class="space-y-2 py-2">
-      {#each STREAM_CHECKLIST_ITEMS as item (item.key)}
-        {@const ItemIcon = item.icon}
-        <label
-          class="flex items-center gap-3 p-3 rounded-lg border border-border bg-background/40 cursor-pointer select-none"
-        >
-          <input
-            type="checkbox"
-            bind:checked={streamChecks[item.key]}
-            class="h-4 w-4 accent-primary cursor-pointer"
-          />
-          <ItemIcon class="w-4 h-4 text-muted-foreground shrink-0" />
-          <div class="min-w-0">
-            <div class="text-xs font-semibold text-foreground">{item.label}</div>
-            <div class="text-[10px] text-muted-foreground">{item.desc}</div>
-          </div>
-        </label>
-      {/each}
-    </div>
-
-    <Dialog.Footer class="flex flex-row justify-end gap-2">
-      <Button
-        variant="ghost"
-        size="sm"
-        class="h-8 text-xs cursor-pointer"
-        onclick={() => (showStreamChecklist = false)}
-      >
-        取消
-      </Button>
-      <Button
-        size="sm"
-        class="h-8 text-xs cursor-pointer"
-        disabled={!streamChecklistAllDone}
-        onclick={confirmStreamMode}
-      >
-        开始直播
-      </Button>
-    </Dialog.Footer>
-  </Dialog.Content>
-</Dialog.Root>
-
-<style>
-  /* Bracket Connectors */
-  .line-horizontal-active, .line-horizontal-inactive {
-    background: #a2a9b1;
-    opacity: 0.8;
-    height: 1.5px !important;
-  }
-
-  .line-vertical-active, .line-vertical-inactive {
-    background: #a2a9b1;
-    opacity: 0.8;
-    width: 1.5px !important;
-  }
-
-  /* Dark mode overrides for connectors */
-  :global(.dark) .line-horizontal-active, :global(.dark) .line-horizontal-inactive {
-    background: #475569;
-    opacity: 0.4;
-    height: 1.5px !important;
-  }
-  :global(.dark) .line-vertical-active, :global(.dark) .line-vertical-inactive {
-    background: #475569;
-    opacity: 0.4;
-    width: 1.5px !important;
-  }
-</style>
 

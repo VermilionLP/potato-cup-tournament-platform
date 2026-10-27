@@ -24,6 +24,7 @@ Read this guide before editing files under `apps/web`.
 - Shared utilities live in `src/lib` (`api.js`, `utils.js`).
 - App state uses a class with `$state`, e.g. `src/lib/user.svelte.js`.
 - UI primitives live in `src/lib/components/ui`.
+- The event page (`routes/tournament/[id]/+page.svelte`) keeps state, loading and actions; its sections and dialogs live in `src/lib/components/tournament/` (header, stage controls, registration, seeding, voting, bracket, results, OBS control, dialogs). Vote maths is in `$lib/votes.js`.
 - The dev server runs on port 5175 and proxies `/api` to `http://127.0.0.1:3100`.
 
 ## Verification Commands
@@ -31,7 +32,7 @@ Read this guide before editing files under `apps/web`.
 - Lint/typecheck: none defined; the build below is the closest check.
 - Tests: `pnpm --filter suck-tournament-web test` (`node --test`; pure helpers such as bracket/round labels).
 - Build: `pnpm --filter suck-tournament-web build`
-- Compile check without npm (sandboxes that only reach GitHub): `bash scripts/svelte-check-offline.sh [file...]` compiles every `.svelte` / `.svelte.js` file with the locked Svelte version; it reports compile errors only (no a11y warnings, no type check).
+- Compile check without npm (sandboxes that only reach GitHub): `bash scripts/svelte-check-offline.sh [file...]` compiles every `.svelte` / `.svelte.js` file with the locked Svelte version; it reports compile errors and identifiers that are used but never defined (e.g. after moving code into a component); no a11y warnings, no type check.
 - Dev server: `pnpm dev:suck` (port 5175; proxies `/api` to `http://127.0.0.1:3100`)
 - UI flow: verify routes with the Playwright CLI and skill when UI behavior changes.
 
