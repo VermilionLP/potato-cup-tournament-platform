@@ -38,6 +38,7 @@
     advancementLabel,
     canCorrectResult,
     gameModeLabel,
+    vehiclePoolLabel,
     isValidSwissRounds,
     MAX_SWISS_ROUNDS,
     MIN_SWISS_ROUNDS,
@@ -3016,6 +3017,9 @@
         </div>
         <p class="text-xs text-muted-foreground font-medium">
           ID: {tournament.id} • 比赛模式: <span class="font-bold text-foreground">{gameModeLabel(tournament.game_mode)}</span>
+          {#if vehiclePoolLabel(tournament.vehicle_pool)}
+            • 载具池: <span class="font-bold text-foreground">{vehiclePoolLabel(tournament.vehicle_pool)}</span>
+          {/if}
           • 赛制: <span class="font-bold text-foreground">{eventFormatLabel(tournament)}</span>
           • 选手容量: {tournament.player_count ||
             0}/{tournament.player_capacity} 人

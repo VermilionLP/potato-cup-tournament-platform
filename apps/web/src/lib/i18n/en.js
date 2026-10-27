@@ -4,6 +4,9 @@
 // the English. Generated from the source, then translated; add new UI text
 // here when it is introduced.
 export default {
+  "螺旋桨": "Prop",
+  "早期喷气": "Legacy Jet",
+  "全部": "All",
   "昨天完赛": "Finished yesterday",
   "今天完赛": "Finished today",
   "{0} 天前完赛": "Finished {0} days ago",

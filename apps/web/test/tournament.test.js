@@ -112,3 +112,12 @@ test("two-stage labels and elimination-group start checks", async () => {
   assert.equal(startBlockedMessage("double_elim", 16, null, { groupSize: 8, perGroup: 2, playoffFormat: "double_elim" }), null);
   assert.match(startBlockedMessage("single_elim", 16, null, { groupSize: 8, perGroup: 8, playoffFormat: "single_elim" }), /无需比赛/);
 });
+
+test("vehicle pool labels", async () => {
+  const { vehiclePoolLabel, VEHICLE_POOLS } = await import("../src/lib/tournament.js");
+  assert.deepEqual(VEHICLE_POOLS.map((p) => p.id), ["prop", "legacy-jet", "proleague"]);
+  assert.equal(vehiclePoolLabel("prop"), "螺旋桨");
+  assert.equal(vehiclePoolLabel("legacy-jet"), "早期喷气");
+  assert.equal(vehiclePoolLabel("proleague"), "Pro League BVR");
+  assert.equal(vehiclePoolLabel("custom"), "");
+});

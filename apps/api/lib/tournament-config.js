@@ -11,6 +11,9 @@ export const DEFAULT_GAME_MODE = 'rb';
 export const SUPPORTED_FORMATS = ['single_elim', 'double_elim', 'swiss'];
 
 export const DEFAULT_VEHICLE_POOL = 'proleague';
+// Vehicle pools events are grouped by in the statistics: 螺旋桨 / 早期喷气 /
+// Pro League BVR.
+export const VEHICLE_POOLS = ['prop', 'legacy-jet', 'proleague'];
 
 /**
  * A tournament created with a match time skips the time-vote phase and opens

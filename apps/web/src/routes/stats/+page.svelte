@@ -2,7 +2,7 @@
   import { onMount } from "svelte";
   import { toast } from "svelte-sonner";
   import { API } from "$lib/api.js";
-  import { GAME_MODES } from "$lib/tournament.js";
+  import { GAME_MODES, VEHICLE_POOLS } from "$lib/tournament.js";
   import Flag from "$lib/components/Flag.svelte";
   import { Badge } from "$lib/components/ui/badge/index.js";
   import SearchIcon from "@lucide/svelte/icons/search";
@@ -95,6 +95,12 @@
   };
   const NO_MODE = { badge: "bg-zinc-500/10 text-zinc-400 border-zinc-500/25", dot: "bg-zinc-500", bar: "bg-zinc-500/80" };
   const modeColors = (m) => MODE_COLORS[m] ?? NO_MODE;
+  // Vehicle pools: 螺旋桨 / 早期喷气 / Pro League BVR.
+  const POOL_COLORS = {
+    prop: { dot: "bg-lime-500", bar: "bg-lime-500/80" },
+    "legacy-jet": { dot: "bg-violet-500", bar: "bg-violet-500/80" },
+    proleague: { dot: "bg-cyan-500", bar: "bg-cyan-500/80" },
+  };
 
   // Flag rendering lives in $lib/components/Flag.svelte (SVG assets).
 
@@ -419,6 +425,30 @@
                         </div>
                         <div class="h-1.5 bg-muted/65 rounded-full overflow-hidden">
                           <div class="h-full rounded-full transition-all {modeColors(mode.id).bar}" style="width: {rate * 100}%"></div>
+                        </div>
+                      </div>
+                    {/each}
+                    <div class="mt-1 pt-2 border-t border-border/40 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">载具池</div>
+                    {#each VEHICLE_POOLS as pool (pool.id)}
+                      {@const rec = selectedStatPlayer.pools?.[pool.id]}
+                      {@const maps = rec ? rec.maps_won + rec.maps_lost : 0}
+                      {@const rate = maps > 0 ? rec.maps_won / maps : 0}
+                      <div class="space-y-1">
+                        <div class="flex justify-between gap-2 text-[10px]">
+                          <span class="font-bold flex items-center gap-1 min-w-0">
+                            <span class="w-1.5 h-1.5 rounded-full shrink-0 {POOL_COLORS[pool.id].dot}"></span>
+                            <span class="truncate">{pool.name}</span>
+                          </span>
+                          <span class="font-mono text-muted-foreground shrink-0">
+                            {#if rec && rec.matches_won + rec.matches_lost > 0}
+                              <span class="pr-1" title="大场胜-负">{rec.matches_won}-{rec.matches_lost}</span>
+                            {/if}
+                            {rec ? rec.maps_won : 0}/{maps}局
+                            <span class="font-bold text-foreground pl-1">{Math.round(rate * 100)}%</span>
+                          </span>
+                        </div>
+                        <div class="h-1.5 bg-muted/65 rounded-full overflow-hidden">
+                          <div class="h-full rounded-full transition-all {POOL_COLORS[pool.id].bar}" style="width: {rate * 100}%"></div>
                         </div>
                       </div>
                     {/each}

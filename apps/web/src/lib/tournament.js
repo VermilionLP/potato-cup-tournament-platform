@@ -21,6 +21,18 @@ export function gameModeLabel(value) {
   return `${mode.code} ${mode.name}`;
 }
 
+// Vehicle pools (line-ups) events are grouped by.
+export const VEHICLE_POOLS = [
+  { id: "prop", code: "Prop", name: "螺旋桨" },
+  { id: "legacy-jet", code: "Legacy Jet", name: "早期喷气" },
+  { id: "proleague", code: "BVR", name: "Pro League BVR" },
+];
+
+/** "螺旋桨" / "早期喷气" / "Pro League BVR"; '' for an unknown pool. */
+export function vehiclePoolLabel(value) {
+  return VEHICLE_POOLS.find((pool) => pool.id === value)?.name || "";
+}
+
 export function formatLabel(value) {
   return BRACKET_FORMATS.find((format) => format.id === value)?.label || "单败淘汰";
 }

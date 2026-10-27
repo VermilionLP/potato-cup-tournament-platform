@@ -2,7 +2,7 @@ import { PlayerRepo, mergePlayerInto } from '../repositories/player-repo.js';
 import { TournamentRepo } from '../repositories/tournament-repo.js';
 import { LadderRepo } from '../repositories/ladder-repo.js';
 import { bnetEntryKey } from '../lib/bnet.js';
-import { GAME_MODES } from '../lib/tournament-config.js';
+import { GAME_MODES, VEHICLE_POOLS } from '../lib/tournament-config.js';
 import { isQualifierEvent, tournamentChampion } from '../lib/champions.js';
 import { requireAdmin, requireSelfOrAdmin } from '../lib/admin.js';
 
@@ -27,17 +27,20 @@ export default async function playersRoutes(fastify) {
     const registrations = (await fastify.db.query('SELECT * FROM axsuck.tournament_players')).rows;
     const matches = (await fastify.db.query("SELECT * FROM axsuck.matches WHERE status IN ('completed', 'walkover')")).rows;
     const tournaments = (await fastify.db.query(
-      'SELECT id, name, game_mode, status, format, playoff_format, source_title FROM axsuck.tournaments'
+      'SELECT id, name, game_mode, vehicle_pool, status, format, playoff_format, source_title FROM axsuck.tournaments'
     )).rows;
     const tournamentMap = {};
     const modeOf = {};
+    const poolOf = {};
     for (const t of tournaments) {
       tournamentMap[t.id] = t.name;
       modeOf[t.id] = GAME_MODES.includes(t.game_mode) ? t.game_mode : 'rb';
+      poolOf[t.id] = VEHICLE_POOLS.includes(t.vehicle_pool) ? t.vehicle_pool : null;
     }
-    const emptyModes = () => Object.fromEntries(GAME_MODES.map((m) => [m, {
+    const emptyRecords = (keys) => Object.fromEntries(keys.map((m) => [m, {
       tournaments: 0, matches_won: 0, matches_lost: 0, maps_won: 0, maps_lost: 0,
     }]));
+    const emptyModes = () => emptyRecords(GAME_MODES);
 
     const stats = {};
     for (const p of players) {
@@ -56,6 +59,7 @@ export default async function playersRoutes(fastify) {
         maps_won: 0,
         maps_lost: 0,
         modes: emptyModes(),
+        pools: emptyRecords(VEHICLE_POOLS),
         championships: 0,
         opponents: {},
         tournament_ids: []
@@ -67,6 +71,8 @@ export default async function playersRoutes(fastify) {
         stats[reg.player_id].tournaments_played++;
         const mode = modeOf[reg.tournament_id];
         if (mode) stats[reg.player_id].modes[mode].tournaments++;
+        const pool = poolOf[reg.tournament_id];
+        if (pool) stats[reg.player_id].pools[pool].tournaments++;
         if (!stats[reg.player_id].tournament_ids.includes(reg.tournament_id)) {
           stats[reg.player_id].tournament_ids.push(reg.tournament_id);
         }
@@ -93,13 +99,16 @@ export default async function playersRoutes(fastify) {
         const s2 = m.score2;
         const totalMaps = s1 + s2;
         const mode = modeOf[m.tournament_id] || 'rb';
+        const pool = poolOf[m.tournament_id];
         for (const [id, won, mine, theirs] of [[p1, p1Won, s1, s2], [p2, !p1Won, s2, s1]]) {
-          const rec = stats[id]?.modes[mode];
-          if (!rec) continue;
-          if (won) rec.matches_won++;
-          else rec.matches_lost++;
-          rec.maps_won += mine;
-          rec.maps_lost += theirs;
+          const recs = [stats[id]?.modes[mode], pool ? stats[id]?.pools[pool] : null];
+          for (const rec of recs) {
+            if (!rec) continue;
+            if (won) rec.matches_won++;
+            else rec.matches_lost++;
+            rec.maps_won += mine;
+            rec.maps_lost += theirs;
+          }
         }
 
         if (stats[p1]) {
@@ -214,6 +223,7 @@ export default async function playersRoutes(fastify) {
         maps_lost: s.maps_lost,
         map_win_rate: s.maps_played > 0 ? (s.maps_won / s.maps_played) : 0,
         modes: s.modes,
+        pools: s.pools,
         championships: s.championships,
         nemesis: nemesis ? { id: nemesis, display_name: nemesisDisp, count: maxLostMatches } : null,
         favorite: favorite ? { id: favorite, display_name: favoriteDisp, count: maxWonMatches } : null,

@@ -14,6 +14,7 @@
 // lower-bracket slot has no feeder, the player there dropped from the
 // winners bracket; that drop is found from the actual results.
 
+import { detectVehiclePool } from './vehicle-pool.js';
 import { isDoubleElimination } from './bracket-template.js';
 import { normalizeCountry } from './countries.js';
 import { matchResult, parseBlocks, parseInfobox } from './page.js';
@@ -405,9 +406,7 @@ export function convertPage({ title, wikitext, templates = new Map(), today = ne
   if (date && datePart(info.sdate || info.date) > todayIso) return skip(`尚未开始（${datePart(info.sdate || info.date)}）`);
 
   const mode = /^(ab|rb|sb)$/i.test(info.mode) ? info.mode.toLowerCase() : 'rb';
-  const vehiclePool = /legacy jet/i.test(`${title} ${wikitext.slice(0, 3000)}`)
-    ? 'legacy-jet'
-    : /prop/i.test(title) ? 'prop' : 'proleague';
+  const vehiclePool = detectVehiclePool({ title, name: info.name, wikitext, date });
 
   const baseId = `lp-${slugify(title.replace(/^Potato Cup/i, 'pc'))}`;
   const events = [];

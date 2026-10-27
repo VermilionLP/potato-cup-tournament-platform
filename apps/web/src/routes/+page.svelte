@@ -7,6 +7,8 @@
     GAME_MODES,
     advancementLabel,
     gameModeLabel,
+    VEHICLE_POOLS,
+    vehiclePoolLabel,
     autoSwissRounds,
     isValidSwissRounds,
     MAX_SWISS_ROUNDS,
@@ -281,6 +283,16 @@
   let historyTournaments = $derived(
     tournaments.filter((t) => t.status === "completed"),
   );
+  // History filter by vehicle pool ("" = all).
+  let historyPool = $state("");
+  let historyPoolCounts = $derived(
+    Object.fromEntries(
+      VEHICLE_POOLS.map((p) => [p.id, historyTournaments.filter((t) => t.vehicle_pool === p.id).length]),
+    ),
+  );
+  let shownHistory = $derived(
+    historyPool ? historyTournaments.filter((t) => t.vehicle_pool === historyPool) : historyTournaments,
+  );
 
   onMount(load);
 
@@ -547,7 +559,7 @@
                   <span class="text-[10px] text-muted-foreground font-mono bg-muted/60 px-1.5 py-0.25 rounded shrink-0">ID: {t.id}</span>
                 </div>
                 <p class="text-xs text-muted-foreground mt-1 flex items-center gap-1.5 flex-wrap">
-                  <span>WarThunder {gameModeLabel(t.game_mode)} · {eventFormatLabel(t)}</span>
+                  <span>WarThunder {gameModeLabel(t.game_mode)}{vehiclePoolLabel(t.vehicle_pool) ? ` · ${vehiclePoolLabel(t.vehicle_pool)}` : ""} · {eventFormatLabel(t)}</span>
                   <span>·</span>
                   <span>{ruleLabel(t)}</span>
                 </p>
@@ -636,8 +648,25 @@
           <h2 class="text-sm font-bold text-muted-foreground uppercase tracking-wider">历史记录</h2>
           <div class="flex-1 h-px bg-border/60"></div>
         </div>
+        <!-- Filter by vehicle pool -->
+        <div class="flex flex-wrap items-center gap-1.5 mb-3">
+          {#each [{ id: "", name: "全部", count: historyTournaments.length }, ...VEHICLE_POOLS.map((p) => ({ ...p, count: historyPoolCounts[p.id] }))] as chip (chip.id)}
+            <button
+              type="button"
+              onclick={() => (historyPool = chip.id)}
+              aria-pressed={historyPool === chip.id}
+              class="inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-semibold transition-colors cursor-pointer
+                {historyPool === chip.id
+                ? 'border-primary bg-primary text-primary-foreground'
+                : 'border-border text-muted-foreground hover:border-foreground/40 hover:text-foreground'}"
+            >
+              {chip.name}
+              <span class="text-[10px] font-normal opacity-75 tabular-nums">{chip.count}</span>
+            </button>
+          {/each}
+        </div>
         <div class="divide-y divide-border border border-border bg-card/15 rounded-2xl overflow-hidden shadow-sm">
-          {#each historyTournaments as t (t.id)}
+          {#each shownHistory as t (t.id)}
             <div
               role="button"
               tabindex="0"
@@ -659,7 +688,7 @@
                     <span class="text-[10px] text-muted-foreground font-mono bg-muted/60 px-1.5 py-0.25 rounded shrink-0">ID: {t.id}</span>
                   </div>
                   <p class="text-[11px] text-muted-foreground mt-0.5 flex items-center gap-1.5 flex-wrap">
-                    <span>WarThunder {gameModeLabel(t.game_mode)} · {eventFormatLabel(t)}</span>
+                    <span>WarThunder {gameModeLabel(t.game_mode)}{vehiclePoolLabel(t.vehicle_pool) ? ` · ${vehiclePoolLabel(t.vehicle_pool)}` : ""} · {eventFormatLabel(t)}</span>
                     <span>·</span>
                     <span>{ruleLabel(t)}</span>
                   </p>
