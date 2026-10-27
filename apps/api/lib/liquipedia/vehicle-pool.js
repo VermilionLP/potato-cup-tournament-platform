@@ -7,11 +7,14 @@
 // Format section, then the event name / page title. Jet events before 2026
 // are Legacy Jet; anything that names no line-up is Prop.
 
-// Events whose page names no line-up, as decided by the organisers. Matched
+// Organisers' decisions for events whose page names no line-up (or the wrong one). Matched
 // on the page title and its subpages.
 const BY_TITLE = [
   ['Potato Cup Weekly/14', 'legacy-jet'],
   ['Potato Cup Weekly/16', 'legacy-jet'],
+  // Their pages say "Top Jet Line-up", but they used the Legacy Jet pool.
+  ['Potato Cup Weekly/19', 'legacy-jet'],
+  ['Potato Cup Weekly/20', 'legacy-jet'],
   ['Potato Cup/2026/June', 'prop'],
   ['Potato Cup/2026/Aug', 'legacy-jet'],
 ];

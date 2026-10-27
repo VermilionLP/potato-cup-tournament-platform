@@ -29,6 +29,10 @@ test('then the event name; Jet before 2026 is Legacy Jet; otherwise Prop', () =>
 test('organiser exceptions', () => {
   assert.equal(detectVehiclePool({ title: 'Potato Cup Weekly/14', date: '2025-08-22' }), 'legacy-jet');
   assert.equal(detectVehiclePool({ title: 'Potato Cup Weekly/16', date: '2025-11-15' }), 'legacy-jet');
+  const topJet = page('* Single-elimination Bracket:\n* Top Jet Line-up');
+  assert.equal(detectVehiclePool({ title: 'Potato Cup Weekly/19', wikitext: topJet, date: '2026-05-04' }), 'legacy-jet');
+  assert.equal(detectVehiclePool({ title: 'Potato Cup Weekly/20', wikitext: topJet, date: '2026-05-10' }), 'legacy-jet');
+  assert.equal(detectVehiclePool({ title: 'Potato Cup Weekly/25', wikitext: topJet, date: '2026-06-27' }), 'proleague');
   assert.equal(detectVehiclePool({ title: 'Potato Cup Weekly/1', date: '2023-10-21' }), 'prop', 'not Weekly/14 by prefix');
   assert.equal(detectVehiclePool({ title: 'Potato Cup/2026/June/Europe', date: '2026-06-13' }), 'prop');
   assert.equal(detectVehiclePool({ title: 'Potato Cup/2026/Aug/Asia Pacific', date: '2026-08-15' }), 'legacy-jet');
