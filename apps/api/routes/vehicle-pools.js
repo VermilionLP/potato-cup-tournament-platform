@@ -3,7 +3,7 @@
 // the pool bundled with the web app.
 
 import { requireAdmin } from '../lib/admin.js';
-import { VEHICLE_POOLS } from '../lib/tournament-config.js';
+import { POOL_IDS } from '../lib/tournament-config.js';
 import { normalizeVehicles } from '../lib/vehicle-pools.js';
 
 export default async function vehiclePoolRoutes(fastify) {
@@ -11,8 +11,8 @@ export default async function vehiclePoolRoutes(fastify) {
 
   const poolId = (req) => {
     const id = String(req.params.id || '');
-    if (!VEHICLE_POOLS.includes(id)) {
-      throw fastify.httpErrors.notFound(`vehicle pool must be one of: ${VEHICLE_POOLS.join(', ')}`);
+    if (!POOL_IDS.includes(id)) {
+      throw fastify.httpErrors.notFound(`vehicle pool must be one of: ${POOL_IDS.join(', ')}`);
     }
     return id;
   };

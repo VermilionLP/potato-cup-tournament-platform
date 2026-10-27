@@ -10,7 +10,7 @@ const bundled = [
 test("saved pools replace the bundled ones; types keep their order", () => {
   const pools = mergePools({ prop: { vehicles: [{ name: "Bf 109" }], updated_at: "t" } }, bundled);
   assert.deepEqual(pools.map((p) => [p.id, p.custom, p.vehicles.length]), [
-    ["prop", true, 1], ["legacy-jet", false, 0], ["proleague", false, 1],
+    ["prop", true, 1], ["legacy-jet", false, 0], ["proleague", false, 1], ["prop-ab", false, 0],
   ]);
   assert.equal(pools[0].vehicles[0].name, "Bf 109");
   assert.equal(pools[0].defaults[0].name, "Yak-3");
@@ -37,4 +37,22 @@ test("imports are checked", () => {
   assert.deepEqual(parsePoolFile("﻿br,name\r\n3.3,Yak-1\r\n"), [{ name: "Yak-1", nation: "", br: 3.3, type: "", group: "Yak-1" }]);
   assert.equal(vehicleListProblem([{ name: " " }]), "第 1 行缺少载具名称");
   assert.equal(vehicleListProblem([{ name: "a", br: "" }]), "");
+});
+
+test("AB prop events use the AB 螺旋桨 pool; other modes and types their own", async () => {
+  const { banpickPoolFor } = await import("../src/lib/tournament.js");
+  assert.equal(banpickPoolFor("prop", "ab"), "prop-ab");
+  assert.equal(banpickPoolFor("prop", "rb"), "prop");
+  assert.equal(banpickPoolFor("legacy-jet", "ab"), "legacy-jet");
+  const pools = mergePools({}, [{ id: "prop-ab", vehicles: [{ name: "Yak-9" }] }]);
+  const ab = pools.find((p) => p.id === "prop-ab");
+  assert.equal(ab.name, "AB 螺旋桨");
+  assert.equal(ab.vehicles[0].name, "Yak-9");
+});
+
+test("bundled AB prop pool is valid", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const list = JSON.parse(await readFile(new URL("../src/lib/data/Prop-AB-Lineup.json", import.meta.url), "utf8"));
+  assert.equal(list.length, 59);
+  assert.equal(vehicleListProblem(list), "");
 });

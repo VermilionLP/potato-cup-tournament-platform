@@ -1,0 +1,415 @@
+[
+  {
+    "name": "Bf 109 E-4",
+    "nation": "Germany",
+    "br": 3,
+    "type": "Fighter",
+    "group": "Bf 109 E"
+  },
+  {
+    "name": "Bf 109 F-1",
+    "nation": "Germany",
+    "br": 2.7,
+    "type": "Fighter",
+    "group": "Bf 109"
+  },
+  {
+    "name": "Bf 109 F-2",
+    "nation": "Germany",
+    "br": 3,
+    "type": "Fighter",
+    "group": "Bf 109"
+  },
+  {
+    "name": "Bf 109 F-4",
+    "nation": "Germany",
+    "br": 4,
+    "type": "Fighter",
+    "group": "Bf 109"
+  },
+  {
+    "name": "Bf 109 G-2/trop",
+    "nation": "Germany",
+    "br": 4.3,
+    "type": "Fighter",
+    "group": "Bf 109"
+  },
+  {
+    "name": "Bf 109 G-6",
+    "nation": "Germany",
+    "br": 4.7,
+    "type": "Fighter",
+    "group": "Bf 109"
+  },
+  {
+    "name": "Bf 109 K-4",
+    "nation": "Germany",
+    "br": 5.7,
+    "type": "Fighter",
+    "group": "Bf 109"
+  },
+  {
+    "name": "Bf 109 G-14",
+    "nation": "Germany",
+    "br": 5.3,
+    "type": "Fighter",
+    "group": "Bf 109"
+  },
+  {
+    "name": "Bf 109 G-10",
+    "nation": "Germany",
+    "br": 5.7,
+    "type": "Fighter",
+    "group": "Bf 109"
+  },
+  {
+    "name": "La-5FN",
+    "nation": "USSR",
+    "br": 3.7,
+    "type": "Fighter",
+    "group": "La"
+  },
+  {
+    "name": "La-7",
+    "nation": "USSR",
+    "br": 4.7,
+    "type": "Fighter",
+    "group": "La"
+  },
+  {
+    "name": "La-7B-20",
+    "nation": "USSR",
+    "br": 5,
+    "type": "Fighter",
+    "group": "La"
+  },
+  {
+    "name": "Yak-1B",
+    "nation": "USSR",
+    "br": 3,
+    "type": "Fighter",
+    "group": "Yak"
+  },
+  {
+    "name": "Yak-9",
+    "nation": "USSR",
+    "br": 3,
+    "type": "Fighter",
+    "group": "Yak"
+  },
+  {
+    "name": "Golovachev's Yak-9M",
+    "nation": "USSR",
+    "br": 3.7,
+    "type": "Fighter",
+    "group": "Yak"
+  },
+  {
+    "name": "Yak-9T",
+    "nation": "USSR",
+    "br": 4,
+    "type": "Fighter",
+    "group": "Yak"
+  },
+  {
+    "name": "Yak-3",
+    "nation": "USSR",
+    "br": 4.7,
+    "type": "Fighter",
+    "group": "Yak"
+  },
+  {
+    "name": "Yak-9U",
+    "nation": "USSR",
+    "br": 4.7,
+    "type": "Fighter",
+    "group": "Yak"
+  },
+  {
+    "name": "Yak-3P",
+    "nation": "USSR",
+    "br": 5,
+    "type": "Fighter",
+    "group": "Yak"
+  },
+  {
+    "name": "Yak-3U",
+    "nation": "USSR",
+    "br": 5.7,
+    "type": "Fighter",
+    "group": "Yak"
+  },
+  {
+    "name": "La-9",
+    "nation": "USSR",
+    "br": 6,
+    "type": "Fighter",
+    "group": "La"
+  },
+  {
+    "name": "P-39N-0",
+    "nation": "USA",
+    "br": 2.7,
+    "type": "Fighter",
+    "group": "P-39"
+  },
+  {
+    "name": "XP-50",
+    "nation": "USA",
+    "br": 4,
+    "type": "Fighter",
+    "group": "XP-50"
+  },
+  {
+    "name": "Spitfire Mk IIb",
+    "nation": "Britain",
+    "br": 3.7,
+    "type": "Fighter",
+    "group": "Spitfire"
+  },
+  {
+    "name": "Hurricane Mk IIB/Trop",
+    "nation": "Britain",
+    "br": 2.3,
+    "type": "Fighter",
+    "group": "Hurricane"
+  },
+  {
+    "name": "Ki-43-III Otsu",
+    "nation": "Japan",
+    "br": 4,
+    "type": "Fighter",
+    "group": "Ki-43"
+  },
+  {
+    "name": "Ki-44-II Hei",
+    "nation": "Japan",
+    "br": 3.7,
+    "type": "Fighter",
+    "group": "Ki-44"
+  },
+  {
+    "name": "Ki-44-II Otsu",
+    "nation": "Japan",
+    "br": 3,
+    "type": "Fighter",
+    "group": "Ki-44"
+  },
+  {
+    "name": "Ki-44-I",
+    "nation": "Japan",
+    "br": 2.7,
+    "type": "Fighter",
+    "group": "Ki-44"
+  },
+  {
+    "name": "Ki-61-I Ko",
+    "nation": "Japan",
+    "br": 3.3,
+    "type": "Fighter",
+    "group": "Ki-61"
+  },
+  {
+    "name": "Ki-61-I Otsu",
+    "nation": "Japan",
+    "br": 3.7,
+    "type": "Fighter",
+    "group": "Ki-61"
+  },
+  {
+    "name": "Ki-61-I Tei",
+    "nation": "Japan",
+    "br": 4.3,
+    "type": "Fighter",
+    "group": "Ki-61"
+  },
+  {
+    "name": "Ki-61-I Hei",
+    "nation": "Japan",
+    "br": 4.7,
+    "type": "Fighter",
+    "group": "Ki-61"
+  },
+  {
+    "name": "Ki-84 Ko",
+    "nation": "Japan",
+    "br": 5.3,
+    "type": "Fighter",
+    "group": "Ki-84"
+  },
+  {
+    "name": "Ki-84 Otsu",
+    "nation": "Japan",
+    "br": 5.7,
+    "type": "Fighter",
+    "group": "Ki-84"
+  },
+  {
+    "name": "Ki-84 Hei",
+    "nation": "Japan",
+    "br": 6.3,
+    "type": "Fighter",
+    "group": "Ki-84"
+  },
+  {
+    "name": "A6M5",
+    "nation": "Japan",
+    "br": 5,
+    "type": "Fighter",
+    "group": "A6M/A7M"
+  },
+  {
+    "name": "A6M5 Ko",
+    "nation": "Japan",
+    "br": 5.7,
+    "type": "Fighter",
+    "group": "A6M/A7M"
+  },
+  {
+    "name": "A7M2",
+    "nation": "Japan",
+    "br": 5.7,
+    "type": "Fighter",
+    "group": "A6M/A7M"
+  },
+  {
+    "name": "A7M1 (NK9H)",
+    "nation": "Japan",
+    "br": 5.7,
+    "type": "Fighter",
+    "group": "A6M/A7M"
+  },
+  {
+    "name": "J2M2",
+    "nation": "Japan",
+    "br": 5,
+    "type": "Fighter",
+    "group": "J2M"
+  },
+  {
+    "name": "N1K1-Ja",
+    "nation": "Japan",
+    "br": 5.7,
+    "type": "Fighter",
+    "group": "N1K"
+  },
+  {
+    "name": "N1K2-J",
+    "nation": "Japan",
+    "br": 6,
+    "type": "Fighter",
+    "group": "N1K"
+  },
+  {
+    "name": "N1K2-Ja",
+    "nation": "Japan",
+    "br": 6,
+    "type": "Fighter",
+    "group": "N1K"
+  },
+  {
+    "name": "Re.2001 CN",
+    "nation": "Italy",
+    "br": 3.3,
+    "type": "Fighter",
+    "group": "Re.2001"
+  },
+  {
+    "name": "Re.2005 serie 0",
+    "nation": "Italy",
+    "br": 6.3,
+    "type": "Fighter",
+    "group": "Re.2005"
+  },
+  {
+    "name": "Re.2005 (VDM)",
+    "nation": "Italy",
+    "br": 6.3,
+    "type": "Fighter",
+    "group": "Re.2005"
+  },
+  {
+    "name": "G.55 sottoserie 0",
+    "nation": "Italy",
+    "br": 4.3,
+    "type": "Fighter",
+    "group": "G.55/56"
+  },
+  {
+    "name": "G.55 serie 1",
+    "nation": "Italy",
+    "br": 5.3,
+    "type": "Fighter",
+    "group": "G.55/56"
+  },
+  {
+    "name": "G.55S",
+    "nation": "Italy",
+    "br": 5.3,
+    "type": "Fighter",
+    "group": "G.55/56"
+  },
+  {
+    "name": "G.56",
+    "nation": "Italy",
+    "br": 6.3,
+    "type": "Fighter",
+    "group": "G.55/56"
+  },
+  {
+    "name": "V.G.33C-1",
+    "nation": "France",
+    "br": 2.7,
+    "type": "Fighter",
+    "group": "V.G.33"
+  },
+  {
+    "name": "M.B.157",
+    "nation": "France",
+    "br": 3.7,
+    "type": "Fighter",
+    "group": "M.B.15x"
+  },
+  {
+    "name": "M.B.152C1",
+    "nation": "France",
+    "br": 2.3,
+    "type": "Fighter",
+    "group": "M.B.15x"
+  },
+  {
+    "name": "▽Fokker D.XXIII",
+    "nation": "Sweden",
+    "br": 2.7,
+    "type": "Fighter",
+    "group": "Fokker D.XXIII"
+  },
+  {
+    "name": "VL Pyörremyrsky",
+    "nation": "Sweden",
+    "br": 4.7,
+    "type": "Fighter",
+    "group": "Pyorremyrsky"
+  },
+  {
+    "name": "J21A-1",
+    "nation": "Sweden",
+    "br": 4.3,
+    "type": "Fighter",
+    "group": "J21"
+  },
+  {
+    "name": "J21A-2",
+    "nation": "Sweden",
+    "br": 4.3,
+    "type": "Fighter",
+    "group": "J21"
+  },
+  {
+    "name": "A21A-3",
+    "nation": "Sweden",
+    "br": 4.3,
+    "type": "Fighter",
+    "group": "J21"
+  }
+]

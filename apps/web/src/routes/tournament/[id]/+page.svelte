@@ -45,6 +45,7 @@
     gameModeLabel,
     gameModeInfo,
     vehiclePoolLabel,
+    banpickPoolFor,
     VEHICLE_POOLS,
     isValidSwissRounds,
     MAX_SWISS_ROUNDS,
@@ -148,7 +149,7 @@
   let isSwiss = $derived(tournament?.format === "swiss");
   let banpickEnabled = $derived(tournament?.banpick_enabled !== false);
   // Ban / Pick always draws from the event type's vehicle pool.
-  let banpickPoolId = $derived(tournament?.vehicle_pool);
+  let banpickPoolId = $derived(banpickPoolFor(tournament?.vehicle_pool, tournament?.game_mode));
   // Pools edited on the site replace the bundled ones (loaded on mount).
   let vehiclePools = $state(mergePools({}, defaultVehiclePools));
   let savingPool = $state(false);

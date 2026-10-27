@@ -2,7 +2,7 @@
 // (saved on the server) replace the ones bundled in $lib/data.
 // Kept free of $lib imports so it can be tested with node --test.
 
-import { VEHICLE_POOLS } from "./tournament.js";
+import { POOL_VARIANTS, VEHICLE_POOLS } from "./tournament.js";
 
 export const POOL_FIELDS = ["name", "nation", "br", "type", "group"];
 
@@ -13,7 +13,7 @@ export const POOL_FIELDS = ["name", "nation", "br", "type", "group"];
  * bundled pools ($lib/data/vehiclePools.js).
  */
 export function mergePools(saved = {}, defaults = []) {
-  return VEHICLE_POOLS.map((type) => {
+  return [...VEHICLE_POOLS, ...POOL_VARIANTS].map((type) => {
     const bundled = defaults.find((p) => p.id === type.id)?.vehicles || [];
     const own = saved?.[type.id];
     return {

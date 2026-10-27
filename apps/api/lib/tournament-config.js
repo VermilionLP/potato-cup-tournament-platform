@@ -14,6 +14,12 @@ export const DEFAULT_VEHICLE_POOL = 'proleague';
 // Vehicle pools events are grouped by in the statistics: 螺旋桨 / 早期喷气 /
 // Pro League BVR.
 export const VEHICLE_POOLS = ['prop', 'legacy-jet', 'proleague'];
+// Pools for one game mode of an event type (e.g. AB 螺旋桨): used for Ban /
+// Pick instead of the type's pool when the event is in that mode. Not event
+// types of their own, so statistics and ladders are unchanged.
+export const POOL_VARIANTS = [{ id: 'prop-ab', base: 'prop', mode: 'ab' }];
+// Every pool that can be saved on the server.
+export const POOL_IDS = [...VEHICLE_POOLS, ...POOL_VARIANTS.map((v) => v.id)];
 
 /**
  * A tournament created with a match time skips the time-vote phase and opens
