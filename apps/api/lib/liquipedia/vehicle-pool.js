@@ -1,20 +1,17 @@
 // Which vehicle pool (line-up) a Liquipedia event used:
 //   prop        螺旋桨 (Prop Line-up)
-//   legacy-jet  早期喷气 (Legacy Jet Line-up)
-//   proleague   Pro League BVR (Pro League / Top Jet Line-up)
+//   legacy-jet  早期喷气 (Legacy Jet / Top Jet Line-up)
+//   proleague   Pro League BVR (Pro League Line-up)
 //
 // Order: the event's own exceptions, then the "Line-up" line in the page's
 // Format section, then the event name / page title. Jet events before 2026
 // are Legacy Jet; anything that names no line-up is Prop.
 
-// Organisers' decisions for events whose page names no line-up (or the wrong one). Matched
+// Organisers' decisions for events whose page names no line-up. Matched
 // on the page title and its subpages.
 const BY_TITLE = [
   ['Potato Cup Weekly/14', 'legacy-jet'],
   ['Potato Cup Weekly/16', 'legacy-jet'],
-  // Their pages say "Top Jet Line-up", but they used the Legacy Jet pool.
-  ['Potato Cup Weekly/19', 'legacy-jet'],
-  ['Potato Cup Weekly/20', 'legacy-jet'],
   ['Potato Cup/2026/June', 'prop'],
   ['Potato Cup/2026/Aug', 'legacy-jet'],
 ];
@@ -24,8 +21,9 @@ const LINEUP_LINE = /^[*#:\s]*(?:'''\s*)?([^\n]*?)\s*line-?\s?up\b/gim;
 function poolFromText(text) {
   const t = String(text || '').toLowerCase();
   // "Prop League" on the BVR page is a typo for Pro League: check leagues first.
-  if (/\bpro\s*-?\s*league\b|\bprop league\b|\bbvr\b|\btop jet\b/.test(t)) return 'proleague';
-  if (/\blegacy\s*-?\s*jet\b/.test(t)) return 'legacy-jet';
+  if (/\bpro\s*-?\s*league\b|\bprop league\b|\bbvr\b/.test(t)) return 'proleague';
+  // "Top Jet" (Weekly #19, #20, #25) used the Legacy Jet pool.
+  if (/\blegacy\s*-?\s*jet\b|\btop\s*jet\b/.test(t)) return 'legacy-jet';
   if (/\bprop\b/.test(t)) return 'prop';
   return null;
 }
