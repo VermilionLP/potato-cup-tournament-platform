@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { parseBracketTemplate } from '../lib/liquipedia/bracket-template.js';
-import { convertPage, normalizeFlag, slugify } from '../lib/liquipedia/convert.js';
+import { convertPage, isLoserAdvances, normalizeFlag, slugify } from '../lib/liquipedia/convert.js';
 
 const fixture = (name) => readFileSync(new URL(`./fixtures/liquipedia/${name}`, import.meta.url), 'utf8');
 const templates = new Map([
@@ -180,4 +180,16 @@ test('group brackets (2023 Spring): one two-stage event, double-elimination grou
   assert.ok(playoff.some((m) => m.bracket === 'gf' && m.position === 2));
   assert.equal(e.players.find((p) => p.id === '_Arcturus_').swiss_group, null);
   assert.equal(e.grandFinalReset, true);
+});
+
+test('loser advances is detected when every scored winner has the lower score', () => {
+  const row = (score1, score2, winner, status = 'completed') => ({
+    player1_id: 'a', player2_id: 'b', score1, score2, status,
+    winner_id: winner === 1 ? 'a' : 'b',
+  });
+  // Weekly #36 Beginners final: 6-1, the player on 1 moved on.
+  assert.equal(isLoserAdvances([row(6, 1, 2), row(0, 2, 1), row(0, 0, 1, 'walkover')]), true);
+  assert.equal(isLoserAdvances([row(2, 0, 1), row(1, 2, 2)]), false);
+  assert.equal(isLoserAdvances([row(0, 2, 1), row(2, 1, 1)]), false, 'mixed: not loser advances');
+  assert.equal(isLoserAdvances([row(0, 2, 1)]), false, 'one match is not enough');
 });

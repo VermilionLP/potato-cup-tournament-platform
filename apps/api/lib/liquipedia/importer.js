@@ -186,7 +186,7 @@ export async function writeEvent(db, event) {
          scheduled_time, game_mode, vehicle_pool, format, grand_final_reset, swiss_rounds,
          banpick_enabled, playoff_format, swiss_group_size, advance_per_group, current_stage,
          played_at, source_url, source_title)
-       VALUES ($1, $2, $3, 'completed', $4, $5, 0, $6, $7, $8, $9, $10, $11, FALSE, $12, $13, $14, $15,
+       VALUES ($1, $2, $3, 'completed', $4, $5, $19, $6, $7, $8, $9, $10, $11, FALSE, $12, $13, $14, $15,
          $16::timestamptz, $17, $18)`,
       [
         event.id,
@@ -207,6 +207,7 @@ export async function writeEvent(db, event) {
         playedAt,
         event.sourceUrl || null,
         event.sourceTitle || null,
+        event.loserAdvances ? 1 : 0,
       ]
     );
 

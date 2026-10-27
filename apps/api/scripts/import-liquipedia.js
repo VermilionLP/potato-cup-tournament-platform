@@ -56,7 +56,7 @@ async function loadDump(args) {
 function report(plan) {
   console.log('\n== 将导入的赛事 ==');
   for (const e of plan.events) {
-    const fmt = e.playoffFormat ? `${e.format}组+${e.playoffFormat}` : e.format;
+    const fmt = e.playoffFormat ? `${e.format}组+${e.playoffFormat}` : e.loserAdvances ? `${e.format}(败者晋级)` : e.format;
     const games = e.matches.filter((r) => r.player1_id && r.player2_id).length;
     console.log(`${e.date || '????-??-??'}  ${e.id.padEnd(48)} ${fmt.padEnd(18)} ${String(e.players.length).padStart(3)} 人 ${String(games).padStart(4)} 场  ${e.name}`);
   }

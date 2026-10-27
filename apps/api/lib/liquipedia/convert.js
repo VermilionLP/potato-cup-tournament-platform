@@ -48,6 +48,19 @@ function rowFromResult(result, extra) {
   };
 }
 
+/**
+ * A single-elimination bracket played as "loser advances": in every match
+ * with a clear score the player who moves on (Liquipedia's winner) is the one
+ * with the lower score. Needs at least two such matches.
+ */
+export function isLoserAdvances(rows) {
+  const scored = rows.filter(
+    (r) => r.status === 'completed' && r.player1_id && r.player2_id && r.winner_id && r.score1 !== r.score2,
+  );
+  if (scored.length < 2) return false;
+  return scored.every((r) => r.winner_id === (r.score1 < r.score2 ? r.player1_id : r.player2_id));
+}
+
 function roundNumber(text) {
   const m = /(?:round|第)\s*(\d+)/i.exec(String(text || '')) || /^\s*R?(\d+)\s*$/i.exec(String(text || ''));
   return m ? Number(m[1]) : null;
@@ -409,6 +422,7 @@ export function convertPage({ title, wikitext, templates = new Map(), today = ne
   }
 
   const makeEvent = (suffix, parts) => {
+    const loserAdvances = !parts.playoffFormat && parts.format === 'single_elim' && isLoserAdvances(parts.rows);
     const playerOrder = [];
     const groupOf = new Map();
     for (const g of parts.groups || []) for (const p of g.players || []) groupOf.set(p, g.group);
@@ -438,6 +452,7 @@ export function convertPage({ title, wikitext, templates = new Map(), today = ne
       currentStage: parts.playoffFormat ? 'playoff' : 'group',
       grandFinalReset: Boolean(parts.reset),
       holdThirdPlace: Boolean(parts.thirdPlace),
+      loserAdvances,
       players: playerOrder.map((id, i) => ({
         id,
         flag: flags.get(id) || null,
