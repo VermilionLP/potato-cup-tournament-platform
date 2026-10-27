@@ -35,6 +35,7 @@
   import { canConfirm, confirmResult, initialBanPick, poolVehicles } from "$lib/banpick.js";
   import { defaultVehiclePools } from "$lib/data/vehiclePools.js";
   import { mergePools } from "$lib/vehicle-pools.js";
+  import { overlayStages, pickStage } from "$lib/overlay.js";
   import PointsEditor from "$lib/components/PointsEditor.svelte";
   import { POINTS_PRESETS, cleanTable, copyTable, currentSeason, pointsTableProblem } from "$lib/points.js";
   import {
@@ -119,6 +120,20 @@
   );
   // Overlay round controls need a non-empty list even before a playoff exists.
   let overlayMatches = $derived(bracketMatches.length ? bracketMatches : tournament?.matches || []);
+  // Stages the overlay can show (as the overlay picks them): the group stage
+  // until the playoff starts, then the playoff; one round of one bracket each.
+  let overlayStageList = $derived(
+    overlayStages(
+      (tournament?.matches || []).filter((m) =>
+        tournament?.playoff_format
+          ? (tournament?.current_stage === "playoff") === !GROUP_STAGE_BRACKETS.includes(m.bracket)
+          : true,
+      ),
+    ),
+  );
+  let overlayShownStage = $derived(
+    pickStage(overlayStageList, tournament?.overlay_stage || tournament?.overlay_round || null),
+  );
   let stageView = $state(null); // "group" | "playoff"; null follows the current stage
   // Before the playoff exists only the group stage can be shown.
   let shownStage = $derived(inPlayoffs ? stageView || "playoff" : "group");
@@ -362,7 +377,8 @@
   // Registration states
   let regInput = $state("");
   let seedOrder = $state([]);
-  let obsIntroRound = $state(1);
+  // Intro link stage; "" = whatever stage is current.
+  let obsIntroStage = $state("");
 
   // Time voting states
   const today = new Date();
@@ -792,10 +808,6 @@
       allPlayers = await API.listPlayers();
       initializeSeedOrder();
 
-      if (bracketMatches?.length) {
-        obsIntroRound = Math.max(...bracketMatches.map((m) => m.round));
-      }
-
       // Auto-generate/refresh bracket preview on page load in registration phase
       if (
         isAdmin &&
@@ -805,9 +817,6 @@
       ) {
         const matches = await API.generateBracket(tid);
         tournament = { ...tournament, matches };
-        if (matches?.length) {
-          obsIntroRound = Math.max(...matches.map((m) => m.round));
-        }
       }
     } catch (e) {
       toast.error("加载赛事详情失败: " + e.message);
@@ -2393,19 +2402,20 @@
                 <span class="text-[11px] font-semibold text-muted-foreground shrink-0">展示轮次:</span>
                 <select
                   class="h-7 rounded border border-input bg-background px-2 text-[10px] cursor-pointer"
-                  value={tournament.overlay_round || Math.max(...(overlayMatches?.map(m => m.round) || [1]))}
+                  value={overlayShownStage?.key || ""}
                   onchange={async (e) => {
-                    const val = parseInt(e.target.value);
+                    const stage = overlayStageList.find((st) => st.key === e.target.value);
+                    if (!stage) return;
                     try {
-                      await API.setOverlayState(tid, tournament.overlay_scene || "intro", val);
-                      toast.success("大屏展示轮次已更改为: " + roundLabel(val, totalRounds));
+                      await API.setOverlayState(tid, tournament.overlay_scene || "intro", stage.round, stage.key);
+                      toast.success("大屏展示轮次已更改为: " + stage.label);
                     } catch (err) {
                       toast.error("更改大屏轮次失败: " + err.message);
                     }
                   }}
                 >
-                  {#each Array.from({length: Math.max(...(overlayMatches?.map(m => m.round) || [1]))}, (_, i) => i + 1).reverse() as r}
-                    <option value={r}>{roundLabel(r, totalRounds)}</option>
+                  {#each overlayStageList as st (st.key)}
+                    <option value={st.key}>{st.label}</option>
                   {/each}
                 </select>
               </div>
@@ -2455,10 +2465,11 @@
                   <span class="text-[10px] text-muted-foreground">轮次:</span>
                   <select
                     class="h-5 rounded border border-input bg-background px-1 text-[10px]"
-                    bind:value={obsIntroRound}
+                    bind:value={obsIntroStage}
                   >
-                    {#each Array.from({length: Math.max(...(overlayMatches?.map(m => m.round) || [1]))}, (_, i) => i + 1).reverse() as r}
-                      <option value={r}>{roundLabel(r, totalRounds)}</option>
+                    <option value="">当前轮次（自动）</option>
+                    {#each overlayStageList as st (st.key)}
+                      <option value={st.key}>{st.label}</option>
                     {/each}
                   </select>
                 </div>
@@ -2468,14 +2479,14 @@
                   type="text"
                   readonly
                   class="flex-1 h-7 px-2 border border-input rounded bg-muted/30 text-[10px] select-all cursor-default"
-                  value={window.location.origin + `/tournament/${tid}/overlay?scene=intro&round=${obsIntroRound}`}
+                  value={window.location.origin + `/tournament/${tid}/overlay?scene=intro${obsIntroStage ? `&stage=${obsIntroStage}` : ""}`}
                 />
                 <Button
                   size="icon-xs"
                   variant="outline"
                   class="h-7 w-7 cursor-pointer shrink-0"
                   onclick={() => {
-                    navigator.clipboard.writeText(window.location.origin + `/tournament/${tid}/overlay?scene=intro&round=${obsIntroRound}`);
+                    navigator.clipboard.writeText(window.location.origin + `/tournament/${tid}/overlay?scene=intro${obsIntroStage ? `&stage=${obsIntroStage}` : ""}`);
                     toast.success("已复制开场对阵链接");
                   }}
                 >

@@ -516,17 +516,20 @@ export default async function tournamentsRoutes(fastify) {
 
   fastify.post('/tournaments/:id/overlay-state', async (req) => {
     requireAdmin(fastify, req);
-    const { overlay_scene, overlay_round } = req.body;
+    const { overlay_scene, overlay_round, overlay_stage } = req.body;
     const valid = ['auto', 'intro', 'ingame', 'intermission', 'hybrid'];
     if (overlay_scene && !valid.includes(overlay_scene)) throw fastify.httpErrors.badRequest('Invalid overlay_scene');
+    if (overlay_stage && !/^(main|wb|lb|gf|sw|gse|gwb|glb):\d{1,3}$/.test(String(overlay_stage))) {
+      throw fastify.httpErrors.badRequest('Invalid overlay_stage');
+    }
     
     const t = await repo.getById(req.params.id);
     if (!t) throw fastify.httpErrors.notFound('Tournament not found');
 
-    const updated = await repo.updateOverlayState(req.params.id, overlay_scene, overlay_round);
+    const updated = await repo.updateOverlayState(req.params.id, overlay_scene, overlay_round, overlay_stage);
 
     // Trigger real-time broadcast
-    fastify.tournamentEvents.emit(`update:${req.params.id}`, { type: 'overlay_state_updated', overlay_scene, overlay_round });
+    fastify.tournamentEvents.emit(`update:${req.params.id}`, { type: 'overlay_state_updated', overlay_scene, overlay_round, overlay_stage });
 
     return updated;
   });

@@ -2,13 +2,16 @@
   import { onMount } from "svelte";
   import { page } from "$app/state";
   import { API } from "$lib/api.js";
-  import { roundLabel, roundShortLabel, buildMatchOrder } from "$lib/bracket.js";
+  import { buildMatchOrder } from "$lib/bracket.js";
+  import { matchStageLabels, overlayStages, pickStage, playersStillIn } from "$lib/overlay.js";
   import { fade, fly } from "svelte/transition";
 
   // URL Params & Derived States
   let tid = $derived(page.params.id);
   let sceneParam = $derived(page.url.searchParams.get("scene") || "auto"); // auto, intro, ingame, intermission
-  let roundParam = $derived(page.url.searchParams.get("round"));
+  // Stage to show in the intro scene: "wb:2", "sw:3"... (a plain round number
+  // still works for single elimination and Swiss).
+  let stageParam = $derived(page.url.searchParams.get("stage") || page.url.searchParams.get("round"));
   let bgParam = $derived(page.url.searchParams.get("bg"));
   let transparentParam = $derived(
     page.url.searchParams.get("transparent") === "true",
@@ -85,21 +88,23 @@
   });
   let nextMatch = $derived(playableMatches[0] || null);
 
-  // Group completed matches by round for ticker display
-  let tickerRounds = $derived.by(() => {
-    if (!completedMatches?.length) return [];
-    const groups = {};
-    completedMatches.forEach((m) => {
-      if (!groups[m.round]) groups[m.round] = [];
-      groups[m.round].push(m);
-    });
-    return Object.entries(groups)
-      .map(([round, matches]) => ({
-        round: parseInt(round),
-        matches,
+  // Stages: one round of one bracket each (winners / losers bracket rounds
+  // share round numbers), in playing order.
+  let stages = $derived(overlayStages(stageMatches || []));
+
+  // Completed matches by stage for the ticker, latest stage first.
+  let tickerRounds = $derived(
+    stages
+      .map((s) => ({
+        key: s.key,
+        short: s.short,
+        matches: s.matches.filter(
+          (m) => (m.status === "completed" || m.status === "walkover") && m.player1_id && m.player2_id,
+        ),
       }))
-      .sort((a, b) => b.round - a.round); // highest round first
-  });
+      .filter((s) => s.matches.length)
+      .reverse(),
+  );
 
   // Active match for in-game HUD
   let activeMatch = $derived(
@@ -122,9 +127,16 @@
     transparentParam || (currentScene === "ingame" && bgParam !== "true"),
   );
 
-  // Computed rounds structure for bracket display
+  // The tree view is for single elimination only; double elimination, Swiss
+  // and group stages use the stage board instead.
+  let isTree = $derived(
+    (stageMatches || []).length > 0 &&
+      (stageMatches || []).every((m) => (m.bracket || "main") === "main"),
+  );
+
+  // Computed rounds structure for bracket display (single elimination)
   let overlayRounds = $derived.by(() => {
-    if (!stageMatches?.length) return [];
+    if (!isTree || !stageMatches?.length) return [];
     const map = {};
     stageMatches.forEach((m) => {
       if (!map[m.round]) map[m.round] = [];
@@ -146,11 +158,18 @@
     Boolean(tournament?.playoff_format) && tournament?.current_stage === "playoff",
   );
   let isSwiss = $derived(tournament?.format === "swiss" && !inPlayoffs);
-  function roundTitle(round, total) {
-    return isSwiss ? `瑞士轮 第 ${round} 轮` : roundLabel(round, total);
+  // Format shown in the hybrid header.
+  let formatTag = $derived.by(() => {
+    if (tournament?.playoff_format && !inPlayoffs) return isSwiss ? "GROUP STAGE · SWISS" : "GROUP STAGE";
+    const format = inPlayoffs ? tournament?.playoff_format : tournament?.format;
+    return format === "double_elim" ? "DOUBLE ELIMINATION" : format === "swiss" ? "SWISS" : "SINGLE ELIMINATION";
+  });
+  // Stage labels of a match: "胜者组第 2 轮" / "WB2", "瑞士轮 第 3 轮" / "R3"...
+  function stageLabel(m) {
+    return matchStageLabels(m, stageMatches || []).label;
   }
-  function roundShort(round, total) {
-    return isSwiss ? `R${round}` : roundShortLabel(round, total);
+  function stageShort(m) {
+    return matchStageLabels(m, tournament?.matches || []).short;
   }
 
   let maxRound = $derived(
@@ -158,24 +177,15 @@
   );
   let matchOrder = $derived(buildMatchOrder(stageMatches || []));
 
-  // Selected round: URL round param takes highest precedence, then tournament.overlay_round, then maxRound
-  let selectedRound = $derived.by(() => {
-    if (roundParam) return parseInt(roundParam);
-    if (tournament?.overlay_round) return tournament.overlay_round;
-    return maxRound;
-  });
-
-  let introMatches = $derived(
-    (stageMatches || [])
-      .filter((m) => {
-        if (m.round !== selectedRound) return false;
-        const isCompleted = m.status === "completed" || m.status === "walkover";
-        const isBye =
-          isCompleted && m.winner_id && (!m.player1_id || !m.player2_id);
-        return !isBye;
-      })
-      .sort((a, b) => a.position - b.position),
+  // Selected stage: URL stage/round param first, then the stage chosen in
+  // the dashboard (overlay_stage, or the older overlay_round), otherwise the
+  // first stage that still has matches to play.
+  let selectedStage = $derived(
+    pickStage(stages, stageParam || tournament?.overlay_stage || tournament?.overlay_round || null),
   );
+  let selectedRound = $derived(selectedStage?.round ?? maxRound);
+
+  let introMatches = $derived(selectedStage?.matches || []);
 
   // The intro match list is paged in groups of 8 (16 players) for 128-player fields.
   let introPage = $state(0);
@@ -304,25 +314,57 @@
   });
 
   // Calculate match positions dynamically for perfect vertical alignment
-  let alivePlayerIds = $derived.by(() => {
-    if (!tournament?.players) return new Set();
-    const alive = new Set(tournament.players.map((p) => p.id));
-    (stageMatches || []).forEach((m) => {
-      if (m.status === "completed" || m.status === "walkover") {
-        const loserId =
-          m.winner_id === m.player1_id ? m.player2_id : m.player1_id;
-        if (loserId) {
-          alive.delete(loserId);
-        }
-      }
-    });
-    return alive;
-  });
+  // Still in the event: one loss in single elimination, a losers-bracket
+  // loss in double elimination; nobody is out in Swiss (null).
+  let alivePlayerIds = $derived(
+    playersStillIn(tournament?.players || [], stageMatches || [], { swiss: isSwiss }),
+  );
 
   function isAlive(playerId) {
     if (!playerId) return false;
-    return alivePlayerIds.has(playerId);
+    return alivePlayerIds ? alivePlayerIds.has(playerId) : true;
   }
+
+  // Stage board (double elimination, Swiss, group stages): bands of columns,
+  // one band per bracket, scaled to fit next to the side panel.
+  const BAND_ORDER = ["sw", "gse", "gwb", "glb", "wb", "lb", "gf"];
+  const BAND_NAMES = { sw: "SWISS", gse: "GROUPS", gwb: "GROUPS · UPPER", glb: "GROUPS · LOWER", wb: "UPPER BRACKET", lb: "LOWER BRACKET", gf: "GRAND FINAL" };
+  let boardBands = $derived.by(() => {
+    if (isTree) return [];
+    const bands = new Map();
+    for (const s of stages) {
+      if (!bands.has(s.bracket)) bands.set(s.bracket, []);
+      bands.get(s.bracket).push(s);
+    }
+    // Swiss: the current round and the one before (whole rounds get long).
+    if (bands.has("sw")) {
+      const sw = bands.get("sw");
+      const at = Math.max(0, sw.findIndex((s) => s.key === selectedStage?.key));
+      bands.set("sw", sw.slice(Math.max(0, at - 1), at + 1));
+    }
+    return [...bands.entries()]
+      .sort((a, b) => BAND_ORDER.indexOf(a[0]) - BAND_ORDER.indexOf(b[0]))
+      .map(([bracket, columns]) => ({ bracket, name: BAND_NAMES[bracket] || bracket.toUpperCase(), columns }));
+  });
+  const BOARD_CARD_H = 58;
+  const BOARD_GAP = 8;
+  let boardScale = $derived.by(() => {
+    if (!boardBands.length) return 1;
+    const height = boardBands.reduce(
+      (sum, band) => sum + 44 + Math.max(...band.columns.map((c) => c.matches.length)) * (BOARD_CARD_H + BOARD_GAP),
+      0,
+    );
+    const width = Math.max(...boardBands.map((band) => band.columns.length)) * (232 + 16);
+    return Math.min(1, 840 / height, 1440 / width);
+  });
+
+  // Swiss standings for the side of the stage board.
+  let swissTable = $derived.by(() => {
+    if (!isSwiss) return [];
+    if (tournament?.standings?.length) return tournament.standings.slice(0, 12);
+    const groups = tournament?.group_stage?.groups || [];
+    return groups.flatMap((g) => g.rows.slice(0, 3).map((r) => ({ ...r, group_label: g.label })));
+  });
 
   let matchPositions = $derived.by(() => {
     if (!displayRounds?.length)
@@ -545,7 +587,7 @@
                 >CURRENT STAGE</span
               >
               <span class="text-2xl font-black text-cyan-400 tracking-wider">
-                {roundTitle(selectedRound, maxRound).toUpperCase()}
+                {(selectedStage?.label || "").toUpperCase()}
               </span>
               {#if introPageCount > 1}
                 <div
@@ -742,7 +784,7 @@
                       <span
                         class="text-cyan-400 font-bold px-2 py-0.5 rounded bg-cyan-950/20 border border-cyan-800/20 uppercase"
                       >
-                        {roundShort(m.round, maxRound)}
+                        {stageShort(m)}
                       </span>
                     </div>
 
@@ -827,7 +869,7 @@
                           <span
                             class="font-orbitron font-black text-[11px] bg-cyan-950/80 border border-cyan-500/30 text-cyan-400 px-2 py-0.5 rounded uppercase tracking-wider"
                           >
-                            {roundShort(tr.round, maxRound)}
+                            {tr.short}
                           </span>
 
                           <!-- List of matches in this round -->
@@ -897,7 +939,7 @@
                 >
                   <span>{tournament.name}</span>
                   <span class="text-amber-400"
-                    >{roundShort(activeMatch.round, maxRound)}</span
+                    >{stageShort(activeMatch)}</span
                   >
                 </div>
 
@@ -953,7 +995,7 @@
                 class="flex items-center gap-2 text-[10px] font-mono font-bold tracking-[0.25em] text-cyan-400/80 uppercase"
               >
                 <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
-                SUCK • SINGLE ELIMINATION
+                SUCK • {formatTag}
               </div>
               <h1
                 class="text-3xl md:text-5xl font-black bg-linear-to-r from-white to-cyan-400 bg-clip-text text-transparent uppercase font-orbitron leading-none tracking-wider mt-1"
@@ -965,7 +1007,7 @@
               >
                 <span>{tournament.players?.length || 0} PLAYERS</span>
                 <span class="text-slate-700">/</span>
-                <span>{roundTitle(displayRounds[0]?.round || maxRound, maxRound)}</span>
+                <span>{isTree ? stageLabel(displayRounds[0]?.matches?.[0] || {}) : selectedStage?.label || ""}</span>
                 {#if isLargeBracket}
                   <span class="text-slate-700">/</span>
                   <span class="text-amber-400 font-bold">
@@ -1026,6 +1068,7 @@
 
           <!-- Bracket + side panel -->
           <div class="flex-1 flex items-stretch gap-6 min-h-0 w-full">
+          {#if isTree}
           <!-- Horizontal visual bracket view -->
           <div
             class="flex-1 flex items-center justify-start overflow-x-auto py-4 px-2 min-h-0 select-none scroll-container"
@@ -1042,7 +1085,7 @@
                   <div
                     class="text-base md:text-lg text-cyan-400 font-extrabold text-center border-b-2 border-cyan-500/20 pb-2 mb-4 font-orbitron tracking-widest shrink-0 uppercase"
                   >
-                    {roundTitle(r.round, maxRound).toUpperCase()}
+                    {stageLabel(r.matches[0] || { bracket: "main", round: r.round }).toUpperCase()}
                   </div>
 
                   <!-- Match cards in round (Absolutely positioned for perfect alignment) -->
@@ -1281,6 +1324,56 @@
             </div>
           </div>
 
+          {:else}
+          <!-- Stage board: double elimination, Swiss and group stages. One band
+               per bracket, one column per round, the shown stage highlighted. -->
+          <div class="flex-1 min-h-0 flex items-start justify-center overflow-hidden py-2">
+            <div class="flex flex-col gap-4" style="transform: scale({boardScale}); transform-origin: top center;">
+              {#each boardBands as band (band.bracket)}
+                <div>
+                  <div class="text-[11px] font-mono font-bold tracking-[0.3em] text-cyan-400/80 uppercase mb-2">{band.name}</div>
+                  <div class="flex gap-4 items-start">
+                    {#each band.columns as col (col.key)}
+                      <div class="w-58 shrink-0">
+                        <div
+                          class="text-sm font-extrabold text-center pb-1 mb-2 border-b-2 font-orbitron tracking-wider uppercase
+                            {col.key === selectedStage?.key ? 'text-amber-400 border-amber-500/40' : 'text-cyan-400 border-cyan-500/20'}"
+                        >
+                          {col.label}
+                        </div>
+                        <div class="flex flex-col" style="gap: {BOARD_GAP}px">
+                          {#each col.matches as m (m.id)}
+                            {@const done = m.status === "completed" || m.status === "walkover"}
+                            {@const live = m.id === tournament.active_match_id}
+                            <div
+                              class="rounded-lg border-2 px-3 flex flex-col justify-center gap-0.5
+                                {live ? 'border-amber-500 bg-amber-950/30' : done ? 'border-slate-800 bg-slate-950/70' : 'border-slate-700/60 bg-slate-900/70'}"
+                              style="height: {BOARD_CARD_H}px"
+                            >
+                              {#each [[m.player1_id, m.score1], [m.player2_id, m.score2]] as [pid, score], slot (slot)}
+                                {@const won = done && m.winner_id && m.winner_id === pid}
+                                <div class="flex items-center justify-between gap-2 text-sm">
+                                  <span
+                                    class="truncate font-bold
+                                      {!pid ? 'text-slate-600 italic' : won ? 'text-amber-300' : done || !isAlive(pid) ? 'text-slate-500' : 'text-white'}"
+                                  >{getPlayerName(pid)}</span>
+                                  <span class="font-orbitron font-black text-xs shrink-0 {won ? 'text-amber-400' : 'text-slate-400'}">
+                                    {#if m.status === "walkover"}{won ? "W" : "FF"}{:else if done || live}{score ?? 0}{/if}
+                                  </span>
+                                </div>
+                              {/each}
+                            </div>
+                          {/each}
+                        </div>
+                      </div>
+                    {/each}
+                  </div>
+                </div>
+              {/each}
+            </div>
+          </div>
+          {/if}
+
           <aside class="w-80 shrink-0 flex flex-col justify-center gap-4 py-4">
             <div
               class="rounded-2xl border border-cyan-500/25 bg-slate-950/80 p-5 shadow-2xl backdrop-blur"
@@ -1295,7 +1388,7 @@
                     ? showFinalStage
                       ? "FINAL STAGE"
                       : `SECTION ${sectionIndex + 1}`
-                    : "16-PLAYER BRACKET"}
+                    : isTree ? "BRACKET" : (selectedStage?.short || "")}
                 </span>
               </div>
               {#if nextMatch}
@@ -1332,7 +1425,7 @@
                 <div
                   class="mt-3 pt-3 border-t border-slate-800/80 flex items-center justify-between text-[9px] font-mono text-slate-500 uppercase"
                 >
-                  <span>{roundTitle(nextMatch.round, maxRound)}</span>
+                  <span>{stageLabel(nextMatch)}</span>
                   <span>#{matchOrder.get(nextMatch.id)}</span>
                 </div>
               {:else if activeMatch}
@@ -1377,6 +1470,20 @@
                 ></div>
               </div>
             </div>
+            {#if swissTable.length}
+              <div class="rounded-2xl border border-cyan-500/25 bg-slate-950/80 p-4 shadow-2xl backdrop-blur">
+                <div class="text-[10px] font-mono font-bold tracking-[0.2em] text-cyan-400 uppercase mb-2">STANDINGS</div>
+                <div class="space-y-1">
+                  {#each swissTable as row, i (row.player_id + (row.group_label || ""))}
+                    <div class="flex items-center gap-2 text-xs">
+                      <span class="w-6 text-right font-mono text-slate-500">{row.group_label ? `${row.group_label}${row.rank}` : row.rank ?? i + 1}</span>
+                      <span class="flex-1 truncate font-bold text-white">{getPlayerName(row.player_id)}</span>
+                      <span class="font-orbitron text-cyan-400 shrink-0">{row.wins ?? 0}-{row.losses ?? 0}</span>
+                    </div>
+                  {/each}
+                </div>
+              </div>
+            {/if}
           </aside>
           </div>
 

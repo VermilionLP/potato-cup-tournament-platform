@@ -4,6 +4,8 @@
 // the English. Generated from the source, then translated; add new UI text
 // here when it is introduced.
 export default {
+  "大屏展示轮次已更改为: {0}": "Overlay stage changed to {0}",
+  "当前轮次（自动）": "Current round (auto)",
   "{0:n} 赛季 · 当前": "{0} season · current",
   "{0:n} 赛季已结束 · {1} · 积分和名单已锁定": "{0} season ended · {1} · points and list locked",
   "当前赛季 · 进行中": "Current season · in progress",
