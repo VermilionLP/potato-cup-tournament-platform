@@ -8,7 +8,7 @@
   import { Input } from "$lib/components/ui/input/index.js";
   import { Badge } from "$lib/components/ui/badge/index.js";
   import Flag from "$lib/components/Flag.svelte";
-  import { buildContact, parseContact } from "$lib/contact.js";
+  import { buildContact, contactProblem, parseContact, requiredContactProblem } from "$lib/contact.js";
   import PlusIcon from "@lucide/svelte/icons/plus";
   import SearchIcon from "@lucide/svelte/icons/search";
   import Edit2Icon from "@lucide/svelte/icons/pencil";
@@ -164,6 +164,13 @@
       toast.error("选手 ID 不能为空");
       return;
     }
+    // Contact: always well-formed; required when players edit themselves.
+    const contact = { qq: editQQ.trim(), discord: editDiscord.trim() };
+    const contactIssue = isAdmin ? contactProblem(contact) : requiredContactProblem(contact);
+    if (contactIssue) {
+      toast.error(contactIssue);
+      return;
+    }
 
     try {
       if (isCreating) {
@@ -190,6 +197,7 @@
           toast.loading("正在修改选手 ID...", { id: "ps" });
           await API.renamePlayer(editingId, cleanNewId);
           if (isMe) {
+            userState.moveKey(editingId, cleanNewId);
             userState.setId(cleanNewId);
           }
           editingId = cleanNewId;

@@ -5,7 +5,8 @@ import { GAME_MODES, VEHICLE_POOLS } from '../lib/tournament-config.js';
 import { isQualifierEvent, tournamentChampion } from '../lib/champions.js';
 import { betterPlace, eventPlacements } from '../lib/placements.js';
 import { ACTIVE_DAYS } from '../lib/ladder.js';
-import { getRequesterId, requireAdmin, requireSelfOrAdmin } from '../lib/admin.js';
+import { getRequesterId, isAdminRequest, requireAdmin, requireSelfOrAdmin } from '../lib/admin.js';
+import { contactProblem, parseContact, requireContact, CONTACT_REQUIRED } from '../lib/contact.js';
 import { hashPlayerKey, newPlayerKey, playerKeyMatches, requestPlayerKey, storedKeyHash } from '../lib/player-key.js';
 
 export default async function playersRoutes(fastify) {
@@ -478,6 +479,13 @@ export default async function playersRoutes(fastify) {
     if (battle_tags) {
       battleTagsStr = typeof battle_tags === 'string' ? battle_tags : JSON.stringify(battle_tags);
     }
+    // Contact: valid when given; players saving their own profile need one.
+    const contact = parseContact(battleTagsStr);
+    const problem = contactProblem(contact);
+    if (problem) throw fastify.httpErrors.badRequest(problem);
+    if (!contact.qq && !contact.discord && !isAdminRequest(req)) {
+      throw fastify.httpErrors.badRequest(CONTACT_REQUIRED);
+    }
 
     const requesterIdRaw = req.headers['x-player-id'];
     const requesterId = requesterIdRaw ? decodeURIComponent(requesterIdRaw) : undefined;
@@ -514,6 +522,7 @@ export default async function playersRoutes(fastify) {
     if (t.status !== 'registration') throw fastify.httpErrors.badRequest('Registration is closed');
 
     const existingPlayer = await repo.getById(player_id);
+    requireContact(fastify, req, existingPlayer);
     const requesterIdRaw = req.headers['x-player-id'];
     const requesterId = requesterIdRaw ? decodeURIComponent(requesterIdRaw) : undefined;
     const lastIp = (requesterId === player_id) ? req.ip : null;

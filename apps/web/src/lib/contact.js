@@ -70,3 +70,25 @@ export function splitContactInput(value) {
 export function contactIsEmpty(contact) {
   return !contact?.qq && !contact?.discord;
 }
+
+// Mirrors apps/api/lib/contact.js: the server checks the same rules.
+const QQ = /^[1-9]\d{4,11}$/;
+const DISCORD = /^[^\s@#:]{2,32}(#\d{4})?$/;
+
+/** First problem with the contact values, or '' when they are fine. */
+export function contactProblem({ qq = '', discord = '' } = {}) {
+  if (qq && !QQ.test(qq)) return 'QQ 号应为 5-12 位数字';
+  if (discord && !DISCORD.test(discord)) return 'Discord 用户名应为 2-32 个字符，不含空格、@、# 和冒号';
+  return '';
+}
+
+/** Problem with a required contact (at least one of QQ / Discord), or ''. */
+export function requiredContactProblem(contact) {
+  if (contactIsEmpty(contact)) return '请填写 QQ 号或 Discord 用户名（至少一个）';
+  return contactProblem(contact);
+}
+
+/** Problem with the single "QQ / Discord" sign-in input, or ''. */
+export function contactInputProblem(value) {
+  return requiredContactProblem(splitContactInput(value));
+}

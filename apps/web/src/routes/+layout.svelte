@@ -6,12 +6,7 @@
   import { API } from "$lib/api.js";
   import { isRecentlySeen } from "$lib/players.js";
   import { i18n, initLocale, toggleLocale } from "$lib/i18n/locale.svelte.js";
-  import {
-    buildContact,
-    contactIsEmpty,
-    parseContact,
-    splitContactInput,
-  } from "$lib/contact.js";
+  import { buildContact, contactIsEmpty, parseContact, splitContactInput, contactInputProblem, requiredContactProblem } from "$lib/contact.js";
   import { page } from "$app/stores";
   import { ModeWatcher, toggleMode } from "mode-watcher";
   import * as Dialog from "$lib/components/ui/dialog/index.js";
@@ -283,7 +278,7 @@
       if (player) {
         const contact = parseContact(player.battle_tags);
         if (contactIsEmpty(contact)) {
-          toast.warning("您的 QQ / Discord 联系方式尚未填写，可能会影响赛事联系。", {
+          toast.warning("还没有填写 QQ / Discord 联系方式，报名和投票前需要先填写。", {
             action: {
               label: "立即完善",
               onClick: () => handleOpenDialog(),
@@ -367,50 +362,43 @@
     });
   }
 
+  // Sign in: a player ID plus a required contact (QQ number or Discord
+  // user name), which is saved to the player's profile.
   async function handleSaveId() {
     const trimmedContact = contactInput.trim();
     const trimmedId = idInput.trim();
-    if (!trimmedContact) {
-      contactError = "请输入 QQ 号或 Discord 用户名";
-      return;
-    }
+    contactError = contactInputProblem(trimmedContact);
+    if (contactError) return;
     if (!trimmedId) {
       toast.error("请输入选手 ID");
       return;
     }
 
     verifying = true;
-    contactError = "";
     try {
-      const res = await API.verifyQQ(trimmedContact);
-      if (res.valid) {
-        userState.setQQGroup(trimmedContact);
-        userState.setId(trimmedId);
-        try {
-          await API.touchPlayer(trimmedId);
-        } catch (e) {
-          console.warn("touch player failed:", e);
-        }
-        await ensurePlayerKey(trimmedId);
-        try {
-          await saveSignInContact(trimmedId, trimmedContact);
-        } catch (e) {
-          console.warn("保存联系方式失败:", e);
-        }
-        openIdDialog = false;
-        toast.success("身份配置已保存并激活权限！");
-        checkProfileCompleteness(trimmedId);
-        setTimeout(() => {
-          window.location.reload();
-        }, 100);
-      } else {
-        contactError = "验证未通过，请检查 QQ 号或 Discord 用户名";
-        toast.error("身份验证失败！");
+      userState.setQQGroup(trimmedContact);
+      userState.setId(trimmedId);
+      try {
+        await API.touchPlayer(trimmedId);
+      } catch (e) {
+        console.warn("touch player failed:", e);
       }
-    } catch (err) {
-      contactError = "验证请求发生错误，请稍后重试";
-      toast.error("网络错误，请稍后重试");
-      console.error(err);
+      await ensurePlayerKey(trimmedId);
+      try {
+        await saveSignInContact(trimmedId, trimmedContact);
+      } catch (e) {
+        // A device-key conflict is explained by its own prompt.
+        if (e.code !== "PLAYER_KEY_REQUIRED") {
+          contactError = e.message;
+          toast.error("联系方式保存失败: " + e.message);
+          return;
+        }
+      }
+      openIdDialog = false;
+      toast.success("身份配置已保存！");
+      setTimeout(() => {
+        window.location.reload();
+      }, 100);
     } finally {
       verifying = false;
     }
@@ -450,7 +438,12 @@
       }
     }
 
-    // 2. Save profile details
+    // 2. Save profile details (a contact is required)
+    const problem = requiredContactProblem({ qq: editQQ.trim(), discord: editDiscord.trim() });
+    if (problem) {
+      toast.error(problem);
+      return;
+    }
     verifying = true;
     try {
       await API.updatePlayer(trimmedId, {
@@ -845,7 +838,7 @@
           <label
             for="layout-contact-input"
             class="text-xs font-semibold text-muted-foreground"
-            >QQ 号 / Discord 用户名</label
+            >QQ 号 / Discord 用户名（必填）</label
           >
           <Input
             id="layout-contact-input"
@@ -857,7 +850,7 @@
             }}
           />
           <p class="text-[10px] text-muted-foreground/70">
-            纯数字视为 QQ 号，其余视为 Discord 用户名；会写入选手资料的联系方式。
+            赛务联系用，报名和投票前必须填写。纯数字视为 QQ 号，其余视为 Discord 用户名；会写入选手资料。
           </p>
           {#if contactError}
             <p class="text-[10px] text-destructive font-medium animate-pulse">

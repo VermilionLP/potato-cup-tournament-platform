@@ -3,6 +3,7 @@ import { CustomVoteRepo } from '../repositories/custom-vote-repo.js';
 import { TournamentRepo } from '../repositories/tournament-repo.js';
 import { PlayerRepo } from '../repositories/player-repo.js';
 import { requireAdmin, requireSelfOrAdmin } from '../lib/admin.js';
+import { requireContact } from '../lib/contact.js';
 
 export default async function votesRoutes(fastify) {
   const repo = VoteRepo(fastify.db);
@@ -28,6 +29,7 @@ export default async function votesRoutes(fastify) {
       throw fastify.httpErrors.badRequest('Voting is not open');
     }
     const existingPlayer = await playerRepo.getById(player_id);
+    requireContact(fastify, req, existingPlayer);
     const requesterIdRaw = req.headers['x-player-id'];
     const requesterId = requesterIdRaw ? decodeURIComponent(requesterIdRaw) : undefined;
     const lastIp = (requesterId === player_id) ? req.ip : null;
@@ -82,6 +84,7 @@ export default async function votesRoutes(fastify) {
       throw fastify.httpErrors.badRequest('Voting is not open');
     }
     const existingPlayer = await playerRepo.getById(player_id);
+    requireContact(fastify, req, existingPlayer);
     const requesterIdRaw = req.headers['x-player-id'];
     const requesterId = requesterIdRaw ? decodeURIComponent(requesterIdRaw) : undefined;
     const lastIp = (requesterId === player_id) ? req.ip : null;

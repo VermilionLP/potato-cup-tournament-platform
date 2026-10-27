@@ -155,8 +155,6 @@ export const API = {
     request(`/tournaments/${enc(tournamentId)}/custom-vote`, { method: 'DELETE', body: JSON.stringify({ player_id, topic, value }) }),
 
   // QQ group verification (player sign-in)
-  verifyQQ: (qqGroup) =>
-    request('/verify-qq', { method: 'POST', body: JSON.stringify({ qqGroup }) }),
 
   // Wiki Generation
   getWikiScript: (tournamentId) => request(`/tournaments/${enc(tournamentId)}/wiki`)

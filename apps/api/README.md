@@ -42,6 +42,8 @@ Match result reporting (`POST /tournaments/:id/matches/:matchId/result` and `/wa
 
 Admin checks fail closed: if `ADMIN_TOKEN` is missing, protected endpoints return `503` instead of allowing anonymous access. Self-service checks return `403` when the caller's `x-player-id` does not match the target.
 
+Players need a contact on their profile (QQ number or Discord user name, `lib/contact.js`) to register for an event or vote; profile saves by the player require one and both formats are checked. Admins acting for a player are exempt.
+
 Device keys (`lib/player-key.js`): the first device that uses a player ID binds a random key to it (`POST /players/:id/key`, stored as a SHA-256 hash in `player_keys`). From then on, self-service and match-result requests for that ID also need the key in `x-player-key`, else `403` with code `PLAYER_KEY_REQUIRED`. Players copy the key to another device from their profile; admins can see and reset the binding (`GET|DELETE /players/:id/key`).
 
 Write requests (not admin) are rate-limited per IP in memory (`lib/rate-limit.js`): 60 per minute, 10 per minute for key binding; over that the API answers `429` with `Retry-After`. `X-Forwarded-For` is trusted only from a local proxy unless `TRUST_PROXY` is set. Request bodies are capped at 5 MB.

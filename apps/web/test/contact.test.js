@@ -80,3 +80,14 @@ test("splitContactInput honours an explicit @ for Discord names", () => {
     discord: "123456",
   });
 });
+
+test("contact checks match the server rules", async () => {
+  const { contactInputProblem, requiredContactProblem, contactProblem } = await import("../src/lib/contact.js");
+  assert.equal(contactInputProblem("12345678"), "");
+  assert.equal(contactInputProblem("@vermilion"), "");
+  assert.match(contactInputProblem(""), /至少一个/);
+  assert.match(contactInputProblem("1234"), /QQ/);
+  assert.match(contactInputProblem("has space"), /Discord/);
+  assert.match(requiredContactProblem({ qq: "", discord: "" }), /至少一个/);
+  assert.equal(contactProblem({ qq: "", discord: "" }), "");
+});
