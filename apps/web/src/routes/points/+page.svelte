@@ -182,7 +182,7 @@
                       {#if p.team}
                         <span class="shrink-0 font-mono text-[9px] font-bold text-muted-foreground">[{p.team}]</span>
                       {/if}
-                      <span class="truncate font-semibold text-red-700 dark:text-red-400">{p.display_name}</span>
+                      <span class="truncate font-semibold text-foreground">{p.display_name}</span>
                     </div>
                   </td>
                   <td class="px-2 py-1.5 text-center font-bold text-foreground">{p.total}</td>
