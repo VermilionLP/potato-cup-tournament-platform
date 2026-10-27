@@ -303,6 +303,13 @@
   );
 
   onMount(load);
+  // Default season of new events: the current season set by the admins.
+  let defaultPointsSeason = $state("");
+  onMount(() => {
+    API.getPointsSeasons()
+      .then((res) => (defaultPointsSeason = res.current || ""))
+      .catch(() => {});
+  });
 
   async function load() {
     loading = true;
@@ -344,7 +351,7 @@
     newEventPool = "proleague";
     newPointsEnabled = true;
     newPointsTable = copyTable(POINTS_PRESETS[0].table);
-    newPointsSeason = currentSeason();
+    newPointsSeason = defaultPointsSeason || currentSeason();
     newPointsKind = "weekly";
     newPointsInvite = false;
     showCreateDialog = true;

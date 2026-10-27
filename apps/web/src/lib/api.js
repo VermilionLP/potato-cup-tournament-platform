@@ -49,6 +49,10 @@ export const API = {
 
   // Potato Cup points leaderboard (积分榜); season '' = the latest
   getPointsLeaderboard: (season) => request(`/points-leaderboard${season ? `?season=${enc(season)}` : ''}`),
+  getPointsSeasons: () => request('/points-seasons'),
+  setCurrentSeason: (season) => request('/points-seasons/current', { method: 'PUT', body: JSON.stringify({ season }) }),
+  endSeason: (season, force = false) => request(`/points-seasons/${enc(season)}/end`, { method: 'POST', body: JSON.stringify({ force }) }),
+  reopenSeason: (season) => request(`/points-seasons/${enc(season)}/reopen`, { method: 'POST', body: JSON.stringify({}) }),
 
   // Vehicle pools (one per event type)
   getVehiclePools: () => request('/vehicle-pools'),

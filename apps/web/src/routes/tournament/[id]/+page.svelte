@@ -858,9 +858,18 @@
     }
   }
 
-  function openPointsEdit() {
+  async function openPointsEdit() {
     pointsDraft = copyTable(tournament?.points_table?.length ? tournament.points_table : POINTS_PRESETS[0].table);
     pointsSeasonDraft = tournament?.points_season || currentSeason();
+    if (!tournament?.points_season) {
+      // Not on the leaderboard yet: default to the admins' current season.
+      try {
+        const res = await API.getPointsSeasons();
+        if (res.current) pointsSeasonDraft = res.current;
+      } catch {
+        // keep the calendar year
+      }
+    }
     pointsKindDraft = tournament?.points_kind === "monthly" ? "monthly" : "weekly";
     pointsInviteDraft = Boolean(tournament?.points_invite);
     editingPoints = true;

@@ -34,6 +34,18 @@ export default async function tournamentsRoutes(fastify) {
   const accountRepo = TournamentAccountRepo(fastify.db);
   const ladderRepo = LadderRepo(fastify.db);
 
+  // Seasons ended on the leaderboard are locked: their events' points
+  // cannot change and no event can join them.
+  async function endedSeason(...seasons) {
+    const list = seasons.filter(Boolean);
+    if (!list.length) return null;
+    const row = (await fastify.db.query(
+      'SELECT season FROM axsuck.points_seasons WHERE season = ANY($1::text[]) AND ended_at IS NOT NULL LIMIT 1',
+      [list],
+    )).rows[0];
+    return row?.season || null;
+  }
+
   fastify.get('/tournaments', async () => {
     return await repo.list();
   });
@@ -214,6 +226,9 @@ export default async function tournamentsRoutes(fastify) {
     if (points.table && !normalizeSeason(points_season)) {
       throw fastify.httpErrors.badRequest('请填写积分榜赛季（年份，如 2026）');
     }
+    if (points.table && await endedSeason(normalizeSeason(points_season))) {
+      throw fastify.httpErrors.badRequest(`${normalizeSeason(points_season)} 赛季已结束，不能再加入积分赛`);
+    }
     if (!id || !name) throw fastify.httpErrors.badRequest('id and name are required');
     const existing = await repo.getById(id);
     if (existing) throw fastify.httpErrors.conflict('Tournament ID already exists');
@@ -332,6 +347,10 @@ export default async function tournamentsRoutes(fastify) {
     if (!t) throw fastify.httpErrors.notFound('Tournament not found');
     if (hasInvite && !hasPoints && !t.points_table?.length) {
       throw fastify.httpErrors.badRequest('这场赛事不计入积分榜，不能设置直邀名额');
+    }
+    if (hasPoints || hasInvite) {
+      const locked = await endedSeason(t.points_season, hasPoints ? normalizeSeason(body.points_season) : null);
+      if (locked) throw fastify.httpErrors.badRequest(`${locked} 赛季已结束，积分和直邀已锁定`);
     }
 
     let updated = t;
