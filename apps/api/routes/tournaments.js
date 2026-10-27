@@ -207,6 +207,7 @@ export default async function tournamentsRoutes(fastify) {
       points_table,
       points_season,
       points_kind,
+      points_invite,
     } = req.body;
     const points = normalizePointsTable(points_table);
     if (points.error) throw fastify.httpErrors.badRequest(points.error);
@@ -274,6 +275,8 @@ export default async function tournamentsRoutes(fastify) {
       points_table: points.table,
       points_season: normalizeSeason(points_season),
       points_kind: normalizePointsKind(points_kind),
+      // Monthly events invite their champion unless told otherwise.
+      points_invite: points_invite === undefined ? normalizePointsKind(points_kind) === 'monthly' : Boolean(points_invite),
     });
   });
 
@@ -313,8 +316,9 @@ export default async function tournamentsRoutes(fastify) {
     const hasTime = body.scheduled_time !== undefined;
     const hasPool = body.vehicle_pool !== undefined;
     const hasPoints = body.points_table !== undefined;
-    if (!hasName && !hasTime && !hasPool && !hasPoints) {
-      throw fastify.httpErrors.badRequest('name, scheduled_time, vehicle_pool or points_table is required');
+    const hasInvite = body.points_invite !== undefined;
+    if (!hasName && !hasTime && !hasPool && !hasPoints && !hasInvite) {
+      throw fastify.httpErrors.badRequest('name, scheduled_time, vehicle_pool, points_table or points_invite is required');
     }
     const points = hasPoints ? normalizePointsTable(body.points_table) : null;
     if (points?.error) throw fastify.httpErrors.badRequest(points.error);
@@ -326,6 +330,9 @@ export default async function tournamentsRoutes(fastify) {
     }
     const t = await repo.getById(req.params.id);
     if (!t) throw fastify.httpErrors.notFound('Tournament not found');
+    if (hasInvite && !hasPoints && !t.points_table?.length) {
+      throw fastify.httpErrors.badRequest('这场赛事不计入积分榜，不能设置直邀名额');
+    }
 
     let updated = t;
     if (hasName) {
@@ -336,7 +343,17 @@ export default async function tournamentsRoutes(fastify) {
     }
     // Points can be set or changed at any time, finished events included.
     if (hasPoints) {
-      updated = await repo.setPoints(req.params.id, points.table, normalizeSeason(body.points_season), normalizePointsKind(body.points_kind));
+      updated = await repo.setPoints(
+        req.params.id,
+        points.table,
+        normalizeSeason(body.points_season),
+        normalizePointsKind(body.points_kind),
+        hasInvite ? Boolean(body.points_invite) : null,
+      );
+      fastify.tournamentEvents.emit(`update:${req.params.id}`, { type: 'points_changed' });
+    }
+    if (hasInvite && !hasPoints) {
+      updated = await repo.setPointsInvite(req.params.id, body.points_invite);
       fastify.tournamentEvents.emit(`update:${req.params.id}`, { type: 'points_changed' });
     }
     // The event type can be changed at any time, finished events included.

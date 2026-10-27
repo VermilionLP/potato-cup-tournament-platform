@@ -1,15 +1,17 @@
 <script>
   // Points per placing for the Potato Cup leaderboard (积分榜): the kind of
-  // event (周赛 / 月赛, which also loads its default table), the rows and the
-  // season (year). A monthly champion qualifies for the Winter Finals.
+  // event (周赛 / 月赛, which also loads its default table), the rows, the
+  // season (year) and whether the champion gets a direct Winter Finals invite.
   import { POINTS_PRESETS, copyTable, pointsTableProblem } from "$lib/points.js";
 
-  let { table = $bindable([]), season = $bindable(""), kind = $bindable("weekly"), compact = false } = $props();
+  let { table = $bindable([]), season = $bindable(""), kind = $bindable("weekly"), invite = $bindable(false), compact = false } = $props();
 
   const problem = $derived(pointsTableProblem(table, season));
   function pickKind(preset) {
     kind = preset.id;
     table = copyTable(preset.table);
+    // Monthly champions are invited by default; can be changed below.
+    invite = preset.id === "monthly";
   }
 
   function presetTitle(preset) {
@@ -71,11 +73,15 @@
     {/each}
     <button type="button" onclick={addRow} class="w-full border-t border-border/50 py-1.5 text-[11px] font-semibold text-muted-foreground hover:text-foreground cursor-pointer">+ 添加一行</button>
   </div>
+  <label class="flex items-center gap-2 text-xs text-foreground/80 cursor-pointer">
+    <input type="checkbox" bind:checked={invite} class="accent-amber-500" />
+    冠军直接获得冬季总决赛名额（直邀，冠军已有资格时顺延给亚军）
+  </label>
   {#if problem}
     <p class="text-[11px] text-amber-600 dark:text-amber-400">{problem}</p>
   {:else}
     <p class="text-[10px] text-muted-foreground">
-      选手按最终名次获得所在行的积分，计入 {season} 赛季、本赛事比赛类型的积分榜。{kind === "monthly" ? "月赛冠军直接获得冬季总决赛资格（已有资格时顺延给亚军）。" : ""}
+      选手按最终名次获得所在行的积分，计入 {season} 赛季、本赛事比赛类型的积分榜。
     </p>
   {/if}
 </div>

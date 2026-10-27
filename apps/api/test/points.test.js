@@ -54,17 +54,19 @@ test('Liquipedia prize pools', () => {
   assert.equal(parsePrizePoolPoints('no prize pool'), null);
 });
 
-test('Winter Finals: monthly champions first, then the points ranking', () => {
+test('Winter Finals: invited champions first, then the points ranking', () => {
   assert.equal(normalizePointsKind('monthly'), 'monthly');
   assert.equal(normalizePointsKind('x'), 'weekly');
   const players = ['p1', 'p2', 'p3', 'p4', 'p5', 'p6'].map((id, i) => ({ player_id: id, total: 100 - i * 10 }));
-  // a won two monthlies: the second place passes to that event's runner-up b.
-  const monthlies = [{ id: 'm1', order: ['a', 'x'] }, { id: 'm2', order: ['a', 'b', 'c'] }, { id: 'm3', order: ['p1', 'p2'] }];
-  const q = finalsQualifiers(players, monthlies, { spots: 6, monthlySpots: 3 });
-  assert.deepEqual(Object.fromEntries([...q].map(([id, v]) => [id, v.via === 'monthly' ? v.event_id : 'points'])), {
+  // a won two invite events: the second invite passes to that event's runner-up b.
+  const invites = [{ id: 'm1', order: ['a', 'x'] }, { id: 'm2', order: ['a', 'b', 'c'] }, { id: 'm3', order: ['p1', 'p2'] }];
+  const q = finalsQualifiers(players, invites, { spots: 6 });
+  assert.deepEqual(Object.fromEntries([...q].map(([id, v]) => [id, v.via === 'invite' ? v.event_id : 'points'])), {
     a: 'm1', b: 'm2', p1: 'm3', p2: 'points', p3: 'points', p4: 'points',
   });
-  // Only the remaining spots go by points; players without points never qualify that way.
-  const few = finalsQualifiers([{ player_id: 'z', total: 0 }], [], { spots: 2, monthlySpots: 1 });
-  assert.equal(few.size, 0);
+  // An unfinished invite event keeps its place reserved.
+  const reserved = finalsQualifiers(players, [{ id: 'later', order: null }], { spots: 3 });
+  assert.deepEqual([...reserved.keys()], ['p1', 'p2']);
+  // Players without points never qualify by points.
+  assert.equal(finalsQualifiers([{ player_id: 'z', total: 0 }], [], { spots: 2 }).size, 0);
 });

@@ -13,7 +13,9 @@
   import AwardIcon from "@lucide/svelte/icons/award";
   import SearchIcon from "@lucide/svelte/icons/search";
 
+  let isAdmin = $derived(!!userState.adminToken);
   let data = $state(null);
+  let savingInvite = $state("");
   let loading = $state(true);
   let pool = $state("");
   let query = $state("");
@@ -62,6 +64,20 @@
     syncUrl();
   }
 
+  // Admins choose which events' champions get a direct Winter Finals invite.
+  async function toggleInvite(ev) {
+    savingInvite = ev.id;
+    try {
+      await API.updateTournament(ev.id, { points_invite: !ev.invite });
+      await load(data?.season || "");
+      toast.success(ev.invite ? `已取消 ${shortName(ev.name)} 的直邀名额` : `${shortName(ev.name)} 的冠军将直接获得名额`);
+    } catch (e) {
+      toast.error(e.message);
+    } finally {
+      savingInvite = "";
+    }
+  }
+
   function pickPool(id) {
     pool = id;
     syncUrl();
@@ -75,7 +91,7 @@
       土豆杯积分榜
     </h1>
     <p class="text-xs text-muted-foreground">
-      计入积分榜的周赛和月赛按最终名次给分，每个赛季按比赛类型分别排名。冬季总决赛每个类型 16 人：4 场月赛的冠军直接晋级（冠军已有资格时顺延给亚军），其余 12 个名额按积分排名。积分在赛事设置中定义，赛事结束后计入。
+      计入积分榜的周赛和月赛按最终名次给分，每个赛季按比赛类型分别排名。冬季总决赛每个类型 16 人：管理员指定的直邀赛事冠军直接晋级（冠军已有资格时顺延给亚军），其余名额按积分排名。积分在赛事设置中定义，赛事结束后计入。
     </p>
   </div>
 
@@ -144,7 +160,7 @@
                 {#each board.events as ev (ev.id)}
                   <th class="px-2 py-2.5 text-center font-semibold normal-case tracking-normal whitespace-nowrap">
                     <a href="/tournament/{encodeURIComponent(ev.id)}" class="hover:text-primary" title={ev.name}>{shortName(ev.name)}</a>
-                    {#if ev.kind === "monthly"}<span class="ml-0.5 text-[9px] font-bold text-amber-500" title="月赛">月</span>{/if}
+                    {#if ev.invite}<span class="ml-0.5 text-[9px] font-bold text-amber-500" title="冠军直邀冬季总决赛">邀</span>{/if}
                   </th>
                 {/each}
               </tr>
@@ -164,9 +180,9 @@
                   </td>
                   <td class="px-3 py-2 text-center font-mono text-sm font-black text-foreground">{p.total}</td>
                   <td class="px-3 py-2 whitespace-nowrap">
-                    {#if p.finals?.via === "monthly"}
-                      <span class="rounded border border-amber-500/30 bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-bold text-amber-600 dark:text-amber-400" title="月赛冠军直通">
-                        月赛 · {shortName(board.events.find((e) => e.id === p.finals.event_id)?.name)}
+                    {#if p.finals?.via === "invite"}
+                      <span class="rounded border border-amber-500/30 bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-bold text-amber-600 dark:text-amber-400" title="直邀名额">
+                        直邀 · {shortName(board.events.find((e) => e.id === p.finals.event_id)?.name)}
                       </span>
                     {:else if p.finals?.via === "points"}
                       <span class="rounded border border-emerald-500/30 bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">积分</span>
@@ -186,9 +202,35 @@
             </tbody>
           </table>
         </div>
-        <p class="border-t border-border/50 px-4 py-2 text-[10px] text-muted-foreground">
-          「月赛」为月赛冠军直通名额（已举行 {board.finals.monthly_held}/{board.finals.monthly_spots} 场月赛），「积分」为按积分排名的 {board.finals.spots - board.finals.monthly_spots} 个名额，随赛季进行变化。同分并列同一名次。
-        </p>
+        <div class="space-y-2 border-t border-border/50 px-4 py-3">
+          <div class="text-[11px] font-bold text-foreground">
+            直邀名额 {board.finals.invites.length} 个 · 积分名额 {board.finals.points_spots} 个
+          </div>
+          {#if isAdmin}
+            <p class="text-[10px] text-muted-foreground">勾选的赛事，冠军直接获得冬季总决赛名额；随时可以更改。</p>
+            <div class="flex flex-wrap gap-1.5">
+              {#each board.events as ev (ev.id)}
+                <label class="inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px] cursor-pointer
+                  {ev.invite ? 'border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300' : 'border-border text-muted-foreground hover:text-foreground'}">
+                  <input type="checkbox" class="accent-amber-500" checked={ev.invite} disabled={!!savingInvite} onchange={() => toggleInvite(ev)} />
+                  {shortName(ev.name)}
+                </label>
+              {/each}
+            </div>
+            {#if board.finals.invites.some((i) => !i.finished)}
+              <p class="text-[10px] text-muted-foreground">
+                还没结束的直邀赛事（名额已预留）：{board.finals.invites.filter((i) => !i.finished).map((i) => shortName(i.name)).join("、")}；可在赛事页的积分设置里更改。
+              </p>
+            {/if}
+          {:else if board.finals.invites.length}
+            <p class="text-[10px] text-muted-foreground">
+              直邀赛事：{board.finals.invites.map((i) => shortName(i.name) + (i.finished ? "" : "（未结束）")).join("、")}
+            </p>
+          {/if}
+          <p class="text-[10px] text-muted-foreground">
+            「直邀」为指定赛事冠军的名额（冠军已有资格时顺延给亚军），「积分」为按积分排名的名额，随赛季进行变化。同分并列同一名次。
+          </p>
+        </div>
       </div>
     {/if}
   {/if}

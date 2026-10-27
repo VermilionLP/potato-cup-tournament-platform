@@ -4,14 +4,14 @@
 import { getPlayerDisplayName } from '../repositories/player-repo.js';
 import { VEHICLE_POOLS } from '../lib/tournament-config.js';
 import { eventPlacements } from '../lib/placements.js';
-import { buildBoard, finalsQualifiers, FINALS_SPOTS, MONTHLY_SPOTS, normalizeSeason, pointsFor } from '../lib/points.js';
+import { buildBoard, finalsQualifiers, FINALS_SPOTS, normalizeSeason, pointsFor } from '../lib/points.js';
 
 export default async function pointsRoutes(fastify) {
   const db = fastify.db;
 
   fastify.get('/points-leaderboard', async (req) => {
     const events = (await db.query(`
-      SELECT id, name, status, format, playoff_format, swiss_rounds, swiss_group_size, advance_per_group, vehicle_pool, points_table, points_season, points_kind,
+      SELECT id, name, status, format, playoff_format, swiss_rounds, swiss_group_size, advance_per_group, vehicle_pool, points_table, points_season, points_kind, points_invite,
              COALESCE(played_at, created_at) AS played_at, scheduled_time
       FROM axsuck.tournaments
       WHERE points_table IS NOT NULL AND points_season IS NOT NULL
@@ -58,12 +58,21 @@ export default async function pointsRoutes(fastify) {
         const evs = scored.filter((e) => e.vehicle_pool === pool);
         if (!evs.length) return null;
         const ranked = buildBoard(evs);
-        const monthlies = evs.filter((e) => e.points_kind === 'monthly');
-        const qualified = finalsQualifiers(ranked, monthlies);
+        // Invite events of this board, unfinished ones included (their place
+        // is reserved), in date order.
+        const invites = events
+          .filter((e) => e.points_season === season && e.vehicle_pool === pool && e.points_invite)
+          .sort((a, b) => new Date(a.played_at) - new Date(b.played_at) || a.id.localeCompare(b.id))
+          .map((e) => ({ id: e.id, name: e.name, finished: e.status === 'completed', order: evs.find((x) => x.id === e.id)?.order || null }));
+        const qualified = finalsQualifiers(ranked, invites);
         return {
           pool,
-          events: evs.map((e) => ({ id: e.id, name: e.name, played_at: e.played_at, kind: e.points_kind || 'weekly' })),
-          finals: { spots: FINALS_SPOTS, monthly_spots: MONTHLY_SPOTS, monthly_held: Math.min(monthlies.length, MONTHLY_SPOTS) },
+          events: evs.map((e) => ({ id: e.id, name: e.name, played_at: e.played_at, kind: e.points_kind || 'weekly', invite: Boolean(e.points_invite) })),
+          finals: {
+            spots: FINALS_SPOTS,
+            invites: invites.map(({ id, name, finished }) => ({ id, name, finished })),
+            points_spots: Math.max(0, FINALS_SPOTS - invites.length),
+          },
           players: ranked.map((p) => {
             const meta = playerMeta.get(p.player_id) || { id: p.player_id };
             return {

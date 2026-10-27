@@ -141,6 +141,7 @@
   let pointsDraft = $state([]);
   let pointsSeasonDraft = $state("");
   let pointsKindDraft = $state("weekly");
+  let pointsInviteDraft = $state(false);
   let savingPoints = $state(false);
   let hasPoints = $derived(Boolean(tournament?.points_table?.length));
   let swissRoundsLabel = $derived(
@@ -861,6 +862,7 @@
     pointsDraft = copyTable(tournament?.points_table?.length ? tournament.points_table : POINTS_PRESETS[0].table);
     pointsSeasonDraft = tournament?.points_season || currentSeason();
     pointsKindDraft = tournament?.points_kind === "monthly" ? "monthly" : "weekly";
+    pointsInviteDraft = Boolean(tournament?.points_invite);
     editingPoints = true;
   }
 
@@ -874,7 +876,7 @@
     try {
       await API.updateTournament(tid, clear
         ? { points_table: null }
-        : { points_table: cleanTable(pointsDraft), points_season: pointsSeasonDraft.trim(), points_kind: pointsKindDraft });
+        : { points_table: cleanTable(pointsDraft), points_season: pointsSeasonDraft.trim(), points_kind: pointsKindDraft, points_invite: pointsInviteDraft });
       // Reload: awarded points are computed with the event.
       await load();
       editingPoints = false;
@@ -3119,7 +3121,7 @@
             ? `小组赛 ${hasGroupBrackets ? `${groupFormatLabel}淘汰` : swissRoundsLabel}（${tournament.swiss_group_size ? `每组 ${tournament.swiss_group_size} 人` : "不分组"}，每组前 ${tournament.advance_per_group} 名晋级）→ ${tournament.playoff_format === "double_elim" ? "双败" : "单败"}淘汰赛`
             : isSwiss ? `积分制 · ${swissRoundsLabel}` : advancementLabel(tournament.loser_advances)}</span>
           {#if hasPoints}
-            • 年度积分榜: <a href="/points?season={tournament.points_season}&pool={tournament.vehicle_pool}" class="font-bold text-primary hover:underline">{tournament.points_season} 赛季 · {tournament.points_kind === "monthly" ? "月赛" : "周赛"}</a>
+            • 年度积分榜: <a href="/points?season={tournament.points_season}&pool={tournament.vehicle_pool}" class="font-bold text-primary hover:underline">{tournament.points_season} 赛季 · {tournament.points_kind === "monthly" ? "月赛" : "周赛"}{tournament.points_invite ? " · 冠军直邀" : ""}</a>
           {/if}
           {#if isAdmin}
             <button type="button" onclick={() => (editingPoints ? (editingPoints = false) : openPointsEdit())} class="ml-1 text-[11px] font-semibold text-primary hover:underline cursor-pointer">
@@ -3130,7 +3132,7 @@
         {#if isAdmin && editingPoints}
           <div class="mt-3 max-w-xl space-y-2 rounded-xl border border-border bg-card/60 p-3">
             <div class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">年度积分榜设置</div>
-            <PointsEditor bind:table={pointsDraft} bind:season={pointsSeasonDraft} bind:kind={pointsKindDraft} compact />
+            <PointsEditor bind:table={pointsDraft} bind:season={pointsSeasonDraft} bind:kind={pointsKindDraft} bind:invite={pointsInviteDraft} compact />
             <div class="flex flex-wrap items-center gap-2">
               <Button size="sm" class="h-8 text-xs cursor-pointer" disabled={savingPoints} onclick={() => savePoints(false)}>保存积分</Button>
               {#if hasPoints}
