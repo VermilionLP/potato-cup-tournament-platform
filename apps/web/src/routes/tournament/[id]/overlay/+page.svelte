@@ -450,15 +450,33 @@
   const GROUP_CARD_W = 520;
   let groupScale = $derived.by(() => {
     if (!swissGroups.length) return 1;
-    const rowsPerCard = Math.max(...swissGroups.map((g) => g.matches.length * 2.3 + g.rows.length + 3));
+    const rowsPerCard = Math.max(...swissGroups.map((g) => g.matches.length * 2.3 + 2));
     const cardH = rowsPerCard * 26;
     const height = Math.ceil(swissGroups.length / groupColumns) * (cardH + 16);
     const width = groupColumns * (GROUP_CARD_W + 16);
     return Math.min(1.35, 840 / height, 1400 / width);
   });
 
-  // Swiss standings for the side of the stage board (single pool only;
-  // grouped Swiss shows each table in its group card).
+  // Grouped Swiss: the side table shows one group at a time - the group of
+  // the live match, else of the next match; when neither exists the groups
+  // take turns every 8 seconds.
+  let groupTick = $state(0);
+  $effect(() => {
+    if (swissGroups.length < 2) return;
+    const timer = setInterval(() => (groupTick += 1), 8000);
+    return () => clearInterval(timer);
+  });
+  let focusGroup = $derived.by(() => {
+    if (!swissGroups.length) return null;
+    const live = (stageMatches || []).find((m) => m.id === tournament?.active_match_id && m.bracket === "sw");
+    const anchor = live || nextMatch;
+    const index = anchor?.swiss_group ? Number(anchor.swiss_group) - 1 : -1;
+    if (index >= 0 && index < swissGroups.length) return swissGroups[index];
+    return swissGroups[groupTick % swissGroups.length];
+  });
+
+  // Swiss standings for the side of the stage board (single pool; grouped
+  // Swiss uses focusGroup instead).
   let swissTable = $derived.by(() => {
     if (!isSwiss || swissGroups.length) return [];
     if (tournament?.standings?.length) return tournament.standings.slice(0, 16);
@@ -1482,12 +1500,13 @@
               style="grid-template-columns: repeat({groupColumns}, {GROUP_CARD_W}px); transform: scale({groupScale}); transform-origin: center center;"
             >
               {#each swissGroups as g (g.label)}
-                <div class="rounded-2xl border border-cyan-500/25 bg-slate-950/80 p-4 shadow-2xl">
+                <div class="rounded-2xl border-2 bg-slate-950/80 p-4 shadow-2xl transition-colors duration-500
+                  {focusGroup?.label === g.label ? 'border-amber-500/70' : 'border-cyan-500/20'}">
                   <div class="flex items-baseline justify-between border-b-2 border-cyan-500/20 pb-1.5 mb-3">
                     <span class="text-lg font-black font-orbitron tracking-wider text-white">GROUP {g.label}</span>
                     <span class="text-xs font-bold text-amber-400">{selectedStage.label}</span>
                   </div>
-                  <div class="flex flex-col gap-2 mb-3">
+                  <div class="flex flex-col gap-2">
                     {#each g.matches as m (m.id)}
                       {@const done = m.status === "completed" || m.status === "walkover"}
                       {@const live = m.id === tournament.active_match_id}
@@ -1512,17 +1531,6 @@
                       </div>
                     {:else}
                       <div class="text-xs italic text-slate-500">本轮无对局</div>
-                    {/each}
-                  </div>
-                  <div class="space-y-0.5">
-                    {#each g.rows as row, i (row.player_id)}
-                      {@const through = g.perGroup && (row.rank ?? i + 1) <= g.perGroup}
-                      <div class="flex items-center gap-2 rounded px-1.5 py-0.5 text-sm {through ? 'bg-cyan-500/10' : ''}">
-                        <span class="w-5 text-right font-mono text-xs {through ? 'text-cyan-400' : 'text-slate-500'}">{row.rank ?? i + 1}</span>
-                        <Flag code={playerMap.get(row.player_id)?.flag} size={18} />
-                        <span class="flex-1 truncate font-bold text-white">{getPlayerName(row.player_id)}</span>
-                        <span class="font-orbitron text-cyan-400 shrink-0">{row.wins ?? 0}-{row.losses ?? 0}</span>
-                      </div>
                     {/each}
                   </div>
                 </div>
@@ -1679,7 +1687,27 @@
                 ></div>
               </div>
             </div>
-            {#if swissTable.length}
+            {#if focusGroup}
+              <div class="rounded-2xl border border-amber-500/40 bg-slate-950/80 p-4 shadow-2xl backdrop-blur">
+                <div class="flex items-center justify-between mb-2">
+                  <span class="text-[10px] font-mono font-bold tracking-[0.2em] text-cyan-400 uppercase">STANDINGS</span>
+                  <span class="text-xs font-black font-orbitron tracking-wider text-amber-400">GROUP {focusGroup.label}</span>
+                </div>
+                {#key focusGroup.label}
+                  <div class="space-y-1" in:fade={{ duration: 300 }}>
+                    {#each focusGroup.rows as row, i (row.player_id)}
+                      {@const through = focusGroup.perGroup && (row.rank ?? i + 1) <= focusGroup.perGroup}
+                      <div class="flex items-center gap-2 rounded px-1 py-0.5 text-xs {through ? 'bg-cyan-500/10' : ''}">
+                        <span class="w-5 text-right font-mono {through ? 'text-cyan-400' : 'text-slate-500'}">{row.rank ?? i + 1}</span>
+                        <Flag code={playerMap.get(row.player_id)?.flag} size={16} />
+                        <span class="flex-1 truncate font-bold text-white">{getPlayerName(row.player_id)}</span>
+                        <span class="font-orbitron text-cyan-400 shrink-0">{row.wins ?? 0}-{row.losses ?? 0}</span>
+                      </div>
+                    {/each}
+                  </div>
+                {/key}
+              </div>
+            {:else if swissTable.length}
               <div class="rounded-2xl border border-cyan-500/25 bg-slate-950/80 p-4 shadow-2xl backdrop-blur">
                 <div class="text-[10px] font-mono font-bold tracking-[0.2em] text-cyan-400 uppercase mb-2">STANDINGS</div>
                 <div class="space-y-1">
