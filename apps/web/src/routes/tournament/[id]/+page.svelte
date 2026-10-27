@@ -35,6 +35,7 @@
   import { canConfirm, confirmResult, initialBanPick, poolVehicles } from "$lib/banpick.js";
   import { defaultVehiclePools } from "$lib/data/vehiclePools.js";
   import { mergePools } from "$lib/vehicle-pools.js";
+  import { copyText } from "$lib/clipboard.js";
   import { overlayStages, pickStage } from "$lib/overlay.js";
   import PointsEditor from "$lib/components/PointsEditor.svelte";
   import { POINTS_PRESETS, cleanTable, copyTable, currentSeason, pointsTableProblem } from "$lib/points.js";
@@ -1274,8 +1275,9 @@
 
   function copyWikiToClipboard() {
     if (!generatedWikiText) return;
-    navigator.clipboard.writeText(generatedWikiText);
-    toast.success("Wiki 代码已成功复制到剪贴板！");
+    copyText(generatedWikiText).then((ok) =>
+      ok ? toast.success("Wiki 代码已成功复制到剪贴板！") : toast.error("复制失败，请手动选中后复制"),
+    );
   }
 
   function downstreamMatches(match) {
@@ -2445,8 +2447,9 @@
                   size="icon-xs"
                   class="h-7 w-7 cursor-pointer shrink-0 bg-primary text-black hover:bg-primary/90"
                   onclick={() => {
-                    navigator.clipboard.writeText(window.location.origin + `/tournament/${tid}/overlay`);
-                    toast.success("已复制全自动智能直播源链接");
+                    copyText(window.location.origin + `/tournament/${tid}/overlay`).then((ok) =>
+                      ok ? toast.success("已复制全自动智能直播源链接") : toast.error("复制失败，请手动选中链接复制"),
+                    );
                   }}
                 >
                   <CopyIcon class="w-3.5 h-3.5" />
@@ -2486,8 +2489,9 @@
                   variant="outline"
                   class="h-7 w-7 cursor-pointer shrink-0"
                   onclick={() => {
-                    navigator.clipboard.writeText(window.location.origin + `/tournament/${tid}/overlay?scene=intro${obsIntroStage ? `&stage=${obsIntroStage}` : ""}`);
-                    toast.success("已复制开场对阵链接");
+                    copyText(window.location.origin + `/tournament/${tid}/overlay?scene=intro${obsIntroStage ? `&stage=${obsIntroStage}` : ""}`).then((ok) =>
+                      ok ? toast.success("已复制开场对阵链接") : toast.error("复制失败，请手动选中链接复制"),
+                    );
                   }}
                 >
                   <CopyIcon class="w-3.5 h-3.5" />
@@ -2509,8 +2513,9 @@
                   variant="outline"
                   class="h-7 w-7 cursor-pointer shrink-0"
                   onclick={() => {
-                    navigator.clipboard.writeText(window.location.origin + `/tournament/${tid}/overlay?scene=ingame`);
-                    toast.success("已复制游戏内 HUD 链接");
+                    copyText(window.location.origin + `/tournament/${tid}/overlay?scene=ingame`).then((ok) =>
+                      ok ? toast.success("已复制游戏内 HUD 链接") : toast.error("复制失败，请手动选中链接复制"),
+                    );
                   }}
                 >
                   <CopyIcon class="w-3.5 h-3.5" />
@@ -2532,8 +2537,9 @@
                   variant="outline"
                   class="h-7 w-7 cursor-pointer shrink-0"
                   onclick={() => {
-                    navigator.clipboard.writeText(window.location.origin + `/tournament/${tid}/overlay?scene=intermission`);
-                    toast.success("已复制场间 Coming Up 链接");
+                    copyText(window.location.origin + `/tournament/${tid}/overlay?scene=intermission`).then((ok) =>
+                      ok ? toast.success("已复制场间 Coming Up 链接") : toast.error("复制失败，请手动选中链接复制"),
+                    );
                   }}
                 >
                   <CopyIcon class="w-3.5 h-3.5" />

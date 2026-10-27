@@ -4,6 +4,8 @@
 // the English. Generated from the source, then translated; add new UI text
 // here when it is introduced.
 export default {
+  "复制失败，请手动选中链接复制": "Couldn't copy; select the link and copy it by hand",
+  "复制失败，请手动选中后复制": "Couldn't copy; select the text and copy it by hand",
   "大屏展示轮次已更改为: {0}": "Overlay stage changed to {0}",
   "当前轮次（自动）": "Current round (auto)",
   "{0:n} 赛季 · 当前": "{0} season · current",
