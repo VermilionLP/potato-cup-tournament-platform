@@ -1,5 +1,16 @@
 import { LadderRepo } from '../repositories/ladder-repo.js';
 import { ACTIVE_DAYS, BASE_MMR, PROVISIONAL_GAMES } from '../lib/ladder.js';
+import { GAME_MODES, VEHICLE_POOLS } from '../lib/tournament-config.js';
+
+// Division: game mode and/or event type; '' = all.
+function parseDivision(query) {
+  const mode = String(query.mode || '').toLowerCase();
+  const pool = String(query.pool || '').toLowerCase();
+  return {
+    mode: GAME_MODES.includes(mode) ? mode : '',
+    pool: VEHICLE_POOLS.includes(pool) ? pool : '',
+  };
+}
 
 function parseActiveDays(raw) {
   if (raw == null || raw === '') return ACTIVE_DAYS;
@@ -26,20 +37,27 @@ export default async function ladderRoutes(fastify) {
     const activeDays = parseActiveDays(req.query.days);
     const includeInactive = parseIncludeInactive(req.query.include_inactive);
     const window = parseWindow(req.query.window);
-    const players = await repo.leaderboard({ activeDays, includeInactive, window });
+    const { mode, pool } = parseDivision(req.query);
+    const players = await repo.leaderboard({ activeDays, includeInactive, window, mode, pool });
     return {
       base_mmr: BASE_MMR,
       provisional_games: PROVISIONAL_GAMES,
       active_days: activeDays,
       include_inactive: includeInactive,
       window,
+      mode,
+      pool,
       players
     };
   });
 
   fastify.get('/ladder/players/:id', async (req) => {
     const activeDays = parseActiveDays(req.query.days);
-    const player = await repo.playerDetail(req.params.id, { activeDays, window: parseWindow(req.query.window) });
+    const player = await repo.playerDetail(req.params.id, {
+      activeDays,
+      window: parseWindow(req.query.window),
+      ...parseDivision(req.query),
+    });
     if (!player) throw fastify.httpErrors.notFound('Player has no ladder games');
     return player;
   });

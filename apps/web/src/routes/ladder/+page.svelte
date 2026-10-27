@@ -15,6 +15,9 @@
   import { formatWinRate, daysAgo } from "$lib/ladder.js";
   import TierBadge from "$lib/components/TierBadge.svelte";
   import Flag from "$lib/components/Flag.svelte";
+  import { page } from "$app/stores";
+  import { replaceState } from "$app/navigation";
+  import { GAME_MODES, VEHICLE_POOLS } from "$lib/tournament.js";
 
   let data = $state(null);
   let loading = $state(true);
@@ -23,6 +26,15 @@
   let includeInactive = $state(false);
   // "all" = every recorded game; "year" = ratings from the last 365 days only.
   let ladderWindow = $state("all");
+  // Division: game mode and event type ("" = all), e.g. AB 螺旋桨. Kept in
+  // the URL (?mode=ab&pool=prop) so a division can be linked.
+  let ladderMode = $state("");
+  let ladderPool = $state("");
+  let divisionLabel = $derived(
+    [GAME_MODES.find((m) => m.id === ladderMode)?.code, VEHICLE_POOLS.find((p) => p.id === ladderPool)?.name]
+      .filter(Boolean)
+      .join(" "),
+  );
   let chartMode = $state("time");
   let selected = $state(null);
   let detail = $state(null);
@@ -50,13 +62,35 @@
 
   let topPlayer = $derived(data?.players?.[0] || null);
 
-  onMount(load);
+  onMount(() => {
+    const params = $page.url.searchParams;
+    const mode = params.get("mode") || "";
+    const pool = params.get("pool") || "";
+    if (GAME_MODES.some((m) => m.id === mode)) ladderMode = mode;
+    if (VEHICLE_POOLS.some((p) => p.id === pool)) ladderPool = pool;
+    load();
+  });
+
+  async function setDivision(mode, pool) {
+    if (mode === ladderMode && pool === ladderPool) return;
+    ladderMode = mode;
+    ladderPool = pool;
+    const url = new URL($page.url);
+    for (const [key, value] of [["mode", mode], ["pool", pool]]) {
+      if (value) url.searchParams.set(key, value);
+      else url.searchParams.delete(key);
+    }
+    replaceState(url, {});
+    selected = null;
+    detail = null;
+    await load();
+  }
 
   async function load() {
     loading = true;
     errorMsg = "";
     try {
-      data = await API.getLadder({ includeInactive, window: ladderWindow });
+      data = await API.getLadder({ includeInactive, window: ladderWindow, mode: ladderMode, pool: ladderPool });
       if (selected && !data?.players?.some((p) => p.id === selected.id)) {
         selected = null;
         detail = null;
@@ -93,7 +127,7 @@
     detail = null;
     detailLoading = true;
     try {
-      detail = await API.getLadderPlayer(player.id, { window: ladderWindow });
+      detail = await API.getLadderPlayer(player.id, { window: ladderWindow, mode: ladderMode, pool: ladderPool });
     } catch (e) {
       toast.error("加载选手天梯记录失败: " + e.message);
     } finally {
@@ -107,12 +141,49 @@
     <div class="flex items-center gap-2">
       <TrendingUpIcon class="w-6 h-6 text-primary" />
       <h1 class="text-2xl font-extrabold tracking-tight">天梯 MMR</h1>
+      {#if divisionLabel}
+        <Badge variant="outline" class="text-xs font-bold border-primary/40 text-primary">{divisionLabel}</Badge>
+      {/if}
     </div>
     <p class="text-xs text-muted-foreground">
       所有已完成的赛事对局按比赛日期顺序用 Elo 计算；初始
       MMR 3000。选“最近一年”时只用近 365 天的对局从 3000 重新计算。默认只显示近 {data?.active_days || 365} 天有对局的选手；分数不重置，
       回归后沿用原分。种子默认按这里的 MMR 自动排序。
     </p>
+    <p class="text-xs text-muted-foreground">
+      选择模式和比赛类型可以查看单独计算的分榜（如 AB 螺旋桨），只用该组合的对局从 3000 开始算。分榜只列出在该组合打过对局的选手。赛事自动排种子时按该赛事的模式和比赛类型分榜排序，没有该组合对局的选手排在最后。
+    </p>
+    <!-- Division picker: game mode × event type -->
+    <div class="flex flex-wrap items-center gap-2 pt-1">
+      <div class="inline-flex rounded-lg border border-border bg-muted/30 p-0.5 text-[11px]" role="group" aria-label="模式">
+        {#each [{ id: "", label: "全部模式" }, ...GAME_MODES.map((m) => ({ id: m.id, label: m.code }))] as opt (opt.id)}
+          <button
+            type="button"
+            class="px-2.5 py-1 rounded-md transition-colors cursor-pointer {ladderMode === opt.id
+              ? 'bg-background text-foreground shadow-sm font-semibold'
+              : 'text-muted-foreground hover:text-foreground'}"
+            aria-pressed={ladderMode === opt.id}
+            onclick={() => setDivision(opt.id, ladderPool)}
+          >
+            {opt.label}
+          </button>
+        {/each}
+      </div>
+      <div class="inline-flex flex-wrap rounded-lg border border-border bg-muted/30 p-0.5 text-[11px]" role="group" aria-label="比赛类型">
+        {#each [{ id: "", label: "全部类型" }, ...VEHICLE_POOLS.map((p) => ({ id: p.id, label: p.name }))] as opt (opt.id)}
+          <button
+            type="button"
+            class="px-2.5 py-1 rounded-md transition-colors cursor-pointer {ladderPool === opt.id
+              ? 'bg-background text-foreground shadow-sm font-semibold'
+              : 'text-muted-foreground hover:text-foreground'}"
+            aria-pressed={ladderPool === opt.id}
+            onclick={() => setDivision(ladderMode, opt.id)}
+          >
+            {opt.label}
+          </button>
+        {/each}
+      </div>
+    </div>
   </div>
 
   {#if loading}

@@ -146,12 +146,14 @@ export default async function tournamentsRoutes(fastify) {
       tournament_accounts: accountsByPlayer[p.id] || []
     }));
 
-    const ladder = await ladderRepo.getRatings();
+    // MMR of the event's division (game mode + event type), the same ratings
+    // automatic seeding uses; players with no games there are unrated.
+    const ladder = await ladderRepo.eventRatings(t);
     const playersWithLadder = playersWithRace.map(p => {
-      const l = ladder.byId.get(p.id);
+      const l = ladder.ratingOf(p.id);
       return {
         ...p,
-        ladder_mmr: l?.mmr ?? 3000,
+        ladder_mmr: l?.mmr ?? null,
         ladder_games: l?.games ?? 0,
         ladder_provisional: l ? l.provisional : true,
         ladder_active: l

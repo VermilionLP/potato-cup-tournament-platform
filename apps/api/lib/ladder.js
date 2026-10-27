@@ -310,3 +310,13 @@ export function randomizeSeedOrder(
   }
   return result;
 }
+
+/**
+ * A ladder division: game mode (ab / rb / sb) and/or event type (prop /
+ * legacy-jet / proleague). Empty = all. Each division is rated on its own
+ * games from scratch, e.g. { mode: 'ab', pool: 'prop' } = AB 螺旋桨.
+ */
+export function filterGamesByDivision(games = [], { mode = '', pool = '' } = {}) {
+  if (!mode && !pool) return games;
+  return games.filter((g) => (!mode || (g.game_mode || 'rb') === mode) && (!pool || g.vehicle_pool === pool));
+}

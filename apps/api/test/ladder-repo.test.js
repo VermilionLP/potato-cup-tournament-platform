@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { LadderRepo } from "../repositories/ladder-repo.js";
 
-function makeDb({ games, players, registrations }) {
+function makeDb({ games, players, registrations, event = { game_mode: "rb", vehicle_pool: "prop" } }) {
   const seedWrites = [];
   const modeWrites = [];
 
@@ -16,6 +16,9 @@ function makeDb({ games, players, registrations }) {
     }
     if (text.startsWith("SELECT") && text.includes("FROM axsuck.tournament_players tp")) {
       return { rows: registrations };
+    }
+    if (text.startsWith("SELECT game_mode, vehicle_pool FROM axsuck.tournaments")) {
+      return { rows: [event] };
     }
     if (text.startsWith("UPDATE axsuck.tournament_players SET seed = NULL")) {
       return { rows: [] };
@@ -157,4 +160,31 @@ test("autoSeeds writes 1..N seeds and switches the tournament to auto", async ()
     [4, "t1", "p4"],
   ]);
   assert.deepEqual(modeWrites, [["auto", "t1"]]);
+});
+
+test("divisions are rated on their own games; seeds use only the event's division", async () => {
+  // p1 beats everyone in RB prop; p3 beats p1 twice in AB jets.
+  const division = [
+    { id: 11, tournament_id: "a", player1_id: "p1", player2_id: "p2", score1: 2, score2: 0, game_mode: "rb", vehicle_pool: "prop", played_at: "2026-01-01T20:00:00Z" },
+    { id: 12, tournament_id: "a", player1_id: "p1", player2_id: "p3", score1: 2, score2: 0, game_mode: "rb", vehicle_pool: "prop", played_at: "2026-01-01T21:00:00Z" },
+    { id: 13, tournament_id: "b", player1_id: "p3", player2_id: "p1", score1: 2, score2: 0, game_mode: "ab", vehicle_pool: "legacy-jet", played_at: "2026-01-02T20:00:00Z" },
+    { id: 14, tournament_id: "b", player1_id: "p3", player2_id: "p1", score1: 2, score2: 0, game_mode: "ab", vehicle_pool: "legacy-jet", played_at: "2026-01-02T21:00:00Z" },
+    { id: 15, tournament_id: "b", player1_id: "p3", player2_id: "p4", score1: 2, score2: 0, game_mode: "ab", vehicle_pool: "legacy-jet", played_at: "2026-01-02T22:00:00Z" },
+  ];
+  const regs = ["p1", "p3", "p4"].map((id) => ({ id, seed: null, registered_at: "2026-01-03T00:00:00Z", flag: "cn", team: "" }));
+  const ab = makeDb({ games: division, players, registrations: regs, event: { game_mode: "ab", vehicle_pool: "legacy-jet" } });
+  const abBoard = await LadderRepo(ab.db).leaderboard({ includeInactive: true, mode: "ab", pool: "legacy-jet" });
+  assert.deepEqual(Object.fromEntries(abBoard.map((p) => [p.id, p.games])), { p3: 3, p1: 2, p4: 1 });
+  assert.equal(abBoard[0].id, "p3");
+  assert.equal(abBoard.find((p) => p.id === "p2"), undefined, "p2 has no AB Legacy Jet games");
+  const rbBoard = await LadderRepo(ab.db).leaderboard({ includeInactive: true, mode: "rb", pool: "prop" });
+  assert.equal(rbBoard[0].id, "p1");
+  assert.deepEqual((await LadderRepo(ab.db).leaderboard({ includeInactive: true, pool: "prop" })).map((p) => p.id).sort(), ["p1", "p2", "p3"]);
+
+  // AB Legacy Jet event: p3 first (division MMR).
+  assert.equal((await LadderRepo(ab.db).suggestSeeds("b2"))[0].id, "p3");
+  // RB prop event: p1 first; p4 has no RB prop games, so it is unrated and last.
+  const rb = makeDb({ games: division, players, registrations: regs, event: { game_mode: "rb", vehicle_pool: "prop" } });
+  const rbSeeds = await LadderRepo(rb.db).suggestSeeds("a2");
+  assert.deepEqual(rbSeeds.map((p) => [p.id, p.games]), [["p1", 2], ["p3", 1], ["p4", 0]]);
 });

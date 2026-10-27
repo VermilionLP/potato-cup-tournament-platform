@@ -4,6 +4,10 @@
 // the English. Generated from the source, then translated; add new UI text
 // here when it is introduced.
 export default {
+  "使用 {0} 分榜 MMR；没有该分榜对局的选手不显示 MMR，排在最后。": "Uses the {0} division MMR; players without games there show no MMR and are seeded last.",
+  "全部模式": "All modes",
+  "全部类型": "All types",
+  "选择模式和比赛类型可以查看单独计算的分榜（如 AB 螺旋桨），只用该组合的对局从 3000 开始算。分榜只列出在该组合打过对局的选手。赛事自动排种子时按该赛事的模式和比赛类型分榜排序，没有该组合对局的选手排在最后。": "Pick a mode and event type to see a separately rated division (e.g. AB Prop), rated from 3000 on that combination's games only. A division lists only players with games in it. Automatic seeding uses the division of the event's mode and type; players without games there are seeded last.",
   "{0:n} 个分组": "{0} groups",
   "{0:n} 辆载具": "{0} vehicles",
   "载具名称": "Vehicle",

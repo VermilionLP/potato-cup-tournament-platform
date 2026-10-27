@@ -3,6 +3,7 @@ import {
   ACTIVE_DAYS,
   PROVISIONAL_GAMES,
   computeLadder,
+  filterGamesByDivision,
   randomizeSeedOrder,
   sortForSeeds,
   assignPercentileTiers,
@@ -42,6 +43,8 @@ export function LadderRepo(db) {
         m.score1,
         m.score2,
         t.name AS tournament_name,
+        t.game_mode,
+        t.vehicle_pool,
         ${PLAYED_AT} AS played_at
       FROM axsuck.matches m
       JOIN axsuck.tournaments t ON t.id = m.tournament_id
@@ -66,13 +69,17 @@ export function LadderRepo(db) {
     return new Map(res.rows.map((p) => [p.id, p]));
   }
 
-  // window 'year' rates only the games of the last 365 days, from scratch.
-  async function getRatings({ activeDays = ACTIVE_DAYS, includeInactive = false, window = 'all' } = {}) {
+  // window 'year' rates only the games of the last 365 days, from scratch;
+  // mode / pool rate only one division's games (e.g. AB 螺旋桨), from scratch.
+  async function getRatings({ activeDays = ACTIVE_DAYS, includeInactive = false, window = 'all', mode = '', pool = '' } = {}) {
     const [allGames, playerRows] = await Promise.all([loadGames(), loadPlayers()]);
     const since = window === 'year' ? Date.now() - YEAR_MS : null;
-    const games = since == null
-      ? allGames
-      : allGames.filter((g) => g.played_at && new Date(g.played_at).getTime() >= since);
+    const games = filterGamesByDivision(
+      since == null
+        ? allGames
+        : allGames.filter((g) => g.played_at && new Date(g.played_at).getTime() >= since),
+      { mode, pool },
+    );
     const { players: allPlayers, history } = computeLadder(games);
     const byId = new Map(
       allPlayers.map((p) => {
@@ -109,6 +116,8 @@ export function LadderRepo(db) {
       activeDays,
       includeInactive,
       window: since == null ? 'all' : 'year',
+      mode,
+      pool,
       cutoff,
     };
   }
@@ -118,8 +127,8 @@ export function LadderRepo(db) {
     return players;
   }
 
-  async function playerDetail(playerId, { activeDays = ACTIVE_DAYS, window = 'all' } = {}) {
-    const { byId, history, games, cutoff } = await getRatings({ activeDays, includeInactive: true, window });
+  async function playerDetail(playerId, { activeDays = ACTIVE_DAYS, window = 'all', mode = '', pool = '' } = {}) {
+    const { byId, history, games, cutoff } = await getRatings({ activeDays, includeInactive: true, window, mode, pool });
     const player = byId.get(playerId);
     if (!player) return null;
 
@@ -169,8 +178,21 @@ export function LadderRepo(db) {
     };
   }
 
+  // Ratings for an event: the MMR of its own division (its game mode and
+  // event type) only. Players with no games in that division have no rating:
+  // they are unrated and seeded last.
+  async function eventRatings({ game_mode: mode = '', vehicle_pool: pool = '' } = {}) {
+    const division = await getRatings({ includeInactive: true, mode: mode || '', pool: pool || '' });
+    const ratingOf = (id) => {
+      const own = division.byId.get(id);
+      return own && own.games > 0 ? own : null;
+    };
+    return { ratingOf, cutoff: division.cutoff };
+  }
+
+  // Seeds follow eventRatings: the event's division MMR; unrated players last.
   async function suggestSeeds(tournamentId) {
-    const [registrations, { byId }] = await Promise.all([
+    const [registrations, event] = await Promise.all([
       db.query(
         `
         SELECT tp.player_id AS id, tp.seed, tp.registered_at,
@@ -181,11 +203,12 @@ export function LadderRepo(db) {
       `,
         [tournamentId]
       ),
-      getRatings({ includeInactive: true }),
+      db.query('SELECT game_mode, vehicle_pool FROM axsuck.tournaments WHERE id = $1', [tournamentId]),
     ]);
+    const { ratingOf } = await eventRatings(event.rows[0]);
 
     const players = registrations.rows.map((row) => {
-      const rating = byId.get(row.id);
+      const rating = ratingOf(row.id);
       return withDefaults({
         ...row,
         display_name: rating?.display_name || getPlayerDisplayName(row) || row.id,
@@ -241,6 +264,7 @@ export function LadderRepo(db) {
   return {
     loadGames,
     getRatings,
+    eventRatings,
     leaderboard,
     playerDetail,
     suggestSeeds,
