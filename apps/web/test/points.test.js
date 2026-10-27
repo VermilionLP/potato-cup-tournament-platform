@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { POINTS_PRESETS, cleanTable, currentSeason, placeRangeLabel, pointsTableProblem } from "../src/lib/points.js";
+import { POINTS_PRESETS, cleanTable, currentSeason, placeColor, placeRangeLabel, pointsTableProblem } from "../src/lib/points.js";
 
 test("presets and labels", () => {
   assert.deepEqual(POINTS_PRESETS[0].table.map((r) => r.points), [100, 60, 35, 10]);
@@ -19,4 +19,13 @@ test("tables are checked before saving", () => {
   assert.deepEqual(cleanTable([{ from: "5", to: "", points: "10" }, { from: "1", to: "1", points: "100" }]), [
     { from: 1, to: 1, points: 100 }, { from: 5, to: 5, points: 10 },
   ]);
+});
+
+test("placing colours follow Liquipedia", () => {
+  assert.equal(placeColor({ from: 1, to: 1 }), "#c9a800");
+  assert.equal(placeColor({ from: 3, to: 4 }), placeColor({ from: 3, to: 3 }));
+  assert.notEqual(placeColor({ from: 4, to: 4 }), placeColor({ from: 3, to: 3 }));
+  assert.equal(placeColor({ from: 5, to: 8 }), placeColor({ from: 7, to: 8 }));
+  assert.equal(placeColor({ from: 9, to: 12 }), placeColor({ from: 13, to: 16 }));
+  assert.equal(placeColor(null), "");
 });

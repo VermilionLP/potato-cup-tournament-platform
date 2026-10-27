@@ -8,6 +8,7 @@
   import { API } from "$lib/api.js";
   import { userState } from "$lib/user.svelte.js";
   import { VEHICLE_POOLS, vehiclePoolLabel } from "$lib/tournament.js";
+  import { placeColor, placeRangeLabel } from "$lib/points.js";
   import Flag from "$lib/components/Flag.svelte";
   import { Input } from "$lib/components/ui/input/index.js";
   import AwardIcon from "@lucide/svelte/icons/award";
@@ -149,37 +150,43 @@
           <h2 class="text-sm font-bold text-foreground">{data.season} 赛季 · {vehiclePoolLabel(board.pool)}</h2>
           <span class="text-[11px] text-muted-foreground">{board.events.length} 场积分赛 · {board.players.length} 名选手有积分</span>
         </div>
-        <div class="overflow-x-auto">
-          <table class="w-full border-collapse text-xs">
+        <div class="overflow-x-auto p-2 sm:p-3">
+          <!-- Point standings in the style of Liquipedia: placing-coloured cells,
+               qualified places highlighted in the # column. -->
+          <table class="w-full border-collapse text-xs [&_td]:border [&_td]:border-border/70 [&_th]:border [&_th]:border-border/70">
             <thead>
-              <tr class="border-b border-border bg-muted/20 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                <th class="sticky left-0 z-10 w-12 bg-card px-3 py-2.5 text-right">#</th>
-                <th class="sticky left-12 z-10 min-w-40 bg-card px-3 py-2.5 text-left">选手</th>
-                <th class="px-3 py-2.5 text-center">总积分</th>
-                <th class="px-3 py-2.5 text-left whitespace-nowrap">冬季总决赛</th>
+              <tr class="bg-muted/50 text-[11px] font-bold text-foreground">
+                <th class="sticky left-0 z-10 w-10 bg-muted px-2 py-2 text-center">#</th>
+                <th class="sticky left-10 z-10 min-w-44 bg-muted px-3 py-2 text-center">选手</th>
+                <th class="w-16 px-2 py-2 text-center leading-tight">总积分</th>
+                <th class="px-2 py-2 text-center whitespace-nowrap">冬季总决赛</th>
                 {#each board.events as ev (ev.id)}
-                  <th class="px-2 py-2.5 text-center font-semibold normal-case tracking-normal whitespace-nowrap">
-                    <a href="/tournament/{encodeURIComponent(ev.id)}" class="hover:text-primary" title={ev.name}>{shortName(ev.name)}</a>
-                    {#if ev.invite}<span class="ml-0.5 text-[9px] font-bold text-amber-500" title="冠军直邀冬季总决赛">邀</span>{/if}
+                  <th class="w-16 min-w-16 px-1.5 py-2 text-center align-bottom leading-tight">
+                    <a href="/tournament/{encodeURIComponent(ev.id)}" class="font-bold text-sky-600 hover:underline dark:text-sky-400" title={ev.name}>{shortName(ev.name)}</a>
+                    {#if ev.invite}<div class="text-[9px] font-bold text-amber-500" title="冠军直邀冬季总决赛">邀</div>{/if}
                   </th>
                 {/each}
               </tr>
             </thead>
-            <tbody class="divide-y divide-border/40">
-              {#each shownPlayers as p (p.id)}
-                <tr class="hover:bg-muted/20 {p.finals ? '' : 'opacity-70'} {p.id === userState.id ? 'bg-primary/5' : ''}">
-                  <td class="sticky left-0 z-10 bg-card px-3 py-2 text-right font-mono font-bold {p.rank <= 3 ? 'text-amber-500' : 'text-muted-foreground'}">{p.rank}</td>
-                  <td class="sticky left-12 z-10 bg-card px-3 py-2">
+            <tbody>
+              {#each shownPlayers as p, i (p.id)}
+                <tr class="{i % 2 ? 'bg-muted/25' : 'bg-card'} {p.id === userState.id ? 'outline outline-2 -outline-offset-2 outline-primary/60' : ''}">
+                  <td
+                    class="sticky left-0 z-10 px-2 py-1.5 text-center font-mono font-bold
+                      {p.finals ? 'bg-emerald-100 text-emerald-900 dark:bg-emerald-900/60 dark:text-emerald-100' : i % 2 ? 'bg-muted' : 'bg-card'}"
+                    title={p.finals ? "冬季总决赛名额" : undefined}
+                  >{p.rank}</td>
+                  <td class="sticky left-10 z-10 px-2 py-1.5 {i % 2 ? 'bg-muted' : 'bg-card'}">
                     <div class="flex items-center gap-1.5 min-w-0">
                       <Flag code={p.flag} size={16} />
                       {#if p.team}
                         <span class="shrink-0 font-mono text-[9px] font-bold text-muted-foreground">[{p.team}]</span>
                       {/if}
-                      <span class="truncate font-semibold text-foreground">{p.display_name}</span>
+                      <span class="truncate font-semibold text-red-700 dark:text-red-400">{p.display_name}</span>
                     </div>
                   </td>
-                  <td class="px-3 py-2 text-center font-mono text-sm font-black text-foreground">{p.total}</td>
-                  <td class="px-3 py-2 whitespace-nowrap">
+                  <td class="px-2 py-1.5 text-center font-bold text-foreground">{p.total}</td>
+                  <td class="px-2 py-1.5 whitespace-nowrap">
                     {#if p.finals?.via === "invite"}
                       <span class="rounded border border-amber-500/30 bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-bold text-amber-600 dark:text-amber-400" title="直邀名额">
                         直邀 · {shortName(board.events.find((e) => e.id === p.finals.event_id)?.name)}
@@ -189,9 +196,16 @@
                     {/if}
                   </td>
                   {#each board.events as ev (ev.id)}
-                    <td class="px-2 py-2 text-center font-mono {p.points[ev.id] ? 'text-foreground' : 'text-muted-foreground/40'}">
-                      {p.points[ev.id] || "—"}
-                    </td>
+                    {@const place = p.places?.[ev.id]}
+                    {#if p.points[ev.id]}
+                      <td
+                        class="px-1 py-1.5 text-center font-bold text-white"
+                        style="background-color: {placeColor(place)}"
+                        title={place ? placeRangeLabel(place) : undefined}
+                      >{p.points[ev.id]}</td>
+                    {:else}
+                      <td class="px-1 py-1.5"></td>
+                    {/if}
                   {/each}
                 </tr>
               {:else}
@@ -201,6 +215,16 @@
               {/each}
             </tbody>
           </table>
+        </div>
+        <div class="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 pb-2 text-[10px] text-muted-foreground">
+          {#each [[{ from: 1, to: 1 }, "第 1 名"], [{ from: 2, to: 2 }, "第 2 名"], [{ from: 3, to: 3 }, "第 3 名 / 3-4 名"], [{ from: 4, to: 4 }, "第 4 名"], [{ from: 5, to: 8 }, "第 5-8 名"], [{ from: 9, to: 16 }, "第 9 名以后"]] as [place, label] (label)}
+            <span class="inline-flex items-center gap-1">
+              <span class="inline-block h-3 w-3 rounded-sm" style="background-color: {placeColor(place)}"></span>{label}
+            </span>
+          {/each}
+          <span class="inline-flex items-center gap-1">
+            <span class="inline-block h-3 w-3 rounded-sm bg-emerald-100 ring-1 ring-emerald-300 dark:bg-emerald-900/60"></span>冬季总决赛名额
+          </span>
         </div>
         <div class="space-y-2 border-t border-border/50 px-4 py-3">
           <div class="text-[11px] font-bold text-foreground">

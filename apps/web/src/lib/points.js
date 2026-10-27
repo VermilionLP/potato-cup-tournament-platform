@@ -64,3 +64,18 @@ export function cleanTable(table) {
     .map((r) => ({ from: Number(r.from), to: r.to === "" || r.to == null ? Number(r.from) : Number(r.to), points: Number(r.points) }))
     .sort((a, b) => a.from - b.from);
 }
+
+/**
+ * Cell colour for a placing, as on Liquipedia's point standings: gold 1st,
+ * slate 2nd, bronze 3rd (or 3rd-4th), orange 4th, teal 5th-8th, dark teal
+ * after that. Returns a CSS background colour.
+ */
+export function placeColor(place) {
+  if (!place) return "";
+  if (place.from === 1) return "#c9a800";
+  if (place.from === 2) return "#5a6e78";
+  if (place.from === 3) return "#806c4a";
+  if (place.from === 4) return "#cc7a14";
+  if (place.from <= 8) return "#26a69a";
+  return "#1f7a72";
+}

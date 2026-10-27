@@ -4,6 +4,9 @@
 // the English. Generated from the source, then translated; add new UI text
 // here when it is introduced.
 export default {
+  "第 3 名 / 3-4 名": "3rd / 3rd–4th",
+  "第 9 名以后": "9th and below",
+  "冬季总决赛名额": "Winter Finals place",
   "邀": "Inv",
   "直邀": "Invite",
   "直邀名额": "Direct invite",

@@ -49,7 +49,7 @@ export default async function pointsRoutes(fastify) {
         }
         // Players by placing (for the monthly champion's finals place).
         const order = [...places].sort((a, b) => a[1].from - b[1].from).map(([id]) => id);
-        return { ...e, awarded, order };
+        return { ...e, awarded, order, places };
       })
       .sort((a, b) => new Date(a.played_at) - new Date(b.played_at) || a.id.localeCompare(b.id));
 
@@ -82,6 +82,10 @@ export default async function pointsRoutes(fastify) {
               flag: meta.flag || '',
               team: meta.team || '',
               finals: qualified.get(p.player_id) || null,
+              // Placing in each event the player scored in (cell colours).
+              places: Object.fromEntries(
+                evs.filter((e) => p.points[e.id]).map((e) => [e.id, e.places.get(p.player_id)]),
+              ),
             };
           }),
         };
