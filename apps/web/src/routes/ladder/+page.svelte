@@ -109,7 +109,7 @@
       <h1 class="text-2xl font-extrabold tracking-tight">天梯 MMR</h1>
     </div>
     <p class="text-xs text-muted-foreground">
-      所有已完成的赛事对局按比赛日期顺序用 Elo 计算（含从 Liquipedia 导入的历史赛事），经典 SUCK（败者晋级）也计入；初始
+      所有已完成的赛事对局按比赛日期顺序用 Elo 计算；初始
       MMR 3000。选“最近一年”时只用近 365 天的对局从 3000 重新计算。默认只显示近 {data?.active_days || 365} 天有对局的选手；分数不重置，
       回归后沿用原分。种子默认按这里的 MMR 自动排序。
     </p>
@@ -178,7 +178,7 @@
             排行榜
           </Card.Title>
           <Card.Description class="text-[11px]">
-            段位按 LoTV 官方百分位（大师 4%、钻石/白金/黄金/白银各 23%、青铜 4%）；大段内按名次分 I/II/III；宗师为区域前 200，小池子不设。
+            段位按大师 4%、钻石/白金/黄金/白银各 23%、青铜 4%；大段内按名次分 I/II/III；宗师为区域前 200，小池子不设。
           </Card.Description>
         </div>
         <div class="flex flex-wrap items-center gap-3 w-full sm:w-auto">
