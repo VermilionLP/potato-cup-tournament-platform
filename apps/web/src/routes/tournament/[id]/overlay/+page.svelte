@@ -429,14 +429,41 @@
       0,
     );
     const width = Math.max(...boardBands.map((band) => band.columns.length)) * (232 + 16);
-    return Math.min(1, 840 / height, 1440 / width);
+    return Math.min(1.4, 840 / height, 1440 / width);
   });
 
-  // Swiss standings for the side of the stage board.
-  let swissTable = $derived.by(() => {
-    if (!isSwiss) return [];
-    if (tournament?.standings?.length) return tournament.standings.slice(0, 12);
+  // Swiss in several groups: one card per group with the shown round's
+  // matches and the group's whole table. Group i is swiss_group i + 1.
+  let swissGroups = $derived.by(() => {
+    if (!isSwiss || !selectedStage || selectedStage.bracket !== "sw") return [];
     const groups = tournament?.group_stage?.groups || [];
+    if (groups.length < 2) return [];
+    const perGroup = Number(tournament?.group_stage?.per_group) || 0;
+    return groups.map((g, i) => ({
+      label: g.label,
+      rows: g.rows,
+      perGroup,
+      matches: selectedStage.matches.filter((m) => Number(m.swiss_group) === i + 1),
+    }));
+  });
+  let groupColumns = $derived(swissGroups.length <= 4 ? 2 : swissGroups.length <= 6 ? 3 : 4);
+  const GROUP_CARD_W = 520;
+  let groupScale = $derived.by(() => {
+    if (!swissGroups.length) return 1;
+    const rowsPerCard = Math.max(...swissGroups.map((g) => g.matches.length * 2.3 + g.rows.length + 3));
+    const cardH = rowsPerCard * 26;
+    const height = Math.ceil(swissGroups.length / groupColumns) * (cardH + 16);
+    const width = groupColumns * (GROUP_CARD_W + 16);
+    return Math.min(1.35, 840 / height, 1400 / width);
+  });
+
+  // Swiss standings for the side of the stage board (single pool only;
+  // grouped Swiss shows each table in its group card).
+  let swissTable = $derived.by(() => {
+    if (!isSwiss || swissGroups.length) return [];
+    if (tournament?.standings?.length) return tournament.standings.slice(0, 16);
+    const groups = tournament?.group_stage?.groups || [];
+    if (groups.length === 1) return groups[0].rows.slice(0, 16);
     return groups.flatMap((g) => g.rows.slice(0, 3).map((r) => ({ ...r, group_label: g.label })));
   });
 
@@ -1447,11 +1474,66 @@
               {/each}
             </div>
           </div>
+          {:else if swissGroups.length}
+          <!-- Grouped Swiss: one card per group (round's matches + table). -->
+          <div class="flex-1 min-h-0 flex items-center justify-center overflow-hidden py-2">
+            <div
+              class="grid gap-4 shrink-0"
+              style="grid-template-columns: repeat({groupColumns}, {GROUP_CARD_W}px); transform: scale({groupScale}); transform-origin: center center;"
+            >
+              {#each swissGroups as g (g.label)}
+                <div class="rounded-2xl border border-cyan-500/25 bg-slate-950/80 p-4 shadow-2xl">
+                  <div class="flex items-baseline justify-between border-b-2 border-cyan-500/20 pb-1.5 mb-3">
+                    <span class="text-lg font-black font-orbitron tracking-wider text-white">GROUP {g.label}</span>
+                    <span class="text-xs font-bold text-amber-400">{selectedStage.label}</span>
+                  </div>
+                  <div class="flex flex-col gap-2 mb-3">
+                    {#each g.matches as m (m.id)}
+                      {@const done = m.status === "completed" || m.status === "walkover"}
+                      {@const live = m.id === tournament.active_match_id}
+                      <div
+                        class="rounded-lg border-2 px-3 py-1.5 grid grid-cols-[1fr_auto_1fr] items-center gap-3
+                          {live ? 'border-amber-500 bg-amber-950/30' : done ? 'border-slate-800 bg-slate-950/70' : 'border-slate-700/60 bg-slate-900/70'}"
+                      >
+                        {#each [[m.player1_id, m.score1, 0], [m.player2_id, m.score2, 1]] as [pid, score, slot] (slot)}
+                          {@const won = done && m.winner_id && m.winner_id === pid}
+                          {@const lost = done && m.winner_id && pid && m.winner_id !== pid}
+                          {#if slot === 1}
+                            <span class="font-orbitron font-black text-sm text-center text-slate-400 whitespace-nowrap">
+                              {#if m.status === "walkover"}{m.winner_id === m.player1_id ? "W : FF" : "FF : W"}{:else if done || live}<span class={m.winner_id === m.player1_id ? 'text-amber-400' : ''}>{m.score1 ?? 0}</span> : <span class={m.winner_id === m.player2_id ? 'text-amber-400' : ''}>{m.score2 ?? 0}</span>{:else}VS{/if}
+                            </span>
+                          {/if}
+                          <span class="flex min-w-0 items-center gap-1.5 {slot === 1 ? 'justify-end' : ''} {lost ? 'opacity-45' : ''}">
+                            {#if slot === 0 && pid}<Flag code={playerMap.get(pid)?.flag} size={20} />{/if}
+                            <span class="truncate font-bold text-base {!pid ? 'text-slate-600 italic' : won ? 'text-amber-300' : lost ? 'text-slate-400' : 'text-white'}">{pid ? getPlayerName(pid) : "BYE"}</span>
+                            {#if slot === 1 && pid}<Flag code={playerMap.get(pid)?.flag} size={20} />{/if}
+                          </span>
+                        {/each}
+                      </div>
+                    {:else}
+                      <div class="text-xs italic text-slate-500">本轮无对局</div>
+                    {/each}
+                  </div>
+                  <div class="space-y-0.5">
+                    {#each g.rows as row, i (row.player_id)}
+                      {@const through = g.perGroup && (row.rank ?? i + 1) <= g.perGroup}
+                      <div class="flex items-center gap-2 rounded px-1.5 py-0.5 text-sm {through ? 'bg-cyan-500/10' : ''}">
+                        <span class="w-5 text-right font-mono text-xs {through ? 'text-cyan-400' : 'text-slate-500'}">{row.rank ?? i + 1}</span>
+                        <Flag code={playerMap.get(row.player_id)?.flag} size={18} />
+                        <span class="flex-1 truncate font-bold text-white">{getPlayerName(row.player_id)}</span>
+                        <span class="font-orbitron text-cyan-400 shrink-0">{row.wins ?? 0}-{row.losses ?? 0}</span>
+                      </div>
+                    {/each}
+                  </div>
+                </div>
+              {/each}
+            </div>
+          </div>
           {:else}
           <!-- Stage board: Swiss and group stages. One band per bracket, one
                column per round, the shown stage highlighted. -->
-          <div class="flex-1 min-h-0 flex items-start justify-center overflow-hidden py-2">
-            <div class="flex flex-col gap-4" style="transform: scale({boardScale}); transform-origin: top center;">
+          <div class="flex-1 min-h-0 flex items-center justify-center overflow-hidden py-2">
+            <div class="flex flex-col gap-4" style="transform: scale({boardScale}); transform-origin: center center;">
               {#each boardBands as band (band.bracket)}
                 <div>
                   <div class="text-[11px] font-mono font-bold tracking-[0.3em] text-cyan-400/80 uppercase mb-2">{band.name}</div>
@@ -1604,6 +1686,7 @@
                   {#each swissTable as row, i (row.player_id + (row.group_label || ""))}
                     <div class="flex items-center gap-2 text-xs">
                       <span class="w-6 text-right font-mono text-slate-500">{row.group_label ? `${row.group_label}${row.rank}` : row.rank ?? i + 1}</span>
+                      <Flag code={playerMap.get(row.player_id)?.flag} size={16} />
                       <span class="flex-1 truncate font-bold text-white">{getPlayerName(row.player_id)}</span>
                       <span class="font-orbitron text-cyan-400 shrink-0">{row.wins ?? 0}-{row.losses ?? 0}</span>
                     </div>
