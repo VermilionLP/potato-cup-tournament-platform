@@ -1,3 +1,5 @@
+import { readPlayerKeys } from './player-key.js';
+
 const BASE = '/api';
 
 async function request(path, options = {}) {
@@ -15,6 +17,9 @@ async function request(path, options = {}) {
     const playerId = localStorage.getItem('suck_player_id');
     if (playerId) {
       headers['x-player-id'] = encodeURIComponent(playerId);
+      // Device key for this ID, unless the caller passes one (key import).
+      const key = readPlayerKeys()[playerId];
+      if (key && !headers['x-player-key']) headers['x-player-key'] = key;
     }
     const adminToken = sessionStorage.getItem('suck_admin_token');
     if (adminToken) {
@@ -36,6 +41,11 @@ async function request(path, options = {}) {
           : err.message || err.error || 'Request failed';
     const error = new Error(message);
     error.status = res.status;
+    error.code = err.code;
+    // The ID is bound to another device: the layout offers to import a key.
+    if (err.code === 'PLAYER_KEY_REQUIRED' && typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('player-key-required'));
+    }
     throw error;
   }
   return res.json();
@@ -111,6 +121,11 @@ export const API = {
     request('/push/unsubscribe', { method: 'DELETE', body: JSON.stringify({ endpoint }) }),
   getPlayer: (id) => request(`/players/${enc(id)}`),
   updatePlayer: (id, data) => request('/players', { method: 'POST', body: JSON.stringify({ id, ...data }) }),
+  // Device key: bind on first use / check a key (pass it to import one).
+  claimPlayerKey: (id, key) =>
+    request(`/players/${enc(id)}/key`, { method: 'POST', body: JSON.stringify({}), headers: key ? { 'x-player-key': key } : {} }),
+  playerKeyStatus: (id) => request(`/players/${enc(id)}/key`),
+  resetPlayerKey: (id) => request(`/players/${enc(id)}/key`, { method: 'DELETE' }),
   touchPlayer: (id) => request(`/players/${enc(id)}/touch`, { method: 'POST', body: JSON.stringify({}) }),
   renamePlayer: (oldId, newId) => request(`/players/${enc(oldId)}/change-id`, { method: 'POST', body: JSON.stringify({ newId }) }),
   deletePlayer: (id) => request(`/players/${enc(id)}`, { method: 'DELETE' }),

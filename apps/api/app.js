@@ -24,13 +24,21 @@ import vehiclePoolRoutes from './routes/vehicle-pools.js';
 import pointsRoutes from './routes/points.js';
 import { startPushScheduler } from './lib/push-scheduler.js';
 import { createEsLogger, registerRequestLogging } from './lib/es-logger.js';
+import { registerRateLimit } from './lib/rate-limit.js';
 import fastifySse from '@fastify/sse';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: join(__dirname, '.env') });
 const pkg = JSON.parse(readFileSync(join(__dirname, 'package.json'), 'utf-8'));
 
-const fastify = Fastify({ logger: true, trustProxy: true, bodyLimit: 104857600 });
+// X-Forwarded-For is trusted only from a proxy on this machine (nginx), so
+// clients cannot fake their IP; set TRUST_PROXY (e.g. an address or "true")
+// when another proxy sits in front. Request bodies are JSON (the largest is
+// a full event import), so 5 MB is plenty.
+const trustProxy = process.env.TRUST_PROXY
+  ? (process.env.TRUST_PROXY === 'true' ? true : process.env.TRUST_PROXY)
+  : '127.0.0.1,::1';
+const fastify = Fastify({ logger: true, trustProxy, bodyLimit: 5 * 1024 * 1024 });
 const tournamentEvents = new EventEmitter();
 fastify.decorate('tournamentEvents', tournamentEvents);
 
@@ -40,6 +48,7 @@ registerRequestLogging(fastify, esLogger);
 
 await fastify.register(cors, { origin: true, credentials: true });
 await fastify.register(sensible);
+registerRateLimit(fastify);
 await fastify.register(fastifySse, { heartbeatInterval: 20000 });
 await fastify.register(swagger, {
   openapi: { info: { title: 'S.U.C.K Tournament API', version: pkg.version } }

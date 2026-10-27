@@ -21,7 +21,7 @@ export default async function votesRoutes(fastify) {
     if (!player_id || !proposed_time) {
       throw fastify.httpErrors.badRequest('player_id and proposed_time are required');
     }
-    requireSelfOrAdmin(fastify, req, player_id);
+    await requireSelfOrAdmin(fastify, req, player_id);
     const t = await tourneyRepo.getById(req.params.id);
     if (!t) throw fastify.httpErrors.notFound('Tournament not found');
     if (t.status !== 'voting' && t.status !== 'registration') {
@@ -61,7 +61,7 @@ export default async function votesRoutes(fastify) {
   fastify.delete('/tournaments/:id/vote', async (req) => {
     const { player_id, proposed_time } = req.body;
     if (!player_id) throw fastify.httpErrors.badRequest('player_id is required');
-    requireSelfOrAdmin(fastify, req, player_id);
+    await requireSelfOrAdmin(fastify, req, player_id);
     await repo.removeVote(req.params.id, player_id, proposed_time || null);
 
     // Trigger real-time broadcast
@@ -75,7 +75,7 @@ export default async function votesRoutes(fastify) {
     if (!player_id || !topic || !value) {
       throw fastify.httpErrors.badRequest('player_id, topic and value are required');
     }
-    requireSelfOrAdmin(fastify, req, player_id);
+    await requireSelfOrAdmin(fastify, req, player_id);
     const t = await tourneyRepo.getById(req.params.id);
     if (!t) throw fastify.httpErrors.notFound('Tournament not found');
     if (t.status !== 'voting' && t.status !== 'registration') {
@@ -106,7 +106,7 @@ export default async function votesRoutes(fastify) {
     if (!player_id || !topic || !value) {
       throw fastify.httpErrors.badRequest('player_id, topic and value are required');
     }
-    requireSelfOrAdmin(fastify, req, player_id);
+    await requireSelfOrAdmin(fastify, req, player_id);
     await customRepo.removeVote(req.params.id, player_id, topic, value);
 
     // Trigger real-time broadcast

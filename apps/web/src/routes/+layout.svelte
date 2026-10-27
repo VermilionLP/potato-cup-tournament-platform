@@ -31,10 +31,15 @@
   import BellIcon from "@lucide/svelte/icons/bell";
   import BellOffIcon from "@lucide/svelte/icons/bell-off";
   import ShieldCheckIcon from "@lucide/svelte/icons/shield-check";
+  import KeyRoundIcon from "@lucide/svelte/icons/key-round";
+  import { copyText } from "$lib/clipboard.js";
 
   let { children } = $props();
 
   let openIdDialog = $state(false);
+  let keyImport = $state("");
+  let keyBusy = $state(false);
+  let showKey = $state(false);
   let idInput = $state("");
   let existingPlayers = $state([]);
   let showInactiveExisting = $state(false);
@@ -198,14 +203,69 @@
     return avatarColors[sum % avatarColors.length];
   });
 
+  // Device key (apps/api/lib/player-key.js): the first device that uses an
+  // ID binds a key to it; other devices need that key to act for the ID.
+  async function ensurePlayerKey(id) {
+    if (!id || userState.keys[id]) return;
+    try {
+      const res = await API.claimPlayerKey(id);
+      if (res.key) userState.setKey(id, res.key);
+    } catch (e) {
+      if (e.status === 409) {
+        userState.keyConflict = true;
+        notifyKeyConflict();
+      }
+      // 404: the player has no record yet; bound on the next visit.
+    }
+  }
+
+  function notifyKeyConflict() {
+    toast.warning("这个选手 ID 已绑定其他设备，这台设备暂时不能报名、投票或修改资料。", {
+      id: "player-key",
+      description: "在已绑定的设备上打开「个人资料」复制设备密钥，再到这里导入。",
+      action: { label: "导入密钥", onClick: () => handleOpenDialog() },
+      duration: 12000,
+    });
+  }
+
+  async function importPlayerKey() {
+    const key = keyImport.trim();
+    if (!key || !userState.id) return;
+    keyBusy = true;
+    try {
+      await API.claimPlayerKey(userState.id, key);
+      userState.setKey(userState.id, key);
+      keyImport = "";
+      toast.success("设备密钥已导入，这台设备可以正常使用了");
+    } catch (e) {
+      toast.error(e.status === 409 ? "密钥不正确" : "导入失败: " + e.message);
+    } finally {
+      keyBusy = false;
+    }
+  }
+
+  async function copyPlayerKey() {
+    const ok = await copyText(userState.key);
+    if (ok) toast.success("设备密钥已复制，请妥善保管，不要发给别人");
+    else toast.error("复制失败，请手动选中后复制");
+  }
+
   onMount(() => {
     initLocale();
     if (userState.id) {
-      API.touchPlayer(userState.id).catch((e) => {
-        console.warn("touch player failed:", e);
-      });
+      const id = userState.id;
+      API.touchPlayer(id)
+        .catch((e) => {
+          console.warn("touch player failed:", e);
+        })
+        .finally(() => ensurePlayerKey(id));
       checkProfileCompleteness(userState.id);
     }
+    const onKeyRequired = () => {
+      userState.keyConflict = true;
+      notifyKeyConflict();
+    };
+    window.addEventListener("player-key-required", onKeyRequired);
     if (userState.adminToken) {
       API.verifyAdmin().catch(() => userState.setAdminToken(""));
     }
@@ -215,6 +275,7 @@
         .then(() => refreshPushState())
         .catch((e) => console.warn("service worker registration failed:", e));
     }
+    return () => window.removeEventListener("player-key-required", onKeyRequired);
   });
 
   function parseBnetIds(raw) {
@@ -345,6 +406,7 @@
         } catch (e) {
           console.warn("touch player failed:", e);
         }
+        await ensurePlayerKey(trimmedId);
         try {
           await saveSignInContact(trimmedId, trimmedContact);
         } catch (e) {
@@ -391,6 +453,7 @@
       verifying = true;
       try {
         await API.renamePlayer(oldId, trimmedId);
+        userState.moveKey(oldId, trimmedId);
         userState.setId(trimmedId);
         toast.success("选手 ID 修改成功！");
       } catch (err) {
@@ -925,6 +988,42 @@
                 </div>
               </details>
             {/if}
+          </div>
+        {/if}
+      </div>
+    {/if}
+
+    {#if userState.id}
+      <!-- Device key: copy it to use this ID on another device, or import it. -->
+      <div class="space-y-1.5 rounded-lg border border-border bg-muted/30 p-3">
+        <div class="flex items-center gap-1.5 text-xs font-bold text-foreground">
+          <KeyRoundIcon class="w-3.5 h-3.5" />
+          设备密钥
+        </div>
+        {#if userState.key}
+          <p class="text-[11px] text-muted-foreground">
+            这个 ID 已绑定到本设备。换设备或浏览器时，把密钥复制过去导入即可；不要发给别人，拿到密钥的人可以用你的 ID 报名和修改资料。
+          </p>
+          <div class="flex gap-2">
+            <input
+              readonly
+              value={showKey ? userState.key : "•".repeat(16)}
+              aria-label="设备密钥"
+              class="flex-1 min-w-0 h-8 rounded-md border border-border bg-background px-2 font-mono text-[11px] text-foreground"
+              onfocus={(e) => showKey && e.currentTarget.select()}
+            />
+            <Button variant="outline" size="sm" class="h-8 text-xs" onclick={() => (showKey = !showKey)}>{showKey ? "隐藏" : "显示"}</Button>
+            <Button variant="outline" size="sm" class="h-8 text-xs" onclick={copyPlayerKey}>复制</Button>
+          </div>
+        {:else}
+          <p class="text-[11px] {userState.keyConflict ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground'}">
+            {userState.keyConflict
+              ? "这个 ID 已绑定其他设备。请在那台设备的「个人资料」里复制设备密钥，粘贴到下面导入；找不到原设备请联系管理员重置。"
+              : "本设备还没有这个 ID 的密钥。如果你在别的设备上用过这个 ID，请把那边的密钥导入。"}
+          </p>
+          <div class="flex gap-2">
+            <Input bind:value={keyImport} placeholder="粘贴设备密钥" class="h-8 flex-1 font-mono text-[11px]" />
+            <Button size="sm" class="h-8 text-xs" disabled={keyBusy || !keyImport.trim()} onclick={importPlayerKey}>导入</Button>
           </div>
         {/if}
       </div>

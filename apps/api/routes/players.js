@@ -6,7 +6,8 @@ import { GAME_MODES, VEHICLE_POOLS } from '../lib/tournament-config.js';
 import { isQualifierEvent, tournamentChampion } from '../lib/champions.js';
 import { betterPlace, eventPlacements } from '../lib/placements.js';
 import { ACTIVE_DAYS } from '../lib/ladder.js';
-import { requireAdmin, requireSelfOrAdmin } from '../lib/admin.js';
+import { getRequesterId, requireAdmin, requireSelfOrAdmin } from '../lib/admin.js';
+import { hashPlayerKey, newPlayerKey, playerKeyMatches, requestPlayerKey, storedKeyHash } from '../lib/player-key.js';
 
 export default async function playersRoutes(fastify) {
   const repo = PlayerRepo(fastify.db);
@@ -314,14 +315,53 @@ export default async function playersRoutes(fastify) {
   fastify.post('/players/:id/touch', async (req) => {
     const id = String(req.params.id || '').trim();
     if (!id) throw fastify.httpErrors.badRequest('id is required');
-    requireSelfOrAdmin(fastify, req, id);
+    await requireSelfOrAdmin(fastify, req, id);
     return await repo.touch(id);
+  });
+
+  // ---- Device keys (lib/player-key.js) ----
+  // Binds a key to the caller's own ID the first time; afterwards confirms
+  // whether the key the caller sent is the bound one. 409 when the ID is
+  // bound to another device.
+  fastify.post('/players/:id/key', async (req) => {
+    const id = String(req.params.id || '').trim();
+    if (!id || getRequesterId(req) !== id) {
+      throw fastify.httpErrors.forbidden('You may only bind a key to your own player ID.');
+    }
+    if (!(await repo.getById(id))) throw fastify.httpErrors.notFound('Player not found');
+    const hash = await storedKeyHash(fastify.db, id);
+    if (hash) {
+      if (playerKeyMatches(requestPlayerKey(req), hash)) return { bound: true };
+      throw fastify.httpErrors.conflict('该选手 ID 已绑定其他设备');
+    }
+    const key = newPlayerKey();
+    const inserted = await fastify.db.query(
+      `INSERT INTO axsuck.player_keys (player_id, key_hash) VALUES ($1, $2)
+       ON CONFLICT (player_id) DO NOTHING RETURNING player_id`,
+      [id, hashPlayerKey(key)]
+    );
+    if (!inserted.rows.length) throw fastify.httpErrors.conflict('该选手 ID 已绑定其他设备');
+    fastify.esLogger?.audit?.({ level: 'info', action: 'player_key.bound', playerId: id, ip: req.ip });
+    return { bound: true, key };
+  });
+
+  // Whether an ID is bound (admins see it on the player editor).
+  fastify.get('/players/:id/key', async (req) => {
+    requireAdmin(fastify, req);
+    return { bound: Boolean(await storedKeyHash(fastify.db, req.params.id)) };
+  });
+
+  // Admin: unbind, so the player can bind a new device.
+  fastify.delete('/players/:id/key', async (req) => {
+    requireAdmin(fastify, req);
+    await fastify.db.query('DELETE FROM axsuck.player_keys WHERE player_id = $1', [req.params.id]);
+    return { bound: false };
   });
 
   // ---- Global (permanent) Battle.net account links ----
   fastify.post('/players/:id/accounts', async (req) => {
     const { id } = req.params;
-    requireSelfOrAdmin(fastify, req, id);
+    await requireSelfOrAdmin(fastify, req, id);
     const { accounts } = req.body;
     if (!Array.isArray(accounts) || accounts.length === 0) {
       throw fastify.httpErrors.badRequest('accounts array is required');
@@ -374,7 +414,7 @@ export default async function playersRoutes(fastify) {
 
   fastify.delete('/players/:id/accounts', async (req) => {
     const { id } = req.params;
-    requireSelfOrAdmin(fastify, req, id);
+    await requireSelfOrAdmin(fastify, req, id);
     const { account_key, name } = req.body || {};
     if (!account_key && !name) throw fastify.httpErrors.badRequest('account_key or name is required');
     const p = await repo.getById(id);
@@ -549,7 +589,7 @@ export default async function playersRoutes(fastify) {
   fastify.post('/players', async (req) => {
     const { id, flag, team, link, battle_tags, bnet_ids, tournament_id } = req.body;
     if (!id) throw fastify.httpErrors.badRequest('id is required');
-    requireSelfOrAdmin(fastify, req, id);
+    await requireSelfOrAdmin(fastify, req, id);
 
     let battleTagsStr = '{}';
     if (battle_tags) {
@@ -590,7 +630,7 @@ export default async function playersRoutes(fastify) {
   fastify.post('/tournaments/:id/register', async (req) => {
     const { player_id } = req.body;
     if (!player_id) throw fastify.httpErrors.badRequest('player_id is required');
-    requireSelfOrAdmin(fastify, req, player_id);
+    await requireSelfOrAdmin(fastify, req, player_id);
 
     const t = await tourneyRepo.getById(req.params.id);
     if (!t) throw fastify.httpErrors.notFound('Tournament not found');
@@ -626,7 +666,7 @@ export default async function playersRoutes(fastify) {
   fastify.delete('/tournaments/:id/register', async (req) => {
     const { player_id } = req.body;
     if (!player_id) throw fastify.httpErrors.badRequest('player_id is required');
-    requireSelfOrAdmin(fastify, req, player_id);
+    await requireSelfOrAdmin(fastify, req, player_id);
     const t = await tourneyRepo.getById(req.params.id);
     if (!t) throw fastify.httpErrors.notFound('Tournament not found');
     await tourneyRepo.removePlayer(req.params.id, player_id);

@@ -1,4 +1,5 @@
 import { timingSafeEqual } from 'crypto';
+import { playerKeyMatches, requestPlayerKey, storedKeyHash } from './player-key.js';
 
 export const ADMIN_TOKEN_HEADER = 'x-admin-token';
 
@@ -74,16 +75,33 @@ export function requireAdmin(fastify, req) {
 }
 
 /**
- * Allows either an admin or the player the request is acting for.
+ * Throws 403 (code PLAYER_KEY_REQUIRED) when the player ID is bound to a
+ * device key and the request does not carry it. IDs not bound yet pass.
+ */
+async function requirePlayerKey(fastify, req, playerId) {
+  const hash = await storedKeyHash(fastify.db, playerId);
+  if (!hash || playerKeyMatches(requestPlayerKey(req), hash)) return;
+  audit(fastify, req, 'auth.key_denied', 'warn');
+  const err = fastify.httpErrors.forbidden(
+    '该选手 ID 已绑定其他设备。请在已绑定的设备上复制「设备密钥」并在这里导入，或联系管理员重置。'
+  );
+  err.code = 'PLAYER_KEY_REQUIRED';
+  throw err;
+}
+
+/**
+ * Allows either an admin or the player the request is acting for (with the
+ * player's device key once the ID is bound).
  * Used for self-service operations (registration, profile, votes, account links).
  */
-export function requireSelfOrAdmin(fastify, req, playerId) {
+export async function requireSelfOrAdmin(fastify, req, playerId) {
   if (isAdminRequest(req)) {
     audit(fastify, req, 'admin.authorized', 'info');
     return;
   }
   const requesterId = getRequesterId(req);
   if (requesterId && playerId != null && requesterId === String(playerId)) {
+    await requirePlayerKey(fastify, req, requesterId);
     audit(fastify, req, 'auth.self', 'info');
     return;
   }
@@ -94,10 +112,11 @@ export function requireSelfOrAdmin(fastify, req, playerId) {
 }
 
 /**
- * Allows either an admin or one of the two players in the match.
+ * Allows either an admin or one of the two players in the match (with that
+ * player's device key once the ID is bound).
  * Used for match result reporting so unrelated users cannot rewrite scores.
  */
-export function requireMatchPlayerOrAdmin(fastify, req, match) {
+export async function requireMatchPlayerOrAdmin(fastify, req, match) {
   if (isAdminRequest(req)) {
     audit(fastify, req, 'admin.authorized', 'info');
     return;
@@ -107,6 +126,7 @@ export function requireMatchPlayerOrAdmin(fastify, req, match) {
     requesterId != null &&
     (requesterId === match?.player1_id || requesterId === match?.player2_id);
   if (participant) {
+    await requirePlayerKey(fastify, req, requesterId);
     audit(fastify, req, 'auth.match_player', 'info');
     return;
   }

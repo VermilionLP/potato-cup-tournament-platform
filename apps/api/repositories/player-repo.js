@@ -17,6 +17,14 @@ export async function mergePlayerInto(client, oldId, targetId) {
   if (!oldPlayer) throw new Error(`Source player not found: ${oldId}`);
   if (!targetPlayer) throw new Error(`Target player not found: ${targetId}`);
 
+  // 0. Device key: the target keeps its own; otherwise it takes oldId's, so a
+  // rename keeps the player's device working.
+  await client.query(`
+    UPDATE axsuck.player_keys SET player_id = $2
+    WHERE player_id = $1
+      AND NOT EXISTS (SELECT 1 FROM axsuck.player_keys WHERE player_id = $2)
+  `, [oldId, targetId]);
+
   // 1. Event registrations (the target's own entry wins in a shared event).
   await client.query(`
     DELETE FROM axsuck.tournament_players o

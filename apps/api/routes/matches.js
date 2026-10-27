@@ -27,7 +27,7 @@ export default async function matchesRoutes(fastify) {
     if (match.tournament_id !== req.params.id) {
       throw fastify.httpErrors.notFound('Match not found in this tournament');
     }
-    requireMatchPlayerOrAdmin(fastify, req, match);
+    await requireMatchPlayerOrAdmin(fastify, req, match);
     await rejectGroupEditDuringPlayoffs(match);
 
     const updated = await repo.submitResult(match.id, score1, score2);
@@ -48,7 +48,7 @@ export default async function matchesRoutes(fastify) {
     if (match.tournament_id !== req.params.id) {
       throw fastify.httpErrors.notFound('Match not found in this tournament');
     }
-    requireMatchPlayerOrAdmin(fastify, req, match);
+    await requireMatchPlayerOrAdmin(fastify, req, match);
     await rejectGroupEditDuringPlayoffs(match);
     if (winner_id !== match.player1_id && winner_id !== match.player2_id) {
       throw fastify.httpErrors.badRequest('winner_id must be one of the match players');

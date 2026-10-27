@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { isAdminConfigured, isAdminRequest, requireAdmin, requireSelfOrAdmin, requireMatchPlayerOrAdmin } from '../lib/admin.js';
+import { hashPlayerKey, newPlayerKey, playerKeyMatches } from '../lib/player-key.js';
 
 function fakeFastify() {
   const audits = [];
@@ -70,68 +71,101 @@ test('requireAdmin accepts the configured token and audits success', () => {
   delete process.env.ADMIN_TOKEN;
 });
 
-test('requireSelfOrAdmin allows the matching player id', () => {
+// A fake db: player_keys rows keyed by player id.
+function fakeDb(keys = {}) {
+  return {
+    query: async (_sql, [id]) => ({ rows: keys[id] ? [{ key_hash: keys[id] }] : [] }),
+  };
+}
+
+test('requireSelfOrAdmin allows the matching player id', async () => {
   delete process.env.ADMIN_TOKEN;
   const fastify = fakeFastify();
-  assert.doesNotThrow(() =>
-    requireSelfOrAdmin(
-      fastify,
-      req({ 'x-player-id': encodeURIComponent('小明') }),
-      '小明'
-    )
+  await assert.doesNotReject(
+    requireSelfOrAdmin(fastify, req({ 'x-player-id': encodeURIComponent('小明') }), '小明')
   );
   assert.equal(fastify.audits.at(-1).action, 'auth.self');
 });
 
-test('requireSelfOrAdmin allows an admin acting for another player', () => {
+test('requireSelfOrAdmin allows an admin acting for another player', async () => {
   process.env.ADMIN_TOKEN = 'correct-horse';
   const fastify = fakeFastify();
-  assert.doesNotThrow(() =>
+  await assert.doesNotReject(
     requireSelfOrAdmin(fastify, req({ 'x-admin-token': 'correct-horse' }), '小明')
   );
   assert.equal(fastify.audits.at(-1).action, 'admin.authorized');
   delete process.env.ADMIN_TOKEN;
 });
 
-test('requireSelfOrAdmin rejects other players with 403', () => {
+test('requireSelfOrAdmin rejects other players with 403', async () => {
   delete process.env.ADMIN_TOKEN;
   const fastify = fakeFastify();
-  assert.throws(
-    () =>
-      requireSelfOrAdmin(fastify, req({ 'x-player-id': 'intruder' }), '小明'),
+  await assert.rejects(
+    requireSelfOrAdmin(fastify, req({ 'x-player-id': 'intruder' }), '小明'),
     (err) => err.statusCode === 403
   );
   assert.equal(fastify.audits.at(-1).action, 'auth.denied');
-
-  assert.throws(() => requireSelfOrAdmin(fastify, req(), '小明'), (err) => err.statusCode === 403);
+  await assert.rejects(requireSelfOrAdmin(fastify, req(), '小明'), (err) => err.statusCode === 403);
 });
 
-test('requireMatchPlayerOrAdmin allows both match participants', () => {
+test('a bound player ID needs its device key', async () => {
+  delete process.env.ADMIN_TOKEN;
+  const key = newPlayerKey();
+  const fastify = { ...fakeFastify(), db: fakeDb({ alice: hashPlayerKey(key) }) };
+  await assert.rejects(
+    requireSelfOrAdmin(fastify, req({ 'x-player-id': 'alice' }), 'alice'),
+    (err) => err.statusCode === 403 && err.code === 'PLAYER_KEY_REQUIRED'
+  );
+  await assert.rejects(
+    requireSelfOrAdmin(fastify, req({ 'x-player-id': 'alice', 'x-player-key': 'wrong' }), 'alice'),
+    (err) => err.code === 'PLAYER_KEY_REQUIRED'
+  );
+  await assert.doesNotReject(
+    requireSelfOrAdmin(fastify, req({ 'x-player-id': 'alice', 'x-player-key': key }), 'alice')
+  );
+  // Unbound IDs still work without a key.
+  await assert.doesNotReject(requireSelfOrAdmin(fastify, req({ 'x-player-id': 'bob' }), 'bob'));
+  // So do match results.
+  const match = { player1_id: 'alice', player2_id: 'bob' };
+  await assert.rejects(
+    requireMatchPlayerOrAdmin(fastify, req({ 'x-player-id': 'alice' }), match),
+    (err) => err.code === 'PLAYER_KEY_REQUIRED'
+  );
+  await assert.doesNotReject(
+    requireMatchPlayerOrAdmin(fastify, req({ 'x-player-id': 'alice', 'x-player-key': key }), match)
+  );
+});
+
+test('player keys: random, stored as a hash, compared exactly', () => {
+  const a = newPlayerKey();
+  assert.notEqual(a, newPlayerKey());
+  assert.ok(a.length >= 32);
+  assert.equal(playerKeyMatches(a, hashPlayerKey(a)), true);
+  assert.equal(playerKeyMatches(a + 'x', hashPlayerKey(a)), false);
+  assert.equal(playerKeyMatches('', hashPlayerKey(a)), false);
+  assert.equal(playerKeyMatches(a, null), false);
+});
+
+test('requireMatchPlayerOrAdmin allows both match participants', async () => {
   delete process.env.ADMIN_TOKEN;
   const fastify = fakeFastify();
   const match = { player1_id: 'alice', player2_id: 'bob' };
-  assert.doesNotThrow(() =>
-    requireMatchPlayerOrAdmin(fastify, req({ 'x-player-id': 'alice' }), match)
-  );
+  await assert.doesNotReject(requireMatchPlayerOrAdmin(fastify, req({ 'x-player-id': 'alice' }), match));
   assert.equal(fastify.audits.at(-1).action, 'auth.match_player');
-  assert.doesNotThrow(() =>
-    requireMatchPlayerOrAdmin(fastify, req({ 'x-player-id': 'bob' }), match)
-  );
+  await assert.doesNotReject(requireMatchPlayerOrAdmin(fastify, req({ 'x-player-id': 'bob' }), match));
 });
 
-test('requireMatchPlayerOrAdmin allows an admin and rejects outsiders', () => {
+test('requireMatchPlayerOrAdmin allows an admin and rejects outsiders', async () => {
   process.env.ADMIN_TOKEN = 'correct-horse';
   const fastify = fakeFastify();
   const match = { player1_id: 'alice', player2_id: 'bob' };
-  assert.doesNotThrow(() =>
+  await assert.doesNotReject(
     requireMatchPlayerOrAdmin(fastify, req({ 'x-admin-token': 'correct-horse' }), match)
   );
   assert.equal(fastify.audits.at(-1).action, 'admin.authorized');
   delete process.env.ADMIN_TOKEN;
-
-  assert.throws(
-    () =>
-      requireMatchPlayerOrAdmin(fastify, req({ 'x-player-id': 'carol' }), match),
+  await assert.rejects(
+    requireMatchPlayerOrAdmin(fastify, req({ 'x-player-id': 'carol' }), match),
     (err) => err.statusCode === 403
   );
   assert.equal(fastify.audits.at(-1).action, 'auth.denied');

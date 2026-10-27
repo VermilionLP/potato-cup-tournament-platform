@@ -85,6 +85,8 @@
   // native confirm() returns false without showing anything once a browser
   // blocks the site's dialogs, which made these buttons silently do nothing.
   let pendingAction = $state(null);
+  // Admin: whether the edited player's ID is bound to a device key.
+  let keyBound = $state(null);
 
   function parseBnetIds(raw) {
     try {
@@ -150,6 +152,28 @@
     mergeTargetId = "";
     pendingAction = null;
     showEditDialog = true;
+    keyBound = null;
+    if (isAdmin) {
+      const id = p.id;
+      API.playerKeyStatus(id)
+        .then((res) => editingId === id && (keyBound = res.bound))
+        .catch(() => {});
+    }
+  }
+
+  async function handleResetKey() {
+    if (pendingAction !== "reset-key") {
+      pendingAction = "reset-key";
+      return;
+    }
+    pendingAction = null;
+    try {
+      await API.resetPlayerKey(editingId);
+      keyBound = false;
+      toast.success("设备密钥已重置，选手下次打开网站时会绑定新设备");
+    } catch (e) {
+      toast.error("重置失败: " + e.message);
+    }
   }
 
   async function handleSave() {
@@ -836,6 +860,26 @@
           此处为全局账号；仅在某届赛事临时使用的账号请到该赛事的「账号关联」里管理。
         </p>
       </div>
+
+      <!-- Device key (admin, edit only) -->
+      {#if !isCreating && isAdmin && keyBound !== null}
+        <div class="flex items-center justify-between gap-2 pt-2 border-t border-border/60 text-xs">
+          <span class="text-muted-foreground">
+            设备密钥：<span class="font-semibold text-foreground">{keyBound ? "已绑定" : "未绑定"}</span>
+          </span>
+          {#if keyBound}
+            <button
+              type="button"
+              onclick={handleResetKey}
+              class="rounded-md border px-2 py-1 text-[11px] font-semibold cursor-pointer transition-colors
+                {pendingAction === 'reset-key' ? 'border-red-500 bg-red-500 text-white' : 'border-border text-muted-foreground hover:text-foreground'}"
+              title="选手换了设备又找不到原密钥时使用；重置后第一个用这个 ID 的设备会重新绑定"
+            >
+              {pendingAction === "reset-key" ? "确认重置" : "重置密钥"}
+            </button>
+          {/if}
+        </div>
+      {/if}
 
       <!-- Merge section (edit only) -->
       {#if !isCreating && isAdmin}

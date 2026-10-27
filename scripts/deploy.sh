@@ -5,7 +5,7 @@
 #   bash scripts/deploy.sh --git [ref]     # deploy GitHub main (or a branch/tag/commit)
 #   bash scripts/deploy.sh path/to/code.tar.gz
 #
-# Steps: backup -> stage -> drift check -> dry run -> apply -> preflight
+# Steps: backup (code + database) -> stage -> drift check -> dry run -> apply -> preflight
 # migrations -> install/migrate/build -> restart -> smoke tests.
 # Any failure stops the script before the running service is restarted.
 #
@@ -65,7 +65,7 @@ changed_files() {
   rsync "${RSYNC_OPTS[@]}" -n -c -i "$1"/ "$2"/ | grep -Ev '^\.(d|f)' || true
 }
 
-echo "==> 1/9 backup current code"
+echo "==> 1/9 backup current code and database"
 mkdir -p "$BACKUP_DIR"
 STAMP=$(date +%Y%m%d-%H%M%S)
 tar -czf "$BACKUP_DIR/suck-code-${STAMP}.tar.gz" \
@@ -73,6 +73,21 @@ tar -czf "$BACKUP_DIR/suck-code-${STAMP}.tar.gz" \
   --exclude='apps/web/.svelte-kit' \
   -C /home/admin suck
 ls -lh "$BACKUP_DIR/suck-code-${STAMP}.tar.gz"
+# Keep the newest 20 code backups.
+ls -1t "$BACKUP_DIR"/suck-code-*.tar.gz | tail -n +21 | xargs -r rm -f
+# Database: the backup script of the code being replaced (or of this
+# checkout on the first run). SKIP_DB_BACKUP=1 skips it, e.g. when
+# pg_dump is not installed yet.
+if [ "${SKIP_DB_BACKUP:-}" = "1" ]; then
+  echo "database backup skipped (SKIP_DB_BACKUP=1)"
+else
+  DB_BACKUP_SCRIPT="$TARGET/scripts/backup-db.sh"
+  [ -f "$DB_BACKUP_SCRIPT" ] || DB_BACKUP_SCRIPT="$(dirname "$0")/backup-db.sh"
+  TARGET="$TARGET" BACKUP_DIR="$BACKUP_DIR" bash "$DB_BACKUP_SCRIPT" pre-deploy || {
+    echo "database backup failed, nothing changed (rerun with SKIP_DB_BACKUP=1 to deploy without it)"
+    exit 1
+  }
+fi
 
 echo "==> 2/9 stage new code"
 rm -rf "$STAGING"
@@ -287,6 +302,8 @@ echo
 if [ "$FAILED" -ne 0 ]; then
   echo "SMOKE TESTS FAILED. Roll back with:"
   echo "  tar -xzf $BACKUP_DIR/suck-code-${STAMP}.tar.gz -C /home/admin && cd $TARGET && pnpm build:web && pm2 restart $PM2_APP"
+  echo "If a migration changed data, restore the database too (see scripts/backup-db.sh):"
+  echo "  the newest $BACKUP_DIR/db/suck-db-*-pre-deploy.dump"
   exit 1
 fi
 echo "deploy finished${NEW_COMMIT:+ at ${NEW_COMMIT:0:7}}"

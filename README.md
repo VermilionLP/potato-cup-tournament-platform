@@ -45,6 +45,8 @@ pnpm dev
 2. API 默认会从 `../web/build` 提供静态文件，也可以用 `STATIC_DIR` 指定目录；
 3. 生产环境用 PM2 / systemd 之类的进程管理器运行 `node apps/api/app.js`。
 
+线上服务器用 `bash scripts/deploy.sh --git` 部署（先 `git pull` 拿到最新的部署脚本）。部署前会备份代码和数据库；数据库备份也可以单独运行或加进 crontab，见 `scripts/backup-db.sh` 开头的说明（含恢复命令）。
+
 ## 配置
 
 - `apps/api/.env.example` — 端口、`DATABASE_URL`、QQ 群白名单、Web Push（VAPID）密钥、管理员令牌、Elasticsearch 日志
