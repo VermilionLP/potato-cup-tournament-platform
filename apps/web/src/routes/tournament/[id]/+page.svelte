@@ -133,7 +133,7 @@
     ),
   );
   let overlayShownStage = $derived(
-    pickStage(overlayStageList, tournament?.overlay_stage || tournament?.overlay_round || null),
+    pickStage(overlayStageList, tournament?.overlay_stage || null),
   );
   let stageView = $state(null); // "group" | "playoff"; null follows the current stage
   // Before the playoff exists only the group stage can be shown.

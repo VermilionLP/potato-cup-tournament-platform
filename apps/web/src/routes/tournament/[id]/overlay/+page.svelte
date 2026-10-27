@@ -179,11 +179,11 @@
   let matchOrder = $derived(buildMatchOrder(stageMatches || []));
 
   // Selected stage: URL stage/round param first, then the stage chosen in
-  // the dashboard (overlay_stage, or the older overlay_round), otherwise the
-  // first stage that still has matches to play.
-  let selectedStage = $derived(
-    pickStage(stages, stageParam || tournament?.overlay_stage || tournament?.overlay_round || null),
-  );
+  // the dashboard (overlay_stage), otherwise the first stage that still has
+  // matches to play. overlay_round is not used: changing the scene in the
+  // dashboard rewrites it, which used to pin the overlay to an old round.
+  let explicitStage = $derived(stageParam || tournament?.overlay_stage || null);
+  let selectedStage = $derived(pickStage(stages, explicitStage));
   let selectedRound = $derived(selectedStage?.round ?? maxRound);
 
   let introMatches = $derived(selectedStage?.matches || []);
@@ -432,25 +432,38 @@
     return Math.min(1.4, 840 / height, 1440 / width);
   });
 
-  // Swiss in several groups: one card per group with the shown round's
-  // matches and the group's whole table. Group i is swiss_group i + 1.
+  // Swiss in several groups. Groups play at their own pace, so each group
+  // has its own current round; the board shows one group at a time (see
+  // focusGroup). Group i is swiss_group i + 1.
+  const swDecided = (m) => m.status === "completed" || m.status === "walkover";
+  const swPlayable = (m) => m.status === "pending" && m.player1_id && m.player2_id;
   let swissGroups = $derived.by(() => {
-    if (!isSwiss || !selectedStage || selectedStage.bracket !== "sw") return [];
+    if (!isSwiss || !stages.some((s) => s.bracket === "sw")) return [];
     const groups = tournament?.group_stage?.groups || [];
     if (groups.length < 2) return [];
     const perGroup = Number(tournament?.group_stage?.per_group) || 0;
-    return groups.map((g, i) => ({
-      label: g.label,
-      rows: g.rows,
-      perGroup,
-      matches: selectedStage.matches.filter((m) => Number(m.swiss_group) === i + 1),
-    }));
+    const sw = stages.filter((s) => s.bracket === "sw");
+    const wanted = /^sw:(\d+)$/.exec(String(explicitStage || ""));
+    return groups.map((g, i) => {
+      const rounds = sw
+        .map((s) => ({ ...s, matches: s.matches.filter((m) => Number(m.swiss_group) === i + 1) }))
+        .filter((r) => r.matches.length);
+      const current =
+        (wanted && rounds.find((r) => r.round === Number(wanted[1]))) ||
+        rounds.find((r) => r.matches.some(swPlayable)) ||
+        rounds.find((r) => r.matches.some((m) => !swDecided(m) && (m.player1_id || m.player2_id))) ||
+        [...rounds].reverse().find((r) => r.matches.some(swDecided)) ||
+        rounds[0] ||
+        null;
+      return { label: g.label, rows: g.rows, perGroup, rounds, current };
+    });
   });
 
-  // Grouped Swiss: the side table shows one group at a time - the group of
-  // the live match, else of the next match; when neither exists the groups
-  // take turns every 8 seconds.
+  // The group shown: the live match's group; else the group shown last while
+  // it still has a match to play (so a group's next round follows its last
+  // one); else the next match's group; else the groups take turns every 8s.
   let groupTick = $state(0);
+  let lastGroupLabel = $state(null);
   $effect(() => {
     if (swissGroups.length < 2) return;
     const timer = setInterval(() => (groupTick += 1), 8000);
@@ -458,23 +471,29 @@
   });
   let focusGroup = $derived.by(() => {
     if (!swissGroups.length) return null;
-    const live = (stageMatches || []).find((m) => m.id === tournament?.active_match_id && m.bracket === "sw");
-    const anchor = live || nextMatch;
-    const index = anchor?.swiss_group ? Number(anchor.swiss_group) - 1 : -1;
-    if (index >= 0 && index < swissGroups.length) return swissGroups[index];
-    return swissGroups[groupTick % swissGroups.length];
+    const of = (m) => (m?.bracket === "sw" && m.swiss_group ? swissGroups[Number(m.swiss_group) - 1] || null : null);
+    const live = of((stageMatches || []).find((m) => m.id === tournament?.active_match_id));
+    if (live) return live;
+    const last = swissGroups.find((g) => g.label === lastGroupLabel);
+    if (last?.rounds.some((r) => r.matches.some(swPlayable))) return last;
+    return of(nextMatch) || swissGroups[groupTick % swissGroups.length];
   });
+  $effect(() => {
+    if (focusGroup) lastGroupLabel = focusGroup.label;
+  });
+  // Stage shown in labels: the shown group's round in grouped Swiss.
+  let shownStage = $derived(focusGroup?.current || selectedStage);
+  // Next match panel: the shown group's next match first.
+  let panelNextMatch = $derived(
+    focusGroup?.rounds.flatMap((r) => r.matches).find(swPlayable) || nextMatch,
+  );
 
-  // The shown group's rounds up to the shown one (last three), one column
+  // The shown group's rounds up to its current one (last three), one column
   // each, so earlier results of the group stay visible.
   let focusRounds = $derived.by(() => {
-    if (!focusGroup) return [];
-    const index = swissGroups.indexOf(focusGroup);
-    const sw = stages.filter((s) => s.bracket === "sw");
-    const at = sw.findIndex((s) => s.key === selectedStage?.key);
-    return sw
-      .slice(Math.max(0, at - 2), at + 1)
-      .map((s) => ({ ...s, matches: s.matches.filter((m) => Number(m.swiss_group) === index + 1) }));
+    if (!focusGroup?.current) return [];
+    const at = focusGroup.rounds.indexOf(focusGroup.current);
+    return focusGroup.rounds.slice(Math.max(0, at - 2), at + 1);
   });
   const GROUP_COL_W = 470;
   let groupScale = $derived.by(() => {
@@ -1161,7 +1180,7 @@
               >
                 <span>{tournament.players?.length || 0} PLAYERS</span>
                 <span class="text-slate-700">/</span>
-                <span>{isTree ? stageLabel(displayRounds[0]?.matches?.[0] || {}) : selectedStage?.label || ""}</span>
+                <span>{isTree ? stageLabel(displayRounds[0]?.matches?.[0] || {}) : shownStage?.label || ""}</span>
                 {#if isLargeBracket}
                   <span class="text-slate-700">/</span>
                   <span class="text-amber-400 font-bold">
@@ -1545,7 +1564,7 @@
                   {#each focusRounds as r (r.key)}
                     <div class="shrink-0" style="width: {GROUP_COL_W}px">
                       <div class="text-sm font-extrabold text-center pb-1 mb-3 border-b-2 tracking-wider
-                        {r.key === selectedStage?.key ? 'text-amber-400 border-amber-500/40' : 'text-cyan-400 border-cyan-500/20'}">{r.label}</div>
+                        {r.key === shownStage?.key ? 'text-amber-400 border-amber-500/40' : 'text-cyan-400 border-cyan-500/20'}">{r.label}</div>
                       <div class="flex flex-col gap-2.5">
                         {#each r.matches as m (m.id)}
                           {@render swissMatch(m)}
@@ -1627,18 +1646,18 @@
                     ? showFinalStage
                       ? "FINAL STAGE"
                       : `SECTION ${sectionIndex + 1}`
-                    : isTree ? "BRACKET" : (selectedStage?.short || "")}
+                    : isTree ? "BRACKET" : (shownStage?.short || "")}
                 </span>
               </div>
-              {#if nextMatch}
+              {#if panelNextMatch}
                 <div class="space-y-2">
                   <div class="flex items-center justify-between gap-2">
                     <div class="flex items-center gap-2 min-w-0">
                       <span class="text-[9px] font-mono text-slate-500 shrink-0"
-                        >#{getPlayerSeed(nextMatch.player1_id) ?? "-"}</span
+                        >#{getPlayerSeed(panelNextMatch.player1_id) ?? "-"}</span
                       >
                       <span class="text-sm font-black text-white truncate"
-                        >{getPlayerName(nextMatch.player1_id)}</span
+                        >{getPlayerName(panelNextMatch.player1_id)}</span
                       >
                     </div>
                   </div>
@@ -1653,10 +1672,10 @@
                   <div class="flex items-center justify-between gap-2">
                     <div class="flex items-center gap-2 min-w-0">
                       <span class="text-[9px] font-mono text-slate-500 shrink-0"
-                        >#{getPlayerSeed(nextMatch.player2_id) ?? "-"}</span
+                        >#{getPlayerSeed(panelNextMatch.player2_id) ?? "-"}</span
                       >
                       <span class="text-sm font-black text-white truncate"
-                        >{getPlayerName(nextMatch.player2_id)}</span
+                        >{getPlayerName(panelNextMatch.player2_id)}</span
                       >
                     </div>
                   </div>
@@ -1664,8 +1683,8 @@
                 <div
                   class="mt-3 pt-3 border-t border-slate-800/80 flex items-center justify-between text-[9px] font-mono text-slate-500 uppercase"
                 >
-                  <span>{stageLabel(nextMatch)}</span>
-                  <span>#{matchOrder.get(nextMatch.id)}</span>
+                  <span>{stageLabel(panelNextMatch)}</span>
+                  <span>#{matchOrder.get(panelNextMatch.id)}</span>
                 </div>
               {:else if activeMatch}
                 <div class="text-sm font-black text-amber-400">LIVE</div>
