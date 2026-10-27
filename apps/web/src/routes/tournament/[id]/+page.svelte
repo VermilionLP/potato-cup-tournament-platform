@@ -3361,7 +3361,7 @@
               >
                 {#if userState.id}
                   <div class="flex items-center gap-3">
-                    <div
+                    <div data-no-i18n
                       class="w-10 h-10 rounded-full bg-linear-to-br from-amber-500 to-orange-600 flex items-center justify-center text-xs font-bold text-white uppercase"
                     >
                       {userState.id.slice(0, 2)}

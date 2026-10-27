@@ -360,7 +360,7 @@
               
               <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/50 pb-4">
                 <div class="flex items-center gap-3">
-                  <div class="w-12 h-12 rounded-xl bg-linear-to-br {getGradient(selectedStatPlayer.id)} flex items-center justify-center text-base font-black text-white uppercase shadow-inner shadow-black/10">
+                  <div data-no-i18n class="w-12 h-12 rounded-xl bg-linear-to-br {getGradient(selectedStatPlayer.id)} flex items-center justify-center text-base font-black text-white uppercase shadow-inner shadow-black/10">
                     {selectedStatPlayer.display_name.slice(0, 2)}
                   </div>
                   <div>

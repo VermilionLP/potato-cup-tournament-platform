@@ -5,6 +5,7 @@
   import { userState } from "$lib/user.svelte.js";
   import { API } from "$lib/api.js";
   import { isRecentlySeen } from "$lib/players.js";
+  import { i18n, initLocale, toggleLocale } from "$lib/i18n/locale.svelte.js";
   import {
     buildContact,
     contactIsEmpty,
@@ -196,6 +197,7 @@
   });
 
   onMount(() => {
+    initLocale();
     if (userState.id) {
       API.touchPlayer(userState.id).catch((e) => {
         console.warn("touch player failed:", e);
@@ -542,6 +544,19 @@
             {/if}
           </button>
 
+          <!-- Language toggle: 中文 / English -->
+          <button
+            id="header-language-toggle"
+            type="button"
+            onclick={toggleLocale}
+            data-no-i18n
+            title={i18n.locale === "en" ? "切换到中文" : "Switch to English"}
+            aria-label={i18n.locale === "en" ? "切换到中文" : "Switch to English"}
+            class="h-8 min-w-8 px-1.5 flex items-center justify-center rounded-md text-[11px] font-bold text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors cursor-pointer"
+          >
+            {i18n.locale === "en" ? "中" : "EN"}
+          </button>
+
           <!-- Mode toggle (mode-watcher style) -->
           <button
             id="header-darkmode-toggle"
@@ -583,7 +598,7 @@
             onclick={handleOpenDialog}
             class="flex items-center gap-2 px-2.5 py-1.5 rounded-md hover:bg-muted/60 transition-colors text-sm cursor-pointer group"
           >
-            <div
+            <div data-no-i18n
               class="w-6 h-6 rounded-full bg-linear-to-br {avatarGradient} flex items-center justify-center text-[10px] font-bold text-white uppercase shrink-0"
             >
               {userState.id ? userState.id.slice(0, 2) : "?"}

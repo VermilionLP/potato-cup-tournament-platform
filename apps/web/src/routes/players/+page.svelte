@@ -361,7 +361,7 @@
                 <!-- Player identity -->
                 <td class="px-5 py-3">
                   <div class="flex items-center gap-3">
-                    <div
+                    <div data-no-i18n
                       class="w-8 h-8 rounded-full bg-gradient-to-br {getGradient(
                         p.id,
                       )} flex items-center justify-center text-[11px] font-bold text-white uppercase shrink-0"
@@ -511,7 +511,7 @@
           <!-- Header: Avatar + Nickname/Team + Edit Button -->
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-3 min-w-0">
-              <div
+              <div data-no-i18n
                 class="w-9 h-9 rounded-full bg-gradient-to-br {getGradient(
                   p.id,
                 )} flex items-center justify-center text-[11px] font-bold text-white uppercase shrink-0"
