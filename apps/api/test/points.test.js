@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { buildBoard, normalizePointsTable, normalizeSeason, pointsFor } from '../lib/points.js';
+import { buildBoard, finalsQualifiers, normalizePointsKind, normalizePointsTable, normalizeSeason, pointsFor } from '../lib/points.js';
 import { parsePrizePoolPoints } from '../lib/liquipedia/points.js';
 
 const weekly = [{ from: 1, to: 1, points: 100 }, { from: 2, to: 2, points: 60 }, { from: 3, to: 4, points: 35 }, { from: 5, to: 8, points: 10 }];
@@ -41,11 +41,30 @@ test('board totals, shared ranks', () => {
 
 test('Liquipedia prize pools', () => {
   const single = `==Prize Pool==\n{{SoloPrizePool|localcurrency=cny\n|points1=PotatoCup Leaderboard 2026|points1link=Potato_Cup/Leaderboard/2026\n|{{Slot|place=1|localprize=136|points=100}}\n|{{Slot|place=2|localprize=49|points=60}}\n|{{Slot|place=3-4|localprize=8|points=35}}\n|{{Slot|place=5-8|localprize=0|points=10}}\n}}`;
-  assert.deepEqual(parsePrizePoolPoints(single), { season: '2026', table: weekly });
+  assert.deepEqual(parsePrizePoolPoints(single), { season: '2026', table: weekly, kind: 'weekly' });
+  const monthly = single.replace('|points1=', '|qualifies1=Potato_Cup/2026/Winter/Prop|qualifies1name=Winter Cup Prop\n|points1=');
+  assert.equal(parsePrizePoolPoints(monthly).kind, 'monthly');
+  const masters = single.replace('|points1=', '|qualifies1=FamilyX/Asia Masters\n|points1=');
+  assert.equal(parsePrizePoolPoints(masters).kind, 'weekly', 'qualifying elsewhere is not a monthly');
   const two = `{{SoloPrizePool|localcurrency=cny\n|points1=PotatoCup Leaderboard 2026|points1link=Potato_Cup/Leaderboard/2026\n|points2=FamilyX Leaderboard 2026|points2link=FamilyX/Leaderboard/2026\n|{{Slot|place=1|localprize=136|qualified1=true|points1=100|points2=3200}}\n|{{Slot|place=2|points1=60|points2=2200}}\n|{{Slot|place=3-4|points1=35|points2=1000}}\n}}`;
   assert.deepEqual(parsePrizePoolPoints(two).table.map((r) => r.points), [100, 60, 35]);
   const other = `{{SoloPrizePool|points1=FamilyX|points1link=FamilyX/Leaderboard/2026\n|{{Slot|place=1|points=5}}}}`;
   assert.equal(parsePrizePoolPoints(other), null, 'only Potato Cup leaderboards');
   assert.equal(parsePrizePoolPoints(`{{SoloPrizePool|{{Slot|place=1|points=30}}}}`), null, 'no leaderboard link');
   assert.equal(parsePrizePoolPoints('no prize pool'), null);
+});
+
+test('Winter Finals: monthly champions first, then the points ranking', () => {
+  assert.equal(normalizePointsKind('monthly'), 'monthly');
+  assert.equal(normalizePointsKind('x'), 'weekly');
+  const players = ['p1', 'p2', 'p3', 'p4', 'p5', 'p6'].map((id, i) => ({ player_id: id, total: 100 - i * 10 }));
+  // a won two monthlies: the second place passes to that event's runner-up b.
+  const monthlies = [{ id: 'm1', order: ['a', 'x'] }, { id: 'm2', order: ['a', 'b', 'c'] }, { id: 'm3', order: ['p1', 'p2'] }];
+  const q = finalsQualifiers(players, monthlies, { spots: 6, monthlySpots: 3 });
+  assert.deepEqual(Object.fromEntries([...q].map(([id, v]) => [id, v.via === 'monthly' ? v.event_id : 'points'])), {
+    a: 'm1', b: 'm2', p1: 'm3', p2: 'points', p3: 'points', p4: 'points',
+  });
+  // Only the remaining spots go by points; players without points never qualify that way.
+  const few = finalsQualifiers([{ player_id: 'z', total: 0 }], [], { spots: 2, monthlySpots: 1 });
+  assert.equal(few.size, 0);
 });

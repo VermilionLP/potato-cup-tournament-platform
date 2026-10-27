@@ -28,6 +28,43 @@ export function normalizePointsTable(input) {
   return { table: rows };
 }
 
+// Winter Finals: every monthly (月赛) champion of the season qualifies,
+// the remaining places go to the points ranking. 4 monthly events + 12 by
+// points = 16 per event type.
+export const FINALS_SPOTS = 16;
+export const MONTHLY_SPOTS = 4;
+export const POINTS_KINDS = ['weekly', 'monthly'];
+
+/** 'weekly' (default) or 'monthly'. */
+export function normalizePointsKind(value) {
+  return value === 'monthly' ? 'monthly' : 'weekly';
+}
+
+/**
+ * Winter Finals places for one board. `monthlies`: the board's finished
+ * monthly events in date order, each { id, order: [player ids by placing] }.
+ * A monthly's place goes to its champion; a champion who already holds a
+ * monthly place passes it on to the runner-up (and so on). The rest go to
+ * the best of the points ranking (`players`, sorted) not yet qualified.
+ * Returns Map player_id -> { via: 'monthly', event_id } | { via: 'points' }.
+ */
+export function finalsQualifiers(players, monthlies, { spots = FINALS_SPOTS, monthlySpots = MONTHLY_SPOTS } = {}) {
+  const out = new Map();
+  for (const ev of monthlies.slice(0, monthlySpots)) {
+    const next = ev.order.find((id) => !out.has(id));
+    if (next) out.set(next, { via: 'monthly', event_id: ev.id });
+  }
+  const pointsSpots = spots - monthlySpots;
+  let taken = 0;
+  for (const p of players) {
+    if (taken >= pointsSpots) break;
+    if (out.has(p.player_id) || !(p.total > 0)) continue;
+    out.set(p.player_id, { via: 'points' });
+    taken += 1;
+  }
+  return out;
+}
+
 /** Season label: a year like "2026"; '' = none. */
 export function normalizeSeason(value) {
   const s = String(value ?? '').trim();

@@ -5,7 +5,11 @@
 
 import { findTemplate, parseTemplates } from './wikitext.js';
 
-/** { table: [{ from, to, points }], season } or null. */
+/**
+ * { table: [{ from, to, points }], season, kind } or null. kind is
+ * 'monthly' when the winner qualifies for a Potato Cup Winter event
+ * (|qualifies1=Potato_Cup/2026/Winter/Prop), else 'weekly'.
+ */
 export function parsePrizePoolPoints(wikitext) {
   const pool = findTemplate(wikitext, 'SoloPrizePool', 'Prize pool start', 'PrizePool');
   if (!pool) return null;
@@ -32,5 +36,8 @@ export function parsePrizePoolPoints(wikitext) {
     if (!place || raw === undefined || raw === '' || !Number.isFinite(points)) continue;
     table.push({ from: Number(place[1]), to: Number(place[2] || place[1]), points });
   }
-  return table.length ? { table, season } : null;
+  const kind = Object.entries(pool.params).some(([k, v]) => /^qualifies\d*$/i.test(k) && /Potato[_ ]Cup\/\d{4}\/Winter/i.test(v))
+    ? 'monthly'
+    : 'weekly';
+  return table.length ? { table, season, kind } : null;
 }

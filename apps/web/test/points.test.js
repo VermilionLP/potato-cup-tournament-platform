@@ -4,6 +4,7 @@ import { POINTS_PRESETS, cleanTable, currentSeason, placeRangeLabel, pointsTable
 
 test("presets and labels", () => {
   assert.deepEqual(POINTS_PRESETS[0].table.map((r) => r.points), [100, 60, 35, 10]);
+  assert.deepEqual(POINTS_PRESETS.map((p) => p.id), ["weekly", "monthly"]);
   assert.equal(placeRangeLabel({ from: 3, to: 4 }), "第 3-4 名");
   assert.equal(placeRangeLabel({ from: 1, to: 1 }), "第 1 名");
   assert.equal(currentSeason(new Date("2026-12-31T17:00:00Z")), "2027", "Beijing time");

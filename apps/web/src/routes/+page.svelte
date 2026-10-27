@@ -280,6 +280,7 @@
   let newPointsEnabled = $state(true);
   let newPointsTable = $state(copyTable(POINTS_PRESETS[0].table));
   let newPointsSeason = $state(currentSeason());
+  let newPointsKind = $state("weekly");
   let creating = $state(false);
 
   // Divide tournaments
@@ -343,6 +344,7 @@
     newPointsEnabled = true;
     newPointsTable = copyTable(POINTS_PRESETS[0].table);
     newPointsSeason = currentSeason();
+    newPointsKind = "weekly";
     showCreateDialog = true;
   }
 
@@ -394,6 +396,7 @@
         vehicle_pool: newEventPool,
         points_table: newPointsEnabled ? cleanTable(newPointsTable) : null,
         points_season: newPointsEnabled ? newPointsSeason.trim() : null,
+        points_kind: newPointsEnabled ? newPointsKind : null,
         // Two-stage: `format` is the group stage, `playoff_format` the playoff.
         format: twoStage ? newGroupFormat : newFormat,
         grand_final_reset:
@@ -1067,7 +1070,7 @@
           计入土豆杯积分榜
         </label>
         {#if newPointsEnabled}
-          <PointsEditor bind:table={newPointsTable} bind:season={newPointsSeason} />
+          <PointsEditor bind:table={newPointsTable} bind:season={newPointsSeason} bind:kind={newPointsKind} />
         {/if}
       </section>
 
@@ -1092,7 +1095,7 @@
           {/if}
           <dt class="text-muted-foreground">比赛类型</dt><dd class="text-foreground">{vehiclePoolLabel(newEventPool)}</dd>
           <dt class="text-muted-foreground">年度积分榜</dt>
-          <dd class="text-foreground">{newPointsEnabled ? `${newPointsSeason} 赛季 · ${cleanTable(newPointsTable).map((r) => `${r.from === r.to ? r.from : `${r.from}-${r.to}`}:${r.points}`).join(" ")}` : "不计入"}</dd>
+          <dd class="text-foreground">{newPointsEnabled ? `${newPointsSeason} 赛季 · ${newPointsKind === "monthly" ? "月赛" : "周赛"} · ${cleanTable(newPointsTable).map((r) => `${r.from === r.to ? r.from : `${r.from}-${r.to}`}:${r.points}`).join(" ")}` : "不计入"}</dd>
           <dt class="text-muted-foreground">Ban / Pick</dt><dd class="text-foreground">{newBanpickEnabled ? "启用" : "不启用"}</dd>
         </dl>
       </section>

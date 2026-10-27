@@ -1,6 +1,8 @@
 // Potato Cup points (积分榜): an event's points per placing,
 // [{ from, to, points }], counted towards a season (year) leaderboard.
 
+// Presets double as the kind of points event: a monthly (月赛) champion
+// qualifies for the Winter Finals regardless of points.
 export const POINTS_PRESETS = [
   {
     id: "weekly",
@@ -24,18 +26,6 @@ export const POINTS_PRESETS = [
       { from: 7, to: 8, points: 35 },
       { from: 9, to: 12, points: 20 },
       { from: 13, to: 16, points: 10 },
-    ],
-  },
-  {
-    id: "finals",
-    label: "冬季总决赛",
-    table: [
-      { from: 1, to: 1, points: 200 },
-      { from: 2, to: 2, points: 150 },
-      { from: 3, to: 3, points: 100 },
-      { from: 4, to: 4, points: 75 },
-      { from: 5, to: 6, points: 50 },
-      { from: 7, to: 8, points: 25 },
     ],
   },
 ];

@@ -13,9 +13,6 @@
   import AwardIcon from "@lucide/svelte/icons/award";
   import SearchIcon from "@lucide/svelte/icons/search";
 
-  // Places that qualify for the Winter Finals.
-  const CUT = 16;
-
   let data = $state(null);
   let loading = $state(true);
   let pool = $state("");
@@ -78,7 +75,7 @@
       土豆杯积分榜
     </h1>
     <p class="text-xs text-muted-foreground">
-      计入积分榜的周赛和月赛按最终名次给分，每个赛季按比赛类型分别排名；前 {CUT} 名进入冬季总决赛。积分在赛事设置中定义，赛事结束后计入。
+      计入积分榜的周赛和月赛按最终名次给分，每个赛季按比赛类型分别排名。冬季总决赛每个类型 16 人：4 场月赛的冠军直接晋级（冠军已有资格时顺延给亚军），其余 12 个名额按积分排名。积分在赛事设置中定义，赛事结束后计入。
     </p>
   </div>
 
@@ -143,19 +140,18 @@
                 <th class="sticky left-0 z-10 w-12 bg-card px-3 py-2.5 text-right">#</th>
                 <th class="sticky left-12 z-10 min-w-40 bg-card px-3 py-2.5 text-left">选手</th>
                 <th class="px-3 py-2.5 text-center">总积分</th>
+                <th class="px-3 py-2.5 text-left whitespace-nowrap">冬季总决赛</th>
                 {#each board.events as ev (ev.id)}
                   <th class="px-2 py-2.5 text-center font-semibold normal-case tracking-normal whitespace-nowrap">
                     <a href="/tournament/{encodeURIComponent(ev.id)}" class="hover:text-primary" title={ev.name}>{shortName(ev.name)}</a>
+                    {#if ev.kind === "monthly"}<span class="ml-0.5 text-[9px] font-bold text-amber-500" title="月赛">月</span>{/if}
                   </th>
                 {/each}
               </tr>
             </thead>
             <tbody class="divide-y divide-border/40">
-              {#each shownPlayers as p, i (p.id)}
-                <tr
-                  class="hover:bg-muted/20 {p.rank <= CUT ? '' : 'opacity-70'} {p.id === userState.id ? 'bg-primary/5' : ''}
-                    {p.rank <= CUT && shownPlayers[i + 1]?.rank > CUT ? 'border-b-2 border-b-primary/60' : ''}"
-                >
+              {#each shownPlayers as p (p.id)}
+                <tr class="hover:bg-muted/20 {p.finals ? '' : 'opacity-70'} {p.id === userState.id ? 'bg-primary/5' : ''}">
                   <td class="sticky left-0 z-10 bg-card px-3 py-2 text-right font-mono font-bold {p.rank <= 3 ? 'text-amber-500' : 'text-muted-foreground'}">{p.rank}</td>
                   <td class="sticky left-12 z-10 bg-card px-3 py-2">
                     <div class="flex items-center gap-1.5 min-w-0">
@@ -167,6 +163,15 @@
                     </div>
                   </td>
                   <td class="px-3 py-2 text-center font-mono text-sm font-black text-foreground">{p.total}</td>
+                  <td class="px-3 py-2 whitespace-nowrap">
+                    {#if p.finals?.via === "monthly"}
+                      <span class="rounded border border-amber-500/30 bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-bold text-amber-600 dark:text-amber-400" title="月赛冠军直通">
+                        月赛 · {shortName(board.events.find((e) => e.id === p.finals.event_id)?.name)}
+                      </span>
+                    {:else if p.finals?.via === "points"}
+                      <span class="rounded border border-emerald-500/30 bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">积分</span>
+                    {/if}
+                  </td>
                   {#each board.events as ev (ev.id)}
                     <td class="px-2 py-2 text-center font-mono {p.points[ev.id] ? 'text-foreground' : 'text-muted-foreground/40'}">
                       {p.points[ev.id] || "—"}
@@ -175,14 +180,14 @@
                 </tr>
               {:else}
                 <tr>
-                  <td colspan={3 + board.events.length} class="py-10 text-center text-muted-foreground">没有匹配的选手</td>
+                  <td colspan={4 + board.events.length} class="py-10 text-center text-muted-foreground">没有匹配的选手</td>
                 </tr>
               {/each}
             </tbody>
           </table>
         </div>
         <p class="border-t border-border/50 px-4 py-2 text-[10px] text-muted-foreground">
-          粗线以上为前 {CUT} 名。同分并列同一名次。
+          「月赛」为月赛冠军直通名额（已举行 {board.finals.monthly_held}/{board.finals.monthly_spots} 场月赛），「积分」为按积分排名的 {board.finals.spots - board.finals.monthly_spots} 个名额，随赛季进行变化。同分并列同一名次。
         </p>
       </div>
     {/if}

@@ -159,9 +159,14 @@ const clamp = (v, lo, hi) => (v == null ? null : Math.min(hi, Math.max(lo, Numbe
 /** Only the leaderboard points of an already imported event. */
 export async function writeEventPoints(db, event) {
   const res = await db.query(
-    `UPDATE axsuck.tournaments SET points_table = $1::jsonb, points_season = $2, updated_at = NOW()
-     WHERE id = $3`,
-    [event.pointsTable ? JSON.stringify(event.pointsTable) : null, event.pointsTable ? event.pointsSeason || null : null, event.id]
+    `UPDATE axsuck.tournaments SET points_table = $1::jsonb, points_season = $2, points_kind = $3, updated_at = NOW()
+     WHERE id = $4`,
+    [
+      event.pointsTable ? JSON.stringify(event.pointsTable) : null,
+      event.pointsTable ? event.pointsSeason || null : null,
+      event.pointsTable ? event.pointsKind || 'weekly' : null,
+      event.id,
+    ]
   );
   return res.rowCount > 0;
 }
@@ -195,9 +200,9 @@ export async function writeEvent(db, event) {
         (id, name, description, status, player_capacity, hold_third_place, loser_advances,
          scheduled_time, game_mode, vehicle_pool, format, grand_final_reset, swiss_rounds,
          banpick_enabled, playoff_format, swiss_group_size, advance_per_group, current_stage,
-         played_at, source_url, source_title, points_table, points_season)
+         played_at, source_url, source_title, points_table, points_season, points_kind)
        VALUES ($1, $2, $3, 'completed', $4, $5, $19, $6, $7, $8, $9, $10, $11, FALSE, $12, $13, $14, $15,
-         $16::timestamptz, $17, $18, $20::jsonb, $21)`,
+         $16::timestamptz, $17, $18, $20::jsonb, $21, $22)`,
       [
         event.id,
         event.name,
@@ -220,6 +225,7 @@ export async function writeEvent(db, event) {
         event.loserAdvances ? 1 : 0,
         event.pointsTable ? JSON.stringify(event.pointsTable) : null,
         event.pointsTable ? event.pointsSeason || null : null,
+        event.pointsTable ? event.pointsKind || 'weekly' : null,
       ]
     );
 

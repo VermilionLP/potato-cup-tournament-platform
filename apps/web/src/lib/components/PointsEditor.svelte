@@ -1,14 +1,16 @@
 <script>
-  // Points per placing for the Potato Cup leaderboard (积分榜): a preset
-  // (weekly / monthly / finals) or custom rows, plus the season (year).
+  // Points per placing for the Potato Cup leaderboard (积分榜): the kind of
+  // event (周赛 / 月赛, which also loads its default table), the rows and the
+  // season (year). A monthly champion qualifies for the Winter Finals.
   import { POINTS_PRESETS, copyTable, pointsTableProblem } from "$lib/points.js";
 
-  let { table = $bindable([]), season = $bindable(""), compact = false } = $props();
+  let { table = $bindable([]), season = $bindable(""), kind = $bindable("weekly"), compact = false } = $props();
 
   const problem = $derived(pointsTableProblem(table, season));
-  const presetId = $derived(
-    POINTS_PRESETS.find((p) => JSON.stringify(p.table) === JSON.stringify((table || []).map((r) => ({ from: Number(r.from), to: Number(r.to), points: Number(r.points) }))))?.id || "",
-  );
+  function pickKind(preset) {
+    kind = preset.id;
+    table = copyTable(preset.table);
+  }
 
   function presetTitle(preset) {
     return preset.table.map((r) => `${r.from === r.to ? r.from : `${r.from}-${r.to}`}: ${r.points}`).join(" · ");
@@ -31,13 +33,13 @@
 
 <div class="space-y-2">
   <div class="flex flex-wrap items-center gap-1.5">
-    <span class="text-[11px] text-muted-foreground">预设</span>
+    <span class="text-[11px] text-muted-foreground">类型</span>
     {#each POINTS_PRESETS as preset (preset.id)}
       <button
         type="button"
-        onclick={() => (table = copyTable(preset.table))}
+        onclick={() => pickKind(preset)}
         class="rounded-full border px-2.5 py-0.5 text-[11px] font-semibold transition-colors cursor-pointer
-          {presetId === preset.id ? 'border-primary bg-primary text-primary-foreground' : 'border-border text-muted-foreground hover:text-foreground'}"
+          {kind === preset.id ? 'border-primary bg-primary text-primary-foreground' : 'border-border text-muted-foreground hover:text-foreground'}"
         title={presetTitle(preset)}
       >
         {preset.label}
@@ -72,6 +74,8 @@
   {#if problem}
     <p class="text-[11px] text-amber-600 dark:text-amber-400">{problem}</p>
   {:else}
-    <p class="text-[10px] text-muted-foreground">选手按最终名次获得所在行的积分，计入 {season} 赛季、本赛事比赛类型的积分榜。</p>
+    <p class="text-[10px] text-muted-foreground">
+      选手按最终名次获得所在行的积分，计入 {season} 赛季、本赛事比赛类型的积分榜。{kind === "monthly" ? "月赛冠军直接获得冬季总决赛资格（已有资格时顺延给亚军）。" : ""}
+    </p>
   {/if}
 </div>

@@ -6,7 +6,7 @@ import { Readable } from 'stream';
 import { bnetEntryKey } from '../lib/bnet.js';
 import { buildCalendarFeed, buildTournamentIcs } from '../lib/calendar.js';
 import { requireAdmin } from '../lib/admin.js';
-import { normalizePointsTable, normalizeSeason, pointsFor } from '../lib/points.js';
+import { normalizePointsKind, normalizePointsTable, normalizeSeason, pointsFor } from '../lib/points.js';
 import { eventPlacements } from '../lib/placements.js';
 import { groupStageOf } from '../lib/group-stage-view.js';
 import {
@@ -206,6 +206,7 @@ export default async function tournamentsRoutes(fastify) {
       advance_per_group,
       points_table,
       points_season,
+      points_kind,
     } = req.body;
     const points = normalizePointsTable(points_table);
     if (points.error) throw fastify.httpErrors.badRequest(points.error);
@@ -272,6 +273,7 @@ export default async function tournamentsRoutes(fastify) {
       advance_per_group,
       points_table: points.table,
       points_season: normalizeSeason(points_season),
+      points_kind: normalizePointsKind(points_kind),
     });
   });
 
@@ -334,7 +336,7 @@ export default async function tournamentsRoutes(fastify) {
     }
     // Points can be set or changed at any time, finished events included.
     if (hasPoints) {
-      updated = await repo.setPoints(req.params.id, points.table, normalizeSeason(body.points_season));
+      updated = await repo.setPoints(req.params.id, points.table, normalizeSeason(body.points_season), normalizePointsKind(body.points_kind));
       fastify.tournamentEvents.emit(`update:${req.params.id}`, { type: 'points_changed' });
     }
     // The event type can be changed at any time, finished events included.

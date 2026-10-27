@@ -543,7 +543,7 @@ export function convertPage({ title, wikitext, templates = new Map(), today = ne
   if (!events.length) return { title, skipped: '没有打完的比赛', events, warnings };
   // Leaderboard points from the prize pool, when the page is one event.
   const points = events.length === 1 ? parsePrizePoolPoints(wikitext) : null;
-  if (points) Object.assign(events[0], { pointsTable: points.table, pointsSeason: points.season });
+  if (points) Object.assign(events[0], { pointsTable: points.table, pointsSeason: points.season, pointsKind: points.kind });
   return { title, skipped: null, events, warnings };
 }
 

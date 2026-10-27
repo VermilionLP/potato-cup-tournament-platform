@@ -135,7 +135,7 @@ async function main() {
     const withPoints = plan.events.filter((e) => e.pointsTable);
     console.log('== 积分 ==');
     for (const e of withPoints) {
-      console.log(`${e.id.padEnd(40)} ${e.pointsSeason}  ${e.pointsTable.map((r) => `${r.from === r.to ? r.from : `${r.from}-${r.to}`}:${r.points}`).join(' ')}`);
+      console.log(`${e.id.padEnd(40)} ${e.pointsSeason} ${e.pointsKind === 'monthly' ? '月赛' : '周赛'}  ${e.pointsTable.map((r) => `${r.from === r.to ? r.from : `${r.from}-${r.to}`}:${r.points}`).join(' ')}`);
     }
     console.log(`\n${withPoints.length} 个赛事有积分`);
     if (!args.apply) {
