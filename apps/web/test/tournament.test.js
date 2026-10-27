@@ -18,12 +18,12 @@ test("game modes are the three WarThunder battle modes", () => {
     ["ab", "rb", "sb"].map((id) => gameModeInfo(id).code),
     ["AB", "RB", "SB"],
   );
-  assert.equal(gameModeLabel("sb"), "SB 全真模式");
+  assert.equal(gameModeLabel("sb"), "SB");
 });
 
 test("unknown game modes fall back to realistic battles", () => {
   assert.equal(gameModeInfo(undefined).id, "rb");
-  assert.equal(gameModeLabel("arcade"), "RB 历史模式");
+  assert.equal(gameModeLabel("arcade"), "RB");
 });
 
 test("bracket formats have readable labels", () => {
@@ -120,4 +120,16 @@ test("vehicle pool labels", async () => {
   assert.equal(vehiclePoolLabel("legacy-jet"), "早期喷气");
   assert.equal(vehiclePoolLabel("proleague"), "Pro League BVR");
   assert.equal(vehiclePoolLabel("custom"), "");
+});
+
+test("event summary: mode code, type, format and one detail", async () => {
+  const { eventSummary } = await import("../src/lib/tournament.js");
+  assert.deepEqual(eventSummary({ game_mode: "rb", vehicle_pool: "prop", format: "swiss", swiss_rounds: 5 }), {
+    mode: "RB", modeTitle: "历史模式 · Realistic", pool: "螺旋桨", format: "瑞士轮 · 5 轮", detail: "",
+  });
+  assert.equal(eventSummary({ format: "single_elim" }).detail, "");
+  assert.equal(eventSummary({ format: "single_elim", loser_advances: true }).detail, "败者晋级");
+  const two = eventSummary({ format: "double_elim", playoff_format: "double_elim", swiss_group_size: 8, advance_per_group: 2 });
+  assert.equal(two.format, "双败小组 → 双败淘汰");
+  assert.equal(two.detail, "每组 8 人 · 每组前 2 名晋级");
 });

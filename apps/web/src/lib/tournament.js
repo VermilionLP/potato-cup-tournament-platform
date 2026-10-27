@@ -16,9 +16,15 @@ export function gameModeInfo(value) {
   return GAME_MODES.find((mode) => mode.id === value) || GAME_MODES[1];
 }
 
+/** "RB": the mode code alone ("RB" already means 历史模式). */
 export function gameModeLabel(value) {
+  return gameModeInfo(value).code;
+}
+
+/** Tooltip for a mode code: "历史模式 · Realistic". */
+export function gameModeTitle(value) {
   const mode = gameModeInfo(value);
-  return `${mode.code} ${mode.name}`;
+  return `${mode.name} · ${mode.full}`;
 }
 
 // Vehicle pools (line-ups) events are grouped by.
@@ -36,6 +42,13 @@ export const POOL_VARIANTS = [{ id: "prop-ab", base: "prop", mode: "ab", code: "
 export function banpickPoolFor(eventType, gameMode) {
   return POOL_VARIANTS.find((v) => v.base === eventType && v.mode === gameMode)?.id || eventType;
 }
+
+// Tag colours per event type, so the type can be spotted at a glance.
+export const POOL_TAG = {
+  prop: "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300",
+  "legacy-jet": "border-sky-500/30 bg-sky-500/10 text-sky-700 dark:text-sky-300",
+  proleague: "border-violet-500/30 bg-violet-500/10 text-violet-700 dark:text-violet-300",
+};
 
 /** "螺旋桨" / "早期喷气" / "Pro League BVR"; '' for an unknown pool. */
 export function vehiclePoolLabel(value) {
@@ -233,4 +246,32 @@ export function twoStageStartMessage(playerCount, { rounds, groupSize, perGroup,
   const min = playoffFormat === "double_elim" ? 4 : 2;
   if (total < min) return `淘汰赛至少需要 ${min} 名晋级选手（当前 ${groups} 组 × ${k} = ${total} 人）`;
   return null;
+}
+
+/**
+ * Short labels for an event card or header: the mode code, the event type,
+ * the format (with Swiss rounds) and one optional detail - the group setup
+ * of two-stage events, or 败者晋级 (胜者晋级 is the norm and not shown).
+ */
+export function eventSummary(t) {
+  const rounds = t?.swiss_rounds ? `${t.swiss_rounds} 轮` : "单循环";
+  let format = eventFormatLabel(t);
+  let detail = "";
+  if (t?.playoff_format) {
+    const parts = [t?.swiss_group_size ? `每组 ${t.swiss_group_size} 人` : "不分组"];
+    if (t.format === "swiss") parts.push(rounds);
+    parts.push(`每组前 ${t.advance_per_group} 名晋级`);
+    detail = parts.join(" · ");
+  } else if (t?.format === "swiss") {
+    format = `瑞士轮 · ${rounds}`;
+  } else if (t?.loser_advances) {
+    detail = "败者晋级";
+  }
+  return {
+    mode: gameModeLabel(t?.game_mode),
+    modeTitle: gameModeTitle(t?.game_mode),
+    pool: vehiclePoolLabel(t?.vehicle_pool),
+    format,
+    detail,
+  };
 }

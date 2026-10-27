@@ -40,9 +40,10 @@
   import PointsEditor from "$lib/components/PointsEditor.svelte";
   import { POINTS_PRESETS, cleanTable, copyTable, currentSeason, pointsTableProblem } from "$lib/points.js";
   import {
-    advancementLabel,
     canCorrectResult,
     gameModeLabel,
+    gameModeTitle,
+    POOL_TAG,
     gameModeInfo,
     vehiclePoolLabel,
     banpickPoolFor,
@@ -3102,24 +3103,18 @@
           >
             {statusLabel(tournament.status)}
           </Badge>
-          <Badge
-            variant="outline"
-            class="text-[10px] px-2 py-0.5 font-mono bg-muted/40 text-muted-foreground border-border/70"
-            title={eventFormatLabel(tournament)}
-          >
-            {gameModeLabel(tournament.game_mode)} · {eventFormatLabel(tournament)}
-          </Badge>
         </div>
-        <p class="text-xs text-muted-foreground font-medium">
-          ID: {tournament.id} • 比赛模式: <span class="font-bold text-foreground">{gameModeLabel(tournament.game_mode)}</span>
+        <!-- Event tags: mode · type · format · detail, then points. -->
+        <div class="flex flex-wrap items-center gap-1.5 pt-1 text-xs">
+          <span class="rounded-md border border-border bg-muted/60 px-2 py-0.5 font-mono font-bold text-foreground/80" title={gameModeTitle(tournament.game_mode)}>{gameModeLabel(tournament.game_mode)}</span>
           {#if isAdmin}
-            • 比赛类型:
             <select
               aria-label="比赛类型"
+              title="比赛类型"
               value={tournament.vehicle_pool}
               disabled={savingPool}
               onchange={(e) => saveEventPool(e.currentTarget.value)}
-              class="h-6 rounded border border-border bg-background px-1 text-xs font-bold text-foreground cursor-pointer disabled:opacity-60"
+              class="h-6 rounded-md border px-1.5 text-xs font-semibold cursor-pointer disabled:opacity-60 {POOL_TAG[tournament.vehicle_pool] || 'border-border bg-background text-foreground'}"
             >
               {#if !vehiclePoolLabel(tournament.vehicle_pool)}
                 <option value={tournament.vehicle_pool}>未分类</option>
@@ -3129,31 +3124,41 @@
               {/each}
             </select>
           {:else if vehiclePoolLabel(tournament.vehicle_pool)}
-            • 比赛类型: <span class="font-bold text-foreground">{vehiclePoolLabel(tournament.vehicle_pool)}</span>
+            <span class="rounded-md border px-2 py-0.5 font-semibold {POOL_TAG[tournament.vehicle_pool] || 'border-border bg-muted/60 text-muted-foreground'}">{vehiclePoolLabel(tournament.vehicle_pool)}</span>
           {/if}
-          • 赛制: <span class="font-bold text-foreground">{eventFormatLabel(tournament)}</span>
-          • 选手容量: {tournament.player_count ||
-            0}/{tournament.player_capacity} 人
-          {#if tournament.status === "voting"}
-            • 投票人数: {tournament.voter_count || 0} 人
+          <span class="rounded-md border border-border bg-muted/60 px-2 py-0.5 font-semibold text-muted-foreground">{isSwiss && !isTwoStage ? `瑞士轮 · ${swissRoundsLabel}` : eventFormatLabel(tournament)}</span>
+          {#if isTwoStage}
+            <span class="text-muted-foreground">{tournament.swiss_group_size ? `每组 ${tournament.swiss_group_size} 人` : "不分组"}{hasGroupBrackets ? "" : ` · ${swissRoundsLabel}`} · 每组前 {tournament.advance_per_group} 名晋级</span>
+          {:else if !isSwiss && tournament.loser_advances}
+            <span class="text-muted-foreground">败者晋级</span>
           {/if}
-          {#if tournament.source_url}
-            • 比赛日期 {tournament.scheduled_time || "未知"}
-          {:else}
-            • 创建于 {new Date(
-              tournament.created_at,
-            ).toLocaleDateString("zh-CN")}
-          {/if}
-          • {isSwiss || isTwoStage ? "赛制结构" : "晋级规则"}: <span class="font-bold text-primary">{isTwoStage
-            ? `小组赛 ${hasGroupBrackets ? `${groupFormatLabel}淘汰` : swissRoundsLabel}（${tournament.swiss_group_size ? `每组 ${tournament.swiss_group_size} 人` : "不分组"}，每组前 ${tournament.advance_per_group} 名晋级）→ ${tournament.playoff_format === "double_elim" ? "双败" : "单败"}淘汰赛`
-            : isSwiss ? `积分制 · ${swissRoundsLabel}` : advancementLabel(tournament.loser_advances)}</span>
           {#if hasPoints}
-            • 年度积分榜: <a href="/points?season={tournament.points_season}&pool={tournament.vehicle_pool}" class="font-bold text-primary hover:underline">{tournament.points_season} 赛季 · {tournament.points_kind === "monthly" ? "月赛" : "周赛"}{tournament.points_invite ? " · 冠军直邀" : ""}</a>
+            <a
+              href="/points?season={tournament.points_season}&pool={tournament.vehicle_pool}"
+              class="inline-flex items-center gap-1 rounded-md border border-primary/30 bg-primary/10 px-2 py-0.5 font-semibold text-primary hover:bg-primary/20 transition-colors"
+              title="年度积分榜"
+            >
+              <TrophyIcon class="w-3 h-3" />
+              {tournament.points_season} 赛季{tournament.points_kind === "monthly" ? "月赛" : "周赛"}{tournament.points_invite ? " · 冠军直邀" : ""}
+            </a>
           {/if}
           {#if isAdmin}
-            <button type="button" onclick={() => (editingPoints ? (editingPoints = false) : openPointsEdit())} class="ml-1 text-[11px] font-semibold text-primary hover:underline cursor-pointer">
+            <button type="button" onclick={() => (editingPoints ? (editingPoints = false) : openPointsEdit())} class="text-[11px] font-semibold text-primary hover:underline cursor-pointer">
               {editingPoints ? "收起积分设置" : hasPoints ? "编辑积分" : "设置积分"}
             </button>
+          {/if}
+        </div>
+        <!-- Facts: ID, players, date. -->
+        <p class="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground">
+          <span class="font-mono">ID: {tournament.id}</span>
+          <span>选手 <span class="font-semibold text-foreground tabular-nums">{tournament.player_count || 0} / {tournament.player_capacity}</span></span>
+          {#if tournament.status === "voting"}
+            <span>投票 <span class="font-semibold text-foreground tabular-nums">{tournament.voter_count || 0}</span> 人</span>
+          {/if}
+          {#if tournament.source_url}
+            <span>比赛日期 {tournament.scheduled_time || "未知"}</span>
+          {:else}
+            <span>创建于 {new Date(tournament.created_at).toLocaleDateString("zh-CN")}</span>
           {/if}
         </p>
         {#if isAdmin && editingPoints}

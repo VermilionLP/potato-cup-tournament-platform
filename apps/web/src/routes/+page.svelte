@@ -4,7 +4,6 @@
   import { API } from "$lib/api.js";
   import {
     GAME_MODES,
-    advancementLabel,
     gameModeLabel,
     VEHICLE_POOLS,
     vehiclePoolLabel,
@@ -14,7 +13,8 @@
     MIN_SWISS_ROUNDS,
     PLAYOFF_FORMATS,
     GROUP_FORMATS,
-    eventFormatLabel,
+    eventSummary,
+    POOL_TAG,
     groupBracketProblem,
   } from "$lib/tournament.js";
   import PointsEditor from "$lib/components/PointsEditor.svelte";
@@ -77,16 +77,6 @@
       return `${dm[1]}/${String(dm[2]).padStart(2, "0")}/${String(dm[3]).padStart(2, "0")} ${weekdays[d.getDay()]}`;
     }
     return String(raw);
-  }
-
-  function ruleLabel(t) {
-    const rounds = t?.swiss_rounds ? `${t.swiss_rounds} 轮` : "单循环";
-    if (t?.playoff_format) {
-      const group = t.format === "swiss" ? rounds : `${GROUP_FORMATS.find((f) => f.id === t.format)?.label || ""}淘汰`;
-      return `小组赛${t.swiss_group_size ? ` ${t.swiss_group_size} 人/组` : ""} · ${group}，每组前 ${t.advance_per_group} 名 → ${t.playoff_format === "double_elim" ? "双败" : "单败"}淘汰赛`;
-    }
-    if (t?.format === "swiss") return `积分制 · ${rounds}`;
-    return advancementLabel(t?.loser_advances);
   }
 
   function scheduledDateTime(t) {
@@ -495,6 +485,23 @@
 
 </script>
 
+<!-- Event tags under the title: mode · type · format, then the detail and
+     the event ID in muted text. -->
+{#snippet eventTags(t)}
+  {@const info = eventSummary(t)}
+  <div class="mt-1.5 flex flex-wrap items-center gap-1.5 text-[11px] leading-none">
+    <span class="rounded-md border border-border bg-muted/60 px-1.5 py-1 font-mono font-bold text-foreground/80" title={info.modeTitle}>{info.mode}</span>
+    {#if info.pool}
+      <span class="rounded-md border px-1.5 py-1 font-semibold {POOL_TAG[t.vehicle_pool] || 'border-border bg-muted/60 text-muted-foreground'}">{info.pool}</span>
+    {/if}
+    <span class="rounded-md border border-border bg-muted/60 px-1.5 py-1 font-semibold text-muted-foreground">{info.format}</span>
+    {#if info.detail}
+      <span class="text-muted-foreground">{info.detail}</span>
+    {/if}
+    <span class="font-mono text-[10px] text-muted-foreground/50" title="赛事 ID">#{t.id}</span>
+  </div>
+{/snippet}
+
 <div class="space-y-6">
   <!-- Top Headline and Create trigger -->
   <div class="flex items-center justify-between border-b border-border/60 pb-5">
@@ -584,13 +591,8 @@
                   <Badge variant="outline" class="text-[9px] px-2 py-0 font-bold uppercase tracking-wider {getStatusStyle(t.status)} shrink-0">
                     {getStatusLabel(t.status)}
                   </Badge>
-                  <span class="text-[10px] text-muted-foreground font-mono bg-muted/60 px-1.5 py-0.25 rounded shrink-0">ID: {t.id}</span>
                 </div>
-                <p class="text-xs text-muted-foreground mt-1 flex items-center gap-1.5 flex-wrap">
-                  <span>WarThunder {gameModeLabel(t.game_mode)}{vehiclePoolLabel(t.vehicle_pool) ? ` · ${vehiclePoolLabel(t.vehicle_pool)}` : ""} · {eventFormatLabel(t)}</span>
-                  <span>·</span>
-                  <span>{ruleLabel(t)}</span>
-                </p>
+                {@render eventTags(t)}
               </div>
             </div>
 
@@ -713,13 +715,8 @@
                       {t.name}
                     </h3>
                     <Badge variant="outline" class="text-[9px] px-1.5 py-0 bg-zinc-500/10 text-zinc-400 border-zinc-500/20 shrink-0">已完结</Badge>
-                    <span class="text-[10px] text-muted-foreground font-mono bg-muted/60 px-1.5 py-0.25 rounded shrink-0">ID: {t.id}</span>
                   </div>
-                  <p class="text-[11px] text-muted-foreground mt-0.5 flex items-center gap-1.5 flex-wrap">
-                    <span>WarThunder {gameModeLabel(t.game_mode)}{vehiclePoolLabel(t.vehicle_pool) ? ` · ${vehiclePoolLabel(t.vehicle_pool)}` : ""} · {eventFormatLabel(t)}</span>
-                    <span>·</span>
-                    <span>{ruleLabel(t)}</span>
-                  </p>
+                  {@render eventTags(t)}
                 </div>
               </div>
 
