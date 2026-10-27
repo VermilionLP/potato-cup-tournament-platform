@@ -39,6 +39,7 @@
     canCorrectResult,
     gameModeLabel,
     vehiclePoolLabel,
+    VEHICLE_POOLS,
     isValidSwissRounds,
     MAX_SWISS_ROUNDS,
     MIN_SWISS_ROUNDS,
@@ -126,6 +127,9 @@
   );
   let isSwiss = $derived(tournament?.format === "swiss");
   let banpickEnabled = $derived(tournament?.banpick_enabled !== false);
+  // Ban / Pick always draws from the event type's vehicle pool.
+  let banpickPoolId = $derived(tournament?.vehicle_pool);
+  let savingPool = $state(false);
   let swissRoundsLabel = $derived(
     tournament?.swiss_rounds_auto
       ? `${tournament?.swiss_rounds_effective ?? "?"} 轮（自动单循环）`
@@ -818,6 +822,21 @@
   async function startTitleEdit() {
     titleDraft = tournament?.name || "";
     editingTitle = true;
+  }
+
+  // Event type (螺旋桨 / 早期喷气 / Pro League BVR): admins can change it any time.
+  async function saveEventPool(pool) {
+    if (!ensureAdmin() || !pool || pool === tournament?.vehicle_pool) return;
+    savingPool = true;
+    try {
+      const res = await API.updateTournament(tid, { vehicle_pool: pool });
+      tournament = { ...tournament, vehicle_pool: res.vehicle_pool };
+      toast.success(`比赛类型已改为 ${vehiclePoolLabel(res.vehicle_pool)}`);
+    } catch (e) {
+      toast.error(e.message);
+    } finally {
+      savingPool = false;
+    }
   }
 
   async function saveTitle() {
@@ -3017,8 +3036,24 @@
         </div>
         <p class="text-xs text-muted-foreground font-medium">
           ID: {tournament.id} • 比赛模式: <span class="font-bold text-foreground">{gameModeLabel(tournament.game_mode)}</span>
-          {#if vehiclePoolLabel(tournament.vehicle_pool)}
-            • 载具池: <span class="font-bold text-foreground">{vehiclePoolLabel(tournament.vehicle_pool)}</span>
+          {#if isAdmin}
+            • 比赛类型:
+            <select
+              aria-label="比赛类型"
+              value={tournament.vehicle_pool}
+              disabled={savingPool}
+              onchange={(e) => saveEventPool(e.currentTarget.value)}
+              class="h-6 rounded border border-border bg-background px-1 text-xs font-bold text-foreground cursor-pointer disabled:opacity-60"
+            >
+              {#if !vehiclePoolLabel(tournament.vehicle_pool)}
+                <option value={tournament.vehicle_pool}>未分类</option>
+              {/if}
+              {#each VEHICLE_POOLS as pool (pool.id)}
+                <option value={pool.id}>{pool.name}</option>
+              {/each}
+            </select>
+          {:else if vehiclePoolLabel(tournament.vehicle_pool)}
+            • 比赛类型: <span class="font-bold text-foreground">{vehiclePoolLabel(tournament.vehicle_pool)}</span>
           {/if}
           • 赛制: <span class="font-bold text-foreground">{eventFormatLabel(tournament)}</span>
           • 选手容量: {tournament.player_count ||
@@ -4105,8 +4140,8 @@
           {#key selectedMatch.id}
             <BanPickPanel
               bind:bp={bpState}
-              vehicles={poolVehicles(tournament?.vehicle_pool, defaultVehiclePools)}
-              poolName={defaultVehiclePools.find((p) => p.id === tournament?.vehicle_pool)?.name || ""}
+              vehicles={poolVehicles(banpickPoolId, defaultVehiclePools)}
+              poolName={defaultVehiclePools.find((p) => p.id === banpickPoolId)?.name || ""}
               player1={{ name: playerName(selectedMatch.player1_id), flag: tournament?.players?.find((p) => p.id === selectedMatch.player1_id)?.flag }}
               player2={{ name: playerName(selectedMatch.player2_id), flag: tournament?.players?.find((p) => p.id === selectedMatch.player2_id)?.flag }}
             />

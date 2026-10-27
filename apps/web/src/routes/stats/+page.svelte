@@ -428,7 +428,7 @@
                         </div>
                       </div>
                     {/each}
-                    <div class="mt-1 pt-2 border-t border-border/40 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">载具池</div>
+                    <div class="mt-1 pt-2 border-t border-border/40 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">比赛类型</div>
                     {#each VEHICLE_POOLS as pool (pool.id)}
                       {@const rec = selectedStatPlayer.pools?.[pool.id]}
                       {@const maps = rec ? rec.maps_won + rec.maps_lost : 0}

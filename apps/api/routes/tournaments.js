@@ -8,9 +8,9 @@ import { buildCalendarFeed, buildTournamentIcs } from '../lib/calendar.js';
 import { requireAdmin } from '../lib/admin.js';
 import {
   GAME_MODES,
-  isValidVehiclePool,
   startBlockedReason,
   SUPPORTED_FORMATS,
+  VEHICLE_POOLS,
 } from '../lib/tournament-config.js';
 import {
   GROUP_BRACKETS,
@@ -290,8 +290,10 @@ export default async function tournamentsRoutes(fastify) {
     if (format != null && !SUPPORTED_FORMATS.includes(String(format))) {
       throw fastify.httpErrors.badRequest(`format must be one of: ${SUPPORTED_FORMATS.join(', ')}`);
     }
-    if (vehicle_pool != null && !isValidVehiclePool(vehicle_pool)) {
-      throw fastify.httpErrors.badRequest('vehicle_pool must be a slug like "proleague"');
+    // The event type is set whether or not Ban / Pick is on; Ban / Pick
+    // always draws from the pool of the event type.
+    if (vehicle_pool != null && !VEHICLE_POOLS.includes(String(vehicle_pool))) {
+      throw fastify.httpErrors.badRequest(`vehicle_pool must be one of: ${VEHICLE_POOLS.join(', ')}`);
     }
     if (format === 'swiss' && !isAutoRounds(swiss_rounds) && !parseSwissRounds(swiss_rounds)) {
       throw fastify.httpErrors.badRequest(`瑞士轮轮数必须是 ${MIN_SWISS_ROUNDS}-${MAX_SWISS_ROUNDS} 之间的整数（留空为自动）`);
@@ -371,7 +373,13 @@ export default async function tournamentsRoutes(fastify) {
     const body = req.body || {};
     const hasName = body.name !== undefined;
     const hasTime = body.scheduled_time !== undefined;
-    if (!hasName && !hasTime) throw fastify.httpErrors.badRequest('name or scheduled_time is required');
+    const hasPool = body.vehicle_pool !== undefined;
+    if (!hasName && !hasTime && !hasPool) {
+      throw fastify.httpErrors.badRequest('name, scheduled_time or vehicle_pool is required');
+    }
+    if (hasPool && !VEHICLE_POOLS.includes(String(body.vehicle_pool))) {
+      throw fastify.httpErrors.badRequest(`vehicle_pool must be one of: ${VEHICLE_POOLS.join(', ')}`);
+    }
     const t = await repo.getById(req.params.id);
     if (!t) throw fastify.httpErrors.notFound('Tournament not found');
 
@@ -381,6 +389,11 @@ export default async function tournamentsRoutes(fastify) {
       if (!name) throw fastify.httpErrors.badRequest('name is required');
       updated = await repo.rename(req.params.id, name);
       fastify.tournamentEvents.emit(`update:${req.params.id}`, { type: 'name_changed', name });
+    }
+    // The event type can be changed at any time, finished events included.
+    if (hasPool) {
+      updated = await repo.setVehiclePool(req.params.id, body.vehicle_pool);
+      fastify.tournamentEvents.emit(`update:${req.params.id}`, { type: 'vehicle_pool_changed', vehicle_pool: updated.vehicle_pool });
     }
     if (hasTime) {
       const time = String(body.scheduled_time || '').trim();

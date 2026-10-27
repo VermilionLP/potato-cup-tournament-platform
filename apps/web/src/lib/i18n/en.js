@@ -4,6 +4,11 @@
 // the English. Generated from the source, then translated; add new UI text
 // here when it is introduced.
 export default {
+  "比赛类型": "Event type",
+  "未分类": "Uncategorised",
+  "比赛类型已改为 {0}": "Event type changed to {0}",
+  "每张对阵卡片上显示 BP 按钮，使用{0}载具池禁用和抽取。": "Each match card gets a BP button; bans and picks use the {0} vehicle pool.",
+  "不启用时比赛仍按上一步选的比赛类型分类统计。": "Without Ban / Pick the event is still classed and counted under the event type chosen in the first step.",
   "螺旋桨": "Prop",
   "早期喷气": "Legacy Jet",
   "全部": "All",

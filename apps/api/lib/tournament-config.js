@@ -32,6 +32,12 @@ export function isValidVehiclePool(value) {
   return /^[a-z0-9][a-z0-9-]{0,39}$/.test(String(value ?? '').trim().toLowerCase());
 }
 
+/** The event's type: one of VEHICLE_POOLS, else the default. */
+export function normalizeEventPool(value) {
+  const pool = String(value ?? '').trim().toLowerCase();
+  return VEHICLE_POOLS.includes(pool) ? pool : DEFAULT_VEHICLE_POOL;
+}
+
 export function normalizeVehiclePool(value) {
   return isValidVehiclePool(value)
     ? String(value).trim().toLowerCase()

@@ -1,8 +1,8 @@
 import { getPlayerDisplayName } from './player-repo.js';
 import { isSameVoteTime, normalizeVoteTime } from '../lib/vote-time.js';
 import {
+  normalizeEventPool,
   normalizeGameMode,
-  normalizeVehiclePool,
   resolveInitialStatus,
   SUPPORTED_FORMATS,
 } from '../lib/tournament-config.js';
@@ -63,7 +63,7 @@ export function TournamentRepo(db) {
       !playoffFormat && loser_advances ? 1 : 0,
       scheduledTime,
       normalizeGameMode(game_mode),
-      normalizeVehiclePool(vehicle_pool),
+      normalizeEventPool(vehicle_pool),
       bracketFormat,
       (playoffFormat ? playoffFormat === 'double_elim' : bracketFormat === 'double_elim') && grand_final_reset !== false,
       bracketFormat === 'swiss' ? parseSwissRounds(swiss_rounds) : null,
@@ -72,6 +72,17 @@ export function TournamentRepo(db) {
       playoffFormat && Number(swiss_group_size) ? Number(swiss_group_size) : null,
       playoffFormat ? Number(advance_per_group) || null : null,
     ]);
+    return getById(id);
+  }
+
+  async function setVehiclePool(id, pool) {
+    const res = await db.query(`
+      UPDATE axsuck.tournaments
+      SET vehicle_pool = $1, updated_at = NOW()
+      WHERE id = $2
+      RETURNING id
+    `, [normalizeEventPool(pool), id]);
+    if (!res.rowCount) return null;
     return getById(id);
   }
 
@@ -331,5 +342,5 @@ export function TournamentRepo(db) {
     return getById(id);
   }
 
-  return { list, getById, create, rename, setScheduledTime, setSwissRounds, updateStatus, updateOverlayState, getPlayers, addPlayer, autoRegisterVoters, removePlayer, setSeeds, getMatches, getVotes, getCustomVotes };
+  return { list, getById, create, rename, setVehiclePool, setScheduledTime, setSwissRounds, updateStatus, updateOverlayState, getPlayers, addPlayer, autoRegisterVoters, removePlayer, setSeeds, getMatches, getVotes, getCustomVotes };
 }

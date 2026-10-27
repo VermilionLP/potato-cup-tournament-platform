@@ -2,7 +2,6 @@
   import { onMount } from "svelte";
   import { toast } from "svelte-sonner";
   import { API } from "$lib/api.js";
-  import { defaultVehiclePools } from "$lib/data/vehiclePools.js";
   import {
     GAME_MODES,
     advancementLabel,
@@ -272,8 +271,9 @@
       ? groupBracketProblem(newGroupFormat, Number(newGroupSize), Number(newAdvancePerGroup))
       : null,
   );
-  let selectedVehiclePool = $state("proleague");
-  let vehiclePools = $state(defaultVehiclePools);
+  // Event type (螺旋桨 / 早期喷气 / Pro League BVR), set with or without
+  // Ban / Pick; Ban / Pick uses the vehicle pool of this type.
+  let newEventPool = $state("proleague");
   let creating = $state(false);
 
   // Divide tournaments
@@ -333,7 +333,7 @@
     newPlayoffFormat = "single_elim";
     newGroupSize = 4;
     newAdvancePerGroup = 2;
-    selectedVehiclePool = "proleague";
+    newEventPool = "proleague";
     showCreateDialog = true;
   }
 
@@ -378,7 +378,7 @@
         loser_advances: newFormat === "single_elim" && newLoserAdvances ? 1 : 0,
         scheduled_time: newScheduledTime || null,
         game_mode: newGameMode,
-        vehicle_pool: selectedVehiclePool,
+        vehicle_pool: newEventPool,
         // Two-stage: `format` is the group stage, `playoff_format` the playoff.
         format: twoStage ? newGroupFormat : newFormat,
         grand_final_reset:
@@ -887,6 +887,14 @@
           </div>
         </div>
         <div class="space-y-1.5">
+          <span class="text-xs font-semibold text-foreground/80">比赛类型</span>
+          {@render segmented(
+            VEHICLE_POOLS.map((p) => ({ id: p.id, label: p.name, title: p.code })),
+            newEventPool,
+            (id) => (newEventPool = id)
+          )}
+        </div>
+        <div class="space-y-1.5">
           <label for="create-time-input" class="text-xs font-semibold text-foreground/80">
             比赛时间 <span class="font-normal text-muted-foreground">· 可选，设置后跳过时间投票直接开启报名</span>
           </label>
@@ -1025,20 +1033,16 @@
 
       {:else}
       <section class="space-y-2 rounded-xl border border-border/60 bg-background/30 p-3">
-        <div class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">载具与 Ban / Pick</div>
-        <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
-          <label for="new-vehicle-pool" class="sr-only">载具池</label>
-          <select id="new-vehicle-pool" bind:value={selectedVehiclePool} class="h-9 flex-1 bg-background border border-border rounded-md px-3 text-sm text-foreground">
-            {#each vehiclePools as pool}
-              <option value={pool.id}>{pool.name}</option>
-            {/each}
-          </select>
-          <label class="flex items-center gap-2 text-xs text-foreground/80 cursor-pointer whitespace-nowrap">
-            <input type="checkbox" bind:checked={newBanpickEnabled} class="accent-primary" />
-            启用 Ban / Pick
-          </label>
-        </div>
-        <p class="text-[10px] text-muted-foreground">启用后每张对阵卡片上显示 BP 按钮，按所选载具池禁用和抽取。</p>
+        <div class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Ban / Pick</div>
+        <label class="flex items-center gap-2 text-xs text-foreground/80 cursor-pointer">
+          <input type="checkbox" bind:checked={newBanpickEnabled} class="accent-primary" />
+          启用 Ban / Pick
+        </label>
+        <p class="text-[10px] text-muted-foreground">
+          {newBanpickEnabled
+            ? `每张对阵卡片上显示 BP 按钮，使用${vehiclePoolLabel(newEventPool)}载具池禁用和抽取。`
+            : "不启用时比赛仍按上一步选的比赛类型分类统计。"}
+        </p>
       </section>
 
       <section class="space-y-1.5 rounded-xl border border-border/60 bg-background/30 p-3 text-xs">
@@ -1060,6 +1064,7 @@
               {:else}瑞士轮 · {newSwissRoundsMode === "auto" ? "单循环" : `${newSwissRounds} 轮`}{/if}
             </dd>
           {/if}
+          <dt class="text-muted-foreground">比赛类型</dt><dd class="text-foreground">{vehiclePoolLabel(newEventPool)}</dd>
           <dt class="text-muted-foreground">Ban / Pick</dt><dd class="text-foreground">{newBanpickEnabled ? "启用" : "不启用"}</dd>
         </dl>
       </section>
