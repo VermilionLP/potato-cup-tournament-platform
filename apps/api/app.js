@@ -20,6 +20,7 @@ import qqRoutes from './routes/qq.js';
 import wikiRoutes from './routes/wiki.js';
 import pushRoutes from './routes/push.js';
 import adminRoutes from './routes/admin.js';
+import vehiclePoolRoutes from './routes/vehicle-pools.js';
 import { startPushScheduler } from './lib/push-scheduler.js';
 import { createEsLogger, registerRequestLogging } from './lib/es-logger.js';
 import fastifySse from '@fastify/sse';
@@ -53,6 +54,7 @@ await fastify.register(qqRoutes, { prefix: '/api' });
 await fastify.register(wikiRoutes, { prefix: '/api' });
 await fastify.register(pushRoutes, { prefix: '/api' });
 await fastify.register(adminRoutes, { prefix: '/api' });
+await fastify.register(vehiclePoolRoutes, { prefix: '/api' });
 startPushScheduler(fastify);
 
 fastify.get('/api/ping', async () => ({ pong: true }));

@@ -47,6 +47,11 @@ export const API = {
   // Admin
   verifyAdmin: () => request('/admin/session'),
 
+  // Vehicle pools (one per event type)
+  getVehiclePools: () => request('/vehicle-pools'),
+  saveVehiclePool: (id, vehicles) => request(`/vehicle-pools/${enc(id)}`, { method: 'PUT', body: JSON.stringify({ vehicles }) }),
+  resetVehiclePool: (id) => request(`/vehicle-pools/${enc(id)}`, { method: 'DELETE' }),
+
   // Tournaments
   listTournaments: () => request('/tournaments'),
   getTournament: (id) => request(`/tournaments/${enc(id)}`),

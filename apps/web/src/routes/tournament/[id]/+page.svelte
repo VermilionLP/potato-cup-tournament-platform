@@ -34,6 +34,7 @@
   import { formatScheduled, parseLocal } from "$lib/datetime.js";
   import { canConfirm, confirmResult, initialBanPick, poolVehicles } from "$lib/banpick.js";
   import { defaultVehiclePools } from "$lib/data/vehiclePools.js";
+  import { mergePools } from "$lib/vehicle-pools.js";
   import {
     advancementLabel,
     canCorrectResult,
@@ -129,6 +130,8 @@
   let banpickEnabled = $derived(tournament?.banpick_enabled !== false);
   // Ban / Pick always draws from the event type's vehicle pool.
   let banpickPoolId = $derived(tournament?.vehicle_pool);
+  // Pools edited on the site replace the bundled ones (loaded on mount).
+  let vehiclePools = $state(mergePools({}, defaultVehiclePools));
   let savingPool = $state(false);
   let swissRoundsLabel = $derived(
     tournament?.swiss_rounds_auto
@@ -726,6 +729,11 @@
   $effect(() => () => clearAutoHudTimer());
 
   onMount(load);
+  onMount(() => {
+    API.getVehiclePools()
+      .then((res) => (vehiclePools = mergePools(res.pools, defaultVehiclePools)))
+      .catch(() => {}); // keep the bundled pools
+  });
 
   let eventSource = null;
   $effect(() => {
@@ -4140,8 +4148,8 @@
           {#key selectedMatch.id}
             <BanPickPanel
               bind:bp={bpState}
-              vehicles={poolVehicles(banpickPoolId, defaultVehiclePools)}
-              poolName={defaultVehiclePools.find((p) => p.id === banpickPoolId)?.name || ""}
+              vehicles={poolVehicles(banpickPoolId, vehiclePools)}
+              poolName={vehiclePools.find((p) => p.id === banpickPoolId)?.name || ""}
               player1={{ name: playerName(selectedMatch.player1_id), flag: tournament?.players?.find((p) => p.id === selectedMatch.player1_id)?.flag }}
               player2={{ name: playerName(selectedMatch.player2_id), flag: tournament?.players?.find((p) => p.id === selectedMatch.player2_id)?.flag }}
             />
