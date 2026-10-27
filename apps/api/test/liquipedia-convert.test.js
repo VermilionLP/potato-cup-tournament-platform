@@ -193,3 +193,25 @@ test('loser advances is detected when every scored winner has the lower score', 
   assert.equal(isLoserAdvances([row(0, 2, 1), row(2, 1, 1)]), false, 'mixed: not loser advances');
   assert.equal(isLoserAdvances([row(0, 2, 1)]), false, 'one match is not enough');
 });
+
+test('leaderboard points come from the prize pool', () => {
+  const mk = (a, b, s1, s2) => `{{Match|opponent1={{1Opponent|${a}|score=${s1}}}|opponent2={{1Opponent|${b}|score=${s2}}}}}`;
+  const bracket = `{{Bracket|Bracket/4|id=x
+|R1M1=${mk('A', 'B', 2, 0)}
+|R1M2=${mk('C', 'D', 2, 1)}
+|R2M1=${mk('A', 'C', 3, 1)}
+}}`;
+  const pool = `==Prize Pool==
+{{SoloPrizePool|localcurrency=cny
+|points1=PotatoCup Leaderboard 2026|points1link=Potato_Cup/Leaderboard/2026
+|{{Slot|place=1|localprize=136|points=100}}
+|{{Slot|place=2|localprize=49|points=60}}
+|{{Slot|place=3-4|localprize=8|points=35}}
+}}`;
+  const wiki = `{{Infobox league|name=Test #{{SUBPAGENAME}}|date=2026-03-07}}\n${pool}\n${bracket}`;
+  const [e] = convertPage({ title: 'Potato Cup Weekly/98', wikitext: wiki, templates }).events;
+  assert.equal(e.pointsSeason, '2026');
+  assert.deepEqual(e.pointsTable, [{ from: 1, to: 1, points: 100 }, { from: 2, to: 2, points: 60 }, { from: 3, to: 4, points: 35 }]);
+  const [plain] = convertPage({ title: 'Potato Cup Weekly/97', wikitext: `{{Infobox league|name=T|date=2026-03-07}}\n${bracket}`, templates }).events;
+  assert.equal(plain.pointsTable, undefined);
+});

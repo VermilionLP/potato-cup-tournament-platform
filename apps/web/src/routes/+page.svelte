@@ -17,6 +17,8 @@
     eventFormatLabel,
     groupBracketProblem,
   } from "$lib/tournament.js";
+  import PointsEditor from "$lib/components/PointsEditor.svelte";
+  import { POINTS_PRESETS, cleanTable, copyTable, currentSeason, pointsTableProblem } from "$lib/points.js";
   import DateTimePicker from "$lib/components/DateTimePicker.svelte";
   import { formatInZone, toInstant } from "$lib/datetime.js";
   import Trash2Icon from "@lucide/svelte/icons/trash-2";
@@ -274,6 +276,10 @@
   // Event type (螺旋桨 / 早期喷气 / Pro League BVR), set with or without
   // Ban / Pick; Ban / Pick uses the vehicle pool of this type.
   let newEventPool = $state("proleague");
+  // Potato Cup points (积分榜): on by default with the weekly table.
+  let newPointsEnabled = $state(true);
+  let newPointsTable = $state(copyTable(POINTS_PRESETS[0].table));
+  let newPointsSeason = $state(currentSeason());
   let creating = $state(false);
 
   // Divide tournaments
@@ -334,12 +340,19 @@
     newGroupSize = 4;
     newAdvancePerGroup = 2;
     newEventPool = "proleague";
+    newPointsEnabled = true;
+    newPointsTable = copyTable(POINTS_PRESETS[0].table);
+    newPointsSeason = currentSeason();
     showCreateDialog = true;
   }
 
   async function createTournament() {
     const trimmedName = newName.trim();
     if (!trimmedName) return toast.error("请输入赛事名称");
+    if (newPointsEnabled) {
+      const pointsProblem = pointsTableProblem(newPointsTable, newPointsSeason);
+      if (pointsProblem) return toast.error(pointsProblem);
+    }
 
     const generatedId = trimmedName.toLowerCase().replace(/[^a-z0-9]/g, "");
     if (!generatedId) {
@@ -379,6 +392,8 @@
         scheduled_time: newScheduledTime || null,
         game_mode: newGameMode,
         vehicle_pool: newEventPool,
+        points_table: newPointsEnabled ? cleanTable(newPointsTable) : null,
+        points_season: newPointsEnabled ? newPointsSeason.trim() : null,
         // Two-stage: `format` is the group stage, `playoff_format` the playoff.
         format: twoStage ? newGroupFormat : newFormat,
         grand_final_reset:
@@ -1045,6 +1060,17 @@
         </p>
       </section>
 
+      <section class="space-y-2 rounded-xl border border-border/60 bg-background/30 p-3">
+        <div class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">年度积分榜</div>
+        <label class="flex items-center gap-2 text-xs text-foreground/80 cursor-pointer">
+          <input type="checkbox" bind:checked={newPointsEnabled} class="accent-primary" />
+          计入土豆杯积分榜
+        </label>
+        {#if newPointsEnabled}
+          <PointsEditor bind:table={newPointsTable} bind:season={newPointsSeason} />
+        {/if}
+      </section>
+
       <section class="space-y-1.5 rounded-xl border border-border/60 bg-background/30 p-3 text-xs">
         <div class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">确认</div>
         <dl class="grid grid-cols-[5.5rem_1fr] gap-x-2 gap-y-1">
@@ -1065,6 +1091,8 @@
             </dd>
           {/if}
           <dt class="text-muted-foreground">比赛类型</dt><dd class="text-foreground">{vehiclePoolLabel(newEventPool)}</dd>
+          <dt class="text-muted-foreground">年度积分榜</dt>
+          <dd class="text-foreground">{newPointsEnabled ? `${newPointsSeason} 赛季 · ${cleanTable(newPointsTable).map((r) => `${r.from === r.to ? r.from : `${r.from}-${r.to}`}:${r.points}`).join(" ")}` : "不计入"}</dd>
           <dt class="text-muted-foreground">Ban / Pick</dt><dd class="text-foreground">{newBanpickEnabled ? "启用" : "不启用"}</dd>
         </dl>
       </section>

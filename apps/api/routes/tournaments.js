@@ -6,29 +6,17 @@ import { Readable } from 'stream';
 import { bnetEntryKey } from '../lib/bnet.js';
 import { buildCalendarFeed, buildTournamentIcs } from '../lib/calendar.js';
 import { requireAdmin } from '../lib/admin.js';
+import { normalizePointsTable, normalizeSeason, pointsFor } from '../lib/points.js';
+import { eventPlacements } from '../lib/placements.js';
+import { groupStageOf } from '../lib/group-stage-view.js';
 import {
   GAME_MODES,
   startBlockedReason,
   SUPPORTED_FORMATS,
   VEHICLE_POOLS,
 } from '../lib/tournament-config.js';
-import {
-  GROUP_BRACKETS,
-  groupBracketComplete,
-  groupBracketPlacings,
-  groupBracketProblem,
-  selectBracketQualifiers,
-} from '../lib/group-brackets.js';
-import {
-  groupLabel,
-  groupStageComplete,
-  groupStandings,
-  MAX_GROUP_SIZE,
-  MIN_GROUP_SIZE,
-  PLAYOFF_FORMATS,
-  seedPlayoffs,
-  selectQualifiers,
-} from '../lib/group-stage.js';
+import { groupBracketProblem } from '../lib/group-brackets.js';
+import { MAX_GROUP_SIZE, MIN_GROUP_SIZE, PLAYOFF_FORMATS } from '../lib/group-stage.js';
 import {
   computeStandings,
   currentSwissRound,
@@ -39,78 +27,6 @@ import {
   parseSwissRounds,
   SWISS_BRACKET,
 } from '../lib/swiss.js';
-
-// Group standings, qualifiers (in playoff seed order) and tie warnings of a
-// two-stage event.
-function buildGroupStage(t, players, swissMatches) {
-  const field = players.map((p) => ({ id: p.id, seed: p.seed, swiss_group: p.swiss_group }));
-  const groups = groupStandings(field, swissMatches);
-  const perGroup = Number(t.advance_per_group) || 1;
-  const { qualifiers, warnings } = selectQualifiers(groups, perGroup);
-  const { seeded, sameGroupPairs } = seedPlayoffs(qualifiers);
-  const roundsFor = (size) => effectiveSwissRounds(t.swiss_rounds, size);
-  const complete = swissMatches.length > 0 && groupStageComplete(field, swissMatches, roundsFor);
-  return {
-    groups: groups.map((g) => ({ ...g, rounds: roundsFor(g.rows.length) })),
-    per_group: perGroup,
-    complete,
-    qualifiers: seeded.map((q, i) => ({
-      player_id: q.player_id,
-      group: q.group,
-      group_label: q.group_label,
-      group_rank: q.group_rank,
-      playoff_seed: i + 1,
-    })),
-    warnings,
-    same_group_pairs: sameGroupPairs,
-  };
-}
-
-// Group stage played as single-/double-elimination brackets per group.
-function buildBracketGroupStage(t, players, groupMatches) {
-  const perGroup = Number(t.advance_per_group) || 1;
-  const groupIds = [...new Set(players.map((p) => p.swiss_group || 1))].sort((a, b) => a - b);
-  const groups = groupIds.map((group) => {
-    const own = players.filter((p) => (p.swiss_group || 1) === group);
-    const ownMatches = groupMatches.filter((m) => (m.swiss_group || 1) === group);
-    return {
-      group,
-      label: groupLabel(group),
-      rows: groupBracketPlacings(t.format, own.map((p) => ({ id: p.id, seed: p.seed })), ownMatches, perGroup),
-      complete: groupBracketComplete(ownMatches),
-    };
-  });
-  const { qualifiers, warnings } = selectBracketQualifiers(groups, perGroup);
-  const { seeded, sameGroupPairs } = seedPlayoffs(qualifiers);
-  return {
-    kind: 'bracket',
-    format: t.format,
-    groups,
-    per_group: perGroup,
-    complete: groups.length > 0 && groups.every((g) => g.complete),
-    qualifiers: seeded.map((q, i) => ({
-      player_id: q.player_id,
-      group: q.group,
-      group_label: q.group_label,
-      group_rank: q.group_rank,
-      how: q.how,
-      playoff_seed: i + 1,
-    })),
-    warnings,
-    same_group_pairs: sameGroupPairs,
-  };
-}
-
-// Group stage of a two-stage event, whatever format it is played in. Once
-// groups are drawn, players without a group (invited straight into the
-// playoff, as in some imported events) are not part of it.
-function groupStageOf(t, allPlayers, allMatches) {
-  const players = allPlayers.some((p) => p.swiss_group) ? allPlayers.filter((p) => p.swiss_group) : allPlayers;
-  if (t.format === 'swiss') {
-    return { kind: 'swiss', ...buildGroupStage(t, players, allMatches.filter((m) => m.bracket === SWISS_BRACKET)) };
-  }
-  return buildBracketGroupStage(t, players, allMatches.filter((m) => GROUP_BRACKETS.includes(m.bracket)));
-}
 
 export default async function tournamentsRoutes(fastify) {
   const repo = TournamentRepo(fastify.db);
@@ -176,8 +92,17 @@ export default async function tournamentsRoutes(fastify) {
         ? Math.max(1, ...groupStage.groups.map((g) => g.rounds))
         : effectiveSwissRounds(t.swiss_rounds, players.length);
 
+    // Points each player earned (finished events with a points table).
+    let pointsAwarded;
+    if (t.points_table?.length && t.status === 'completed') {
+      pointsAwarded = {};
+      const places = eventPlacements(t, ms, players.map((p) => ({ id: p.id, seed: p.seed, swiss_group: p.swiss_group })));
+      for (const [playerId, place] of places) pointsAwarded[playerId] = pointsFor(t.points_table, place);
+    }
+
     return {
       ...t,
+      points_awarded: pointsAwarded,
       players: playersWithLadder,
       matches: ms,
       standings,
@@ -279,7 +204,14 @@ export default async function tournamentsRoutes(fastify) {
       playoff_format,
       swiss_group_size,
       advance_per_group,
+      points_table,
+      points_season,
     } = req.body;
+    const points = normalizePointsTable(points_table);
+    if (points.error) throw fastify.httpErrors.badRequest(points.error);
+    if (points.table && !normalizeSeason(points_season)) {
+      throw fastify.httpErrors.badRequest('请填写积分榜赛季（年份，如 2026）');
+    }
     if (!id || !name) throw fastify.httpErrors.badRequest('id and name are required');
     const existing = await repo.getById(id);
     if (existing) throw fastify.httpErrors.conflict('Tournament ID already exists');
@@ -338,6 +270,8 @@ export default async function tournamentsRoutes(fastify) {
       playoff_format,
       swiss_group_size,
       advance_per_group,
+      points_table: points.table,
+      points_season: normalizeSeason(points_season),
     });
   });
 
@@ -376,8 +310,14 @@ export default async function tournamentsRoutes(fastify) {
     const hasName = body.name !== undefined;
     const hasTime = body.scheduled_time !== undefined;
     const hasPool = body.vehicle_pool !== undefined;
-    if (!hasName && !hasTime && !hasPool) {
-      throw fastify.httpErrors.badRequest('name, scheduled_time or vehicle_pool is required');
+    const hasPoints = body.points_table !== undefined;
+    if (!hasName && !hasTime && !hasPool && !hasPoints) {
+      throw fastify.httpErrors.badRequest('name, scheduled_time, vehicle_pool or points_table is required');
+    }
+    const points = hasPoints ? normalizePointsTable(body.points_table) : null;
+    if (points?.error) throw fastify.httpErrors.badRequest(points.error);
+    if (points?.table && !normalizeSeason(body.points_season)) {
+      throw fastify.httpErrors.badRequest('请填写积分榜赛季（年份，如 2026）');
     }
     if (hasPool && !VEHICLE_POOLS.includes(String(body.vehicle_pool))) {
       throw fastify.httpErrors.badRequest(`vehicle_pool must be one of: ${VEHICLE_POOLS.join(', ')}`);
@@ -391,6 +331,11 @@ export default async function tournamentsRoutes(fastify) {
       if (!name) throw fastify.httpErrors.badRequest('name is required');
       updated = await repo.rename(req.params.id, name);
       fastify.tournamentEvents.emit(`update:${req.params.id}`, { type: 'name_changed', name });
+    }
+    // Points can be set or changed at any time, finished events included.
+    if (hasPoints) {
+      updated = await repo.setPoints(req.params.id, points.table, normalizeSeason(body.points_season));
+      fastify.tournamentEvents.emit(`update:${req.params.id}`, { type: 'points_changed' });
     }
     // The event type can be changed at any time, finished events included.
     if (hasPool) {

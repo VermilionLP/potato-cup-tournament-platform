@@ -29,7 +29,7 @@ export default async function playersRoutes(fastify) {
     const registrations = (await fastify.db.query('SELECT * FROM axsuck.tournament_players')).rows;
     const matches = (await fastify.db.query("SELECT * FROM axsuck.matches WHERE status IN ('completed', 'walkover')")).rows;
     const tournaments = (await fastify.db.query(
-      'SELECT id, name, game_mode, vehicle_pool, status, format, playoff_format, source_title FROM axsuck.tournaments'
+      'SELECT id, name, game_mode, vehicle_pool, status, format, playoff_format, swiss_rounds, swiss_group_size, advance_per_group, source_title FROM axsuck.tournaments'
     )).rows;
     const tournamentMap = {};
     const modeOf = {};
@@ -166,7 +166,7 @@ export default async function playersRoutes(fastify) {
     const playersByEvent = new Map();
     for (const reg of registrations) {
       if (!playersByEvent.has(reg.tournament_id)) playersByEvent.set(reg.tournament_id, []);
-      playersByEvent.get(reg.tournament_id).push({ id: reg.player_id, seed: reg.seed });
+      playersByEvent.get(reg.tournament_id).push({ id: reg.player_id, seed: reg.seed, swiss_group: reg.swiss_group });
     }
     // Placings of every finished event; the best one (qualifiers excluded)
     // stands in for titles on the overview.

@@ -15,6 +15,7 @@
 // winners bracket; that drop is found from the actual results.
 
 import { detectVehiclePool } from './vehicle-pool.js';
+import { parsePrizePoolPoints } from './points.js';
 import { isDoubleElimination } from './bracket-template.js';
 import { normalizeCountry } from './countries.js';
 import { matchResult, parseBlocks, parseInfobox } from './page.js';
@@ -540,6 +541,9 @@ export function convertPage({ title, wikitext, templates = new Map(), today = ne
     if (n > 1) e.id = `${e.id}-${n}`;
   }
   if (!events.length) return { title, skipped: '没有打完的比赛', events, warnings };
+  // Leaderboard points from the prize pool, when the page is one event.
+  const points = events.length === 1 ? parsePrizePoolPoints(wikitext) : null;
+  if (points) Object.assign(events[0], { pointsTable: points.table, pointsSeason: points.season });
   return { title, skipped: null, events, warnings };
 }
 

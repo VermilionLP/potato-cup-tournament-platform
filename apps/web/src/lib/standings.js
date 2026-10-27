@@ -66,15 +66,36 @@ export function eliminationStandings({ matches = [], players = [], doubleElim = 
     for (const round of ascending(wb.map((m) => m.round))) {
       put(wb.filter((m) => m.round === round).map(loserOf));
     }
+    if (titleDecided) {
+      putByFurthestRound(matches.filter((m) => m.bracket === "lb"));
+      putByFurthestRound(matches.filter((m) => m.bracket === "wb"));
+    }
   } else {
     const third = decided.find((m) => m.round === 0);
     if (third) {
       put([third.winner_id]);
       put([loserOf(third)]);
     }
-    const main = decided.filter((m) => m.round > 0);
-    for (const round of ascending(main.map((m) => m.round))) {
-      put(main.filter((m) => m.round === round).map(loserOf));
+    // By the furthest round reached, so a player whose last match has no
+    // result (the opponent went through) still places in that round.
+    if (titleDecided) putByFurthestRound(matches.filter((m) => m.round > 0));
+    else {
+      const main = decided.filter((m) => m.round > 0);
+      for (const round of ascending(main.map((m) => m.round))) {
+        put(main.filter((m) => m.round === round).map(loserOf));
+      }
+    }
+  }
+
+  function putByFurthestRound(list) {
+    const furthest = new Map();
+    for (const m of list) {
+      for (const id of [m.player1_id, m.player2_id]) {
+        if (id) furthest.set(id, Math.min(furthest.get(id) ?? Infinity, m.round));
+      }
+    }
+    for (const round of ascending([...furthest.values()])) {
+      put([...furthest].filter(([, r]) => r === round).map(([id]) => id));
     }
   }
 

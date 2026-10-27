@@ -42,7 +42,7 @@ export function TournamentRepo(db) {
     return res.rows[0] || null;
   }
 
-  async function create({ id, name, description, player_capacity, hold_third_place, loser_advances, scheduled_time, game_mode, vehicle_pool, format, grand_final_reset, swiss_rounds, banpick_enabled, playoff_format, swiss_group_size, advance_per_group }) {
+  async function create({ id, name, description, player_capacity, hold_third_place, loser_advances, scheduled_time, game_mode, vehicle_pool, format, grand_final_reset, swiss_rounds, banpick_enabled, playoff_format, swiss_group_size, advance_per_group, points_table = null, points_season = '' }) {
     const scheduledTime = String(scheduled_time || '').trim();
     const bracketFormat = SUPPORTED_FORMATS.includes(format) ? format : SUPPORTED_FORMATS[0];
     // Two-stage events: `format` is the group stage, `playoff_format` the playoff.
@@ -50,8 +50,8 @@ export function TournamentRepo(db) {
     await db.query(`
       INSERT INTO axsuck.tournaments
         (id, name, description, status, player_capacity, hold_third_place, loser_advances, scheduled_time, game_mode, vehicle_pool, format, grand_final_reset, swiss_rounds, banpick_enabled,
-         playoff_format, swiss_group_size, advance_per_group)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+         playoff_format, swiss_group_size, advance_per_group, points_table, points_season)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18::jsonb, $19)
     `, [
       id,
       name,
@@ -71,6 +71,8 @@ export function TournamentRepo(db) {
       playoffFormat,
       playoffFormat && Number(swiss_group_size) ? Number(swiss_group_size) : null,
       playoffFormat ? Number(advance_per_group) || null : null,
+      points_table ? JSON.stringify(points_table) : null,
+      points_table ? points_season || null : null,
     ]);
     return getById(id);
   }
@@ -82,6 +84,17 @@ export function TournamentRepo(db) {
       WHERE id = $2
       RETURNING id
     `, [normalizeEventPool(pool), id]);
+    if (!res.rowCount) return null;
+    return getById(id);
+  }
+
+  async function setPoints(id, table, season) {
+    const res = await db.query(`
+      UPDATE axsuck.tournaments
+      SET points_table = $1::jsonb, points_season = $2, updated_at = NOW()
+      WHERE id = $3
+      RETURNING id
+    `, [table ? JSON.stringify(table) : null, table ? season || null : null, id]);
     if (!res.rowCount) return null;
     return getById(id);
   }
@@ -342,5 +355,5 @@ export function TournamentRepo(db) {
     return getById(id);
   }
 
-  return { list, getById, create, rename, setVehiclePool, setScheduledTime, setSwissRounds, updateStatus, updateOverlayState, getPlayers, addPlayer, autoRegisterVoters, removePlayer, setSeeds, getMatches, getVotes, getCustomVotes };
+  return { list, getById, create, rename, setVehiclePool, setPoints, setScheduledTime, setSwissRounds, updateStatus, updateOverlayState, getPlayers, addPlayer, autoRegisterVoters, removePlayer, setSeeds, getMatches, getVotes, getCustomVotes };
 }

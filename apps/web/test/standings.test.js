@@ -61,3 +61,16 @@ test("unfinished event: players still in come first", () => {
   const rows = eliminationStandings({ matches, players: players("b", "a", "c", "d"), championshipMatch: matches[2] });
   assert.deepEqual(ranks(rows), ["未淘汰:a", "未淘汰:c", "未淘汰:d", "第 4 名:b"]);
 });
+
+test("a player whose last match has no result still places in that round", () => {
+  const matches = [
+    m("main", 3, 1, "a", "b", "a"),
+    m("main", 3, 2, "c", "d", null, "pending"),
+    m("main", 2, 1, "a", "c", "a"),
+    m("main", 1, 1, "a", "e", "a"),
+    m("main", 3, 3, "e", "f", "e"),
+  ];
+  const rows = eliminationStandings({ matches, players: players("a", "b", "c", "d", "e", "f"), championshipMatch: matches[3] });
+  assert.deepEqual(ranks(rows).slice(0, 3), ["第 1 名 (冠军):a", "第 2 名 (亚军):e", "第 3 名:c"]);
+  assert.equal(rows.find((r) => r.id === "d").rank, "第 4 - 6 名", "d is placed, not left at the end");
+});

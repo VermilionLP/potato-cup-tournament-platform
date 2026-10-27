@@ -47,6 +47,9 @@ export const API = {
   // Admin
   verifyAdmin: () => request('/admin/session'),
 
+  // Potato Cup points leaderboard (积分榜); season '' = the latest
+  getPointsLeaderboard: (season) => request(`/points-leaderboard${season ? `?season=${enc(season)}` : ''}`),
+
   // Vehicle pools (one per event type)
   getVehiclePools: () => request('/vehicle-pools'),
   saveVehiclePool: (id, vehicles) => request(`/vehicle-pools/${enc(id)}`, { method: 'PUT', body: JSON.stringify({ vehicles }) }),

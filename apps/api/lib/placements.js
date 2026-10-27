@@ -5,11 +5,13 @@
 // each earlier round (double elimination: each losers-bracket round from the
 // final backwards); a tier gets the places it actually covers. Single-stage
 // Swiss: the standings order. Two-stage events: playoff placings first, then
-// everyone knocked out in the groups shares the remaining places.
+// everyone knocked out in the groups by group placing (all group 3rds share
+// the next places, then all 4ths...), as Liquipedia prize pools do.
 // Mirrors apps/web/src/lib/standings.js.
 
 import { computeStandings, SWISS_BRACKET } from './swiss.js';
 import { tournamentChampion } from './champions.js';
+import { groupStageOf } from './group-stage-view.js';
 
 const GROUP_STAGE = new Set([SWISS_BRACKET, 'gse', 'gwb', 'glb']);
 const isDecided = (m) =>
@@ -34,6 +36,9 @@ function eliminationTiers(matches, doubleElim, champion) {
     for (const r of ascending(lb.map((m) => m.round))) put(lb.filter((m) => m.round === r).map(loserOf));
     const wb = decided.filter((m) => m.bracket === 'wb');
     for (const r of ascending(wb.map((m) => m.round))) put(wb.filter((m) => m.round === r).map(loserOf));
+    // Left in a match without a result: by the furthest round reached.
+    putByFurthestRound(matches.filter((m) => m.bracket === 'lb'));
+    putByFurthestRound(matches.filter((m) => m.bracket === 'wb'));
   } else {
     const final = decided.find((m) => m.round === 1 && m.position === 1);
     if (final) put([loserOf(final)]);
@@ -42,15 +47,27 @@ function eliminationTiers(matches, doubleElim, champion) {
       put([third.winner_id]);
       put([loserOf(third)]);
     }
-    const main = decided.filter((m) => m.round > 0);
-    for (const r of ascending(main.map((m) => m.round))) put(main.filter((m) => m.round === r).map(loserOf));
+    // Everyone else by the furthest round reached, so a player whose last
+    // match has no result (the opponent went through) still places there.
+    putByFurthestRound(matches.filter((m) => m.round > 0));
   }
   return tiers;
+
+  function putByFurthestRound(list) {
+    const furthest = new Map();
+    for (const m of list) {
+      for (const id of [m.player1_id, m.player2_id]) {
+        if (id) furthest.set(id, Math.min(furthest.get(id) ?? Infinity, m.round));
+      }
+    }
+    for (const r of ascending([...furthest.values()])) put([...furthest].filter(([, round]) => round === r).map(([id]) => id));
+  }
 }
 
 /**
  * Placings of a completed event: Map player_id -> { from, to }. `players`:
- * the registered players [{ id, seed }]. Empty when the event has no champion.
+ * the registered players [{ id, seed, swiss_group }]. Empty when the event
+ * has no champion.
  */
 export function eventPlacements(t, matches = [], players = []) {
   const out = new Map();
@@ -73,7 +90,21 @@ export function eventPlacements(t, matches = [], players = []) {
     for (const id of tier) out.set(id, { from: next, to });
     next = to + 1;
   }
-  // Everyone else (out in the group stage, or never decided a match).
+  // Two-stage: knocked out in the groups, by group placing.
+  if (t.playoff_format) {
+    const rankOf = new Map();
+    for (const g of groupStageOf(t, players, matches).groups || []) {
+      for (const row of g.rows || []) if (row.rank) rankOf.set(row.player_id, row.rank);
+    }
+    const out_ = players.map((p) => p.id).filter((id) => !out.has(id) && rankOf.has(id));
+    for (const rank of ascending(out_.map((id) => rankOf.get(id)))) {
+      const tier = out_.filter((id) => rankOf.get(id) === rank);
+      const to = next + tier.length - 1;
+      for (const id of tier) out.set(id, { from: next, to });
+      next = to + 1;
+    }
+  }
+  // Everyone else (never decided a match).
   const rest = players.map((p) => p.id).filter((id) => !out.has(id));
   for (const id of rest) out.set(id, { from: next, to: next + rest.length - 1 });
   return out;

@@ -27,6 +27,7 @@
   import TrendingUpIcon from "@lucide/svelte/icons/trending-up";
   import SwordsIcon from "@lucide/svelte/icons/swords";
   import PlaneIcon from "@lucide/svelte/icons/plane";
+  import AwardIcon from "@lucide/svelte/icons/award";
   import BellIcon from "@lucide/svelte/icons/bell";
   import BellOffIcon from "@lucide/svelte/icons/bell-off";
   import ShieldCheckIcon from "@lucide/svelte/icons/shield-check";
@@ -518,6 +519,17 @@
           >
             <SwordsIcon class="w-3.5 h-3.5" />
             <span class="hidden md:inline">天梯</span>
+          </a>
+          <a
+            href="/points"
+            title="年度积分榜"
+            class="flex items-center gap-1 px-2 sm:px-3 h-8 rounded-md text-xs sm:text-sm font-medium transition-colors shrink-0 whitespace-nowrap
+              {$page.url.pathname === '/points'
+              ? 'text-primary font-semibold bg-primary/8'
+              : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'}"
+          >
+            <AwardIcon class="w-3.5 h-3.5" />
+            <span class="hidden md:inline">年度积分榜</span>
           </a>
           <a
             href="/pools"

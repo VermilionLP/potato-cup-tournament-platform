@@ -9,6 +9,8 @@
 //   --refresh        download again even if the cached dump exists
 //   --only <text>    only events whose page title contains <text>
 //   --contact <text> contact for the User-Agent (or LIQUIPEDIA_CONTACT in .env)
+//   --points-only    only update the leaderboard points (积分) of events that
+//                    were already imported; nothing else is changed
 //
 // The download is cached in .cache/liquipedia/potato-cup.json. Re-running
 // --apply replaces the imported events (ids starting with "lp-") in place.
@@ -19,7 +21,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import dotenv from 'dotenv';
 import { createClient, userAgentFor } from '../lib/liquipedia/fetch.js';
-import { downloadDump, mergePlayers, planImport, writeEvent } from '../lib/liquipedia/importer.js';
+import { downloadDump, mergePlayers, planImport, writeEvent, writeEventPoints } from '../lib/liquipedia/importer.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.join(__dirname, '../.env') });
@@ -27,11 +29,12 @@ dotenv.config({ path: path.join(__dirname, '../.env') });
 const CACHE = path.join(__dirname, '../.cache/liquipedia/potato-cup.json');
 
 function parseArgs(argv) {
-  const args = { apply: false, refresh: false, input: null, only: null, contact: process.env.LIQUIPEDIA_CONTACT || '' };
+  const args = { apply: false, refresh: false, input: null, only: null, pointsOnly: false, contact: process.env.LIQUIPEDIA_CONTACT || '' };
   for (let i = 0; i < argv.length; i += 1) {
     const a = argv[i];
     if (a === '--apply') args.apply = true;
     else if (a === '--refresh') args.refresh = true;
+    else if (a === '--points-only') args.pointsOnly = true;
     else if (a === '--input') args.input = argv[++i];
     else if (a === '--only') args.only = argv[++i];
     else if (a === '--contact') args.contact = argv[++i];
@@ -127,6 +130,24 @@ async function main() {
 
   const plan = planImport({ pages: dump.pages, templates: dump.templates, existingIds, platformIds, aliases });
   if (args.only) plan.events = plan.events.filter((e) => e.sourceTitle.includes(args.only));
+
+  if (args.pointsOnly) {
+    const withPoints = plan.events.filter((e) => e.pointsTable);
+    console.log('== 积分 ==');
+    for (const e of withPoints) {
+      console.log(`${e.id.padEnd(40)} ${e.pointsSeason}  ${e.pointsTable.map((r) => `${r.from === r.to ? r.from : `${r.from}-${r.to}`}:${r.points}`).join(' ')}`);
+    }
+    console.log(`\n${withPoints.length} 个赛事有积分`);
+    if (!args.apply) {
+      console.log('\n这是预览，没有写入数据库。确认无误后加 --apply 写入积分。');
+    } else {
+      let updated = 0;
+      for (const e of plan.events) if (await writeEventPoints(db, e)) updated += 1;
+      console.log(`\n完成：更新了 ${updated} 个已导入赛事的积分（没有积分的赛事已清空积分）。`);
+    }
+    await db?.end();
+    return;
+  }
   report(plan);
 
   // Events imported earlier from these pages that the import no longer

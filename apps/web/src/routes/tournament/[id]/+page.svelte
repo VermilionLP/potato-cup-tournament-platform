@@ -35,6 +35,8 @@
   import { canConfirm, confirmResult, initialBanPick, poolVehicles } from "$lib/banpick.js";
   import { defaultVehiclePools } from "$lib/data/vehiclePools.js";
   import { mergePools } from "$lib/vehicle-pools.js";
+  import PointsEditor from "$lib/components/PointsEditor.svelte";
+  import { POINTS_PRESETS, cleanTable, copyTable, currentSeason, pointsTableProblem } from "$lib/points.js";
   import {
     advancementLabel,
     canCorrectResult,
@@ -134,6 +136,12 @@
   // Pools edited on the site replace the bundled ones (loaded on mount).
   let vehiclePools = $state(mergePools({}, defaultVehiclePools));
   let savingPool = $state(false);
+  // Potato Cup points (积分榜): admins edit an event's table at any time.
+  let editingPoints = $state(false);
+  let pointsDraft = $state([]);
+  let pointsSeasonDraft = $state("");
+  let savingPoints = $state(false);
+  let hasPoints = $derived(Boolean(tournament?.points_table?.length));
   let swissRoundsLabel = $derived(
     tournament?.swiss_rounds_auto
       ? `${tournament?.swiss_rounds_effective ?? "?"} 轮（自动单循环）`
@@ -845,6 +853,34 @@
       toast.error(e.message);
     } finally {
       savingPool = false;
+    }
+  }
+
+  function openPointsEdit() {
+    pointsDraft = copyTable(tournament?.points_table?.length ? tournament.points_table : POINTS_PRESETS[0].table);
+    pointsSeasonDraft = tournament?.points_season || currentSeason();
+    editingPoints = true;
+  }
+
+  async function savePoints(clear = false) {
+    if (!ensureAdmin()) return;
+    if (!clear) {
+      const problem = pointsTableProblem(pointsDraft, pointsSeasonDraft);
+      if (problem) return toast.error(problem);
+    }
+    savingPoints = true;
+    try {
+      await API.updateTournament(tid, clear
+        ? { points_table: null }
+        : { points_table: cleanTable(pointsDraft), points_season: pointsSeasonDraft.trim() });
+      // Reload: awarded points are computed with the event.
+      await load();
+      editingPoints = false;
+      toast.success(clear ? "已设为不计入积分榜" : "积分已保存");
+    } catch (e) {
+      toast.error(e.message);
+    } finally {
+      savingPoints = false;
     }
   }
 
@@ -3080,7 +3116,28 @@
           • {isSwiss || isTwoStage ? "赛制结构" : "晋级规则"}: <span class="font-bold text-primary">{isTwoStage
             ? `小组赛 ${hasGroupBrackets ? `${groupFormatLabel}淘汰` : swissRoundsLabel}（${tournament.swiss_group_size ? `每组 ${tournament.swiss_group_size} 人` : "不分组"}，每组前 ${tournament.advance_per_group} 名晋级）→ ${tournament.playoff_format === "double_elim" ? "双败" : "单败"}淘汰赛`
             : isSwiss ? `积分制 · ${swissRoundsLabel}` : advancementLabel(tournament.loser_advances)}</span>
+          {#if hasPoints}
+            • 年度积分榜: <a href="/points?season={tournament.points_season}&pool={tournament.vehicle_pool}" class="font-bold text-primary hover:underline">{tournament.points_season} 赛季</a>
+          {/if}
+          {#if isAdmin}
+            <button type="button" onclick={() => (editingPoints ? (editingPoints = false) : openPointsEdit())} class="ml-1 text-[11px] font-semibold text-primary hover:underline cursor-pointer">
+              {editingPoints ? "收起积分设置" : hasPoints ? "编辑积分" : "设置积分"}
+            </button>
+          {/if}
         </p>
+        {#if isAdmin && editingPoints}
+          <div class="mt-3 max-w-xl space-y-2 rounded-xl border border-border bg-card/60 p-3">
+            <div class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">年度积分榜设置</div>
+            <PointsEditor bind:table={pointsDraft} bind:season={pointsSeasonDraft} compact />
+            <div class="flex flex-wrap items-center gap-2">
+              <Button size="sm" class="h-8 text-xs cursor-pointer" disabled={savingPoints} onclick={() => savePoints(false)}>保存积分</Button>
+              {#if hasPoints}
+                <Button variant="outline" size="sm" class="h-8 text-xs cursor-pointer" disabled={savingPoints} onclick={() => savePoints(true)}>不计入积分榜</Button>
+              {/if}
+              <Button variant="outline" size="sm" class="h-8 text-xs cursor-pointer" disabled={savingPoints} onclick={() => (editingPoints = false)}>取消</Button>
+            </div>
+          </div>
+        {/if}
         {#if tournament.source_url}
           <a
             href={tournament.source_url}
@@ -4060,6 +4117,9 @@
                         <th class="py-2.5 px-4 w-40">名次</th>
                         <th class="py-2.5 px-4">选手 (Player)</th>
                         <th class="py-2.5 px-4 text-center w-24">胜场/总场</th>
+                        {#if tournament.points_awarded}
+                          <th class="py-2.5 px-4 text-center w-20">积分</th>
+                        {/if}
                       </tr>
                     </thead>
                     <tbody class="divide-y divide-border/30">
@@ -4095,6 +4155,11 @@
                           >
                             {item.matchesWon} / {item.matchesPlayed}
                           </td>
+                          {#if tournament.points_awarded}
+                            <td class="py-3 px-4 text-center font-mono font-bold {tournament.points_awarded[item.id] ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground/50'}">
+                              {tournament.points_awarded[item.id] || "—"}
+                            </td>
+                          {/if}
                         </tr>
                       {/each}
                     </tbody>
