@@ -6,6 +6,7 @@
     bracketRoundLabel,
     bracketRoundTotal,
     layoutBracketBand,
+    roundLabel,
   } from "$lib/bracket.js";
   import { canCorrectResult } from "$lib/tournament.js";
 
@@ -21,7 +22,22 @@
     onToggleActive = () => {},
     banpickEnabled = false,
     onBanPick = () => {},
+    // Group-stage brackets reuse this view: their matches use other codes
+    // ('gwb' / 'glb' for a double-elimination group, 'gse' for a
+    // single-elimination group, which has no losers band) and no grand final.
+    wbCode = "wb",
+    lbCode = "lb",
+    variant = "playoff", // 'playoff' | 'group-double' | 'group-single'
+    perGroup = 0,
   } = $props();
+
+  const isGroup = $derived(variant !== "playoff");
+  const isGroupSingle = $derived(variant === "group-single");
+  // The third-place match (round 0) sits under the bracket, not in a column.
+  const bandMatches = $derived((matches || []).filter((m) => m.round > 0));
+  const thirdPlace = $derived(
+    (matches || []).filter((m) => m.bracket === wbCode && m.round === 0),
+  );
 
   const CARD_W = 220;
   const CARD_H = 76;
@@ -31,11 +47,11 @@
   const GF_GAP = 28;
 
   const playerById = $derived(new Map((players || []).map((p) => [p.id, p])));
-  const wbTotal = $derived(bracketRoundTotal(matches, "wb"));
-  const lbTotal = $derived(bracketRoundTotal(matches, "lb"));
+  const wbTotal = $derived(bracketRoundTotal(bandMatches, wbCode));
+  const lbTotal = $derived(bracketRoundTotal(bandMatches, lbCode));
 
   const wbBand = $derived(
-    layoutBracketBand(matches, "wb", {
+    layoutBracketBand(bandMatches, wbCode, {
       cardHeight: CARD_H,
       slotHeight: SLOT_H,
       columnWidth: CARD_W,
@@ -43,7 +59,7 @@
     }),
   );
   const lbBand = $derived(
-    layoutBracketBand(matches, "lb", {
+    layoutBracketBand(bandMatches, lbCode, {
       cardHeight: CARD_H,
       slotHeight: SLOT_H,
       columnWidth: CARD_W,
@@ -127,8 +143,16 @@
       for (const item of column.matches) ids.push(item.match.id);
     }
     for (const match of grandFinals) ids.push(match.id);
+    for (const match of thirdPlace) ids.push(match.id);
     return new Map(ids.map((id, index) => [id, index + 1]));
   });
+
+  // Column headers. A group's last winners/losers round decides who qualifies.
+  function columnLabel(side, round, total) {
+    if (isGroupSingle) return roundLabel(round, total);
+    if (isGroup && round === 1) return side === "lb" ? "败者组出线战" : "胜者组出线战";
+    return bracketRoundLabel(side, round, total);
+  }
 
   function playerOf(id) {
     return id ? playerById.get(id) : null;
@@ -342,11 +366,17 @@
       <div class="mb-2 flex flex-wrap items-center gap-2">
         <span
           class="rounded-full border border-sky-500/30 bg-sky-500/5 px-2 py-0.5 text-[10px] font-bold text-sky-500"
-          >胜者组</span
+          >{isGroupSingle ? "单败淘汰" : "胜者组"}</span
         >
-        <span class="text-[10px] text-muted-foreground/70"
-          >首败进入败者组，再败淘汰；总决赛由胜者组冠军与败者组冠军对决</span
-        >
+        <span class="text-[10px] text-muted-foreground/70">
+          {#if isGroupSingle}
+            整组打完，按最终名次取前 {perGroup} 名出线{perGroup >= 3 ? "（含三四名决赛）" : ""}
+          {:else if isGroup}
+            首败进入败者组，再败淘汰；胜者组出线战胜者直接出线
+          {:else}
+            首败进入败者组，再败淘汰；总决赛由胜者组冠军与败者组冠军对决
+          {/if}
+        </span>
       </div>
       <div class="overflow-x-auto pb-2">
         <div
@@ -364,7 +394,7 @@
                 {#if column.grandFinal}
                   总决赛
                 {:else}
-                  {bracketRoundLabel("wb", column.round, wbTotal)}
+                  {columnLabel("wb", column.round, wbTotal)}
                 {/if}
               </div>
             </div>
@@ -401,8 +431,24 @@
           {/each}
         </div>
       </div>
+      {#if thirdPlace.length}
+        <div class="mt-3 space-y-1.5">
+          <div
+            class="flex h-7 items-center justify-center rounded-md border border-neutral-700/50 bg-neutral-800/85 px-2 text-[11px] font-bold tracking-wide text-neutral-100 shadow-sm"
+            style="width: {CARD_W}px"
+          >
+            三四名决赛
+          </div>
+          {#each thirdPlace as match (match.id)}
+            <div style="width: {CARD_W}px; height: {CARD_H}px">
+              {@render matchCard(match)}
+            </div>
+          {/each}
+        </div>
+      {/if}
     </section>
 
+    {#if lbBand.columns.length}
     <section>
       <div class="mb-2 flex flex-wrap items-center gap-2">
         <span
@@ -410,7 +456,9 @@
           >败者组</span
         >
         <span class="text-[10px] text-muted-foreground/70"
-          >输一场仍可继续，再输即淘汰；败者组决赛胜者进入总决赛</span
+          >{isGroup
+            ? "输一场仍可继续，再输即淘汰；败者组出线战胜者出线"
+            : "输一场仍可继续，再输即淘汰；败者组决赛胜者进入总决赛"}</span
         >
       </div>
       <div class="overflow-x-auto pb-2">
@@ -426,7 +474,7 @@
               <div
                 class="flex h-7 items-center justify-center rounded-md border border-neutral-700/50 bg-neutral-800/85 px-2 text-[11px] font-bold tracking-wide text-neutral-100 shadow-sm"
               >
-                {bracketRoundLabel("lb", column.round, lbTotal)}
+                {columnLabel("lb", column.round, lbTotal)}
               </div>
             </div>
           {/each}
@@ -463,6 +511,7 @@
         </div>
       </div>
     </section>
+    {/if}
 
     {#if grandFinalReset}
       <p class="text-[10px] text-muted-foreground/60">

@@ -101,3 +101,14 @@ test("automatic Swiss rounds are a full round robin", async () => {
   assert.equal(isAutoRounds(""), true);
   assert.equal(isAutoRounds(3), false);
 });
+
+test("two-stage labels and elimination-group start checks", async () => {
+  const { eventFormatLabel, groupBracketProblem, startBlockedMessage } = await import("../src/lib/tournament.js");
+  assert.equal(eventFormatLabel({ format: "double_elim", playoff_format: "double_elim" }), "双败小组 → 双败淘汰");
+  assert.equal(eventFormatLabel({ format: "swiss", playoff_format: "single_elim" }), "瑞士轮小组 → 单败淘汰");
+  assert.equal(eventFormatLabel({ format: "single_elim" }), "单败淘汰");
+  assert.equal(groupBracketProblem("double_elim", 8, 2), null);
+  assert.match(groupBracketProblem("double_elim", 8, 1), /单败小组/);
+  assert.equal(startBlockedMessage("double_elim", 16, null, { groupSize: 8, perGroup: 2, playoffFormat: "double_elim" }), null);
+  assert.match(startBlockedMessage("single_elim", 16, null, { groupSize: 8, perGroup: 8, playoffFormat: "single_elim" }), /无需比赛/);
+});

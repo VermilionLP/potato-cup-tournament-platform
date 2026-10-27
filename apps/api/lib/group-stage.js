@@ -25,6 +25,7 @@ import {
   swissRoundComplete,
 } from './swiss.js';
 import { seedingOrder } from './double-elim.js';
+import { groupBracketProblem } from './group-brackets.js';
 
 export const PLAYOFF_FORMATS = ['single_elim', 'double_elim'];
 export const MIN_GROUP_SIZE = 2;
@@ -170,6 +171,25 @@ export function seedPlayoffs(qualifiers) {
 
   const sameGroupPairs = pairs.filter(([a, b]) => at(a).group === at(b).group).length;
   return { seeded, sameGroupPairs };
+}
+
+/** Why a two-stage event with elimination groups cannot start, or null. */
+export function eliminationGroupsBlockedReason(playerCount, { format, groupSize, perGroup, playoffFormat }) {
+  const count = Number(playerCount) || 0;
+  if (!PLAYOFF_FORMATS.includes(playoffFormat)) return '请先选择淘汰赛赛制';
+  const groups = groupCountFor(count, groupSize);
+  const smallest = Math.floor(count / groups);
+  const largest = Math.ceil(count / groups);
+  for (const size of new Set([smallest, largest])) {
+    const problem = groupBracketProblem(format, size, perGroup);
+    if (problem) return `分成 ${groups} 组（每组 ${size} 人）：${problem}`;
+  }
+  const total = groups * (Number(perGroup) || 0);
+  const minPlayoff = playoffFormat === 'double_elim' ? 4 : 2;
+  if (total < minPlayoff) {
+    return `${playoffFormat === 'double_elim' ? '双败' : '单败'}淘汰赛至少需要 ${minPlayoff} 名晋级选手（当前 ${groups} 组 × ${perGroup} = ${total} 人）`;
+  }
+  return null;
 }
 
 /** Why a two-stage event cannot start, or null. */

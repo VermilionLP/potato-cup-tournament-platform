@@ -51,12 +51,26 @@ export function buildMatchOrder(matches = []) {
     .filter((m) => m && m.bracket === "sw")
     .sort((a, b) => a.round - b.round || a.position - b.position || a.id - b.id);
   for (const m of swiss) order.set(m.id, ++n);
+  // Group brackets of a two-stage event are played before the playoff.
+  const GROUP = ["gse", "gwb", "glb"];
+  const groupBrackets = matches
+    .filter((m) => m && GROUP.includes(m.bracket))
+    .sort(
+      (a, b) =>
+        (a.swiss_group || 1) - (b.swiss_group || 1) ||
+        (a.bracket === "glb") - (b.bracket === "glb") ||
+        (a.round === 0) - (b.round === 0) ||
+        b.round - a.round ||
+        a.position - b.position ||
+        a.id - b.id,
+    );
+  for (const m of groupBrackets) order.set(m.id, ++n);
   const main = matches
-    .filter((m) => m && m.bracket !== "sw" && m.round > 0)
+    .filter((m) => m && m.bracket !== "sw" && !GROUP.includes(m.bracket) && m.round > 0)
     .sort((a, b) => b.round - a.round || a.position - b.position || a.id - b.id);
   for (const m of main) order.set(m.id, ++n);
   const third = matches
-    .filter((m) => m && m.round === 0)
+    .filter((m) => m && m.round === 0 && !GROUP.includes(m.bracket))
     .sort((a, b) => a.position - b.position || a.id - b.id);
   for (const m of third) order.set(m.id, ++n);
   return order;

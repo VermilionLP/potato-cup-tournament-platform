@@ -13,6 +13,14 @@ import {
   SUPPORTED_FORMATS,
 } from '../lib/tournament-config.js';
 import {
+  GROUP_BRACKETS,
+  groupBracketComplete,
+  groupBracketPlacings,
+  groupBracketProblem,
+  selectBracketQualifiers,
+} from '../lib/group-brackets.js';
+import {
+  groupLabel,
   groupStageComplete,
   groupStandings,
   MAX_GROUP_SIZE,
@@ -56,6 +64,49 @@ function buildGroupStage(t, players, swissMatches) {
     warnings,
     same_group_pairs: sameGroupPairs,
   };
+}
+
+// Group stage played as single-/double-elimination brackets per group.
+function buildBracketGroupStage(t, players, groupMatches) {
+  const perGroup = Number(t.advance_per_group) || 1;
+  const groupIds = [...new Set(players.map((p) => p.swiss_group || 1))].sort((a, b) => a - b);
+  const groups = groupIds.map((group) => {
+    const own = players.filter((p) => (p.swiss_group || 1) === group);
+    const ownMatches = groupMatches.filter((m) => (m.swiss_group || 1) === group);
+    return {
+      group,
+      label: groupLabel(group),
+      rows: groupBracketPlacings(t.format, own.map((p) => ({ id: p.id, seed: p.seed })), ownMatches, perGroup),
+      complete: groupBracketComplete(ownMatches),
+    };
+  });
+  const { qualifiers, warnings } = selectBracketQualifiers(groups, perGroup);
+  const { seeded, sameGroupPairs } = seedPlayoffs(qualifiers);
+  return {
+    kind: 'bracket',
+    format: t.format,
+    groups,
+    per_group: perGroup,
+    complete: groups.length > 0 && groups.every((g) => g.complete),
+    qualifiers: seeded.map((q, i) => ({
+      player_id: q.player_id,
+      group: q.group,
+      group_label: q.group_label,
+      group_rank: q.group_rank,
+      how: q.how,
+      playoff_seed: i + 1,
+    })),
+    warnings,
+    same_group_pairs: sameGroupPairs,
+  };
+}
+
+// Group stage of a two-stage event, whatever format it is played in.
+function groupStageOf(t, players, allMatches) {
+  if (t.format === 'swiss') {
+    return { kind: 'swiss', ...buildGroupStage(t, players, allMatches.filter((m) => m.bracket === SWISS_BRACKET)) };
+  }
+  return buildBracketGroupStage(t, players, allMatches.filter((m) => GROUP_BRACKETS.includes(m.bracket)));
 }
 
 export default async function tournamentsRoutes(fastify) {
@@ -111,9 +162,7 @@ export default async function tournamentsRoutes(fastify) {
     const standings = t.format === 'swiss' && !t.playoff_format
       ? computeStandings(players.map((p) => ({ id: p.id, seed: p.seed })), swissMatches)
       : undefined;
-    const groupStage = t.format === 'swiss' && t.playoff_format
-      ? buildGroupStage(t, players, swissMatches)
-      : undefined;
+    const groupStage = t.playoff_format ? groupStageOf(t, players, ms) : undefined;
 
     // Rounds actually played; an automatic count follows the field size.
     const swissRoundsEffective = t.format !== 'swiss'
@@ -244,7 +293,7 @@ export default async function tournamentsRoutes(fastify) {
     if (format === 'swiss' && !isAutoRounds(swiss_rounds) && !parseSwissRounds(swiss_rounds)) {
       throw fastify.httpErrors.badRequest(`瑞士轮轮数必须是 ${MIN_SWISS_ROUNDS}-${MAX_SWISS_ROUNDS} 之间的整数（留空为自动）`);
     }
-    if (format === 'swiss' && playoff_format) {
+    if (playoff_format) {
       if (!PLAYOFF_FORMATS.includes(playoff_format)) {
         throw fastify.httpErrors.badRequest(`playoff_format must be one of: ${PLAYOFF_FORMATS.join(', ')}`);
       }
@@ -259,6 +308,10 @@ export default async function tournamentsRoutes(fastify) {
       }
       if (size !== null && k > size) {
         throw fastify.httpErrors.badRequest(`每组晋级人数（${k}）不能多于每组人数（${size}）`);
+      }
+      if (format !== 'swiss' && size !== null) {
+        const problem = groupBracketProblem(format, size, k);
+        if (problem) throw fastify.httpErrors.badRequest(problem);
       }
     }
     return await repo.create({
@@ -437,12 +490,11 @@ export default async function tournamentsRoutes(fastify) {
     requireAdmin(fastify, req);
     const t = await repo.getById(req.params.id);
     if (!t) throw fastify.httpErrors.notFound('Tournament not found');
-    if (t.format !== 'swiss' || !t.playoff_format) throw fastify.httpErrors.badRequest('该赛事没有淘汰赛阶段');
+    if (!t.playoff_format) throw fastify.httpErrors.badRequest('该赛事没有淘汰赛阶段');
     if (t.status !== 'in_progress') throw fastify.httpErrors.badRequest('赛事进行中才能进入淘汰赛');
     if (t.current_stage === 'playoff') throw fastify.httpErrors.badRequest('淘汰赛已经生成');
     const players = await repo.getPlayers(req.params.id);
-    const swissMatches = (await repo.getMatches(req.params.id)).filter((m) => m.bracket === SWISS_BRACKET);
-    const stage = buildGroupStage(t, players, swissMatches);
+    const stage = groupStageOf(t, players, await repo.getMatches(req.params.id));
     if (!stage.complete) throw fastify.httpErrors.badRequest('小组赛还没有全部打完');
     await matches.generatePlayoffs(req.params.id, stage.qualifiers.map((q) => q.player_id), t.playoff_format);
     fastify.tournamentEvents.emit(`update:${req.params.id}`, { type: 'playoffs_generated' });

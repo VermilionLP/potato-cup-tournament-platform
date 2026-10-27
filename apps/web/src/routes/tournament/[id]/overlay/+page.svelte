@@ -15,10 +15,13 @@
   );
 
   let tournament = $state(null);
+  // Two-stage events: the group stage (Swiss rounds or group brackets) until
+  // the playoff starts, then only the playoff.
+  const GROUP_STAGE = ["sw", "gse", "gwb", "glb"];
   let stageMatches = $derived(
     (tournament?.matches || []).filter((m) =>
-      tournament?.format === "swiss" && tournament?.playoff_format
-        ? (tournament?.current_stage === "playoff") === (m.bracket !== "sw")
+      tournament?.playoff_format
+        ? (tournament?.current_stage === "playoff") === !GROUP_STAGE.includes(m.bracket)
         : true,
     ),
   );
@@ -140,7 +143,7 @@
   // Two-stage events show the group stage (Swiss) until the playoff starts,
   // then only the playoff bracket.
   let inPlayoffs = $derived(
-    tournament?.format === "swiss" && Boolean(tournament?.playoff_format) && tournament?.current_stage === "playoff",
+    Boolean(tournament?.playoff_format) && tournament?.current_stage === "playoff",
   );
   let isSwiss = $derived(tournament?.format === "swiss" && !inPlayoffs);
   function roundTitle(round, total) {

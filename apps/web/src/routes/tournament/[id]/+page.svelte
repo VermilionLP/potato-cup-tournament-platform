@@ -35,7 +35,6 @@
   import { defaultVehiclePools } from "$lib/data/vehiclePools.js";
   import {
     advancementLabel,
-    formatLabel,
     canCorrectResult,
     gameModeLabel,
     isValidSwissRounds,
@@ -43,7 +42,11 @@
     MIN_SWISS_ROUNDS,
     startBlockedMessage,
     groupLabel,
+    eventFormatLabel,
+    GROUP_FORMATS,
+    GROUP_STAGE_BRACKETS,
   } from "$lib/tournament.js";
+  import GroupBracketsView from "$lib/components/GroupBracketsView.svelte";
   import TierBadge from "$lib/components/TierBadge.svelte";
   import Flag from "$lib/components/Flag.svelte";
   import { buildContact, parseContact } from "$lib/contact.js";
@@ -86,12 +89,26 @@
 
   let tid = $derived(page.params.id);
   let tournament = $state(null);
-  // Two-stage events: Swiss group stage, then an elimination playoff. The
-  // elimination views and placements only ever see playoff matches.
-  let isTwoStage = $derived(tournament?.format === "swiss" && Boolean(tournament?.playoff_format));
+  // Two-stage events: a group stage (Swiss, or single-/double-elimination
+  // brackets per group; `format` says which), then an elimination playoff
+  // (`playoff_format`). The elimination views and placements only ever see
+  // playoff matches.
+  let isTwoStage = $derived(Boolean(tournament?.playoff_format));
   let inPlayoffs = $derived(isTwoStage && tournament?.current_stage === "playoff");
   let bracketMatches = $derived(
-    (tournament?.matches || []).filter((m) => (isTwoStage || tournament?.format !== "swiss") ? m.bracket !== "sw" : true),
+    (tournament?.matches || []).filter((m) =>
+      isTwoStage
+        ? !GROUP_STAGE_BRACKETS.includes(m.bracket)
+        : tournament?.format !== "swiss" ? m.bracket !== "sw" : true,
+    ),
+  );
+  // Group stage played as brackets (not Swiss).
+  let hasGroupBrackets = $derived(isTwoStage && tournament?.format !== "swiss");
+  let groupStageMatches = $derived(
+    (tournament?.matches || []).filter((m) => GROUP_STAGE_BRACKETS.includes(m.bracket)),
+  );
+  let groupFormatLabel = $derived(
+    GROUP_FORMATS.find((f) => f.id === tournament?.format)?.label || "瑞士轮",
   );
   // Overlay round controls need a non-empty list even before a playoff exists.
   let overlayMatches = $derived(bracketMatches.length ? bracketMatches : tournament?.matches || []);
@@ -101,8 +118,9 @@
   let playoffBusy = $state(false);
   let totalRounds = $derived(maxRound(bracketMatches || []));
   let matchOrder = $derived(buildMatchOrder(tournament?.matches || []));
+  // The elimination bracket shown outside the group stage.
   let isDoubleElim = $derived(
-    tournament?.format === "double_elim" || (isTwoStage && tournament?.playoff_format === "double_elim"),
+    isTwoStage ? tournament?.playoff_format === "double_elim" : tournament?.format === "double_elim",
   );
   let isSwiss = $derived(tournament?.format === "swiss");
   let banpickEnabled = $derived(tournament?.banpick_enabled !== false);
@@ -993,7 +1011,7 @@
     try {
       const matches = await API.generateBracket(tid);
       tournament = { ...tournament, matches };
-      toast.success(`${formatLabel(tournament.format)} 对阵已成功生成！`);
+      toast.success(`${eventFormatLabel(tournament)} 对阵已成功生成！`);
       await load();
     } catch (e) {
       toast.error(e.message);
@@ -1259,9 +1277,9 @@
 
     try {
       await API.submitResult(tid, selectedMatch.id, score1, score2);
-      if (tournament?.format === "double_elim") {
+      if (tournament?.format === "double_elim" || isTwoStage) {
         let destination = "胜者晋级下一轮";
-        if (selectedMatch.bracket === "wb") {
+        if (selectedMatch.bracket === "wb" || selectedMatch.bracket === "gwb") {
           destination = "胜者晋级胜者组，败者进入败者组";
         } else if (selectedMatch.bracket === "gf") {
           destination =
@@ -1625,6 +1643,17 @@
         ? `小组赛 ${groupLabel(match.swiss_group)} 组 第 ${match.round} 轮`
         : `瑞士轮 第 ${match.round} 轮`;
     }
+    if (["gse", "gwb", "glb"].includes(match.bracket)) {
+      const own = (tournament?.matches || []).filter(
+        (x) => x.bracket === match.bracket && (x.swiss_group || 1) === (match.swiss_group || 1),
+      );
+      const total = Math.max(1, ...own.map((x) => x.round));
+      const prefix = `小组赛 ${groupLabel(match.swiss_group)} 组`;
+      if (match.bracket === "gse") return `${prefix} ${roundLabel(match.round, total)}`;
+      const side = match.bracket === "glb" ? "lb" : "wb";
+      if (match.round === 1) return `${prefix} ${side === "lb" ? "败者组" : "胜者组"}出线战`;
+      return `${prefix} ${bracketRoundLabel(side, match.round, total)}`;
+    }
     if (match.bracket === "wb") {
       return bracketRoundLabel("wb", match.round, wbTotalRounds);
     }
@@ -1822,9 +1851,22 @@
       }
       for (const p of placed) {
         const row = rowsById.get(p.id);
-        if (row) {
+        if (row && row.wins !== undefined) {
           p.matchesWon += row.wins;
           p.matchesPlayed += row.wins + row.losses;
+        }
+      }
+      // Bracket groups: count the group matches themselves.
+      if (hasGroupBrackets) {
+        const byId = new Map(placed.map((p) => [p.id, p]));
+        for (const m of groupStageMatches) {
+          if (m.bracket === "sw" || !m.player1_id || !m.player2_id || !m.winner_id) continue;
+          for (const id of [m.player1_id, m.player2_id]) {
+            const p = byId.get(id);
+            if (!p) continue;
+            p.matchesPlayed += 1;
+            if (m.winner_id === id) p.matchesWon += 1;
+          }
         }
       }
       groupStageOut = placed
@@ -2529,13 +2571,15 @@
             {#if tournament.status === "registration"}
               对阵图预览 (Bracket Preview)
             {:else}
-              赛事对阵图 · {formatLabel(tournament.format)}
+              赛事对阵图 · {eventFormatLabel(tournament)}
             {/if}
           </Card.Title>
           <Card.Description class="text-xs">
             {#if tournament.status === "registration"}
               基于当前报名的选手和种子排名实时生成的对阵预览（调整上方种子排序会自动刷新）。
-              {#if isDoubleElim}
+              {#if hasGroupBrackets}
+                <span class="block mt-1 text-muted-foreground/80">开赛时按种子蛇形分组，每组打{groupFormatLabel}淘汰，每组前 {tournament.advance_per_group} 名进入{tournament.playoff_format === "double_elim" ? "双败" : "单败"}淘汰赛。</span>
+              {:else if isDoubleElim}
                 <span class="block mt-1 text-muted-foreground/80">双败淘汰至少需要 4 名选手；种子会依次填入胜者组。</span>
               {:else if isSwiss}
                 <span class="block mt-1 text-muted-foreground/80">瑞士轮第 1 轮按种子上半区对下半区配对；之后每轮按积分榜重新配对，不会重复交手。</span>
@@ -2543,7 +2587,9 @@
               <span class="sm:hidden block mt-1 text-muted-foreground/80">左右滑动查看本组对阵。</span>
             {:else if tournament.status === "in_progress"}
               点击包含两位选手的待赛卡片可以填报比分或进行弃权处理。
-              {#if isDoubleElim}
+              {#if hasGroupBrackets && shownStage === "group"}
+                <span class="block mt-1 text-muted-foreground/80">各组比赛独立进行；所有小组打完后，管理员在上方确认晋级名单进入淘汰赛。</span>
+              {:else if isDoubleElim}
                 <span class="block mt-1 text-muted-foreground/80">胜者组败者落入败者组；败者组再败即淘汰；总决赛按需加赛。</span>
               {:else if isSwiss}
                 <span class="block mt-1 text-muted-foreground/80">一轮全部打完后自动生成下一轮对阵；最后一轮结束后积分榜第一即为冠军。</span>
@@ -2571,7 +2617,7 @@
         {/if}
       </Card.Header>
 
-      {#if sectionCount > 1 && !isDoubleElim && !(isSwiss && (!isTwoStage || shownStage === "group"))}
+      {#if sectionCount > 1 && !isDoubleElim && !(isSwiss && (!isTwoStage || shownStage === "group")) && !(hasGroupBrackets && shownStage === "group")}
         <div
           class="flex flex-wrap items-center gap-2 px-3 sm:px-6 pt-4"
         >
@@ -2673,6 +2719,22 @@
             groups={isTwoStage ? tournament.group_stage?.groups || [] : []}
             perGroup={isTwoStage ? tournament.advance_per_group || 0 : 0}
             locked={inPlayoffs}
+          />
+        {:else if hasGroupBrackets && shownStage === "group"}
+          <GroupBracketsView
+            groups={tournament.group_stage?.groups || []}
+            matches={groupStageMatches}
+            players={tournament.players || []}
+            format={tournament.format}
+            perGroup={tournament.advance_per_group || 0}
+            status={tournament.status}
+            activeMatchId={tournament.active_match_id}
+            isAdmin={isAdmin}
+            userId={userState.id}
+            onOpenMatch={openMatchDetails}
+            onToggleActive={toggleActiveMatch}
+            banpickEnabled={banpickEnabled}
+            onBanPick={openBanPick}
           />
         {:else if isDoubleElim}
           <DoubleElimBracket
@@ -3050,14 +3112,14 @@
           <Badge
             variant="outline"
             class="text-[10px] px-2 py-0.5 font-mono bg-muted/40 text-muted-foreground border-border/70"
-            title={formatLabel(tournament.format)}
+            title={eventFormatLabel(tournament)}
           >
-            {gameModeLabel(tournament.game_mode)} · {formatLabel(tournament.format)}
+            {gameModeLabel(tournament.game_mode)} · {eventFormatLabel(tournament)}
           </Badge>
         </div>
         <p class="text-xs text-muted-foreground font-medium">
           ID: {tournament.id} • 比赛模式: <span class="font-bold text-foreground">{gameModeLabel(tournament.game_mode)}</span>
-          • 赛制: <span class="font-bold text-foreground">{formatLabel(tournament.format)}</span>
+          • 赛制: <span class="font-bold text-foreground">{eventFormatLabel(tournament)}</span>
           • 选手容量: {tournament.player_count ||
             0}/{tournament.player_capacity} 人
           {#if tournament.status === "voting"}
@@ -3070,8 +3132,8 @@
               tournament.created_at,
             ).toLocaleDateString("zh-CN")}
           {/if}
-          • {isSwiss ? "赛制结构" : "晋级规则"}: <span class="font-bold text-primary">{isTwoStage
-            ? `小组赛 ${swissRoundsLabel}（${tournament.swiss_group_size ? `每组 ${tournament.swiss_group_size} 人` : "不分组"}，每组前 ${tournament.advance_per_group} 名晋级）→ ${tournament.playoff_format === "double_elim" ? "双败" : "单败"}淘汰赛`
+          • {isSwiss || isTwoStage ? "赛制结构" : "晋级规则"}: <span class="font-bold text-primary">{isTwoStage
+            ? `小组赛 ${hasGroupBrackets ? `${groupFormatLabel}淘汰` : swissRoundsLabel}（${tournament.swiss_group_size ? `每组 ${tournament.swiss_group_size} 人` : "不分组"}，每组前 ${tournament.advance_per_group} 名晋级）→ ${tournament.playoff_format === "double_elim" ? "双败" : "单败"}淘汰赛`
             : isSwiss ? `积分制 · ${swissRoundsLabel}` : advancementLabel(tournament.loser_advances)}</span>
         </p>
         {#if tournament.source_url}
@@ -3284,9 +3346,7 @@
                 选手报名管理
               </Card.Title>
               <Card.Description class="text-xs">
-                当报名人数达到设定或充足时，组织者可进行种子排序并生成{formatLabel(
-                  tournament.format,
-                )} Bracket。
+                当报名人数达到设定或充足时，组织者可进行种子排序并生成{eventFormatLabel(tournament)} Bracket。
               </Card.Description>
             </Card.Header>
             <Card.Content class="p-6 pt-0 space-y-4">
@@ -4029,7 +4089,7 @@
                   赛事最终名次排行 (Standings)
                 </Card.Title>
                 <Card.Description class="text-xs">
-                  {isSwiss
+                  {isSwiss && !isTwoStage
                     ? "按瑞士轮积分榜排名：积分 → 小分净胜 → 对手分（对手积分之和）→ 种子。"
                     : "基于淘汰赛各轮次淘汰情况计算得出的选手最终名次。"}
                 </Card.Description>

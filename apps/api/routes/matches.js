@@ -7,7 +7,7 @@ export default async function matchesRoutes(fastify) {
   // Playoff seeding came from the group stage, so its results are frozen
   // until the playoff is withdrawn.
   async function rejectGroupEditDuringPlayoffs(match) {
-    if (match.bracket !== 'sw') return;
+    if (!['sw', 'gse', 'gwb', 'glb'].includes(match.bracket)) return;
     const res = await fastify.db.query(
       'SELECT current_stage FROM axsuck.tournaments WHERE id = $1',
       [match.tournament_id],

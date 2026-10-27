@@ -84,8 +84,9 @@ export function startBlockedMessage(format, playerCount, swissRounds = null, two
   const min = minPlayersForFormat(format);
   const count = Number(playerCount) || 0;
   if (count < min) return `至少 ${min} 人才能开赛（当前 ${count} 人）`;
-  if (format === "swiss" && twoStage?.playoffFormat) {
-    return twoStageStartMessage(count, { rounds: swissRounds, ...twoStage });
+  if (twoStage?.playoffFormat) {
+    if (format === "swiss") return twoStageStartMessage(count, { rounds: swissRounds, ...twoStage });
+    return eliminationGroupsStartMessage(count, { format, ...twoStage });
   }
   if (format === "swiss" && !isAutoRounds(swissRounds)) {
     if (!isValidSwissRounds(swissRounds)) return "请先设置瑞士轮轮数";
@@ -121,11 +122,66 @@ export const SCORE_PRESETS = [
   [0, 1],
 ];
 
-// Two-stage events (Swiss group stage + playoff). Mirrors apps/api/lib/group-stage.js.
+// Two-stage events (group stage + playoff). Mirrors apps/api/lib/group-stage.js
+// and apps/api/lib/group-brackets.js. For a two-stage event `format` is the
+// group-stage format and `playoff_format` the playoff.
 export const PLAYOFF_FORMATS = [
   { id: "single_elim", label: "单败淘汰" },
   { id: "double_elim", label: "双败淘汰" },
 ];
+
+export const GROUP_FORMATS = [
+  { id: "swiss", label: "瑞士轮", hint: "组内积分制，默认单循环" },
+  { id: "single_elim", label: "单败", hint: "整组打完，按名次取前 K" },
+  { id: "double_elim", label: "双败", hint: "胜者组、败者组各出一半，组内无总决赛" },
+];
+
+// Match codes of the group stage (Swiss rounds and group brackets).
+export const GROUP_STAGE_BRACKETS = ["sw", "gse", "gwb", "glb"];
+
+/** "双败小组 → 单败淘汰" for two-stage events, the plain format otherwise. */
+export function eventFormatLabel(t) {
+  if (!t?.playoff_format) return formatLabel(t?.format);
+  const group = GROUP_FORMATS.find((f) => f.id === t.format)?.label || "瑞士轮";
+  return `${group}小组 → ${formatLabel(t.playoff_format)}`;
+}
+
+const isPow2 = (n) => Number.isInteger(n) && n >= 1 && (n & (n - 1)) === 0;
+
+/** Why a group of `size` cannot play this elimination format with `perGroup` qualifiers, or null. */
+export function groupBracketProblem(format, size, perGroup) {
+  const k = Number(perGroup) || 0;
+  if (k < 1) return "请先设置每组晋级人数";
+  if (k >= size) return `每组晋级 ${k} 人，但有的组只有 ${size} 人，无需比赛`;
+  if (format !== "double_elim") return null;
+  if (size < 3) return "双败小组每组至少需要 3 人";
+  if (k < 2) return "双败小组每组至少晋级 2 人（胜者组、败者组各 1 人）；只晋级 1 人请用单败小组";
+  const fromWinners = Math.ceil(k / 2);
+  const fromLosers = Math.floor(k / 2);
+  if (!isPow2(fromWinners) || !isPow2(fromLosers)) {
+    return "双败小组的晋级人数需让胜者组、败者组各出 1、2、4… 人（每组晋级 2、3、4、8…）";
+  }
+  const slots = Math.max(4, 2 ** Math.ceil(Math.log2(size)));
+  if (fromWinners > slots / 2) return `每组 ${slots} 个位置，胜者组最多出 ${slots / 2} 人`;
+  const wbRounds = Math.log2(slots) - Math.log2(fromWinners);
+  const losersLeft = wbRounds === 1 ? slots / 4 : fromWinners;
+  if (fromLosers > losersLeft) return `每组 ${slots} 个位置，败者组最多出 ${losersLeft} 人`;
+  return null;
+}
+
+/** Why a two-stage event with elimination groups cannot start yet, or null. */
+export function eliminationGroupsStartMessage(playerCount, { format, groupSize, perGroup, playoffFormat }) {
+  const count = Number(playerCount) || 0;
+  const groups = groupCountFor(count, groupSize);
+  for (const size of new Set([Math.floor(count / groups), Math.ceil(count / groups)])) {
+    const problem = groupBracketProblem(format, size, perGroup);
+    if (problem) return `分成 ${groups} 组（每组 ${size} 人）：${problem}`;
+  }
+  const total = groups * (Number(perGroup) || 0);
+  const min = playoffFormat === "double_elim" ? 4 : 2;
+  if (total < min) return `淘汰赛至少需要 ${min} 名晋级选手（当前 ${groups} 组 × ${perGroup} = ${total} 人）`;
+  return null;
+}
 
 export function groupLabel(group) {
   return String.fromCharCode(64 + Number(group || 1));

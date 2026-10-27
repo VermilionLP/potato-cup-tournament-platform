@@ -1,5 +1,5 @@
 import { swissStartBlockedReason } from './swiss.js';
-import { twoStageStartBlockedReason } from './group-stage.js';
+import { eliminationGroupsBlockedReason, twoStageStartBlockedReason } from './group-stage.js';
 
 // Shared rules for creating a tournament. Kept free of database access so the
 // behaviour can be unit tested without PostgreSQL.
@@ -51,8 +51,9 @@ export function startBlockedReason(format, playerCount, swissRounds = null, twoS
   const min = minPlayersForFormat(format);
   const count = Number(playerCount) || 0;
   if (count < min) return `至少需要 ${min} 名选手才能开赛（当前 ${count} 人）`;
-  if (format === 'swiss' && twoStage?.playoffFormat) {
-    return twoStageStartBlockedReason(count, { rounds: swissRounds, ...twoStage });
+  if (twoStage?.playoffFormat) {
+    if (format === 'swiss') return twoStageStartBlockedReason(count, { rounds: swissRounds, ...twoStage });
+    return eliminationGroupsBlockedReason(count, { format, ...twoStage });
   }
   if (format === 'swiss') return swissStartBlockedReason(count, swissRounds);
   return null;

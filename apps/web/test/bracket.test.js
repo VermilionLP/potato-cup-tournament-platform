@@ -189,3 +189,16 @@ test("swiss matches are numbered and grouped from round 1 upward", () => {
   assert.deepEqual(rounds.map((r) => r.round), [1, 2]);
   assert.deepEqual(rounds[0].matches.map((m) => m.id), [11, 10]);
 });
+
+test("match order: Swiss, then group brackets by group, then the playoff", () => {
+  const ms = [
+    { id: 1, bracket: "main", round: 1, position: 1 },
+    { id: 2, bracket: "gwb", round: 1, position: 1, swiss_group: 2 },
+    { id: 3, bracket: "glb", round: 1, position: 1, swiss_group: 1 },
+    { id: 4, bracket: "gwb", round: 2, position: 1, swiss_group: 1 },
+    { id: 5, bracket: "gse", round: 0, position: 1, swiss_group: 3 },
+    { id: 6, bracket: "main", round: 2, position: 1 },
+  ];
+  const order = buildMatchOrder(ms);
+  assert.deepEqual([...order.entries()].sort((a, b) => a[1] - b[1]).map(([id]) => id), [4, 3, 2, 5, 6, 1]);
+});

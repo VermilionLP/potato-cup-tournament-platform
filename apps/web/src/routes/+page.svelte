@@ -7,13 +7,15 @@
     BRACKET_FORMATS,
     GAME_MODES,
     advancementLabel,
-    formatLabel,
     gameModeLabel,
     autoSwissRounds,
     isValidSwissRounds,
     MAX_SWISS_ROUNDS,
     MIN_SWISS_ROUNDS,
     PLAYOFF_FORMATS,
+    GROUP_FORMATS,
+    eventFormatLabel,
+    groupBracketProblem,
   } from "$lib/tournament.js";
   import DateTimePicker from "$lib/components/DateTimePicker.svelte";
   import { formatInZone, toInstant } from "$lib/datetime.js";
@@ -77,8 +79,9 @@
 
   function ruleLabel(t) {
     const rounds = t?.swiss_rounds ? `${t.swiss_rounds} 轮` : "单循环";
-    if (t?.format === "swiss" && t.playoff_format) {
-      return `小组赛${t.swiss_group_size ? ` ${t.swiss_group_size} 人/组` : ""} · ${rounds} → ${t.playoff_format === "double_elim" ? "双败" : "单败"}淘汰赛`;
+    if (t?.playoff_format) {
+      const group = t.format === "swiss" ? rounds : `${GROUP_FORMATS.find((f) => f.id === t.format)?.label || ""}淘汰`;
+      return `小组赛${t.swiss_group_size ? ` ${t.swiss_group_size} 人/组` : ""} · ${group}，每组前 ${t.advance_per_group} 名 → ${t.playoff_format === "double_elim" ? "双败" : "单败"}淘汰赛`;
     }
     if (t?.format === "swiss") return `积分制 · ${rounds}`;
     return advancementLabel(t?.loser_advances);
@@ -169,15 +172,22 @@
   // "auto" = full round robin (everyone meets everyone in their group once).
   let newSwissRoundsMode = $state("auto");
   let newBanpickEnabled = $state(true);
-  // Swiss structure: "single" = standings decide, "two_stage" = groups + playoff.
-  let newSwissStructure = $state("single");
+  // newFormat "two_stage" = group stage + playoff; the group stage is played
+  // as newGroupFormat (Swiss, single or double elimination per group).
+  let newGroupFormat = $state("swiss");
   let newPlayoffFormat = $state("single_elim");
   let newGroupSize = $state(4);
   let newAdvancePerGroup = $state(2);
+  let isNewTwoStage = $derived(newFormat === "two_stage");
+  let newUsesSwissRounds = $derived(newFormat === "swiss" || (isNewTwoStage && newGroupFormat === "swiss"));
   // Group size the automatic round count is based on (single stage: everyone).
   let autoRoundsBasis = $derived(
-    newSwissStructure === "two_stage" && Number(newGroupSize) >= 2
-      ? Number(newGroupSize)
+    isNewTwoStage && Number(newGroupSize) >= 2 ? Number(newGroupSize) : null,
+  );
+  // Live check of an elimination group set-up (the server checks again at start).
+  let newGroupProblem = $derived(
+    isNewTwoStage && newGroupFormat !== "swiss" && Number(newGroupSize) >= 2
+      ? groupBracketProblem(newGroupFormat, Number(newGroupSize), Number(newAdvancePerGroup))
       : null,
   );
   let selectedVehiclePool = $state("proleague");
@@ -223,7 +233,7 @@
     newGrandFinalReset = true;
     newSwissRounds = 5;
     newBanpickEnabled = true;
-    newSwissStructure = "single";
+    newGroupFormat = "swiss";
     newSwissRoundsMode = "auto";
     newSwissRounds = 3;
     newPlayoffFormat = "single_elim";
@@ -245,19 +255,23 @@
     if (newCapacity < 2 || newCapacity > 128) {
       return toast.error("选手容量必须在 2 至 128 人之间");
     }
-    const manualRounds = newFormat === "swiss" && newSwissRoundsMode === "manual";
+    const manualRounds = newUsesSwissRounds && newSwissRoundsMode === "manual";
     if (manualRounds && !isValidSwissRounds(newSwissRounds)) {
       return toast.error(`瑞士轮轮数必须在 ${MIN_SWISS_ROUNDS} 至 ${MAX_SWISS_ROUNDS} 之间`);
     }
-    const twoStage = newFormat === "swiss" && newSwissStructure === "two_stage";
+    const twoStage = isNewTwoStage;
     const groupSizeValue = newGroupSize === "" || newGroupSize === null ? null : Number(newGroupSize);
     if (twoStage) {
+      if (newGroupFormat !== "swiss" && groupSizeValue === null) {
+        return toast.error("淘汰制小组需要设置每组人数");
+      }
       if (groupSizeValue !== null && (!Number.isInteger(groupSizeValue) || groupSizeValue < 2 || groupSizeValue > 64)) {
         return toast.error("每组人数必须在 2 至 64 之间，留空表示不分组");
       }
       const k = Number(newAdvancePerGroup);
       if (!Number.isInteger(k) || k < 1) return toast.error("请设置每组晋级人数（至少 1 人）");
       if (groupSizeValue !== null && k > groupSizeValue) return toast.error("每组晋级人数不能多于每组人数");
+      if (newGroupProblem) return toast.error(newGroupProblem);
     }
 
     creating = true;
@@ -267,14 +281,14 @@
         name: trimmedName,
         player_capacity: newCapacity,
         hold_third_place: 0,
-        loser_advances: newLoserAdvances ? 1 : 0,
+        loser_advances: newFormat === "single_elim" && newLoserAdvances ? 1 : 0,
         scheduled_time: newScheduledTime || null,
         game_mode: newGameMode,
         vehicle_pool: selectedVehiclePool,
-        format: newFormat,
+        // Two-stage: `format` is the group stage, `playoff_format` the playoff.
+        format: twoStage ? newGroupFormat : newFormat,
         grand_final_reset:
-          newFormat === "double_elim" ||
-          (twoStage && newPlayoffFormat === "double_elim")
+          (twoStage ? newPlayoffFormat === "double_elim" : newFormat === "double_elim")
             ? newGrandFinalReset
             : false,
         swiss_rounds: manualRounds ? Number(newSwissRounds) : null,
@@ -451,7 +465,7 @@
                   <span class="text-[10px] text-muted-foreground font-mono bg-muted/60 px-1.5 py-0.25 rounded shrink-0">ID: {t.id}</span>
                 </div>
                 <p class="text-xs text-muted-foreground mt-1 flex items-center gap-1.5 flex-wrap">
-                  <span>WarThunder {gameModeLabel(t.game_mode)} · {formatLabel(t.format)}</span>
+                  <span>WarThunder {gameModeLabel(t.game_mode)} · {eventFormatLabel(t)}</span>
                   <span>·</span>
                   <span>{ruleLabel(t)}</span>
                 </p>
@@ -563,7 +577,7 @@
                     <span class="text-[10px] text-muted-foreground font-mono bg-muted/60 px-1.5 py-0.25 rounded shrink-0">ID: {t.id}</span>
                   </div>
                   <p class="text-[11px] text-muted-foreground mt-0.5 flex items-center gap-1.5 flex-wrap">
-                    <span>WarThunder {gameModeLabel(t.game_mode)} · {formatLabel(t.format)}</span>
+                    <span>WarThunder {gameModeLabel(t.game_mode)} · {eventFormatLabel(t)}</span>
                     <span>·</span>
                     <span>{ruleLabel(t)}</span>
                   </p>
@@ -657,6 +671,54 @@
         </div>
       {/snippet}
 
+      {#snippet swissRoundsPicker()}
+          <div class="space-y-1.5">
+            <span class="block text-xs text-foreground/80">轮数</span>
+            <div class="flex flex-wrap items-center gap-2">
+              <div class="w-40">
+                {@render segmented(
+                  [{ id: "auto", label: "自动" }, { id: "manual", label: "手动" }],
+                  newSwissRoundsMode,
+                  (id) => {
+                    if (id === "manual" && newSwissRoundsMode === "auto") {
+                      newSwissRounds = autoSwissRounds(autoRoundsBasis ?? 8);
+                    }
+                    newSwissRoundsMode = id;
+                  },
+                  "grid-cols-2"
+                )}
+              </div>
+              {#if newSwissRoundsMode === "manual"}
+                <input
+                  id="new-swiss-rounds"
+                  type="number"
+                  min={MIN_SWISS_ROUNDS}
+                  max={MAX_SWISS_ROUNDS}
+                  bind:value={newSwissRounds}
+                  aria-label="瑞士轮轮数"
+                  class="h-8 w-16 rounded-md border border-border bg-background px-2 text-center text-sm text-foreground"
+                />
+                <span class="text-xs text-muted-foreground">轮</span>
+              {:else if autoRoundsBasis}
+                <span class="text-xs font-semibold text-primary">每组 {autoRoundsBasis} 人 → {autoSwissRounds(autoRoundsBasis)} 轮</span>
+              {:else}
+                <span class="text-xs font-semibold text-primary">按开赛人数自动计算</span>
+              {/if}
+            </div>
+            <p class="text-[10px] leading-relaxed text-muted-foreground">
+              {#if newSwissRoundsMode === "auto"}
+                自动 = 单循环：每位选手和{autoRoundsBasis ? "同组" : ""}其他所有人各打一场（偶数人打 人数−1 轮，奇数人每人轮空一次、打 人数 轮{autoRoundsBasis ? "" : "；最多 15 轮"}）。
+              {:else}
+                轮数少于单循环时按积分配对、不重复交手；开赛后也可以在比赛页修改。
+              {/if}
+              胜 1 分，同分依次比小分净胜、对手分。
+              {#if isNewTwoStage}
+                开赛时按报名人数蛇形分组，各组打完后由管理员确认进入淘汰赛。
+              {/if}
+            </p>
+          </div>
+      {/snippet}
+
       <!-- Basics -->
       <section class="space-y-3 rounded-xl border border-border/60 bg-background/30 p-3">
         <div class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">基本信息</div>
@@ -702,9 +764,13 @@
       <section class="space-y-3 rounded-xl border border-border/60 bg-background/30 p-3">
         <div class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">赛制</div>
         {@render segmented(
-          BRACKET_FORMATS.map((f) => ({ id: f.id, label: f.label, disabled: !f.available, title: f.available ? f.label : "后续版本开放" })),
+          [
+            ...BRACKET_FORMATS.map((f) => ({ id: f.id, label: f.label, disabled: !f.available, title: f.available ? f.label : "后续版本开放" })),
+            { id: "two_stage", label: "小组赛 + 淘汰赛", title: "先分组比赛，各组前几名进入淘汰赛" },
+          ],
           newFormat,
-          (id) => (newFormat = id)
+          (id) => (newFormat = id),
+          "grid-cols-2 sm:grid-cols-4"
         )}
 
         {#if newFormat === "single_elim"}
@@ -728,95 +794,61 @@
             <span>总决赛重置 <span class="text-muted-foreground">· 败者组冠军赢下首场后加赛一场；至少 4 人</span></span>
           </label>
         {:else if newFormat === "swiss"}
-          <div class="grid grid-cols-2 gap-2">
-            {#each [{ id: "single", label: "单阶段", hint: "积分榜第一即冠军" }, { id: "two_stage", label: "小组赛 + 淘汰赛", hint: "分组打瑞士轮，各组前几名晋级" }] as opt (opt.id)}
-              <button
-                type="button"
-                onclick={() => (newSwissStructure = opt.id)}
-                class="rounded-lg border px-2.5 py-2 text-left transition-colors cursor-pointer
-                  {newSwissStructure === opt.id ? 'border-primary bg-primary/10 ring-1 ring-primary/30' : 'border-border hover:border-foreground/40'}"
-              >
-                <div class="text-xs font-bold text-foreground">{opt.label}</div>
-                <div class="text-[10px] text-muted-foreground">{opt.hint}</div>
-              </button>
-            {/each}
-          </div>
-
-          {#if newSwissStructure === "two_stage"}
-            <div class="grid grid-cols-2 gap-3 sm:grid-cols-[auto_auto_1fr]">
-              <label class="space-y-1.5" for="new-group-size">
-                <span class="block text-xs text-foreground/80">每组人数</span>
-                <input id="new-group-size" type="number" min="2" max="64" placeholder="不分组" bind:value={newGroupSize}
-                  class="h-8 w-20 rounded-md border border-border bg-background px-2 text-center text-sm text-foreground" />
-              </label>
-              <label class="space-y-1.5" for="new-advance">
-                <span class="block text-xs text-foreground/80">每组晋级</span>
-                <input id="new-advance" type="number" min="1" max="64" bind:value={newAdvancePerGroup}
-                  class="h-8 w-20 rounded-md border border-border bg-background px-2 text-center text-sm text-foreground" />
-              </label>
-              <div class="col-span-2 space-y-1.5 sm:col-span-1">
-                <span class="block text-xs text-foreground/80">淘汰赛</span>
-                {@render segmented(
-                  PLAYOFF_FORMATS.map((f) => ({ id: f.id, label: f.label })),
-                  newPlayoffFormat,
-                  (id) => (newPlayoffFormat = id),
-                  "grid-cols-2"
-                )}
-              </div>
-            </div>
-            {#if newPlayoffFormat === "double_elim"}
-              <label class="flex items-start gap-2 text-xs text-foreground/80 cursor-pointer">
-                <input type="checkbox" bind:checked={newGrandFinalReset} class="accent-primary mt-0.5" />
-                <span>总决赛重置 <span class="text-muted-foreground">· 败者组冠军赢下首场后加赛一场</span></span>
-              </label>
-            {/if}
-          {/if}
-
+          {@render swissRoundsPicker()}
+        {:else if isNewTwoStage}
           <div class="space-y-1.5">
-            <span class="block text-xs text-foreground/80">轮数</span>
-            <div class="flex flex-wrap items-center gap-2">
-              <div class="w-40">
-                {@render segmented(
-                  [{ id: "auto", label: "自动" }, { id: "manual", label: "手动" }],
-                  newSwissRoundsMode,
-                  (id) => {
-                    if (id === "manual" && newSwissRoundsMode === "auto") {
-                      newSwissRounds = autoSwissRounds(autoRoundsBasis ?? 8);
-                    }
-                    newSwissRoundsMode = id;
-                  },
-                  "grid-cols-2"
-                )}
-              </div>
-              {#if newSwissRoundsMode === "manual"}
-                <input
-                  id="new-swiss-rounds"
-                  type="number"
-                  min={MIN_SWISS_ROUNDS}
-                  max={MAX_SWISS_ROUNDS}
-                  bind:value={newSwissRounds}
-                  aria-label="瑞士轮轮数"
-                  class="h-8 w-16 rounded-md border border-border bg-background px-2 text-center text-sm text-foreground"
-                />
-                <span class="text-xs text-muted-foreground">轮</span>
-              {:else if autoRoundsBasis}
-                <span class="text-xs font-semibold text-primary">每组 {autoRoundsBasis} 人 → {autoSwissRounds(autoRoundsBasis)} 轮</span>
-              {:else}
-                <span class="text-xs font-semibold text-primary">按开赛人数自动计算</span>
-              {/if}
-            </div>
-            <p class="text-[10px] leading-relaxed text-muted-foreground">
-              {#if newSwissRoundsMode === "auto"}
-                自动 = 单循环：每位选手和{autoRoundsBasis ? "同组" : ""}其他所有人各打一场（偶数人打 人数−1 轮，奇数人每人轮空一次、打 人数 轮{autoRoundsBasis ? "" : "；最多 15 轮"}）。
-              {:else}
-                轮数少于单循环时按积分配对、不重复交手；开赛后也可以在比赛页修改。
-              {/if}
-              胜 1 分，同分依次比小分净胜、对手分。
-              {#if newSwissStructure === "two_stage"}
-                开赛时按报名人数蛇形分组，各组打完后由管理员确认进入淘汰赛。
+            <span class="block text-xs text-foreground/80">小组赛赛制</span>
+            {@render segmented(
+              GROUP_FORMATS.map((f) => ({ id: f.id, label: f.label, title: f.hint })),
+              newGroupFormat,
+              (id) => (newGroupFormat = id)
+            )}
+            <p class="text-[10px] text-muted-foreground">
+              {GROUP_FORMATS.find((f) => f.id === newGroupFormat)?.hint}
+              {#if newGroupFormat === "double_elim"}
+                ；每组晋级 2 人 = 胜者组冠军 + 败者组冠军（可选 2、3、4、8 人）
+              {:else if newGroupFormat === "single_elim"}
+                ；晋级 3 人及以上时加打三四名决赛
               {/if}
             </p>
           </div>
+          <div class="grid grid-cols-2 gap-3 sm:grid-cols-[auto_auto_1fr]">
+            <label class="space-y-1.5" for="new-group-size">
+              <span class="block text-xs text-foreground/80">每组人数</span>
+              <input id="new-group-size" type="number" min="2" max="64" placeholder={newGroupFormat === "swiss" ? "不分组" : "必填"} bind:value={newGroupSize}
+                class="h-8 w-20 rounded-md border border-border bg-background px-2 text-center text-sm text-foreground" />
+            </label>
+            <label class="space-y-1.5" for="new-advance">
+              <span class="block text-xs text-foreground/80">每组晋级</span>
+              <input id="new-advance" type="number" min="1" max="64" bind:value={newAdvancePerGroup}
+                class="h-8 w-20 rounded-md border border-border bg-background px-2 text-center text-sm text-foreground" />
+            </label>
+            <div class="col-span-2 space-y-1.5 sm:col-span-1">
+              <span class="block text-xs text-foreground/80">淘汰赛</span>
+              {@render segmented(
+                PLAYOFF_FORMATS.map((f) => ({ id: f.id, label: f.label })),
+                newPlayoffFormat,
+                (id) => (newPlayoffFormat = id),
+                "grid-cols-2"
+              )}
+            </div>
+          </div>
+          {#if newGroupProblem}
+            <p class="text-[11px] font-semibold text-amber-600 dark:text-amber-400">⚠ {newGroupProblem}</p>
+          {/if}
+          {#if newPlayoffFormat === "double_elim"}
+            <label class="flex items-start gap-2 text-xs text-foreground/80 cursor-pointer">
+              <input type="checkbox" bind:checked={newGrandFinalReset} class="accent-primary mt-0.5" />
+              <span>总决赛重置 <span class="text-muted-foreground">· 败者组冠军赢下首场后加赛一场</span></span>
+            </label>
+          {/if}
+          {#if newGroupFormat === "swiss"}
+            {@render swissRoundsPicker()}
+          {:else}
+            <p class="text-[10px] leading-relaxed text-muted-foreground">
+              开赛时按种子蛇形分组，每组各打一个{newGroupFormat === "double_elim" ? "双败" : "单败"}对阵；所有小组打完后由管理员确认名单进入淘汰赛，种子按小组名次排列，同组选手首轮尽量分开。
+            </p>
+          {/if}
         {/if}
       </section>
 

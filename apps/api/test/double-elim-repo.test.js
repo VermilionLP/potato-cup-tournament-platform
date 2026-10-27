@@ -16,7 +16,7 @@ function fakeDb(rows, tournament) {
       const row = matches.get(params[0]);
       return { rows: row ? [row] : [] };
     }
-    if (text.startsWith("SELECT loser_advances, format FROM axsuck.tournaments")) {
+    if (text.startsWith("SELECT loser_advances, format, playoff_format FROM axsuck.tournaments")) {
       return { rows: [tournament] };
     }
     if (text.startsWith("SELECT format, playoff_format, grand_final_reset FROM axsuck.tournaments")) {

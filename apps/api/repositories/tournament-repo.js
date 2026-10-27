@@ -45,7 +45,8 @@ export function TournamentRepo(db) {
   async function create({ id, name, description, player_capacity, hold_third_place, loser_advances, scheduled_time, game_mode, vehicle_pool, format, grand_final_reset, swiss_rounds, banpick_enabled, playoff_format, swiss_group_size, advance_per_group }) {
     const scheduledTime = String(scheduled_time || '').trim();
     const bracketFormat = SUPPORTED_FORMATS.includes(format) ? format : SUPPORTED_FORMATS[0];
-    const playoffFormat = bracketFormat === 'swiss' && PLAYOFF_FORMATS.includes(playoff_format) ? playoff_format : null;
+    // Two-stage events: `format` is the group stage, `playoff_format` the playoff.
+    const playoffFormat = PLAYOFF_FORMATS.includes(playoff_format) ? playoff_format : null;
     await db.query(`
       INSERT INTO axsuck.tournaments
         (id, name, description, status, player_capacity, hold_third_place, loser_advances, scheduled_time, game_mode, vehicle_pool, format, grand_final_reset, swiss_rounds, banpick_enabled,
@@ -58,12 +59,13 @@ export function TournamentRepo(db) {
       resolveInitialStatus(scheduledTime),
       player_capacity || 128,
       hold_third_place ? 1 : 0,
-      loser_advances ? 1 : 0,
+      // Classic "loser advances" only applies to a single-stage bracket.
+      !playoffFormat && loser_advances ? 1 : 0,
       scheduledTime,
       normalizeGameMode(game_mode),
       normalizeVehiclePool(vehicle_pool),
       bracketFormat,
-      (bracketFormat === 'double_elim' || playoffFormat === 'double_elim') && grand_final_reset !== false,
+      (playoffFormat ? playoffFormat === 'double_elim' : bracketFormat === 'double_elim') && grand_final_reset !== false,
       bracketFormat === 'swiss' ? parseSwissRounds(swiss_rounds) : null,
       banpick_enabled !== false,
       playoffFormat,
