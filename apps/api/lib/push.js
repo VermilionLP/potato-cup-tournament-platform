@@ -28,7 +28,7 @@ export function reminderPayload(tournament) {
     ? `${String(parsed.hour).padStart(2, "0")}:${String(parsed.minute).padStart(2, "0")}`
     : "比赛时间";
   return {
-    title: "SUCK 比赛提醒",
+    title: "Potato Cup 比赛提醒",
     body: `${tournament.name} 将在 ${time} 开始`,
     url: `/tournament/${encodeURIComponent(tournament.id)}`,
     tag: `suck-${tournament.id}-${REMINDER_KIND}`,

@@ -2092,7 +2092,7 @@
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `suck-tournament-${tournament.id}.json`;
+    a.download = `potato-cup-${tournament.id}.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -4060,7 +4060,7 @@
                   冠军诞生！恭喜 {playerName(podium.champion)}
                 </h2>
                 <p class="text-xs text-muted-foreground mt-1">
-                  SUCK 赛事已完美收官
+                  Potato Cup 赛事已完美收官
                 </p>
               </div>
 
@@ -4093,7 +4093,7 @@
                 </div>
               </div>
 
-              <!-- Export data for SUCK Utilities (admins only) -->
+              <!-- Export data for wiki utilities (admins only) -->
               {#if isAdmin}
               <div class="pt-2 flex justify-center gap-3">
                 <Button

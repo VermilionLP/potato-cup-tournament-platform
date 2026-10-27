@@ -449,7 +449,7 @@
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `suck-tournament-${tId}.json`;
+      a.download = `potato-cup-${tId}.json`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);

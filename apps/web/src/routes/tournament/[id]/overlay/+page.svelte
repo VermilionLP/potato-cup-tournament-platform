@@ -349,12 +349,23 @@
         for (const it of col.matches) items.push({ match: it.match, x: it.x, y: top + it.y });
       }
     };
+    // The winners final sits in the same column as the losers final (as on
+    // Challonge), right before the grand final.
+    const lastX = (band) => band.columns[band.columns.length - 1]?.x ?? 0;
+    const finalX = Math.max(lastX(wb), lastX(lb));
+    for (const band of [wb, lb]) {
+      const last = band.columns[band.columns.length - 1];
+      if (last && last.x < finalX) {
+        last.x = finalX;
+        for (const it of last.matches) it.x = finalX;
+      }
+    }
     const wbTop = DT_HEADER;
     const lbTop = wbTop + wb.height + DT_BAND_GAP + DT_HEADER;
     place(wb, wbTop);
     place(lb, lbTop);
     // Grand final (and its reset once it has players) right of both bands.
-    const gfX = Math.max(wb.width, lb.width) + DT.columnGap;
+    const gfX = finalX + DT.columnWidth + DT.columnGap;
     const wbFinal = items.find((i) => i.match.bracket === "wb" && i.match.round === 1);
     const lbFinal = items.find((i) => i.match.bracket === "lb" && i.match.round === 1);
     const gfY = wbFinal && lbFinal ? (wbFinal.y + lbFinal.y) / 2 : wbFinal?.y ?? DT.cardHeight;
@@ -368,7 +379,15 @@
     const paths = [];
     for (const it of items) {
       const target = byId.get(it.match.next_match_id);
-      if (target) paths.push(bracketConnectorPath(it, target, DT.columnWidth));
+      if (!target) continue;
+      if (target.match.bracket === "gf" && it.match.bracket !== "gf") {
+        // Into the grand final: across to just before it, then up / down.
+        const sx = it.x + DT.columnWidth;
+        const mx = target.x - DT.columnGap / 2;
+        paths.push(`M ${sx} ${it.y} L ${mx} ${it.y} L ${mx} ${target.y} L ${target.x} ${target.y}`);
+      } else {
+        paths.push(bracketConnectorPath(it, target, DT.columnWidth));
+      }
     }
     const width = gfX + gfs.length * (DT.columnWidth + DT.columnGap) - DT.columnGap;
     const height = lbTop + lb.height;
@@ -565,7 +584,7 @@
 </script>
 
 <svelte:head>
-  <title>SUCK Tournament Overlay - {currentScene.toUpperCase()}</title>
+  <title>Potato Cup Overlay - {currentScene.toUpperCase()}</title>
   <link
     href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&family=Orbitron:wght@600;800;900&family=Noto+Sans+SC:wght@505;700;900&display=swap"
     rel="stylesheet"
@@ -627,7 +646,7 @@
               <span
                 class="text-cyan-400 text-xs font-mono font-bold tracking-widest uppercase block mb-1"
               >
-                WarThunder Ultra Chicken King • MATCHES OVERVIEW
+                WarThunder • Potato Cup • MATCHES OVERVIEW
               </span>
               <h1
                 class="text-4xl md:text-5xl font-extrabold tracking-tight leading-none bg-linear-to-r from-white via-slate-100 to-cyan-400 bg-clip-text text-transparent uppercase font-orbitron"
@@ -794,7 +813,7 @@
               <span
                 class="text-cyan-400 text-xs font-mono font-bold tracking-widest uppercase block mb-1"
               >
-                WarThunder Ultra Chicken King • INTERMISSION
+                WarThunder • Potato Cup • INTERMISSION
               </span>
               <h1
                 class="text-4xl md:text-5xl font-extrabold tracking-wider leading-none bg-linear-to-r from-white via-slate-200 to-cyan-400 bg-clip-text text-transparent uppercase"
@@ -976,7 +995,7 @@
               >
                 <span
                   class="text-[9px] font-mono text-cyan-400 font-bold uppercase tracking-widest block mb-1"
-                  >SUCK LIVE OVERLAY</span
+                  >POTATO CUP LIVE</span
                 >
                 <p class="text-slate-400 text-xs italic">
                   No active match selected.
@@ -1049,7 +1068,7 @@
                 class="flex items-center gap-2 text-[10px] font-mono font-bold tracking-[0.25em] text-cyan-400/80 uppercase"
               >
                 <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
-                SUCK • {formatTag}
+                WARTHUNDER • {formatTag}
               </div>
               <h1
                 class="text-3xl md:text-5xl font-black bg-linear-to-r from-white to-cyan-400 bg-clip-text text-transparent uppercase font-orbitron leading-none tracking-wider mt-1"
@@ -1409,12 +1428,13 @@
                 >
                   {#each [[m.player1_id, m.score1], [m.player2_id, m.score2]] as [pid, score], slot (slot)}
                     {@const won = done && m.winner_id && m.winner_id === pid}
-                    <div class="flex items-center justify-between gap-2 text-base leading-tight">
+                    {@const lost = done && m.winner_id && pid && m.winner_id !== pid}
+                    <div class="flex items-center justify-between gap-2 text-base leading-tight {lost ? 'opacity-45' : ''}">
                       <span
                         class="truncate font-bold
-                          {!pid ? 'text-slate-600 italic' : won ? 'text-amber-300' : !isAlive(pid) ? 'text-slate-500' : 'text-white'}"
+                          {!pid ? 'text-slate-600 italic' : won ? 'text-amber-300' : lost ? 'text-slate-400' : 'text-white'}"
                       >{pid ? getPlayerName(pid) : bye ? "—" : "TBD"}</span>
-                      <span class="font-orbitron font-black text-sm shrink-0 {won ? 'text-amber-400' : 'text-slate-400'}">
+                      <span class="font-orbitron font-black text-sm shrink-0 {won ? 'text-amber-400' : 'text-slate-500'}">
                         {#if bye}{:else if m.status === "walkover"}{won ? "W" : "FF"}{:else if done || live}{score ?? 0}{/if}
                       </span>
                     </div>
@@ -1451,7 +1471,8 @@
                             >
                               {#each [[m.player1_id, m.score1], [m.player2_id, m.score2]] as [pid, score], slot (slot)}
                                 {@const won = done && m.winner_id && m.winner_id === pid}
-                                <div class="flex items-center justify-between gap-2 text-sm">
+                                {@const lost = done && m.winner_id && pid && m.winner_id !== pid}
+                                <div class="flex items-center justify-between gap-2 text-sm {lost ? 'opacity-45' : ''}">
                                   <span
                                     class="truncate font-bold
                                       {!pid ? 'text-slate-600 italic' : won ? 'text-amber-300' : done || !isAlive(pid) ? 'text-slate-500' : 'text-white'}"
@@ -1595,7 +1616,7 @@
               ></span>
               <span>Real-time OBS Bracket Feed Sync Active</span>
             </div>
-            <div>SUCK Ultra Chicken King SC2 Tournaments</div>
+            <div>WarThunder · Potato Cup Tournaments</div>
           </footer>
         </div>
       {/if}

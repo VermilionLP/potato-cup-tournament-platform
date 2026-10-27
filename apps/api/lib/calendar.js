@@ -40,7 +40,7 @@ function eventLines({ id, name, scheduledTime, scheduled_time }, now) {
     `DTSTART:${startStamp}`,
     `DTEND:${endStamp}`,
     `SUMMARY:${escapeIcs(name)}`,
-    `DESCRIPTION:${escapeIcs(`SUCK Tournament ${id}`)}`,
+    `DESCRIPTION:${escapeIcs(`Potato Cup Tournament ${id}`)}`,
     "END:VEVENT",
   ];
 }
@@ -49,7 +49,7 @@ function wrap(events) {
   return [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//SUCK//Tournament//CN",
+    "PRODID:-//PotatoCup//Tournament//CN",
     "CALSCALE:GREGORIAN",
     ...events,
     "END:VCALENDAR",

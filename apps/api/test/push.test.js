@@ -18,7 +18,7 @@ test("reminderPayload points at the tournament", () => {
     name: "SUCK#47",
     scheduled_time: "2026-10-25 (周日) 20:30",
   });
-  assert.equal(payload.title, "SUCK 比赛提醒");
+  assert.equal(payload.title, "Potato Cup 比赛提醒");
   assert.ok(payload.body.includes("20:30"));
   assert.equal(payload.url, "/tournament/suck47");
 });
