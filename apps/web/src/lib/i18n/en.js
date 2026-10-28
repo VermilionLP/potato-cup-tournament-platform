@@ -1365,4 +1365,12 @@ export default {
   "下载 {0:n} 个对阵模板...": "Downloading {0} bracket templates...",
   "从 Liquipedia 导入的历史赛事": "Past event imported from Liquipedia",
   "合并 {0} -> {1} 失败：{2}": "Merging {0} -> {1} failed: {2}",
+  // Live channels (2026-10).
+  "直播频道:": "Live channel:",
+  "频道 {0}": "Channel {0}",
+  "该对局在其他直播频道直播中": "Live on another channel",
+  "每个频道有自己的直播对局和大屏，下面的操作只影响当前频道。多路直播要共用一块大屏就选同一个频道，要各自独立就选不同频道。": "Each channel has its own live match and overlay; the controls below only change this channel. Streams that should share an overlay pick the same channel; separate streams pick different channels.",
+  "#{0} 场次 {1} ({2}): {3} vs {4} [{5}] · 频道 {6} 直播中": "#{0} Match {1} ({2}): {3} vs {4} [{5}] · live on channel {6}",
+  "OBS 浏览器源链接（频道 {0}）:": "OBS browser source links (channel {0}):",
+  "该对局已在频道 {0} 直播": "This match is already live on channel {0}",
 };

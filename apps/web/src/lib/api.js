@@ -85,9 +85,10 @@ export const API = {
   randomizeSeeds: (id, opts = {}) => request(`/tournaments/${enc(id)}/seeds/randomize`, { method: 'POST', body: JSON.stringify(opts) }),
   generateBracket: (id) => request(`/tournaments/${enc(id)}/bracket`, { method: 'POST' }),
   getBracket: (id) => request(`/tournaments/${enc(id)}/bracket`),
-  setActiveMatch: (id, active_match_id) => request(`/tournaments/${enc(id)}/active-match`, { method: 'POST', body: JSON.stringify({ active_match_id }) }),
+  // Live state is per channel ($lib/live-channels.js); channel 1 by default.
+  setActiveMatch: (id, active_match_id, channel = 1) => request(`/tournaments/${enc(id)}/active-match`, { method: 'POST', body: JSON.stringify({ active_match_id, channel }) }),
   // overlay_stage ("wb:2", "sw:3"...) is left unchanged when omitted.
-  setOverlayState: (id, overlay_scene, overlay_round, overlay_stage) => request(`/tournaments/${enc(id)}/overlay-state`, { method: 'POST', body: JSON.stringify({ overlay_scene, overlay_round, overlay_stage }) }),
+  setOverlayState: (id, overlay_scene, overlay_round, overlay_stage, channel = 1) => request(`/tournaments/${enc(id)}/overlay-state`, { method: 'POST', body: JSON.stringify({ overlay_scene, overlay_round, overlay_stage, channel }) }),
 
   // Ladder
   // mode / pool pick a division (e.g. AB 螺旋桨); omitted = all games.

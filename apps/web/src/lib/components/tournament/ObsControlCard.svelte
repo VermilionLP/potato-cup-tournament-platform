@@ -1,9 +1,13 @@
 <script>
-  // OBS / stream controls: stream mode, the live match, the overlay scene
-  // and stage, and the browser-source links for OBS.
+  // OBS / stream controls for one live channel: stream mode, the live match,
+  // the overlay scene and stage, and the browser-source links for OBS.
+  // Consoles on the same channel share one overlay; different channels
+  // (several streams / referees) are independent. `tournament` is the event
+  // as the channel sees it (withChannel).
   import { toast } from "svelte-sonner";
   import { API } from "$lib/api.js";
   import { copyText } from "$lib/clipboard.js";
+  import { channelUrl } from "$lib/live-channels.js";
   import * as Card from "$lib/components/ui/card/index.js";
   import { Button } from "$lib/components/ui/button/index.js";
   import SettingsIcon from "@lucide/svelte/icons/settings";
@@ -13,6 +17,9 @@
   let {
     tournament,
     tid,
+    channel = 1,
+    channelChoices = [1],
+    elsewhere = new Map(),
     isAdmin = false,
     streamMode = false,
     matchOrder,
@@ -24,20 +31,22 @@
     onstreamstart,
     onstreamend,
     onclearhud,
+    onchannel,
   } = $props();
 
   // Stage for the intro-scene link ("" = the current stage).
   let introStage = $state("");
   const base = () => `${window.location.origin}/tournament/${tid}/overlay`;
+  let autoUrl = $derived(channelUrl(base(), channel));
   let sceneLinks = $derived([
     {
       key: "intro",
       title: "1. 开场对阵 (Intro / 比赛列表)",
-      url: `${base()}?scene=intro${introStage ? `&stage=${introStage}` : ""}`,
+      url: channelUrl(`${base()}?scene=intro${introStage ? `&stage=${introStage}` : ""}`, channel),
       copied: "已复制开场对阵链接",
     },
-    { key: "ingame", title: "2. 游戏内 HUD (右上角选手+滚动比分)", url: `${base()}?scene=ingame`, copied: "已复制游戏内 HUD 链接" },
-    { key: "intermission", title: "3. 场间 Coming Up (可打比赛)", url: `${base()}?scene=intermission`, copied: "已复制场间 Coming Up 链接" },
+    { key: "ingame", title: "2. 游戏内 HUD (右上角选手+滚动比分)", url: channelUrl(`${base()}?scene=ingame`, channel), copied: "已复制游戏内 HUD 链接" },
+    { key: "intermission", title: "3. 场间 Coming Up (可打比赛)", url: channelUrl(`${base()}?scene=intermission`, channel), copied: "已复制场间 Coming Up 链接" },
   ]);
 
   function copy(url, message) {
@@ -46,7 +55,7 @@
 
   async function setActive(value) {
     try {
-      await API.setActiveMatch(tid, value ? parseInt(value) : null);
+      await API.setActiveMatch(tid, value ? parseInt(value) : null, channel);
       if (!value) onclearhud?.();
       toast.success(value ? "当前直播对局已更新" : "已清除直播对局");
     } catch (err) {
@@ -56,7 +65,7 @@
 
   async function setScene(value) {
     try {
-      await API.setOverlayState(tid, value, tournament.overlay_round || Math.max(...(overlayMatches?.map((m) => m.round) || [1])));
+      await API.setOverlayState(tid, value, tournament.overlay_round || Math.max(...(overlayMatches?.map((m) => m.round) || [1])), undefined, channel);
       onclearhud?.();
       toast.success("大屏显示场景已切换为: " + value.toUpperCase());
     } catch (err) {
@@ -68,7 +77,7 @@
     const stage = overlayStageList.find((st) => st.key === key);
     if (!stage) return;
     try {
-      await API.setOverlayState(tid, tournament.overlay_scene || "intro", stage.round, stage.key);
+      await API.setOverlayState(tid, tournament.overlay_scene || "intro", stage.round, stage.key, channel);
       toast.success("大屏展示轮次已更改为: " + stage.label);
     } catch (err) {
       toast.error("更改大屏轮次失败: " + err.message);
@@ -87,6 +96,24 @@
   </Card.Header>
   <Card.Content class="p-5 pt-0 space-y-4 text-xs">
     {#if isAdmin}
+      <div class="space-y-1.5">
+        <div class="flex items-center justify-between gap-2">
+          <span class="font-semibold text-muted-foreground shrink-0">直播频道:</span>
+          <select
+            class="h-8 rounded-md border border-input bg-background px-2 text-xs font-bold cursor-pointer"
+            value={String(channel)}
+            onchange={(e) => onchannel?.(Number(e.currentTarget.value))}
+          >
+            {#each channelChoices as c (c)}
+              <option value={String(c)}>频道 {c}</option>
+            {/each}
+          </select>
+        </div>
+        <p class="text-[10px] text-muted-foreground leading-normal">
+          每个频道有自己的直播对局和大屏，下面的操作只影响当前频道。多路直播要共用一块大屏就选同一个频道，要各自独立就选不同频道。
+        </p>
+      </div>
+
       <div class="flex items-center justify-between gap-3 rounded-xl border p-3 {streamMode ? 'border-red-500/40 bg-red-500/10' : 'border-border bg-background/40'}">
         <div class="flex items-center gap-2.5">
           <RadioIcon class="w-4 h-4 shrink-0 {streamMode ? 'text-red-500 animate-pulse' : 'text-muted-foreground'}" />
@@ -117,8 +144,9 @@
           >
             <option value="">-- 未选择对局 --</option>
             {#each tournament.matches.filter((m) => m.player1_id && m.player2_id) as m (m.id)}
-              <option value={m.id}>
-                #{matchOrder.get(m.id)} 场次 {m.position} ({roundLabel(m)}): {playerName(m.player1_id)} vs {playerName(m.player2_id)} [{m.status === "completed" ? "完赛" : m.status === "walkover" ? "弃权" : "待赛"}]
+              {@const other = elsewhere.get(m.id)}
+              <option value={m.id} disabled={Boolean(other)}>
+                #{matchOrder.get(m.id)} 场次 {m.position} ({roundLabel(m)}): {playerName(m.player1_id)} vs {playerName(m.player2_id)} [{m.status === "completed" ? "完赛" : m.status === "walkover" ? "弃权" : "待赛"}]{other ? ` · 频道 ${other} 直播中` : ""}
               </option>
             {/each}
           </select>
@@ -170,7 +198,9 @@
     {/if}
 
     <div class="border-t border-border/40 pt-3 space-y-3">
-      <span class="font-semibold text-muted-foreground block">OBS 浏览器源链接:</span>
+      <span class="font-semibold text-muted-foreground block">
+        {channel === 1 ? "OBS 浏览器源链接:" : `OBS 浏览器源链接（频道 ${channel}）:`}
+      </span>
 
       <div class="space-y-2.5">
         <div class="space-y-1.5 p-2.5 rounded-xl border border-primary/20 bg-primary/5">
@@ -183,12 +213,12 @@
               type="text"
               readonly
               class="flex-1 h-7 px-2 border border-primary/25 rounded bg-background text-[10px] select-all cursor-default text-primary font-mono"
-              value={base()}
+              value={autoUrl}
             />
             <Button
               size="icon-xs"
               class="h-7 w-7 cursor-pointer shrink-0 bg-primary text-black hover:bg-primary/90"
-              onclick={() => copy(base(), "已复制全自动智能直播源链接")}
+              onclick={() => copy(autoUrl, "已复制全自动智能直播源链接")}
             >
               <CopyIcon class="w-3.5 h-3.5" />
             </Button>

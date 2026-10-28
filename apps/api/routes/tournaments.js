@@ -4,6 +4,7 @@
 
 import { TournamentRepo } from '../repositories/tournament-repo.js';
 import { LadderRepo } from '../repositories/ladder-repo.js';
+import { LiveChannelRepo } from '../repositories/live-channel-repo.js';
 import { Readable } from 'stream';
 import { buildCalendarFeed, buildTournamentIcs } from '../lib/calendar.js';
 import { requireAdmin } from '../lib/admin.js';
@@ -18,6 +19,7 @@ import { isAutoRounds, MAX_SWISS_ROUNDS, MIN_SWISS_ROUNDS, parseSwissRounds } fr
 export default async function tournamentsRoutes(fastify) {
   const repo = TournamentRepo(fastify.db);
   const ladderRepo = LadderRepo(fastify.db);
+  const liveChannels = LiveChannelRepo(fastify.db);
 
   fastify.get('/tournaments', async () => {
     return await repo.list();
@@ -26,14 +28,15 @@ export default async function tournamentsRoutes(fastify) {
   fastify.get('/tournaments/:id', async (req) => {
     const t = await repo.getById(req.params.id);
     if (!t) throw fastify.httpErrors.notFound('Tournament not found');
-    const [players, ms, votes, customVotes, ladder] = await Promise.all([
+    const [players, ms, votes, customVotes, ladder, channels] = await Promise.all([
       repo.getPlayers(req.params.id),
       repo.getMatches(req.params.id),
       repo.getVotes(req.params.id),
       repo.getCustomVotes(req.params.id),
       ladderRepo.eventRatings(t),
+      liveChannels.list(req.params.id),
     ]);
-    return tournamentDetail(t, { players, matches: ms, votes, customVotes, ladder });
+    return tournamentDetail(t, { players, matches: ms, votes, customVotes, ladder, channels });
   });
 
   fastify.get('/tournaments/:id/stream', { sse: 'only' }, async (req, reply) => {

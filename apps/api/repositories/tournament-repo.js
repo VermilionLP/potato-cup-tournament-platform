@@ -373,17 +373,5 @@ export function TournamentRepo(db) {
     }));
   }
 
-  // overlay_stage undefined = keep the current one.
-  async function updateOverlayState(id, overlay_scene, overlay_round, overlay_stage) {
-    await db.query(`
-      UPDATE axsuck.tournaments
-      SET overlay_scene = $1, overlay_round = $2,
-          overlay_stage = CASE WHEN $4 THEN $5 ELSE overlay_stage END,
-          updated_at = NOW()
-      WHERE id = $3
-    `, [overlay_scene, overlay_round || null, id, overlay_stage !== undefined, overlay_stage || null]);
-    return getById(id);
-  }
-
-  return { list, getById, create, rename, setVehiclePool, setVehicleTemplate, setPoints, setPointsInvite, setScheduledTime, setSwissRounds, updateStatus, updateOverlayState, getPlayers, addPlayer, autoRegisterVoters, removePlayer, setSeeds, getMatches, getVotes, getCustomVotes };
+  return { list, getById, create, rename, setVehiclePool, setVehicleTemplate, setPoints, setPointsInvite, setScheduledTime, setSwissRounds, updateStatus, getPlayers, addPlayer, autoRegisterVoters, removePlayer, setSeeds, getMatches, getVotes, getCustomVotes };
 }

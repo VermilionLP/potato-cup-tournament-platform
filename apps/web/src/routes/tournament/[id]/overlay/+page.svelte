@@ -2,6 +2,8 @@
   // OBS overlay for an event: four scenes (intro, intermission, ingame and
   // the bracket "hybrid" scene), 1920x1080 scaled to the window. The scene
   // comes from ?scene=, else the dashboard's choice, else the live match.
+  // ?channel=N follows one live channel (its live match and scene), so
+  // several streams of one event can each have their own overlay.
   // Scenes live in $lib/components/overlay, layout maths in
   // $lib/overlay-layout.js.
   import { onMount } from "svelte";
@@ -10,6 +12,7 @@
   import { buildMatchOrder } from "$lib/bracket.js";
   import { GROUP_STAGE_BRACKETS, matchStageLabels, overlayStages, pickStage, playersStillIn } from "$lib/overlay.js";
   import { isBye, isDecided, isPlayable, playerLookup } from "$lib/overlay-layout.js";
+  import { liveElsewhere, parseChannel, withChannel } from "$lib/live-channels.js";
   import IntroScene from "$lib/components/overlay/IntroScene.svelte";
   import IntermissionScene from "$lib/components/overlay/IntermissionScene.svelte";
   import IngameScene from "$lib/components/overlay/IngameScene.svelte";
@@ -22,8 +25,12 @@
   let stageParam = $derived(page.url.searchParams.get("stage") || page.url.searchParams.get("round"));
   let bgParam = $derived(page.url.searchParams.get("bg"));
   let transparentParam = $derived(page.url.searchParams.get("transparent") === "true");
+  let channel = $derived(parseChannel(page.url.searchParams.get("channel")));
 
-  let tournament = $state(null);
+  // The event as this channel sees it (live match, scene, stage).
+  let event = $state(null);
+  let tournament = $derived(withChannel(event, channel));
+  let otherChannels = $derived(liveElsewhere(event, channel));
   let loading = $state(true);
   let errorMsg = $state("");
 
@@ -57,9 +64,10 @@
   let matchOrder = $derived(buildMatchOrder(stageMatches));
   // Real matches exclude byes; used for progress and the side panel.
   let realMatches = $derived(stageMatches.filter((m) => !isBye(m)));
-  // Playable matches in recommended bracket order.
+  // Playable matches in recommended bracket order, without those being
+  // streamed on another channel.
   let playableMatches = $derived(
-    stageMatches.filter(isPlayable).sort((a, b) => (matchOrder.get(a.id) ?? 0) - (matchOrder.get(b.id) ?? 0)),
+    stageMatches.filter((m) => isPlayable(m) && !otherChannels.has(m.id)).sort((a, b) => (matchOrder.get(a.id) ?? 0) - (matchOrder.get(b.id) ?? 0)),
   );
   let nextMatch = $derived(playableMatches[0] || null);
   let activeMatch = $derived(tournament?.matches?.find((m) => m.id === tournament.active_match_id) || null);
@@ -113,7 +121,7 @@
     loading = true;
     errorMsg = "";
     try {
-      tournament = await API.getTournament(tid);
+      event = await API.getTournament(tid);
     } catch (e) {
       errorMsg = e.message || "Failed to load tournament";
     } finally {
@@ -123,7 +131,7 @@
 
   async function refreshData() {
     try {
-      tournament = await API.getTournament(tid);
+      event = await API.getTournament(tid);
     } catch (e) {
       console.error("Refresh failed:", e);
     }

@@ -1,12 +1,14 @@
 <script>
-  // "Going live" mode of the event page. Only this browser is affected: while
-  // it is on and the event is in progress with no live match, the operator
+  // "Going live" mode of the event page for one live channel. Only this
+  // browser is affected (remembered per event): while it is on and the
+  // event is in progress with no live match on the channel, the operator
   // must pick the next match (blocking dialog); 60 s later the overlay
   // switches to the in-game HUD (countdown banner, can be pushed back).
   // Methods: start() (asks the pre-flight checklist first), stop(),
   // clearHud(), matchFinished() (back to the bracket scene).
   import { toast } from "svelte-sonner";
   import { API } from "$lib/api.js";
+  import { saveStreamMode } from "$lib/live-channels.js";
   import { Button } from "$lib/components/ui/button/index.js";
   import NextMatchDialog from "./NextMatchDialog.svelte";
   import StreamChecklistDialog from "./StreamChecklistDialog.svelte";
@@ -15,6 +17,7 @@
   let {
     tournament,
     tid,
+    channel = 1,
     isAdmin = false,
     streamMode = $bindable(false),
     candidates = [],
@@ -28,7 +31,6 @@
 
   const AUTO_HUD_DELAY = 60;
   const AUTO_HUD_EXTEND = 30;
-  const STORAGE_KEY = "suck_stream_mode";
 
   let checklistOpen = $state(false);
   let nextMatchOpen = $state(false);
@@ -74,7 +76,7 @@
   async function switchToHud() {
     if (!ensureAdmin()) return;
     try {
-      await API.setOverlayState(tid, "ingame", overlayRound());
+      await API.setOverlayState(tid, "ingame", overlayRound(), undefined, channel);
       toast.success("已自动切换大屏到游戏内 HUD 场景");
     } catch (e) {
       toast.error("自动切换大屏场景失败: " + e.message);
@@ -85,7 +87,7 @@
   async function showBracketScene() {
     if (!ensureAdmin()) return;
     try {
-      await API.setOverlayState(tid, "hybrid", overlayRound());
+      await API.setOverlayState(tid, "hybrid", overlayRound(), undefined, channel);
     } catch (e) {
       toast.error("切换大屏到场间场景失败: " + e.message);
     }
@@ -120,7 +122,7 @@
     try {
       // Bracket first, then mark the match live, so the overlay never flashes the HUD.
       await showBracketScene();
-      await API.setActiveMatch(tid, matchId);
+      await API.setActiveMatch(tid, matchId, channel);
       nextMatchOpen = false;
       toast.success("已选择当前直播对局，倒计时结束后切换到大屏游戏内 HUD");
       startCountdown();
@@ -137,21 +139,13 @@
   // Called by the checklist once every item is ticked.
   function confirmStart() {
     streamMode = true;
-    try {
-      localStorage.setItem(STORAGE_KEY, "1");
-    } catch {
-      // private mode: on for this page only
-    }
+    saveStreamMode(tid, true);
     toast.success("已激活直播状态，将强制选择下一场直播对局");
   }
 
   export function stop() {
     streamMode = false;
-    try {
-      localStorage.setItem(STORAGE_KEY, "0");
-    } catch {
-      // ignore
-    }
+    saveStreamMode(tid, false);
     clearHud();
     nextMatchOpen = false;
     toast.info("已结束直播状态");

@@ -61,6 +61,7 @@
   import PlayerEditDialog from "$lib/components/tournament/PlayerEditDialog.svelte";
   import EventBracketCard from "$lib/components/tournament/EventBracketCard.svelte";
   import LiveHandoff from "$lib/components/tournament/LiveHandoff.svelte";
+  import { channelOptions, liveElsewhere, savedChannel, savedStreamMode, saveChannel, withChannel } from "$lib/live-channels.js";
   import TrophyIcon from "@lucide/svelte/icons/trophy";
   import ArrowLeftIcon from "@lucide/svelte/icons/arrow-left";
 
@@ -90,7 +91,7 @@
   // playoff exists; stages as the overlay picks them.
   let overlayMatches = $derived(bracketMatches.length ? bracketMatches : tournament?.matches || []);
   let overlayStageList = $derived(overlayStages(overlayStageMatches(tournament)));
-  let overlayShownStage = $derived(pickStage(overlayStageList, tournament?.overlay_stage || null));
+  let overlayShownStage = $derived(pickStage(overlayStageList, live?.overlay_stage || null));
 
   let matchOrder = $derived(buildMatchOrder(tournament?.matches || []));
   let playerName = $derived(playerNamer(tournament, bracketMatches));
@@ -152,15 +153,32 @@
   let wikiDialog = $state(null);
   let playerEditor = $state(null);
 
+  // Live channel of this console (remembered per event in this browser):
+  // the live match and overlay controls act on it; other channels' live
+  // matches are shown but left alone. `live` is the event as the channel
+  // sees it.
+  let liveChannel = $state(1);
+  let live = $derived(withChannel(tournament, liveChannel));
+  let otherChannels = $derived(liveElsewhere(tournament, liveChannel));
+  let channelChoices = $derived(channelOptions(tournament, liveChannel));
+
   // "Going live" mode: only this browser forces the next-match flow.
   let handoff = $state(null);
   let streamMode = $state(false);
-  try {
-    streamMode = isAdmin && typeof window !== "undefined" && localStorage.getItem("suck_stream_mode") === "1";
-  } catch {
-    // storage blocked: off
+  $effect(() => {
+    liveChannel = savedChannel(tid);
+    streamMode = isAdmin && savedStreamMode(tid);
+  });
+  // Next match to stream: not one already live on another channel.
+  let nextMatchCandidates = $derived(
+    playableInOrder(tournament?.matches || [], matchOrder).filter((m) => !otherChannels.has(m.id)),
+  );
+
+  function changeChannel(channel) {
+    handoff?.clearHud();
+    liveChannel = channel;
+    saveChannel(tid, channel);
   }
-  let nextMatchCandidates = $derived(playableInOrder(tournament?.matches || [], matchOrder));
 
   function ensureAdmin() {
     if (isAdmin) return true;
@@ -373,10 +391,10 @@
   }
 
   async function toggleActiveMatch(match) {
-    const isActive = tournament?.active_match_id === match.id;
+    const isActive = live?.active_match_id === match.id;
     try {
-      await API.setActiveMatch(tid, isActive ? null : match.id);
-      tournament = { ...tournament, active_match_id: isActive ? null : match.id };
+      await API.setActiveMatch(tid, isActive ? null : match.id, liveChannel);
+      tournament = await API.getTournament(tid);
       toast.success(isActive ? "已取消直播该场次" : "已开启该场次直播！");
     } catch (err) {
       toast.error("更新直播状态失败: " + err.message);
@@ -530,8 +548,8 @@
 
   // After a result: the live match is over; close the dialog and reload.
   async function finishResult() {
-    if (isAdmin && tournament && tournament.active_match_id === selectedMatch.id) {
-      await API.setActiveMatch(tid, null);
+    if (isAdmin && live && live.active_match_id === selectedMatch.id) {
+      await API.setActiveMatch(tid, null, liveChannel);
       await handoff?.matchFinished();
     }
     showMatchDialog = false;
@@ -644,8 +662,12 @@
 
   {#snippet obsControl()}
     <ObsControlCard
-      {tournament}
+      tournament={live}
       {tid}
+      channel={liveChannel}
+      {channelChoices}
+      elsewhere={otherChannels}
+      onchannel={changeChannel}
       {isAdmin}
       {streamMode}
       {matchOrder}
@@ -662,8 +684,9 @@
 
   {#snippet bracketView()}
     <EventBracketCard
-      {tournament}
+      tournament={live}
       {tid}
+      liveElsewhere={otherChannels}
       {isAdmin}
       {bracketMatches}
       {isTwoStage}
@@ -829,8 +852,9 @@
 <LiveHandoff
   bind:this={handoff}
   bind:streamMode
-  {tournament}
+  tournament={live}
   {tid}
+  channel={liveChannel}
   {isAdmin}
   candidates={nextMatchCandidates}
   {overlayMatches}

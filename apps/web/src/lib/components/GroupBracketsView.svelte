@@ -12,6 +12,7 @@
     perGroup = 0,
     status = "",
     activeMatchId = null,
+    liveElsewhere = new Map(),
     isAdmin = false,
     userId = "",
     banpickEnabled = false,
@@ -101,6 +102,7 @@
             {players}
             {status}
             {activeMatchId}
+            {liveElsewhere}
             {isAdmin}
             {userId}
             {banpickEnabled}

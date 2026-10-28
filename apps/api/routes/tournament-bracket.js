@@ -1,33 +1,41 @@
-// Seeds, bracket generation, the live match and the OBS overlay state.
+// Seeds, bracket generation, and each live channel's match and OBS overlay
+// state.
 
 import { TournamentRepo } from '../repositories/tournament-repo.js';
 import { MatchRepo } from '../repositories/match-repo.js';
 import { LadderRepo } from '../repositories/ladder-repo.js';
 import { requireAdmin } from '../lib/admin.js';
+import { LiveChannelRepo } from '../repositories/live-channel-repo.js';
+import { MAX_LIVE_CHANNELS, OVERLAY_SCENES, OVERLAY_STAGE_RE, parseChannel } from '../lib/live-channels.js';
 
 export default async function tournamentBracketRoutes(fastify) {
   const repo = TournamentRepo(fastify.db);
   const matches = MatchRepo(fastify.db);
   const ladderRepo = LadderRepo(fastify.db);
+  const channels = LiveChannelRepo(fastify.db);
+
+  // Live state is per channel (body.channel, default 1): several referees
+  // can run streams of the same event side by side.
+  function channelOf(req) {
+    const channel = parseChannel(req.body?.channel);
+    if (channel === null) throw fastify.httpErrors.badRequest(`channel must be 1-${MAX_LIVE_CHANNELS}`);
+    return channel;
+  }
 
   fastify.post('/tournaments/:id/overlay-state', async (req) => {
     requireAdmin(fastify, req);
-    const { overlay_scene, overlay_round, overlay_stage } = req.body;
-    const valid = ['auto', 'intro', 'ingame', 'intermission', 'hybrid'];
-    if (overlay_scene && !valid.includes(overlay_scene)) throw fastify.httpErrors.badRequest('Invalid overlay_scene');
-    if (overlay_stage && !/^(main|wb|lb|gf|sw|gse|gwb|glb):\d{1,3}$/.test(String(overlay_stage))) {
+    const { overlay_scene, overlay_round, overlay_stage } = req.body || {};
+    if (overlay_scene && !OVERLAY_SCENES.includes(overlay_scene)) throw fastify.httpErrors.badRequest('Invalid overlay_scene');
+    if (overlay_stage && !OVERLAY_STAGE_RE.test(String(overlay_stage))) {
       throw fastify.httpErrors.badRequest('Invalid overlay_stage');
     }
-    
+    const channel = channelOf(req);
     const t = await repo.getById(req.params.id);
     if (!t) throw fastify.httpErrors.notFound('Tournament not found');
 
-    const updated = await repo.updateOverlayState(req.params.id, overlay_scene, overlay_round, overlay_stage);
-
-    // Trigger real-time broadcast
-    fastify.tournamentEvents.emit(`update:${req.params.id}`, { type: 'overlay_state_updated', overlay_scene, overlay_round, overlay_stage });
-
-    return updated;
+    const state = await channels.setOverlay(req.params.id, channel, overlay_scene, overlay_round, overlay_stage);
+    fastify.tournamentEvents.emit(`update:${req.params.id}`, { type: 'overlay_state_updated', channel, overlay_scene, overlay_round, overlay_stage });
+    return state;
   });
 
   fastify.post('/tournaments/:id/seeds', async (req) => {
@@ -102,17 +110,18 @@ export default async function tournamentBracketRoutes(fastify) {
 
   fastify.post('/tournaments/:id/active-match', async (req) => {
     requireAdmin(fastify, req);
-    const { active_match_id } = req.body;
+    const channel = channelOf(req);
+    const raw = req.body?.active_match_id;
+    const matchId = raw === null || raw === undefined || raw === '' ? null : Number(raw);
+    if (matchId !== null && !Number.isInteger(matchId)) throw fastify.httpErrors.badRequest('Invalid active_match_id');
     const t = await repo.getById(req.params.id);
     if (!t) throw fastify.httpErrors.notFound('Tournament not found');
-    
-    await fastify.db.query(`
-      UPDATE axsuck.tournaments SET active_match_id = $1 WHERE id = $2
-    `, [active_match_id || null, req.params.id]);
 
-    // Trigger real-time broadcast
-    fastify.tournamentEvents.emit(`update:${req.params.id}`, { type: 'active_match_updated', active_match_id });
+    const result = await channels.setActiveMatch(req.params.id, channel, matchId);
+    if (result.notFound) throw fastify.httpErrors.notFound('Match not found in this tournament');
+    if (result.conflict) throw fastify.httpErrors.conflict(`该对局已在频道 ${result.conflict} 直播`);
 
-    return await repo.getById(req.params.id);
+    fastify.tournamentEvents.emit(`update:${req.params.id}`, { type: 'active_match_updated', channel, active_match_id: matchId });
+    return result.channel;
   });
 }

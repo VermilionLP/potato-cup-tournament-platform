@@ -15,6 +15,7 @@
     players = [],
     status = "",
     activeMatchId = null,
+    liveElsewhere = new Map(), // match id -> another live channel
     isAdmin = false,
     userId = "",
     grandFinalReset = false,
@@ -225,6 +226,7 @@
   {@const editable = canEditResult(match)}
   {@const clickable = playable || editable}
   {@const active = activeMatchId === match.id}
+  {@const other = liveElsewhere.get(match.id)}
   {#if !voided}
     {#if bye}
       <div
@@ -261,7 +263,9 @@
         >
           <span>{cardTitle(match)}</span>
           <div class="flex items-center gap-1">
-            {#if isAdmin && playable}
+            {#if other}
+              <span class="rounded bg-sky-500/15 px-1 py-0.5 text-[7px] font-bold text-sky-600 dark:text-sky-300" title="该对局在其他直播频道直播中">频道 {other}</span>
+            {:else if isAdmin && playable}
               <button
                 type="button"
                 onclick={(e) => {

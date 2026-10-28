@@ -3,6 +3,7 @@
 // awarded and votes. Pure, so it can be tested without a database.
 
 import { pointsFor } from './points.js';
+import { liveChannelsView } from './live-channels.js';
 import { eventPlacements } from './placements.js';
 import { groupStageOf } from './group-stage-view.js';
 import { computeStandings, effectiveSwissRounds, isAutoRounds, SWISS_BRACKET } from './swiss.js';
@@ -26,7 +27,10 @@ export function playersWithLadder(players, ladder) {
   });
 }
 
-export function tournamentDetail(t, { players, matches: ms, votes, customVotes, ladder }) {
+export function tournamentDetail(t, { players, matches: ms, votes, customVotes, ladder, channels = [] }) {
+  // Live channels; the old top-level fields mirror channel 1.
+  const liveChannels = liveChannelsView(channels);
+  const main = liveChannels[0];
   const swissMatches = ms.filter((m) => m.bracket === SWISS_BRACKET);
   const standings = t.format === 'swiss' && !t.playoff_format
     ? computeStandings(players.map((p) => ({ id: p.id, seed: p.seed })), swissMatches)
@@ -50,6 +54,11 @@ export function tournamentDetail(t, { players, matches: ms, votes, customVotes, 
 
   return {
     ...t,
+    active_match_id: main.active_match_id,
+    overlay_scene: main.overlay_scene,
+    overlay_round: main.overlay_round,
+    overlay_stage: main.overlay_stage,
+    live_channels: liveChannels,
     points_awarded: pointsAwarded,
     players: playersWithLadder(players, ladder),
     matches: ms,

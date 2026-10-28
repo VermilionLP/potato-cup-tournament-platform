@@ -18,6 +18,7 @@
     matches = [],
     totalRounds = 1,
     isAdmin = false,
+    liveElsewhere = new Map(), // match id -> another live channel
     banpickEnabled = false,
     matchOrder,
     playerName,
@@ -197,13 +198,15 @@
                 <div class="px-2 py-1 bg-neutral-100 dark:bg-neutral-900 text-[8px] font-mono text-neutral-500 dark:text-neutral-400 flex items-center justify-between border-b border-neutral-200 dark:border-neutral-800/80 shrink-0">
                   <span>#{matchOrder.get(m.id)} · 场次 {m.position}</span>
                   <div class="flex items-center gap-1.5">
-                    {#if isAdmin && isPlayable}
+                    {#if liveElsewhere.get(m.id)}
+                      <span class="px-1 py-0.5 rounded font-bold text-[7px] bg-sky-500/15 text-sky-600 dark:text-sky-300" title="该对局在其他直播频道直播中">频道 {liveElsewhere.get(m.id)}</span>
+                    {:else if isAdmin && isPlayable}
                       {@const isActive = tournament.active_match_id === m.id}
                       <button
                         onclick={async (e) => {
                           e.stopPropagation();
                           try {
-                            await API.setActiveMatch(tid, isActive ? null : m.id);
+                            await API.setActiveMatch(tid, isActive ? null : m.id, tournament.live_channel ?? 1);
                             toast.success(isActive ? "已取消直播该场次" : "已开启该场次直播！");
                           } catch (err) {
                             toast.error("更新直播状态失败: " + err.message);

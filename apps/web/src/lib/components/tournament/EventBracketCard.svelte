@@ -19,9 +19,10 @@
   import ShieldCheckIcon from "@lucide/svelte/icons/shield-check";
 
   let {
-    tournament,
+    tournament, // as the console's live channel sees it (withChannel)
     tid,
     isAdmin = false,
+    liveElsewhere = new Map(), // match id -> another live channel
     bracketMatches = [],
     isTwoStage = false,
     inPlayoffs = false,
@@ -186,6 +187,7 @@
         totalRounds={tournament.swiss_rounds_effective ?? tournament.swiss_rounds}
         status={tournament.status}
         activeMatchId={tournament.active_match_id}
+        {liveElsewhere}
         {isAdmin}
         userId={userState.id}
         onOpenMatch={onopen}
@@ -206,6 +208,7 @@
         perGroup={tournament.advance_per_group || 0}
         status={tournament.status}
         activeMatchId={tournament.active_match_id}
+        {liveElsewhere}
         {isAdmin}
         userId={userState.id}
         onOpenMatch={onopen}
@@ -219,6 +222,7 @@
         players={tournament.players || []}
         status={tournament.status}
         activeMatchId={tournament.active_match_id}
+        {liveElsewhere}
         {isAdmin}
         userId={userState.id}
         grandFinalReset={tournament.grand_final_reset}
@@ -231,6 +235,7 @@
       <SingleElimBracket
         {tournament}
         {tid}
+        {liveElsewhere}
         rounds={sections.displayRounds}
         matches={bracketMatches}
         {totalRounds}
