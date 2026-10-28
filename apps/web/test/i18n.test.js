@@ -51,3 +51,23 @@ test("dictionary is well formed", () => {
   const t = createTranslator({ "{0} 人": "{0} players" });
   assert.equal(t("16 人"), "16 players");
 });
+
+test("text put together at runtime", () => {
+  assert.equal(translate("每人禁 1 组 · 大组可移出 2 次 · 载具可不限次移出"), "1 ban(s) per player · Groups can be removed 2 times · Vehicles can be removed any number of times");
+  assert.equal(translate("不禁用 · 大组不可移出 · 抽到大组即结束"), "No bans · Groups can't be removed · Ends once a group is drawn");
+  assert.equal(translate("移出该组（剩 2 次）"), "Remove group (2 left)");
+  assert.equal(translate("该组载具已全部移出，请返回大组重新抽取。"), "All vehicles of this group were removed; go back and draw another group.");
+  assert.equal(translate("关闭比赛提醒失败: Network error"), "Couldn't turn off match reminders: Network error");
+  assert.equal(translate("2026 赛季周赛 · 冠军直邀"), "2026 season, weekly · Champion invited");
+  assert.equal(translate("2026 赛季 · 当前"), "2026 season · current");
+  assert.equal(translate("新建赛事默认计入当前赛季（现在是 2026）。"), "New events count towards the current season by default (now 2026).");
+  assert.equal(translate("才能添加自定义投票提案。"), "to add custom votes.");
+  assert.equal(translate("每组人数必须在 2 至 64 之间，留空表示不分组"), "Group size must be between 2 and 64; leave empty for no groups");
+  assert.equal(translate("12 人的双败对阵用了 Bracket/8U4L2DSL1D（带轮空位），请在 Liquipedia 上确认模板。"),
+    "The 12-player double-elimination bracket uses Bracket/8U4L2DSL1D (with bye slots); check the template on Liquipedia.");
+  assert.equal(translate("Group A 的双败小组对阵没有现成的 Liquipedia 模板对照，请确认模板名。"),
+    "Group A: no known Liquipedia template for this double-elimination group; check the template name.");
+  assert.equal(translate("载具池：自动（AB 螺旋桨）"), "Pool: automatic (AB Prop)");
+  assert.equal(translate("8 个大组 · 30 架 · 每人禁 1 组 · 大组可不限次移出 · 载具可不限次移出"),
+    "8 groups · 30 vehicles · 1 ban(s) per player · Groups can be removed any number of times · Vehicles can be removed any number of times");
+});
