@@ -245,11 +245,30 @@ test('a double-elimination group of 7 uses Bracket/2L1DH4L-1Q-U-2H2L1DLL1D-1Q', 
   const { doubleElimGroupTemplate, templateKeys } = await import('../lib/liquipedia/export.js');
   const tpl = doubleElimGroupTemplate(7, 2);
   assert.equal(tpl.name, 'Bracket/2L1DH4L-1Q-U-2H2L1DLL1D-1Q');
-  assert.equal(doubleElimGroupTemplate(6, 2), null);
+  assert.equal(doubleElimGroupTemplate(9, 2), null);
   const rows = groupBracketRows('double_elim', ids(7), 2, 1).map((r) => ({ ...r, id: r.key }));
   const keys = templateKeys(rows, tpl.name, { upper: 'gwb', lower: 'glb' });
   assert.deepEqual([...keys.values()].sort(), ['R01M1', 'R01M2', 'R01M3', 'R01M4', 'R02M1', 'R02M2', 'R02M3', 'R02M4', 'R03M1', 'R04M1', 'R04M2'].map((k) => k.replace('R0', 'R')).sort());
   // The playoff of 7 keeps the version with a grand final.
   const { DOUBLE_ELIM_TEMPLATES } = await import('../lib/liquipedia/export.js');
   assert.equal(DOUBLE_ELIM_TEMPLATES[7], 'Bracket/2L1DH4LU2H2L1DLL1D');
+});
+
+test('double-elimination groups of 4-8: every match lands on a group template slot', async () => {
+  const { groupBracketRows } = await import('../lib/group-brackets.js');
+  const { doubleElimGroupTemplate, templateKeys } = await import('../lib/liquipedia/export.js');
+  assert.equal(doubleElimGroupTemplate(4, 2).name, 'Bracket/4-1Q-U-2L1D-1Q');
+  assert.equal(doubleElimGroupTemplate(5, 2).name, 'Bracket/2L1DH2L-1Q-U-2L2D-1Q');
+  assert.equal(doubleElimGroupTemplate(6, 2).name, 'Bracket/4L2DS-1Q-U-4L1D-1Q');
+  for (let n = 4; n <= 8; n += 1) {
+    const rows = groupBracketRows('double_elim', ids(n), 2, 1).map((r) => ({ ...r, id: r.key }));
+    const keys = templateKeys(rows, doubleElimGroupTemplate(n, 2).name, { upper: 'gwb', lower: 'glb' });
+    assert.ok(keys, `${n} players`);
+    // n players, 2 advance: each of the other n - 2 loses twice, the lower winner once.
+    assert.equal(keys.size, 2 * (n - 2) + 1, `${n} players: every real match has a key`);
+    assert.equal(new Set(keys.values()).size, keys.size, `${n} players: keys are unique`);
+  }
+  // 4 players: semifinals R1M1-2, upper final R2M1; lower R1M3, lower final R2M2.
+  const four = groupBracketRows('double_elim', ids(4), 2, 1).map((r) => ({ ...r, id: r.key }));
+  assert.deepEqual([...templateKeys(four, 'Bracket/4-1Q-U-2L1D-1Q', { upper: 'gwb', lower: 'glb' }).values()].sort(), ['R1M1', 'R1M2', 'R1M3', 'R2M1', 'R2M2']);
 });

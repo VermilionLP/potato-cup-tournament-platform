@@ -5,6 +5,12 @@
 // Liquipedia content is licensed under CC-BY-SA 3.0.
 
 export const DOUBLE_ELIM_TEMPLATE_MATCHES = {
+  // group of 4, 2 qualify
+  '4-1Q-U-2L1D-1Q': 'matchid=R02-M001|toupper=R01-M001|tolower=R01-M002|qualwin=true|quallose=|skipround= matchid=R02-M002|toupper=|tolower=R01-M003|qualwin=true|quallose=|skipround= matchid=R01-M001|toupper=|tolower=|qualwin=|quallose=|skipround= matchid=R01-M002|toupper=|tolower=|qualwin=|quallose=|skipround= matchid=R01-M003|toupper=|tolower=|qualwin=|quallose=|skipround=',
+  // group of 5, 2 qualify (the play-in loser drops to the lower bracket)
+  '2L1DH2L-1Q-U-2L2D-1Q': 'root=true|matchid=R03-M001|toupper=R02-M001|tolower=R02-M002|qualwin=true|quallose=|skipround=0|qualskip=0 root=true|matchid=R03-M002|toupper=|tolower=R02-M003|qualwin=true|quallose=|skipround=0|qualskip=0 root=|matchid=R02-M003|toupper=|tolower=R01-M002|qualwin=|quallose=|skipround=0|qualskip=0 root=|matchid=R01-M002|toupper=|tolower=|qualwin=|quallose=|skipround=0|qualskip=0 root=|matchid=R02-M001|toupper=|tolower=R01-M001|qualwin=|quallose=|skipround=0|qualskip=0 root=|matchid=R02-M002|toupper=|tolower=|qualwin=|quallose=|skipround=0|qualskip=0 root=|matchid=R01-M001|toupper=|tolower=|qualwin=|quallose=|skipround=0|qualskip=0',
+  // group of 6, 2 qualify
+  '4L2DS-1Q-U-4L1D-1Q': 'matchid=R03-M001|toupper=R02-M001|tolower=R02-M002|qualwin=true|quallose=|skipround= matchid=R03-M002|toupper=|tolower=R02-M003|qualwin=true|quallose=|skipround= matchid=R02-M003|toupper=R01-M003|tolower=R01-M004|qualwin=|quallose=|skipround= matchid=R01-M003|toupper=|tolower=|qualwin=|quallose=|skipround= matchid=R01-M004|toupper=|tolower=|qualwin=|quallose=|skipround= matchid=R02-M001|toupper=|tolower=R01-M001|qualwin=|quallose=|skipround= matchid=R02-M002|toupper=|tolower=R01-M002|qualwin=|quallose=|skipround= matchid=R01-M002|toupper=|tolower=|qualwin=|quallose=|skipround= matchid=R01-M001|toupper=|tolower=|qualwin=|quallose=|skipround=',
   // group of 7, 2 qualify
   '2L1DH4L-1Q-U-2H2L1DLL1D-1Q': 'matchid=R01-M001 matchid=R01-M002 matchid=R01-M003 matchid=R02-M001|tolower=R01-M001 matchid=R02-M002|toupper=R01-M002|tolower=R01-M003 matchid=R04-M001|root=true|toupper=R02-M001|tolower=R02-M002 matchid=R01-M004 matchid=R02-M003 matchid=R02-M004|tolower=R01-M004 matchid=R03-M001|toupper=R02-M003|tolower=R02-M004 matchid=R04-M002|root=true|tolower=R03-M001',
   // group of 8, 2 qualify

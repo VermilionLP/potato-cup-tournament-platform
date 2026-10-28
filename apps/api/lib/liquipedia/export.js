@@ -72,6 +72,9 @@ export function doubleElimTemplate(n) {
 // Double-elimination groups without a grand final where the upper and the
 // lower bracket winner advance (Potato_Cup/2026/Fall/Europe uses the 8).
 export const DOUBLE_ELIM_GROUP_TEMPLATES = {
+  4: 'Bracket/4-1Q-U-2L1D-1Q',
+  5: 'Bracket/2L1DH2L-1Q-U-2L2D-1Q',
+  6: 'Bracket/4L2DS-1Q-U-4L1D-1Q',
   7: 'Bracket/2L1DH4L-1Q-U-2H2L1DLL1D-1Q',
   8: 'Bracket/8-1Q-U-4L2DSL1D-1Q',
 };
