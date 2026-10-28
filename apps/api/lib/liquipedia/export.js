@@ -10,6 +10,8 @@ import { createHash } from 'crypto';
 import { LIQUIPEDIA_BRACKET_TEMPLATES } from '../bracket.js';
 import { groupLabel } from '../group-stage.js';
 import { normalizePlace } from './export-meta.js';
+import { parseBracketTemplate } from './bracket-template.js';
+import { DOUBLE_ELIM_TEMPLATE_MATCHES } from './de-templates.js';
 
 const decided = (m) => m.status === 'completed' || m.status === 'walkover';
 const isBye = (m) => decided(m) && (!m.player1_id || !m.player2_id);
@@ -41,10 +43,27 @@ export function inferBestOf(matches) {
 
 const pow2 = (n) => 1 << Math.ceil(Math.log2(Math.max(2, n)));
 
+// Liquipedia double-elimination templates for 4-16 players (byes left out).
+export const DOUBLE_ELIM_TEMPLATES = {
+  4: 'Bracket/4U2L1D',
+  5: 'Bracket/2L1DH2LU2L2D',
+  6: 'Bracket/4L2DSU4L1D',
+  7: 'Bracket/2L1DH4LU2H2L1DLL1D',
+  8: 'Bracket/8U4L2DSL1D',
+  9: 'Bracket/2L1DH2LH4LU2L2DH2L1DLL1D',
+  10: 'Bracket/4L2DH4LSU4L4DSL1D',
+  11: 'Bracket/2L1DH2LH4L2DSLU2L2DH4L1DLL1D',
+  12: 'Bracket/8L4DSSU8L2DSL1D',
+  13: 'Bracket/2L1DH4LH4L2DSLU2H2L1DLL1DH4L1DLL1D',
+  14: 'Bracket/4L2DH8LSU4H4L2DLL2DSL1D',
+  15: 'Bracket/2L1DH4LH8LU2H2L1DLL1DH4L2DSL1DLL1D',
+  16: 'Bracket/16U8L4DSL2DSL1D',
+};
+
 /** Liquipedia double-elimination template for n players, and whether its byes are left out. */
 export function doubleElimTemplate(n) {
+  if (DOUBLE_ELIM_TEMPLATES[n]) return { name: DOUBLE_ELIM_TEMPLATES[n], compact: true };
   const size = pow2(Math.max(4, n));
-  if (n === 12) return { name: 'Bracket/8L4DSSU8L2DSL1D', compact: true };
   const chain = [];
   for (let d = size / 4; d >= 1; d /= 2) chain.push(`${d}D`);
   return { name: `Bracket/${size}U${size / 2}L${chain.join('SL')}`, compact: n === size };
@@ -68,6 +87,61 @@ export function singleElimTemplate(n) {
 }
 
 /**
+ * Page keys of a double-elimination bracket matched onto a template's
+ * structure (de-templates.js): from the final(s) back, each slot's feeder
+ * is the match whose winner fills it, passing through the event's byes
+ * (the templates have no slot for them). Null when there is no stored
+ * template or the shapes differ.
+ */
+export function templateKeys(matches, templateName, { upper = 'wb', lower = 'lb' } = {}) {
+  const stored = DOUBLE_ELIM_TEMPLATE_MATCHES[String(templateName).replace(/^Bracket\//, '')];
+  if (!stored) return null;
+  const nodes = parseBracketTemplate(stored.split(' ').map((p) => `{{TemplateMatch|${p}}}`).join('')).matches;
+  const byId = new Map(matches.map((m) => [m.id, m]));
+  const nextOf = (m) => m.next_match_id ?? m.next_key ?? null;
+  const feeders = new Map();
+  for (const m of matches) {
+    const next = nextOf(m);
+    if (next === null || !byId.has(next)) continue;
+    const list = feeders.get(next) || [null, null];
+    const slot = m.next_slot === 2 ? 1 : m.next_slot === 1 ? 0 : list[0] ? 1 : 0;
+    list[slot] = m;
+    feeders.set(next, list);
+  }
+  const leftOut = (m) => isBye(m) || m.slot1_void || m.slot2_void;
+  const effective = (m) => {
+    if (!m) return null;
+    if (!leftOut(m)) return m;
+    const through = (feeders.get(m.id) || []).map(effective).filter(Boolean);
+    return through.length === 1 ? through[0] : null;
+  };
+  const keys = new Map();
+  const assign = (node, m) => {
+    keys.set(m.id, node.key);
+    const ours = (feeders.get(m.id) || [null, null]).map(effective).filter(Boolean);
+    const theirs = [node.upper, node.lower].filter(Boolean).map((k) => nodes.get(k));
+    if (ours.length !== theirs.length || theirs.some((n) => !n)) throw new Error(`shape differs at ${node.key}`);
+    theirs.forEach((n, i) => assign(n, ours[i]));
+  };
+  const fed = new Set([...nodes.values()].flatMap((n) => [n.upper, n.lower]).filter(Boolean));
+  const roots = [...nodes.values()].filter((n) => !fed.has(n.key) && n.key !== 'RxMBR' && n.key !== 'RxMTP');
+  const ourRoots = matches
+    .filter((m) => !leftOut(m) && nextOf(m) === null && !(m.bracket === 'gf' && m.position === 2))
+    .sort((a, b) => (a.bracket === lower) - (b.bracket === lower));
+  try {
+    if (roots.length !== ourRoots.length) throw new Error('roots differ');
+    roots.forEach((n, i) => assign(n, ourRoots[i]));
+  } catch {
+    return null;
+  }
+  const reset = matches.find((m) => m.bracket === 'gf' && m.position === 2);
+  if (reset && nodes.has('RxMBR')) keys.set(reset.id, 'RxMBR');
+  const shown = matches.filter((m) => !leftOut(m) || keys.has(m.id));
+  if (shown.length !== keys.size) return null;
+  return keys;
+}
+
+/**
  * Page keys (R<column>M<n>) of an elimination bracket's matches. Columns
  * follow Liquipedia's layout: single elimination one per round; double
  * elimination puts upper round u in column 2u-2 (u > 1) and lower round l
@@ -75,7 +149,11 @@ export function singleElimTemplate(n) {
  * run top to bottom, upper bracket first; with `compact` the byes are left
  * out (the template has no slot for them).
  */
-export function bracketKeys(matches, { double = false, compact = true, upper = 'wb', lower = 'lb' } = {}) {
+export function bracketKeys(matches, { double = false, compact = true, upper = 'wb', lower = 'lb', template = null } = {}) {
+  if (double && template) {
+    const mapped = templateKeys(matches, template, { upper, lower });
+    if (mapped) return mapped;
+  }
   const keys = new Map();
   const columns = new Map();
   const add = (col, m) => {
@@ -310,7 +388,10 @@ export function buildWikiPage({ t, players = [], matches = [], groupStage = null
     }
     const tpl = template || (double ? doubleElimTemplate(ids.size) : singleElimTemplate(ids.size));
     if (!tpl.compact && !template) warnings.push(`${ids.size} 人的${double ? '双败' : '单败'}对阵用了 ${tpl.name}（带轮空位），请在 Liquipedia 上确认模板。`);
-    const keys = bracketKeys(list, { double, compact: tpl.compact, upper, lower });
+    const keys = bracketKeys(list, { double, compact: tpl.compact, upper, lower, template: tpl.name });
+    if (double && tpl.compact && DOUBLE_ELIM_TEMPLATE_MATCHES[tpl.name.replace(/^Bracket\//, '')] && !templateKeys(list, tpl.name, { upper, lower })) {
+      warnings.push(`对阵和 ${tpl.name} 模板的结构对不上，已按列推算编号，请在 Liquipedia 上确认。`);
+    }
     const finals = new Set(list.filter((m) => m.bracket === 'gf' || (!double && m.round === 1)).map((m) => m.id));
     const side = (m) => (m.bracket === 'gf' ? 2 : m.bracket === lower ? 1 : 0);
     const col = (k) => (k.startsWith('Rx') ? 999 : Number(/^R(\d+)/.exec(k)[1]));

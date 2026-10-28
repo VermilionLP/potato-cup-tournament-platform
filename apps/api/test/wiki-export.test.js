@@ -35,7 +35,8 @@ test('double elimination keys follow the Liquipedia templates', () => {
   assert.equal(doubleElimTemplate(8).name, 'Bracket/8U4L2DSL1D');
   assert.equal(doubleElimTemplate(12).name, 'Bracket/8L4DSSU8L2DSL1D');
   assert.equal(doubleElimTemplate(16).name, 'Bracket/16U8L4DSL2DSL1D');
-  assert.equal(doubleElimTemplate(6).compact, false);
+  assert.equal(doubleElimTemplate(6).name, 'Bracket/4L2DSU4L1D');
+  assert.equal(doubleElimTemplate(20).compact, false);
 });
 
 test('the grand-final reset is RxMBR', () => {
@@ -188,7 +189,7 @@ test('double-elimination groups follow Potato_Cup/2026/Fall/Europe', async () =>
   assert.equal(doubleElimGroupTemplate(8, 4), null);
 
   const group = (g) => groupBracketRows('double_elim', ids(8).map((id) => `${g}${id}`), 2, g === 'a' ? 1 : 2)
-    .map((r) => ({ ...r, id: `${g}-${r.key}`, swiss_group: g === 'a' ? 1 : 2 }));
+    .map((r) => ({ ...r, id: `${g}-${r.key}`, next_key: r.next_key && `${g}-${r.next_key}`, swiss_group: g === 'a' ? 1 : 2 }));
   const rows = [...group('a'), ...group('b')];
   // Same keys as the page's groups: upper R1M1-4, R2M1-2, R4M1; lower R1M5-6, R2M3-4, R3M1, R4M2.
   assert.deepEqual(keyList(rows.filter((r) => r.swiss_group === 1), { double: true, upper: 'gwb', lower: 'glb' }), [
@@ -214,4 +215,27 @@ test('double-elimination groups follow Potato_Cup/2026/Fall/Europe', async () =>
   assert.doesNotMatch(text, /Toggle group start|Grand Final -->[^]*Stage\|Playoffs/);
   assert.match(text, /\}\}\n\{\{Box\|break\|padding=2em\}\}\n\n====Group B====/);
   assert.match(text, /\{\{Box\|break\|padding=2em\}\}\n\n===\{\{Stage\|Playoffs\}\}===/);
+});
+
+test('double elimination 4-16: every match lands on a template slot', async () => {
+  const { templateKeys, DOUBLE_ELIM_TEMPLATES } = await import('../lib/liquipedia/export.js');
+  for (let n = 4; n <= 16; n += 1) {
+    const rows = deRows(n);
+    const keys = templateKeys(rows, DOUBLE_ELIM_TEMPLATES[n]);
+    assert.ok(keys, `${n} players`);
+    assert.equal(keys.size, 2 * n - 2, `${n} players: every real match has a key`);
+    assert.equal(new Set(keys.values()).size, keys.size, `${n} players: keys are unique`);
+    // Byes and empty slots are left out.
+    for (const r of rows) if (keys.has(r.id)) assert.ok(!r.slot1_void && !r.slot2_void, `${n}: ${r.id}`);
+  }
+  // Same keys as the column rule where the pages confirmed it (8 and 12 players).
+  for (const n of [8, 12]) {
+    const rows = deRows(n);
+    assert.deepEqual(templateKeys(rows, DOUBLE_ELIM_TEMPLATES[n]), bracketKeys(rows, { double: true }));
+  }
+  // 13 players: the upper bracket starts in column 2 (a lower match is alone in column 1).
+  const thirteen = templateKeys(deRows(13), DOUBLE_ELIM_TEMPLATES[13]);
+  const upperFirst = deRows(13).filter((r) => r.bracket === 'wb' && r.round === 4 && thirteen.has(r.id));
+  assert.ok(upperFirst.every((r) => thirteen.get(r.id).startsWith('R2M')));
+  assert.equal(templateKeys(deRows(9), DOUBLE_ELIM_TEMPLATES[10]), null); // wrong template: shapes differ
 });

@@ -53,7 +53,7 @@ Ban / Pick 的载具池是 `axsuck.vehicle_pools` 里的模板（迁移 027）�
 
 ## Liquipedia export
 
-赛事页「导出 Wiki」由 `apps/api/lib/liquipedia/export.js` 生成，版式照 Potato Cup 页面：瑞士轮周赛（Potato_Cup_Weekly/12）、双败（Potato_Cup/2026/Aug/Asia_Pacific）、瑞士轮小组 + 双败淘汰（Potato_Cup/2026/June/Europe）、双败小组 + 双败淘汰（Potato_Cup/2026/Fall/Europe，每组晋级 2 人用 `Bracket/8-1Q-U-4L2DSL1D-1Q` 这类模板）。赛制、Bo（按比分推算）、积分（赛事积分表）、参赛者、对阵来自赛事；奖金、直通资格、解说、直播等存在 `tournaments.wiki_meta`（迁移 028，`export-meta.js` 校验），新赛事沿用上一场的解说和直播。对阵 key 按 Liquipedia 模板的列编排（双败胜者组第 u 轮在第 2u-2 列），已知模板会省掉轮空；未知人数用 2 的幂模板并给出提示。
+赛事页「导出 Wiki」由 `apps/api/lib/liquipedia/export.js` 生成，版式照 Potato Cup 页面：瑞士轮周赛（Potato_Cup_Weekly/12）、双败（Potato_Cup/2026/Aug/Asia_Pacific）、瑞士轮小组 + 双败淘汰（Potato_Cup/2026/June/Europe）、双败小组 + 双败淘汰（Potato_Cup/2026/Fall/Europe，每组晋级 2 人用 `Bracket/8-1Q-U-4L2DSL1D-1Q` 这类模板）。赛制、Bo（按比分推算）、积分（赛事积分表）、参赛者、对阵来自赛事；奖金、直通资格、解说、直播等存在 `tournaments.wiki_meta`（迁移 028，`export-meta.js` 校验），新赛事沿用上一场的解说和直播。双败 4–16 人和每组晋级 2 人的 8 人双败小组的模板结构存在 `lib/liquipedia/de-templates.js`（取自 Liquipedia commons 的 TemplateMatch），导出时从决赛倒推、按晋级关系把每场对到模板的 R#M# 上（轮空不占位）；没有存模板的人数按列推算（双败胜者组第 u 轮在第 2u-2 列）并给出提示。
 
 ## History
 
