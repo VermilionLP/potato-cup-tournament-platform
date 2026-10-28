@@ -120,3 +120,47 @@ export function poolToCsv(vehicles) {
   };
   return [POOL_FIELDS.join(","), ...vehicles.map((v) => POOL_FIELDS.map((f) => cell(v[f])).join(","))].join("\n") + "\n";
 }
+
+/**
+ * Vehicles as Ban / Pick will use them once saved: rows with a name, the
+ * group defaulting to the name, BR as a number (null when blank or invalid).
+ * Used by the template page's preview, so unsaved edits can be tried out.
+ */
+export function previewVehicles(rows = []) {
+  return rows
+    .map((raw) => {
+      const name = String(raw?.name ?? "").trim();
+      const brText = raw?.br === null || raw?.br === undefined ? "" : String(raw.br).trim();
+      const br = brText === "" ? null : Number(brText);
+      return {
+        name,
+        nation: String(raw?.nation ?? "").trim(),
+        br: Number.isFinite(br) ? br : null,
+        type: String(raw?.type ?? "").trim(),
+        group: String(raw?.group ?? "").trim() || name,
+      };
+    })
+    .filter((v) => v.name);
+}
+
+/**
+ * Per group, in pool order: vehicle count, BR range and nations, to check
+ * groups are balanced before using the pool.
+ */
+export function groupSummary(vehicles = []) {
+  const groups = new Map();
+  for (const v of vehicles) {
+    if (!groups.has(v.group)) groups.set(v.group, { group: v.group, names: new Set(), brs: [], nations: [] });
+    const g = groups.get(v.group);
+    g.names.add(v.name);
+    if (v.br !== null && v.br !== undefined) g.brs.push(v.br);
+    if (v.nation && !g.nations.includes(v.nation)) g.nations.push(v.nation);
+  }
+  return [...groups.values()].map((g) => ({
+    group: g.group,
+    count: g.names.size,
+    brMin: g.brs.length ? Math.min(...g.brs) : null,
+    brMax: g.brs.length ? Math.max(...g.brs) : null,
+    nations: g.nations,
+  }));
+}

@@ -8,9 +8,10 @@
   import { toast } from "svelte-sonner";
   import { API } from "$lib/api.js";
   import { userState } from "$lib/user.svelte.js";
-  import { DEFAULT_BP_RULES, groupVehicles, normalizeRules, rulesSummary } from "$lib/banpick.js";
+  import { DEFAULT_BP_RULES, groupVehicles, initialBanPick, normalizeRules, rulesSummary } from "$lib/banpick.js";
   import { GAME_MODES, POOL_TAG, VEHICLE_POOLS } from "$lib/tournament.js";
-  import { modesLabel, parsePoolFile, poolToCsv, poolToJson, vehicleListProblem } from "$lib/vehicle-pools.js";
+  import { groupSummary, modesLabel, parsePoolFile, poolToCsv, poolToJson, previewVehicles, vehicleListProblem } from "$lib/vehicle-pools.js";
+  import BanPickPanel from "$lib/components/BanPickPanel.svelte";
   import { Button } from "$lib/components/ui/button/index.js";
   import { Input } from "$lib/components/ui/input/index.js";
   import PlaneIcon from "@lucide/svelte/icons/plane";
@@ -22,6 +23,8 @@
   import CheckIcon from "@lucide/svelte/icons/check";
   import XIcon from "@lucide/svelte/icons/x";
   import SearchIcon from "@lucide/svelte/icons/search";
+  import TableIcon from "@lucide/svelte/icons/table";
+  import EyeIcon from "@lucide/svelte/icons/eye";
 
   const NEW_ID = "__new";
 
@@ -35,6 +38,8 @@
   let confirmDelete = $state(false);
   let query = $state("");
   let fileInput = $state(null);
+  // "table" = the vehicle list, "preview" = Ban / Pick as a match would show it.
+  let view = $state("table");
 
   const copyOf = (t) => ({
     name: t.name,
@@ -60,6 +65,19 @@
       ["name", "nation", "type", "group"].some((f) => String(v[f] ?? "").toLowerCase().includes(q)),
     );
   });
+  // Preview: the template as it is now (unsaved edits included), in the
+  // match Ban / Pick panel; trying it out changes nothing. It starts over
+  // when the template, its rules or its vehicles change.
+  let preview = $derived(previewVehicles(rows));
+  let summary = $derived(groupSummary(preview));
+  let previewKey = $derived(JSON.stringify([activeId, current?.rules, preview.map((v) => [v.name, v.group])]));
+  let previewBp = $state(initialBanPick());
+  $effect(() => {
+    previewKey;
+    previewBp = initialBanPick(current?.rules);
+  });
+  const brRange = (g) => (g.brMin === null ? "—" : g.brMin === g.brMax ? g.brMin.toFixed(1) : `${g.brMin.toFixed(1)}–${g.brMax.toFixed(1)}`);
+
   // Templates by event type, in the order events choose them.
   let byType = $derived(
     VEHICLE_POOLS.map((type) => ({
@@ -436,6 +454,70 @@
           </div>
         {/if}
 
+        <div class="flex gap-1.5">
+          <button
+            type="button"
+            onclick={() => (view = "table")}
+            aria-pressed={view === "table"}
+            class="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold transition-colors cursor-pointer
+              {view === 'table' ? 'border-primary bg-primary text-primary-foreground' : 'border-border text-muted-foreground hover:text-foreground'}"
+          >
+            <TableIcon class="h-3.5 w-3.5" /> 载具表
+          </button>
+          <button
+            type="button"
+            onclick={() => (view = "preview")}
+            aria-pressed={view === "preview"}
+            class="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold transition-colors cursor-pointer
+              {view === 'preview' ? 'border-primary bg-primary text-primary-foreground' : 'border-border text-muted-foreground hover:text-foreground'}"
+          >
+            <EyeIcon class="h-3.5 w-3.5" /> Ban / Pick 预览
+          </button>
+        </div>
+
+        {#if view === "preview"}
+          <div class="space-y-3">
+            <p class="text-[11px] text-muted-foreground">
+              <span>{dirty ? "比赛里打开 Ban / Pick 时看到的样子，包含未保存的修改。" : "比赛里打开 Ban / Pick 时看到的样子。"}</span>
+              <span>可以直接禁用、抽取试一遍，不会保存，也不影响任何比赛；改动模板后会自动重置。</span>
+            </p>
+            {#if preview.length}
+              <div class="rounded-lg border border-border/60 bg-background/40 p-3">
+                <BanPickPanel
+                  bind:bp={previewBp}
+                  vehicles={preview}
+                  poolName={current.name}
+                  player1={{ name: "选手 A", flag: "" }}
+                  player2={{ name: "选手 B", flag: "" }}
+                />
+              </div>
+              <div class="overflow-x-auto rounded-lg border border-border/60">
+                <table class="w-full min-w-[480px] text-xs">
+                  <thead class="bg-muted/40 text-[10px] uppercase tracking-wider text-muted-foreground">
+                    <tr>
+                      <th class="px-2 py-2 text-left font-semibold">分组</th>
+                      <th class="w-16 px-2 py-2 text-right font-semibold">载具</th>
+                      <th class="w-28 px-2 py-2 text-left font-semibold">BR 范围</th>
+                      <th class="px-2 py-2 text-left font-semibold">国家</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-border/50">
+                    {#each summary as g (g.group)}
+                      <tr class="hover:bg-muted/20">
+                        <td class="px-2 py-1.5 font-semibold text-foreground">{g.group}</td>
+                        <td class="px-2 py-1.5 text-right font-mono text-muted-foreground">{g.count}</td>
+                        <td class="px-2 py-1.5 font-mono text-muted-foreground">{brRange(g)}</td>
+                        <td class="px-2 py-1.5 text-muted-foreground">{g.nations.join(" / ") || "—"}</td>
+                      </tr>
+                    {/each}
+                  </tbody>
+                </table>
+              </div>
+            {:else}
+              <p class="py-8 text-center text-xs text-muted-foreground">载具池是空的，先在载具表里添加或导入载具</p>
+            {/if}
+          </div>
+        {:else}
         <div class="relative">
           <SearchIcon class="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
           <Input bind:value={query} placeholder="搜索载具、国家、类型或分组..." class="h-8 pl-8 text-xs" />
@@ -491,6 +573,7 @@
           导入格式：JSON 数组 <code class="font-mono">[{"{"}"name", "nation", "br", "type", "group"{"}"}]</code>，或第一行为列名
           <code class="font-mono">name,nation,br,type,group</code> 的 CSV；只有 name 必填，分组留空时等于载具名称。导入只替换载具表，模板设置不变。
         </p>
+        {/if}
       </div>
     {:else}
       <p class="py-8 text-center text-xs text-muted-foreground">还没有载具池模板</p>

@@ -1374,4 +1374,12 @@ export default {
   "#{0} 场次 {1} ({2}): {3} vs {4} [{5}] · 频道 {6} 直播中": "#{0} Match {1} ({2}): {3} vs {4} [{5}] · live on channel {6}",
   "OBS 浏览器源链接（频道 {0}）:": "OBS browser source links (channel {0}):",
   "该对局已在频道 {0} 直播": "This match is already live on channel {0}",
+  // Vehicle pool preview (2026-10).
+  "载具表": "Vehicle list",
+  "Ban / Pick 预览": "Ban / Pick preview",
+  "比赛里打开 Ban / Pick 时看到的样子。": "This is what Ban / Pick looks like in a match.",
+  "比赛里打开 Ban / Pick 时看到的样子，包含未保存的修改。": "This is what Ban / Pick looks like in a match, unsaved changes included.",
+  "可以直接禁用、抽取试一遍，不会保存，也不影响任何比赛；改动模板后会自动重置。": "Try banning and drawing here: nothing is saved and no match is affected. It starts over when the template changes.",
+  "BR 范围": "BR range",
+  "载具池是空的，先在载具表里添加或导入载具": "The pool is empty; add or import vehicles in the vehicle list first",
 };

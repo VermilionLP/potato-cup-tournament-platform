@@ -44,3 +44,27 @@ test("bundled AB prop pool is valid", async () => {
   assert.equal(list.length, 59);
   assert.equal(vehicleListProblem(list), "");
 });
+
+test("preview: unsaved rows as Ban / Pick uses them, and a summary per group", async () => {
+  const { previewVehicles, groupSummary } = await import("../src/lib/vehicle-pools.js");
+  const rows = [
+    { name: " F-16A ", nation: "USA", br: "12.3", type: "Jet", group: "F-16" },
+    { name: "F-16C", nation: "USA", br: 13.7, type: "Jet", group: "F-16" },
+    { name: "▄F-16A", nation: "France", br: "", type: "Jet", group: "F-16" },
+    { name: "Su-27", nation: "USSR", br: "x", type: "", group: "" },
+    { name: "", nation: "USSR", br: "1", group: "empty" },
+    { name: "F-16A", nation: "Israel", br: 12.7, group: "F-16" },
+  ];
+  const vehicles = previewVehicles(rows);
+  assert.deepEqual(vehicles.map((v) => [v.name, v.group, v.br]), [
+    ["F-16A", "F-16", 12.3],
+    ["F-16C", "F-16", 13.7],
+    ["▄F-16A", "F-16", null],
+    ["Su-27", "Su-27", null],
+    ["F-16A", "F-16", 12.7],
+  ]);
+  assert.deepEqual(groupSummary(vehicles), [
+    { group: "F-16", count: 3, brMin: 12.3, brMax: 13.7, nations: ["USA", "France", "Israel"] },
+    { group: "Su-27", count: 1, brMin: null, brMax: null, nations: ["USSR"] },
+  ]);
+});
