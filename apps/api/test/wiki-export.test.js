@@ -239,3 +239,17 @@ test('double elimination 4-16: every match lands on a template slot', async () =
   assert.ok(upperFirst.every((r) => thirteen.get(r.id).startsWith('R2M')));
   assert.equal(templateKeys(deRows(9), DOUBLE_ELIM_TEMPLATES[10]), null); // wrong template: shapes differ
 });
+
+test('a double-elimination group of 7 uses Bracket/2L1DH4L-1Q-U-2H2L1DLL1D-1Q', async () => {
+  const { groupBracketRows } = await import('../lib/group-brackets.js');
+  const { doubleElimGroupTemplate, templateKeys } = await import('../lib/liquipedia/export.js');
+  const tpl = doubleElimGroupTemplate(7, 2);
+  assert.equal(tpl.name, 'Bracket/2L1DH4L-1Q-U-2H2L1DLL1D-1Q');
+  assert.equal(doubleElimGroupTemplate(6, 2), null);
+  const rows = groupBracketRows('double_elim', ids(7), 2, 1).map((r) => ({ ...r, id: r.key }));
+  const keys = templateKeys(rows, tpl.name, { upper: 'gwb', lower: 'glb' });
+  assert.deepEqual([...keys.values()].sort(), ['R01M1', 'R01M2', 'R01M3', 'R01M4', 'R02M1', 'R02M2', 'R02M3', 'R02M4', 'R03M1', 'R04M1', 'R04M2'].map((k) => k.replace('R0', 'R')).sort());
+  // The playoff of 7 keeps the version with a grand final.
+  const { DOUBLE_ELIM_TEMPLATES } = await import('../lib/liquipedia/export.js');
+  assert.equal(DOUBLE_ELIM_TEMPLATES[7], 'Bracket/2L1DH4LU2H2L1DLL1D');
+});

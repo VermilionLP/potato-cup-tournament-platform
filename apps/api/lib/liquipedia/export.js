@@ -69,13 +69,21 @@ export function doubleElimTemplate(n) {
   return { name: `Bracket/${size}U${size / 2}L${chain.join('SL')}`, compact: n === size };
 }
 
+// Double-elimination groups without a grand final where the upper and the
+// lower bracket winner advance (Potato_Cup/2026/Fall/Europe uses the 8).
+export const DOUBLE_ELIM_GROUP_TEMPLATES = {
+  7: 'Bracket/2L1DH4L-1Q-U-2H2L1DLL1D-1Q',
+  8: 'Bracket/8-1Q-U-4L2DSL1D-1Q',
+};
+
 /**
- * Double-elimination group without a grand final where the upper and the
- * lower bracket winner advance (Potato_Cup/2026/Fall/Europe: 8 players,
- * Bracket/8-1Q-U-4L2DSL1D-1Q). Other splits have no known template (null).
+ * Template of a double-elimination group of n players where `perGroup`
+ * advance; null when none is known.
  */
 export function doubleElimGroupTemplate(n, perGroup) {
-  if (Number(perGroup) !== 2 || n < 4 || n !== pow2(n)) return null;
+  if (Number(perGroup) !== 2 || n < 4) return null;
+  if (DOUBLE_ELIM_GROUP_TEMPLATES[n]) return { name: DOUBLE_ELIM_GROUP_TEMPLATES[n], compact: true };
+  if (n !== pow2(n)) return null;
   const base = doubleElimTemplate(n).name.replace(/^Bracket\//, '');
   return { name: `Bracket/${base.replace(/^(\d+)U/, '$1-1Q-U-')}-1Q`, compact: true };
 }
@@ -480,8 +488,9 @@ export function buildWikiPage({ t, players = [], matches = [], groupStage = null
         } else {
           const double = t.format === 'double_elim';
           const size = new Set(own.flatMap((m) => [m.player1_id, m.player2_id]).filter(Boolean)).size;
-          const template = double ? doubleElimGroupTemplate(pow2(size), t.advance_per_group) : null;
-          if (template && size !== pow2(size)) template.compact = false;
+          // Unknown sizes: the next power-of-two group template, byes kept.
+          const fallback = double && doubleElimGroupTemplate(pow2(size), t.advance_per_group);
+          const template = double ? doubleElimGroupTemplate(size, t.advance_per_group) || (fallback && { ...fallback, compact: false }) : null;
           w();
           w(`====Group ${label}====`);
           elimBracket(own, { double, idSuffix: `g${label}`, upper: double ? 'gwb' : 'gse', lower: 'glb', bo: boGroup, boLast: boGroup, toggle: false, template });

@@ -5,7 +5,9 @@
 // Liquipedia content is licensed under CC-BY-SA 3.0.
 
 export const DOUBLE_ELIM_TEMPLATE_MATCHES = {
-  // group, 2 qualify
+  // group of 7, 2 qualify
+  '2L1DH4L-1Q-U-2H2L1DLL1D-1Q': 'matchid=R01-M001 matchid=R01-M002 matchid=R01-M003 matchid=R02-M001|tolower=R01-M001 matchid=R02-M002|toupper=R01-M002|tolower=R01-M003 matchid=R04-M001|root=true|toupper=R02-M001|tolower=R02-M002 matchid=R01-M004 matchid=R02-M003 matchid=R02-M004|tolower=R01-M004 matchid=R03-M001|toupper=R02-M003|tolower=R02-M004 matchid=R04-M002|root=true|tolower=R03-M001',
+  // group of 8, 2 qualify
   '8-1Q-U-4L2DSL1D-1Q': 'matchid=R04-M001|root=true|toupper=R02-M001|tolower=R02-M002 matchid=R04-M002|root=true|tolower=R03-M001 matchid=R02-M001|toupper=R01-M001|tolower=R01-M002 matchid=R02-M002|toupper=R01-M003|tolower=R01-M004 matchid=R01-M001 matchid=R01-M002 matchid=R01-M003 matchid=R01-M004 matchid=R03-M001|toupper=R02-M003|tolower=R02-M004 matchid=R02-M003|tolower=R01-M005 matchid=R02-M004|tolower=R01-M006 matchid=R01-M006 matchid=R01-M005',
   // 4
   '4U2L1D': 'matchid=R01-M001 matchid=R01-M002 matchid=R02-M001|toupper=R01-M001|tolower=R01-M002 matchid=R03-M001|root=true|toupper=R02-M001|tolower=R02-M002|bracketreset=RxMBR matchid=RxMBR matchid=R01-M003 matchid=R02-M002|tolower=R01-M003',
