@@ -145,6 +145,9 @@ test('Swiss weekly page: Swiss table and one match list per round', () => {
   assert.match(text, /^\{\{DISPLAYTITLE:Potato Cup Weekly #\{\{SUBPAGENAME\}\} \(土豆杯周赛#\{\{SUBPAGENAME\}\}\)\}\}/);
   assert.match(text, /\|mode=SB\n/);
   assert.match(text, /\|liquipediatier=4 \|liquipediatiertype=Weekly/);
+  // The event's own tier comes first (A = 2), then the tier type of its kind.
+  const tiered = buildWikiPage({ t: { ...t, tier: 'A', event_kind: 'qualifier' }, players: players(4), matches, placements, meta: defaultWikiMeta(t) }).text;
+  assert.match(tiered, /\|liquipediatier=2 \|liquipediatiertype=Qualifier/);
   assert.match(text, /\* All matches are \{\{Abbr\/Bo5\}\}/);
   assert.match(text, /\{\{SwissTableLeague\|placements=1;2;3-4\n/);
   assert.match(text, /==\{\{HiddenSort\|Round 1\}\}===\n\{\{Matchlist\|id=[a-z0-9]{10}\|title=Round 1\|collapsed=1/);

@@ -42,7 +42,7 @@ export function TournamentRepo(db) {
     return res.rows[0] || null;
   }
 
-  async function create({ id, name, description, player_capacity, hold_third_place, loser_advances, scheduled_time, game_mode, vehicle_pool, format, grand_final_reset, swiss_rounds, banpick_enabled, playoff_format, swiss_group_size, advance_per_group, points_table = null, points_season = '', points_kind = 'weekly', points_invite = false }) {
+  async function create({ id, name, description, player_capacity, hold_third_place, loser_advances, scheduled_time, game_mode, vehicle_pool, format, grand_final_reset, swiss_rounds, banpick_enabled, playoff_format, swiss_group_size, advance_per_group, points_table = null, points_season = '', points_kind = 'weekly', points_invite = false, tier = null, kind = null }) {
     const scheduledTime = String(scheduled_time || '').trim();
     const bracketFormat = SUPPORTED_FORMATS.includes(format) ? format : SUPPORTED_FORMATS[0];
     // Two-stage events: `format` is the group stage, `playoff_format` the playoff.
@@ -50,8 +50,8 @@ export function TournamentRepo(db) {
     await db.query(`
       INSERT INTO axsuck.tournaments
         (id, name, description, status, player_capacity, hold_third_place, loser_advances, scheduled_time, game_mode, vehicle_pool, format, grand_final_reset, swiss_rounds, banpick_enabled,
-         playoff_format, swiss_group_size, advance_per_group, points_table, points_season, points_kind, points_invite)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18::jsonb, $19, $20, $21)
+         playoff_format, swiss_group_size, advance_per_group, points_table, points_season, points_kind, points_invite, tier, event_kind)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18::jsonb, $19, $20, $21, $22, $23)
     `, [
       id,
       name,
@@ -75,7 +75,18 @@ export function TournamentRepo(db) {
       points_table ? points_season || null : null,
       points_table ? points_kind : null,
       Boolean(points_table && points_invite),
+      tier,
+      kind,
     ]);
+    return getById(id);
+  }
+
+  // Tier (S-D) and kind; null clears either.
+  async function setTier(id, tier, kind) {
+    await db.query(
+      'UPDATE axsuck.tournaments SET tier = $2, event_kind = $3, updated_at = NOW() WHERE id = $1',
+      [id, tier, kind],
+    );
     return getById(id);
   }
 
@@ -373,5 +384,5 @@ export function TournamentRepo(db) {
     }));
   }
 
-  return { list, getById, create, rename, setVehiclePool, setVehicleTemplate, setPoints, setPointsInvite, setScheduledTime, setSwissRounds, updateStatus, getPlayers, addPlayer, autoRegisterVoters, removePlayer, setSeeds, getMatches, getVotes, getCustomVotes };
+  return { list, getById, create, rename, setVehiclePool, setVehicleTemplate, setPoints, setPointsInvite, setScheduledTime, setSwissRounds, updateStatus, setTier, getPlayers, addPlayer, autoRegisterVoters, removePlayer, setSeeds, getMatches, getVotes, getCustomVotes };
 }

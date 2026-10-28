@@ -10,6 +10,7 @@ import { normalizePointsKind, normalizePointsTable, normalizeSeason } from '../l
 import { endedSeason } from '../lib/points-seasons.js';
 import { groupStageOf } from '../lib/group-stage-view.js';
 import { startBlockedReason, VEHICLE_POOLS } from '../lib/tournament-config.js';
+import { EVENT_KINDS, EVENT_TIERS, normalizeKind, normalizeTier } from '../lib/event-tier.js';
 import {
   currentSwissRound,
   effectiveSwissRounds,
@@ -36,8 +37,15 @@ export default async function tournamentSettingsRoutes(fastify) {
     const hasTemplate = body.vehicle_template !== undefined;
     const hasPoints = body.points_table !== undefined;
     const hasInvite = body.points_invite !== undefined;
-    if (!hasName && !hasTime && !hasPool && !hasTemplate && !hasPoints && !hasInvite) {
-      throw fastify.httpErrors.badRequest('name, scheduled_time, vehicle_pool, vehicle_template, points_table or points_invite is required');
+    const hasTier = body.tier !== undefined || body.event_kind !== undefined;
+    if (!hasName && !hasTime && !hasPool && !hasTemplate && !hasPoints && !hasInvite && !hasTier) {
+      throw fastify.httpErrors.badRequest('name, scheduled_time, vehicle_pool, vehicle_template, points_table, points_invite, tier or event_kind is required');
+    }
+    if (body.tier && !normalizeTier(body.tier)) {
+      throw fastify.httpErrors.badRequest(`tier must be one of: ${EVENT_TIERS.join(', ')}`);
+    }
+    if (body.event_kind && !normalizeKind(body.event_kind)) {
+      throw fastify.httpErrors.badRequest(`event_kind must be one of: ${EVENT_KINDS.join(', ')}`);
     }
     const points = hasPoints ? normalizePointsTable(body.points_table) : null;
     if (points?.error) throw fastify.httpErrors.badRequest(points.error);
@@ -78,6 +86,13 @@ export default async function tournamentSettingsRoutes(fastify) {
     if (hasInvite && !hasPoints) {
       updated = await repo.setPointsInvite(req.params.id, body.points_invite);
       fastify.tournamentEvents.emit(`update:${req.params.id}`, { type: 'points_changed' });
+    }
+    // Tier and kind can be changed at any time; a field left out stays.
+    if (hasTier) {
+      const tier = body.tier === undefined ? t.tier : normalizeTier(body.tier);
+      const kind = body.event_kind === undefined ? t.event_kind : normalizeKind(body.event_kind);
+      updated = await repo.setTier(req.params.id, tier, kind);
+      fastify.tournamentEvents.emit(`update:${req.params.id}`, { type: 'tier_changed', tier, event_kind: kind });
     }
     // The event type can be changed at any time, finished events included.
     if (hasPool) {

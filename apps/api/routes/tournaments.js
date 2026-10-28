@@ -11,6 +11,7 @@ import { requireAdmin } from '../lib/admin.js';
 import { normalizePointsKind, normalizePointsTable, normalizeSeason } from '../lib/points.js';
 import { endedSeason } from '../lib/points-seasons.js';
 import { tournamentDetail } from '../lib/tournament-detail.js';
+import { defaultTier, EVENT_KINDS, EVENT_TIERS, normalizeKind, normalizeTier } from '../lib/event-tier.js';
 import { GAME_MODES, SUPPORTED_FORMATS, VEHICLE_POOLS } from '../lib/tournament-config.js';
 import { groupBracketProblem } from '../lib/group-brackets.js';
 import { MAX_GROUP_SIZE, MIN_GROUP_SIZE, PLAYOFF_FORMATS } from '../lib/group-stage.js';
@@ -89,6 +90,8 @@ export default async function tournamentsRoutes(fastify) {
       points_season,
       points_kind,
       points_invite,
+      tier,
+      event_kind,
     } = req.body;
     const points = normalizePointsTable(points_table);
     if (points.error) throw fastify.httpErrors.badRequest(points.error);
@@ -114,6 +117,12 @@ export default async function tournamentsRoutes(fastify) {
     // always draws from the pool of the event type.
     if (vehicle_pool != null && !VEHICLE_POOLS.includes(String(vehicle_pool))) {
       throw fastify.httpErrors.badRequest(`vehicle_pool must be one of: ${VEHICLE_POOLS.join(', ')}`);
+    }
+    if (tier != null && tier !== '' && !normalizeTier(tier)) {
+      throw fastify.httpErrors.badRequest(`tier must be one of: ${EVENT_TIERS.join(', ')}`);
+    }
+    if (event_kind != null && event_kind !== '' && !normalizeKind(event_kind)) {
+      throw fastify.httpErrors.badRequest(`event_kind must be one of: ${EVENT_KINDS.join(', ')}`);
     }
     if (format === 'swiss' && !isAutoRounds(swiss_rounds) && !parseSwissRounds(swiss_rounds)) {
       throw fastify.httpErrors.badRequest(`瑞士轮轮数必须是 ${MIN_SWISS_ROUNDS}-${MAX_SWISS_ROUNDS} 之间的整数（留空为自动）`);
@@ -161,6 +170,8 @@ export default async function tournamentsRoutes(fastify) {
       points_kind: normalizePointsKind(points_kind),
       // Monthly events invite their champion unless told otherwise.
       points_invite: points_invite === undefined ? normalizePointsKind(points_kind) === 'monthly' : Boolean(points_invite),
+      // Tier / kind: as given, else from the points table (or a weekly by name).
+      ...defaultTier({ tier, kind: event_kind, pointsKind: points.table ? normalizePointsKind(points_kind) : '', name }),
     });
   });
 

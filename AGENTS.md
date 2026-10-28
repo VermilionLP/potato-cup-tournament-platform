@@ -55,6 +55,10 @@ Ban / Pick 的载具池是 `axsuck.vehicle_pools` 里的模板（迁移 027）�
 
 直播状态按「频道」分（`axsuck.live_channels`，迁移 029）：每场赛事最多 9 个频道，每个频道有自己的当前直播对局（`active_match_id`）和大屏场景 / 阶段（`overlay_*`），同一对局同时只能在一个频道直播（唯一索引，冲突返回 409）。控制台在赛事页选频道（按赛事记在浏览器里，`$lib/live-channels.js`），OBS 遮罩用 `/tournament/<id>/overlay?channel=N`，不带参数就是频道 1。`GET /tournaments/:id` 返回 `live_channels`，顶层的 `active_match_id` / `overlay_*` 是频道 1 的值；`tournaments` 表上的同名旧列不再读取。前端用 `withChannel(t, n)` 把某个频道的状态放回顶层字段，遮罩和控制台组件因此不用改。
 
+## Event tiers
+
+赛事有等级（`tournaments.tier`：S / A / B / C / D，对应 Liquipedia 的 liquipediatier 1–5）和性质（`event_kind`：season 季度赛 / monthly 月赛 / weekly 周赛 / qualifier 预选赛 / misc 其他），迁移 031 按 Liquipedia 页面回填导入的赛事，其余按积分榜类型（月赛 B、周赛 C）。规则在 `apps/api/lib/event-tier.js`，前端标签在 `$lib/tournament.js`（`EVENT_TIERS` / `EVENT_KINDS`）。管理员在赛事页顶部修改；`GET /players/statistics?tier=&kind=` 只统计该等级 / 性质的赛事，并返回按等级的冠军数（`championships_by_tier`）；预选赛按 `event_kind` 判断，不计冠军。Wiki 导出默认用赛事等级。
+
 ## Liquipedia export
 
 赛事页「导出 Wiki」由 `apps/api/lib/liquipedia/export.js` 生成，版式照 Potato Cup 页面：瑞士轮周赛（Potato_Cup_Weekly/12）、双败（Potato_Cup/2026/Aug/Asia_Pacific）、瑞士轮小组 + 双败淘汰（Potato_Cup/2026/June/Europe）、双败小组 + 双败淘汰（Potato_Cup/2026/Fall/Europe，每组晋级 2 人用 `Bracket/8-1Q-U-4L2DSL1D-1Q` 这类模板）。赛制、Bo（按比分推算）、积分（赛事积分表）、参赛者、对阵来自赛事；奖金、直通资格、解说、直播等存在 `tournaments.wiki_meta`（迁移 028，`export-meta.js` 校验），新赛事沿用上一场的解说和直播。双败 4–16 人和每组晋级 2 人的 4–8 人双败小组的模板结构存在 `lib/liquipedia/de-templates.js`（取自 Liquipedia commons 的 TemplateMatch），导出时从决赛倒推、按晋级关系把每场对到模板的 R#M# 上（轮空不占位）；没有存模板的人数按列推算（双败胜者组第 u 轮在第 2u-2 列）并给出提示。

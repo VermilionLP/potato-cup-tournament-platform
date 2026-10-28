@@ -8,7 +8,8 @@ const decided = (m) => (m.status === 'completed' || m.status === 'walkover') && 
 
 /** Qualifiers decide who reaches an event; winning one is not a title. */
 export function isQualifierEvent(t) {
-  return /qualifier|资格赛/i.test(`${t.source_title || ''} ${t.name || ''}`);
+  if (t.event_kind) return t.event_kind === 'qualifier';
+  return /qualifier|资格赛|预选赛/i.test(`${t.source_title || ''} ${t.name || ''}`);
 }
 
 /**

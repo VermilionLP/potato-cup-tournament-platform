@@ -9,6 +9,10 @@
   import {
     POOL_TAG,
     VEHICLE_POOLS,
+    EVENT_KINDS,
+    EVENT_TIERS,
+    TIER_TAG,
+    tierTagText,
     eventFormatLabel,
     gameModeLabel,
     gameModeTitle,
@@ -87,6 +91,22 @@
       toast.error(e.message);
     } finally {
       savingPool = false;
+    }
+  }
+
+  // Tier (S-D) and kind: admins can change them any time; "" = none.
+  let savingTier = $state(false);
+  async function saveTier(field, value) {
+    if (!adminOnly() || value === (tournament?.[field] || "")) return;
+    savingTier = true;
+    try {
+      const res = await API.updateTournament(tid, { [field]: value || null });
+      tournament = { ...tournament, tier: res.tier, event_kind: res.event_kind };
+      toast.success(`赛事等级已改为 ${tierTagText(res) || "未分级"}`);
+    } catch (e) {
+      toast.error(e.message);
+    } finally {
+      savingTier = false;
     }
   }
 
@@ -200,8 +220,38 @@
     </Badge>
   </div>
 
-  <!-- Event tags: mode · type · format · detail, then points. -->
+  <!-- Event tags: tier, mode · type · format · detail, then points. -->
   <div class="flex flex-wrap items-center gap-1.5 pt-1 text-xs">
+    {#if isAdmin}
+      <select
+        aria-label="赛事等级"
+        title="赛事等级"
+        value={tournament.tier || ""}
+        disabled={savingTier}
+        onchange={(e) => saveTier("tier", e.currentTarget.value)}
+        class="h-6 rounded-md border px-1.5 text-xs font-bold cursor-pointer disabled:opacity-60 {TIER_TAG[tournament.tier] || 'border-border bg-background text-foreground'}"
+      >
+        <option value="">未分级</option>
+        {#each EVENT_TIERS as tier (tier.id)}
+          <option value={tier.id}>{tier.name}</option>
+        {/each}
+      </select>
+      <select
+        aria-label="赛事性质"
+        title="赛事性质"
+        value={tournament.event_kind || ""}
+        disabled={savingTier}
+        onchange={(e) => saveTier("event_kind", e.currentTarget.value)}
+        class="h-6 rounded-md border border-border bg-background px-1.5 text-xs font-semibold text-foreground cursor-pointer disabled:opacity-60"
+      >
+        <option value="">未设置性质</option>
+        {#each EVENT_KINDS as kind (kind.id)}
+          <option value={kind.id}>{kind.name}</option>
+        {/each}
+      </select>
+    {:else if tierTagText(tournament)}
+      <span class="rounded-md border px-2 py-0.5 font-bold {TIER_TAG[tournament.tier] || 'border-border bg-muted/60 text-muted-foreground'}" title="赛事等级">{tierTagText(tournament)}</span>
+    {/if}
     <span class="rounded-md border border-border bg-muted/60 px-2 py-0.5 font-mono font-bold text-foreground/80" title={gameModeTitle(tournament.game_mode)}>{gameModeLabel(tournament.game_mode)}</span>
     {#if isAdmin}
       <select

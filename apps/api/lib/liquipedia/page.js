@@ -107,6 +107,8 @@ export function parseInfobox(wikitext, title) {
     vehicle: get('vehicle'),
     format: get('format'),
     playerNumber: Number(get('player_number')) || null,
+    liquipediatier: get('liquipediatier'),
+    tiertype: get('liquipediatiertype') || get('tiertype'),
   };
 }
 

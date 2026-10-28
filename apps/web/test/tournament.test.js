@@ -133,3 +133,15 @@ test("event summary: mode code, type, format and one detail", async () => {
   assert.equal(two.format, "双败小组 → 双败淘汰");
   assert.equal(two.detail, "每组 8 人 · 每组前 2 名晋级");
 });
+
+test("event tiers: tag text and titles per tier", async () => {
+  const { tierTagText, tierBreakdown, tierLabel, kindLabel } = await import("../src/lib/tournament.js");
+  assert.equal(tierTagText({ tier: "A", event_kind: "season" }), "A 级 · 季度赛");
+  assert.equal(tierTagText({ tier: null, event_kind: "weekly" }), "周赛");
+  assert.equal(tierTagText({ tier: "B" }), "B 级");
+  assert.equal(tierTagText({}), "");
+  assert.equal(tierLabel("X"), "");
+  assert.equal(kindLabel("qualifier"), "预选赛");
+  assert.deepEqual(tierBreakdown({ C: 2, none: 1, A: 1 }).map((t) => [t.id, t.count]), [["A", 1], ["C", 2], ["none", 1]]);
+  assert.deepEqual(tierBreakdown(undefined), []);
+});

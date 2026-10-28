@@ -15,6 +15,7 @@
 // winners bracket; that drop is found from the actual results.
 
 import { detectVehiclePool } from './vehicle-pool.js';
+import { kindOf, normalizeTier, tierFallback } from '../event-tier.js';
 import { parsePrizePoolPoints } from './points.js';
 import { isDoubleElimination } from './bracket-template.js';
 import { normalizeCountry } from './countries.js';
@@ -544,6 +545,11 @@ export function convertPage({ title, wikitext, templates = new Map(), today = ne
   // Leaderboard points from the prize pool, when the page is one event.
   const points = events.length === 1 ? parsePrizePoolPoints(wikitext) : null;
   if (points) Object.assign(events[0], { pointsTable: points.table, pointsSeason: points.season, pointsKind: points.kind });
+  // Tier and kind: the infobox's, else from the title (lib/event-tier.js).
+  for (const e of events) {
+    e.kind = kindOf({ title, tiertype: info.tiertype, pointsKind: e.pointsKind });
+    e.tier = normalizeTier(info.liquipediatier) || tierFallback({ title, kind: e.kind });
+  }
   return { title, skipped: null, events, warnings };
 }
 

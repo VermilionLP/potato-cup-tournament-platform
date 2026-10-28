@@ -5,7 +5,7 @@
   import { toast } from "svelte-sonner";
   import { API } from "$lib/api.js";
   import { userState } from "$lib/user.svelte.js";
-  import { VEHICLE_POOLS } from "$lib/tournament.js";
+  import { EVENT_TIERS, VEHICLE_POOLS } from "$lib/tournament.js";
   import { eventDate, relativeDay } from "$lib/lobby.js";
   import { Button } from "$lib/components/ui/button/index.js";
   import ActiveEventRow from "$lib/components/lobby/ActiveEventRow.svelte";
@@ -30,8 +30,20 @@
     { id: "", name: "全部", count: historyTournaments.length },
     ...VEHICLE_POOLS.map((p) => ({ ...p, count: historyTournaments.filter((t) => t.vehicle_pool === p.id).length })),
   ]);
-  let shownHistory = $derived(
+  // And by tier ("" = all, "none" = not rated); tiers with no events are hidden.
+  let historyTier = $state("");
+  let poolHistory = $derived(
     historyPool ? historyTournaments.filter((t) => t.vehicle_pool === historyPool) : historyTournaments,
+  );
+  let tierChips = $derived(
+    [
+      { id: "", name: "全部等级", count: poolHistory.length },
+      ...EVENT_TIERS.map((tier) => ({ ...tier, count: poolHistory.filter((t) => t.tier === tier.id).length })),
+      { id: "none", name: "未分级", count: poolHistory.filter((t) => !t.tier).length },
+    ].filter((chip) => chip.id === "" || chip.count > 0 || chip.id === historyTier),
+  );
+  let shownHistory = $derived(
+    historyTier ? poolHistory.filter((t) => (historyTier === "none" ? !t.tier : t.tier === historyTier)) : poolHistory,
   );
 
   onMount(() => {
@@ -193,6 +205,24 @@
             </button>
           {/each}
         </div>
+        {#if tierChips.length > 2}
+          <div class="flex flex-wrap items-center gap-1.5 -mt-1 mb-3">
+            {#each tierChips as chip (chip.id)}
+              <button
+                type="button"
+                onclick={() => (historyTier = chip.id)}
+                aria-pressed={historyTier === chip.id}
+                class="inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px] font-semibold transition-colors cursor-pointer
+                  {historyTier === chip.id
+                  ? 'border-primary bg-primary/15 text-primary'
+                  : 'border-border text-muted-foreground hover:border-foreground/40 hover:text-foreground'}"
+              >
+                {chip.name}
+                <span class="text-[10px] font-normal opacity-75 tabular-nums">{chip.count}</span>
+              </button>
+            {/each}
+          </div>
+        {/if}
         <div class="divide-y divide-border border border-border bg-card/15 rounded-2xl overflow-hidden shadow-sm">
           {#each shownHistory as t (t.id)}
             <HistoryEventRow {t} {isAdmin} ondelete={deleteTournament} onexport={exportTournament} />

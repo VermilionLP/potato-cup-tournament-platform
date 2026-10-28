@@ -114,7 +114,14 @@ export const API = {
 
   // Players / Registration
   listPlayers: () => request('/players'),
-  getPlayerStatistics: () => request('/players/statistics'),
+  // tier: S-D / "none"; kind: season / monthly / weekly / qualifier / misc / "none".
+  getPlayerStatistics: ({ tier = '', kind = '' } = {}) => {
+    const params = new URLSearchParams();
+    if (tier) params.set('tier', tier);
+    if (kind) params.set('kind', kind);
+    const qs = params.toString();
+    return request(`/players/statistics${qs ? `?${qs}` : ''}`);
+  },
   getPlayTimes: () => request('/stats/play-times'),
   getPushPublicKey: () => request('/push/public-key'),
   subscribePush: (subscription) =>

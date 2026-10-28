@@ -44,6 +44,55 @@ export const POOL_TAG = {
   proleague: "border-violet-500/30 bg-violet-500/10 text-violet-700 dark:text-violet-300",
 };
 
+// Event tiers (S-D, as on Liquipedia) and kinds; mirrors
+// apps/api/lib/event-tier.js.
+export const EVENT_TIERS = [
+  { id: "S", name: "S 级" },
+  { id: "A", name: "A 级" },
+  { id: "B", name: "B 级" },
+  { id: "C", name: "C 级" },
+  { id: "D", name: "D 级" },
+];
+export const EVENT_KINDS = [
+  { id: "season", name: "季度赛" },
+  { id: "monthly", name: "月赛" },
+  { id: "weekly", name: "周赛" },
+  { id: "qualifier", name: "预选赛" },
+  { id: "misc", name: "其他" },
+];
+export const TIER_TAG = {
+  S: "border-fuchsia-500/40 bg-fuchsia-500/10 text-fuchsia-700 dark:text-fuchsia-300",
+  A: "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300",
+  B: "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+  C: "border-slate-400/40 bg-slate-400/10 text-slate-600 dark:text-slate-300",
+  D: "border-stone-400/40 bg-stone-400/10 text-stone-600 dark:text-stone-300",
+};
+
+/** "A 级" / ''. */
+export function tierLabel(tier) {
+  return EVENT_TIERS.find((t) => t.id === tier)?.name || "";
+}
+
+/** "周赛" / ''. */
+export function kindLabel(kind) {
+  return EVENT_KINDS.find((k) => k.id === kind)?.name || "";
+}
+
+/**
+ * Titles per tier for display: [{ id, name, count }] in tier order, "none"
+ * (未分级) last; tiers without titles left out.
+ */
+export function tierBreakdown(byTier = {}) {
+  return [...EVENT_TIERS, { id: "none", name: "未分级" }]
+    .map((t) => ({ ...t, count: byTier?.[t.id] || 0 }))
+    .filter((t) => t.count > 0);
+}
+
+/** Tag text of an event's tier and kind: "A 级 · 季度赛", "周赛"; '' for none. */
+export function tierTagText(t) {
+  return [tierLabel(t?.tier), kindLabel(t?.event_kind)].filter(Boolean).join(" · ");
+}
+
 /** "螺旋桨" / "早期喷气" / "顶级喷气" / "Pro League BVR"; '' for an unknown pool. */
 export function vehiclePoolLabel(value) {
   return VEHICLE_POOLS.find((pool) => pool.id === value)?.name || "";

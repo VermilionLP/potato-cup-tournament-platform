@@ -2,7 +2,7 @@
   import { onMount } from "svelte";
   import { toast } from "svelte-sonner";
   import { API } from "$lib/api.js";
-  import { GAME_MODES, VEHICLE_POOLS } from "$lib/tournament.js";
+  import { EVENT_KINDS, EVENT_TIERS, GAME_MODES, TIER_TAG, VEHICLE_POOLS, tierBreakdown } from "$lib/tournament.js";
   import Flag from "$lib/components/Flag.svelte";
   import { Badge } from "$lib/components/ui/badge/index.js";
   import SearchIcon from "@lucide/svelte/icons/search";
@@ -24,6 +24,18 @@
   // players with no rated game at all (未定级), unless asked for.
   let showInactive = $state(false);
   let showUnrated = $state(false);
+  // Only events of one tier / kind ("" = all, "none" = not set); the
+  // server recomputes everything for them.
+  let statsTier = $state("");
+  let statsKind = $state("");
+  const tierChips = [{ id: "", name: "全部等级" }, ...EVENT_TIERS, { id: "none", name: "未分级" }];
+  const kindChips = [{ id: "", name: "全部性质" }, ...EVENT_KINDS];
+  function setScope(tier, kind) {
+    if (tier === statsTier && kind === statsKind) return;
+    statsTier = tier;
+    statsKind = kind;
+    loadStats();
+  }
 
   // "第 3 名" / "第 5-8 名"; "" without a placing.
   const placeText = (p) => (!p ? "" : p.from === p.to ? `第 ${p.from} 名` : `第 ${p.from}-${p.to} 名`);
@@ -76,15 +88,21 @@
 
   async function loadStats() {
     statsLoading = true;
+    const keep = selectedStatPlayer?.id;
     try {
-      statsData = await API.getPlayerStatistics();
-      if (statsData?.players?.length > 0) {
+      statsData = await API.getPlayerStatistics({ tier: statsTier, kind: statsKind });
+      const kept = keep && statsData?.players?.find((p) => p.id === keep);
+      if (kept) {
+        selectedStatPlayer = kept;
+      } else if (statsData?.players?.length > 0) {
         const sorted = [...statsData.players].sort((a, b) => {
           if (a.matches_played < 2 && b.matches_played >= 2) return 1;
           if (b.matches_played < 2 && a.matches_played >= 2) return -1;
           return b.match_win_rate - a.match_win_rate;
         });
         selectedStatPlayer = sorted[0];
+      } else {
+        selectedStatPlayer = null;
       }
     } catch (e) {
       toast.error("加载统计数据失败: " + e.message);
@@ -145,6 +163,28 @@
         分析赛事选手表现，挖掘趣味数据与胜率统计
       </p>
     </div>
+  </div>
+
+  <!-- Event tier / kind filter -->
+  <div class="space-y-1.5">
+    {#each [{ chips: tierChips, value: statsTier, set: (id) => setScope(id, statsKind) }, { chips: kindChips, value: statsKind, set: (id) => setScope(statsTier, id) }] as row, r (r)}
+      <div class="flex flex-wrap items-center gap-1.5">
+        {#each row.chips as chip (chip.id)}
+          <button
+            type="button"
+            onclick={() => row.set(chip.id)}
+            aria-pressed={row.value === chip.id}
+            disabled={statsLoading}
+            class="rounded-full border px-3 py-1 text-xs font-semibold transition-colors cursor-pointer disabled:opacity-60
+              {row.value === chip.id
+              ? 'border-primary bg-primary text-primary-foreground'
+              : 'border-border text-muted-foreground hover:border-foreground/40 hover:text-foreground'}"
+          >
+            {chip.name}
+          </button>
+        {/each}
+      </div>
+    {/each}
   </div>
 
   {#if statsLoading}
@@ -343,7 +383,7 @@
                       </td>
                       <td class="py-2 px-2 text-center whitespace-nowrap">
                         {#if p.championships > 0}
-                          <span class="inline-flex items-center gap-0.5 font-bold text-amber-500" title="{p.championships} 次冠军">
+                          <span class="inline-flex items-center gap-0.5 font-bold text-amber-500" title={tierBreakdown(p.championships_by_tier).map((t) => `${t.name} ×${t.count}`).join(" · ") || `${p.championships} 次冠军`}>
                             <TrophyIcon class="w-3 h-3" />×{p.championships}
                           </span>
                         {:else if p.best_place}
@@ -562,6 +602,19 @@
                 </div>
               </div>
 
+              <!-- Titles by event tier -->
+              {#if selectedStatPlayer.championships > 0}
+                <div class="flex flex-wrap items-center gap-1.5 border-t border-border/50 pt-4 text-xs">
+                  <span class="inline-flex items-center gap-1 font-extrabold text-foreground">
+                    <TrophyIcon class="w-3.5 h-3.5 text-amber-500" />
+                    冠军 ×{selectedStatPlayer.championships}
+                  </span>
+                  {#each tierBreakdown(selectedStatPlayer.championships_by_tier) as t (t.id)}
+                    <span class="rounded-md border px-1.5 py-0.5 text-[11px] font-bold {TIER_TAG[t.id] || 'border-border bg-muted/60 text-muted-foreground'}">{t.name} ×{t.count}</span>
+                  {/each}
+                </div>
+              {/if}
+
               <!-- Participated Tournaments -->
               {#if selectedStatPlayer.tournaments?.length > 0}
                 <div class="border-t border-border/50 pt-4 space-y-2">
@@ -607,7 +660,14 @@
                     <Flag code={p.flag} size={18} />
                     <span class="font-bold truncate max-w-28">{p.display_name}</span>
                   </div>
-                  <span class="font-mono font-black text-amber-500">{p.championships} <span class="text-[9px] font-normal text-muted-foreground">次冠军</span></span>
+                  <div class="flex flex-col items-end gap-0.5">
+                    <span class="font-mono font-black text-amber-500">{p.championships} <span class="text-[9px] font-normal text-muted-foreground">次冠军</span></span>
+                    <span class="flex flex-wrap justify-end gap-0.5">
+                      {#each tierBreakdown(p.championships_by_tier) as t (t.id)}
+                        <span class="rounded border px-1 text-[9px] font-bold leading-tight {TIER_TAG[t.id] || 'border-border text-muted-foreground'}">{t.id === "none" ? "未分级" : t.id} ×{t.count}</span>
+                      {/each}
+                    </span>
+                  </div>
                 </div>
               {/each}
               {#if !statsData.rankings.by_championships?.length}

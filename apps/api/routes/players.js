@@ -3,6 +3,7 @@ import { TournamentRepo } from '../repositories/tournament-repo.js';
 import { LadderRepo } from '../repositories/ladder-repo.js';
 import { GAME_MODES, VEHICLE_POOLS } from '../lib/tournament-config.js';
 import { isQualifierEvent, tournamentChampion } from '../lib/champions.js';
+import { statsScope } from '../lib/event-tier.js';
 import { betterPlace, eventPlacements } from '../lib/placements.js';
 import { ACTIVE_DAYS } from '../lib/ladder.js';
 import { getRequesterId, isAdminRequest, requireAdmin, requireSelfOrAdmin } from '../lib/admin.js';
@@ -25,13 +26,20 @@ export default async function playersRoutes(fastify) {
     top_slots: []
   }));
 
-  fastify.get('/players/statistics', async () => {
+  // ?tier=S..D|none and ?kind=season|monthly|weekly|qualifier|misc|none
+  // limit everything to the events of that tier / kind.
+  fastify.get('/players/statistics', async (req) => {
+    const scope = statsScope(req.query);
     const players = await repo.list();
-    const registrations = (await fastify.db.query('SELECT * FROM axsuck.tournament_players')).rows;
-    const matches = (await fastify.db.query("SELECT * FROM axsuck.matches WHERE status IN ('completed', 'walkover')")).rows;
-    const tournaments = (await fastify.db.query(
-      'SELECT id, name, game_mode, vehicle_pool, status, format, playoff_format, swiss_rounds, swiss_group_size, advance_per_group, source_title FROM axsuck.tournaments'
+    const allTournaments = (await fastify.db.query(
+      'SELECT id, name, game_mode, vehicle_pool, status, format, playoff_format, swiss_rounds, swiss_group_size, advance_per_group, source_title, tier, event_kind FROM axsuck.tournaments'
     )).rows;
+    const tournaments = allTournaments.filter(scope);
+    const inScope = new Set(tournaments.map((t) => t.id));
+    const registrations = (await fastify.db.query('SELECT * FROM axsuck.tournament_players')).rows
+      .filter((r) => inScope.has(r.tournament_id));
+    const matches = (await fastify.db.query("SELECT * FROM axsuck.matches WHERE status IN ('completed', 'walkover')")).rows
+      .filter((m) => inScope.has(m.tournament_id));
     const tournamentMap = {};
     const modeOf = {};
     const poolOf = {};
@@ -64,6 +72,7 @@ export default async function playersRoutes(fastify) {
         modes: emptyModes(),
         pools: emptyRecords(VEHICLE_POOLS),
         championships: 0,
+        championships_by_tier: {},
         opponents: {},
         tournament_ids: []
       };
@@ -180,7 +189,11 @@ export default async function playersRoutes(fastify) {
       const qualifier = isQualifierEvent(t);
       if (!qualifier) {
         const champion = tournamentChampion(t, evMatches, evPlayers);
-        if (champion && stats[champion]) stats[champion].championships += 1;
+        if (champion && stats[champion]) {
+          stats[champion].championships += 1;
+          const tier = t.tier || 'none';
+          stats[champion].championships_by_tier[tier] = (stats[champion].championships_by_tier[tier] || 0) + 1;
+        }
       }
       for (const [playerId, place] of eventPlacements(t, evMatches, evPlayers)) {
         placeOf.set(`${t.id}|${playerId}`, place);
@@ -247,6 +260,7 @@ export default async function playersRoutes(fastify) {
         modes: s.modes,
         pools: s.pools,
         championships: s.championships,
+        championships_by_tier: s.championships_by_tier,
         nemesis: nemesis ? { id: nemesis, display_name: nemesisDisp, count: maxLostMatches } : null,
         favorite: favorite ? { id: favorite, display_name: favoriteDisp, count: maxWonMatches } : null,
         best_place: bestPlace[s.id] || null,
@@ -269,29 +283,35 @@ export default async function playersRoutes(fastify) {
       };
     });
 
-    const totalTournaments = (await fastify.db.query('SELECT COUNT(*)::int as count FROM axsuck.tournaments')).rows[0]?.count || 0;
-    const totalMatches = (await fastify.db.query("SELECT COUNT(*)::int as count FROM axsuck.matches WHERE status != 'pending'")).rows[0]?.count || 0;
-    const eligibleForRate = playerStats.filter(p => p.matches_played >= 5);
+    const totalTournaments = tournaments.length;
+    const totalMatches = (await fastify.db.query("SELECT tournament_id FROM axsuck.matches WHERE status != 'pending'")).rows
+      .filter((m) => inScope.has(m.tournament_id)).length;
+    // Filtered to a tier / kind: only the players who took part.
+    const scoped = scope.tier || scope.kind;
+    const shown = scoped ? playerStats.filter((p) => p.tournaments_played > 0) : playerStats;
+
+    const eligibleForRate = shown.filter(p => p.matches_played >= 5);
 
     return {
-      players: playerStats,
+      players: shown,
+      scope: { tier: scope.tier, kind: scope.kind },
       global: {
-        total_players: players.length,
+        total_players: shown.length,
         total_tournaments: totalTournaments,
         total_matches: totalMatches
       },
       rankings: {
-        by_championships: [...playerStats]
+        by_championships: [...shown]
           .filter(p => p.championships > 0)
           .sort((a, b) => b.championships - a.championships || b.match_win_rate - a.match_win_rate)
           .slice(0, 5),
         by_win_rate: [...eligibleForRate]
           .sort((a, b) => b.match_win_rate - a.match_win_rate)
           .slice(0, 5),
-        by_played: [...playerStats]
+        by_played: [...shown]
           .sort((a, b) => b.matches_played - a.matches_played)
           .slice(0, 5),
-        by_walkover: [...playerStats]
+        by_walkover: [...shown]
           .filter(p => p.walkover_losses > 0)
           .sort((a, b) => b.walkover_losses - a.walkover_losses)
           .slice(0, 5)

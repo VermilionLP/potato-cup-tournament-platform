@@ -12,6 +12,7 @@ import { groupLabel } from '../group-stage.js';
 import { normalizePlace } from './export-meta.js';
 import { parseBracketTemplate } from './bracket-template.js';
 import { DOUBLE_ELIM_TEMPLATE_MATCHES } from './de-templates.js';
+import { liquipediaTierOf } from '../event-tier.js';
 
 const decided = (m) => m.status === 'completed' || m.status === 'walkover';
 const isBye = (m) => decided(m) && (!m.player1_id || !m.player2_id);
@@ -315,7 +316,8 @@ export function buildWikiPage({ t, players = [], matches = [], groupStage = null
   w(`|player_number=${players.length}`);
   if (meta.endDate && meta.endDate !== day) w(`|sdate=${day}\n|edate=${meta.endDate}`);
   else w(`|date=${day}`);
-  w(`|liquipediatier=${meta.tier || (weekly ? '4' : '3')} |${weekly ? 'liquipediatiertype' : 'tiertype'}=${meta.tiertype || (weekly ? 'Weekly' : '')}`);
+  const kindType = { weekly: 'Weekly', qualifier: 'Qualifier' }[t.event_kind] ?? (weekly && !t.event_kind ? 'Weekly' : '');
+  w(`|liquipediatier=${meta.tier || liquipediaTierOf(t.tier) || (weekly ? '4' : '3')} |${weekly ? 'liquipediatiertype' : 'tiertype'}=${meta.tiertype || kindType}`);
   w(`|web=${meta.web}`);
   w(`|bracket=${meta.bracketUrl}`);
   if (meta.previous) w(`|previous=${meta.previous}`);
