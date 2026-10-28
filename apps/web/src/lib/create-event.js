@@ -12,7 +12,7 @@ export function newEventForm(season = "") {
     capacity: 128,
     scheduledTime: "",
     gameMode: "rb",
-    // Event type (螺旋桨 / 顶级喷气 / 早期喷气 / Pro League BVR); Ban / Pick picks its
+    // Event type (螺旋桨 / 早期喷气 / 顶级喷气 / Pro League BVR); Ban / Pick picks its
     // vehicle pool template from it.
     eventPool: "proleague",
     // "two_stage" = group stage + playoff; the group stage is played as

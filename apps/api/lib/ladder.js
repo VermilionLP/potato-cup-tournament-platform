@@ -313,7 +313,7 @@ export function randomizeSeedOrder(
 
 /**
  * A ladder division: game mode (ab / rb / sb) and/or event type (prop /
- * top-jet / legacy-jet / proleague). Empty = all. Each division is rated on its own
+ * legacy-jet / top-jet / proleague). Empty = all. Each division is rated on its own
  * games from scratch, e.g. { mode: 'ab', pool: 'prop' } = AB 螺旋桨.
  */
 export function filterGamesByDivision(games = [], { mode = '', pool = '' } = {}) {

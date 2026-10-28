@@ -12,8 +12,8 @@ export const SUPPORTED_FORMATS = ['single_elim', 'double_elim', 'swiss'];
 
 export const DEFAULT_VEHICLE_POOL = 'proleague';
 // Event types (vehicle pools) events are grouped by in the ladder and the
-// statistics: 螺旋桨 / 顶级喷气 / 早期喷气 / Pro League BVR.
-export const VEHICLE_POOLS = ['prop', 'top-jet', 'legacy-jet', 'proleague'];
+// statistics: 螺旋桨 / 早期喷气 / 顶级喷气 / Pro League BVR.
+export const VEHICLE_POOLS = ['prop', 'legacy-jet', 'top-jet', 'proleague'];
 
 // Jet events before Potato Cup Weekly #23 (2026-05-30, Beijing time) are
 // Top Jet; from #23 on, Legacy Jet (migration 030, the Liquipedia import).

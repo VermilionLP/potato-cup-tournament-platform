@@ -79,7 +79,7 @@ test('two-stage swiss uses the group-stage start rules', () => {
 
 test('Top Jet: its own type, counted on the Legacy Jet points board', async () => {
   const { VEHICLE_POOLS, normalizeEventPool, pointsBoardOf } = await import('../lib/tournament-config.js');
-  assert.deepEqual(VEHICLE_POOLS, ['prop', 'top-jet', 'legacy-jet', 'proleague']);
+  assert.deepEqual(VEHICLE_POOLS, ['prop', 'legacy-jet', 'top-jet', 'proleague']);
   assert.equal(normalizeEventPool('top-jet'), 'top-jet');
   assert.equal(pointsBoardOf('top-jet'), 'legacy-jet');
   assert.equal(pointsBoardOf('legacy-jet'), 'legacy-jet');

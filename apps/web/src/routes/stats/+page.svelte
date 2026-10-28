@@ -108,7 +108,7 @@
   };
   const NO_MODE = { badge: "bg-zinc-500/10 text-zinc-400 border-zinc-500/25", dot: "bg-zinc-500", bar: "bg-zinc-500/80" };
   const modeColors = (m) => MODE_COLORS[m] ?? NO_MODE;
-  // Vehicle pools: 螺旋桨 / 顶级喷气 / 早期喷气 / Pro League BVR.
+  // Vehicle pools: 螺旋桨 / 早期喷气 / 顶级喷气 / Pro League BVR.
   const POOL_COLORS = {
     prop: { dot: "bg-lime-500", bar: "bg-lime-500/80" },
     "top-jet": { dot: "bg-rose-500", bar: "bg-rose-500/80" },
