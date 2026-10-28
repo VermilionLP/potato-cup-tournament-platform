@@ -27,6 +27,7 @@ import pointsRoutes from './routes/points.js';
 import { startPushScheduler } from './lib/push-scheduler.js';
 import { createEsLogger, registerRequestLogging } from './lib/es-logger.js';
 import { registerRateLimit } from './lib/rate-limit.js';
+import { registerLadderCacheInvalidation } from './lib/ladder-cache.js';
 import { staticCacheHeaders } from './lib/static-cache.js';
 import fastifySse from '@fastify/sse';
 
@@ -52,6 +53,7 @@ registerRequestLogging(fastify, esLogger);
 await fastify.register(cors, { origin: true, credentials: true });
 await fastify.register(sensible);
 registerRateLimit(fastify);
+registerLadderCacheInvalidation(fastify);
 await fastify.register(fastifySse, { heartbeatInterval: 20000 });
 await fastify.register(swagger, {
   openapi: { info: { title: 'Potato Cup Tournament API', version: pkg.version } }

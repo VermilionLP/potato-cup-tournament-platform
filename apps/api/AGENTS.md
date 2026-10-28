@@ -32,6 +32,7 @@ Route (routes/*.js)
 
 - Routes live in `routes/`. Events are split by area: `tournaments.js` (list, detail, SSE, calendars, create, delete), `tournament-settings.js` (PATCH, status, Swiss rounds, playoffs), `tournament-bracket.js` (seeds, bracket, live match, overlay state) and `tournament-import.js`; keep route handlers thin and put pure logic in `lib/` (e.g. `lib/tournament-detail.js` builds `GET /tournaments/:id`).
 - Repositories live in `repositories/`.
+- Ladder ratings are cached in memory (`lib/ladder-cache.js`, per division, 5 min TTL). Any successful non-GET request drops the cache (hook in `app.js`); code that changes matches, players or events outside a request (scripts, timers) must call `invalidateLadder(db)` or wait for the TTL. Don't mutate what `getRatings` returns from the cache (`history`, `games`).
 - Migrations live in `migrations/` (`{NNN}.do.description.sql` + `{NNN}.undo.description.sql`).
 - Utility and migration scripts live in `scripts/`.
 - The API is served under the `/api` prefix; Swagger UI is at `/docs`.

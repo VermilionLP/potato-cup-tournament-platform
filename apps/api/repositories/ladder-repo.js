@@ -11,6 +11,7 @@ import {
 } from '../lib/ladder.js';
 import { getPlayerDisplayName } from './player-repo.js';
 import { TournamentRepo } from './tournament-repo.js';
+import { cached } from '../lib/ladder-cache.js';
 
 const YEAR_MS = 365 * 86400000;
 
@@ -69,18 +70,37 @@ export function LadderRepo(db) {
     return new Map(res.rows.map((p) => [p.id, p]));
   }
 
+  // The games and player rows, loaded once per cache lifetime.
+  function baseData() {
+    return cached(db, 'base', async () => {
+      const [games, playerRows] = await Promise.all([loadGames(), loadPlayers()]);
+      return { games, playerRows };
+    });
+  }
+
+  // One division's ratings (window / mode / pool), computed once per cache
+  // lifetime. Callers get fresh objects off these and must not change them.
+  function rated({ window, mode, pool }) {
+    const key = JSON.stringify(['rated', window, mode, pool]);
+    return cached(db, key, async () => {
+      const { games: allGames, playerRows } = await baseData();
+      const since = window === 'year' ? Date.now() - YEAR_MS : null;
+      const games = filterGamesByDivision(
+        since == null
+          ? allGames
+          : allGames.filter((g) => g.played_at && new Date(g.played_at).getTime() >= since),
+        { mode, pool },
+      );
+      const { players, history } = computeLadder(games);
+      return { players, history, games, playerRows };
+    });
+  }
+
   // window 'year' rates only the games of the last 365 days, from scratch;
   // mode / pool rate only one division's games (e.g. AB 螺旋桨), from scratch.
   async function getRatings({ activeDays = ACTIVE_DAYS, includeInactive = false, window = 'all', mode = '', pool = '' } = {}) {
-    const [allGames, playerRows] = await Promise.all([loadGames(), loadPlayers()]);
-    const since = window === 'year' ? Date.now() - YEAR_MS : null;
-    const games = filterGamesByDivision(
-      since == null
-        ? allGames
-        : allGames.filter((g) => g.played_at && new Date(g.played_at).getTime() >= since),
-      { mode, pool },
-    );
-    const { players: allPlayers, history } = computeLadder(games);
+    const since = window === 'year' ? 'year' : 'all';
+    const { players: allPlayers, history, games, playerRows } = await rated({ window: since, mode: mode || '', pool: pool || '' });
     const byId = new Map(
       allPlayers.map((p) => {
         const meta = playerRows.get(p.id) || {};
@@ -115,7 +135,7 @@ export function LadderRepo(db) {
       games,
       activeDays,
       includeInactive,
-      window: since == null ? 'all' : 'year',
+      window: since,
       mode,
       pool,
       cutoff,
