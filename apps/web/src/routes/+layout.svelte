@@ -1,184 +1,32 @@
 <script>
+  // Site shell: header (navigation, reminders, language, colour mode, admin
+  // and profile buttons) around every page except the OBS overlay. The
+  // dialogs and header parts live in $lib/components/layout.
   import "../app.css";
   import { onMount } from "svelte";
   import { Toaster, toast } from "svelte-sonner";
+  import { page } from "$app/state";
+  import { ModeWatcher, toggleMode } from "mode-watcher";
   import { userState } from "$lib/user.svelte.js";
   import { API } from "$lib/api.js";
-  import { isRecentlySeen } from "$lib/players.js";
   import { i18n, initLocale, toggleLocale } from "$lib/i18n/locale.svelte.js";
-  import { buildContact, contactIsEmpty, parseContact, splitContactInput, contactInputProblem, requiredContactProblem } from "$lib/contact.js";
-  import { page } from "$app/stores";
-  import { ModeWatcher, toggleMode } from "mode-watcher";
-  import * as Dialog from "$lib/components/ui/dialog/index.js";
-  import { Button } from "$lib/components/ui/button/index.js";
-  import { Input } from "$lib/components/ui/input/index.js";
-  import { Badge } from "$lib/components/ui/badge/index.js";
-  import Flag from "$lib/components/Flag.svelte";
-  import UserRoundIcon from "@lucide/svelte/icons/user-round";
-  import TrophyIcon from "@lucide/svelte/icons/trophy";
-  import UsersIcon from "@lucide/svelte/icons/users";
+  import { contactIsEmpty, parseContact } from "$lib/contact.js";
+  import { ensurePlayerKey, notifyKeyConflict } from "$lib/player-session.js";
+  import SiteNav from "$lib/components/layout/SiteNav.svelte";
+  import PushToggle from "$lib/components/layout/PushToggle.svelte";
+  import AdminDialog from "$lib/components/layout/AdminDialog.svelte";
+  import ProfileDialog from "$lib/components/layout/ProfileDialog.svelte";
   import SunIcon from "@lucide/svelte/icons/sun";
   import MoonIcon from "@lucide/svelte/icons/moon";
-  import TrendingUpIcon from "@lucide/svelte/icons/trending-up";
-  import SwordsIcon from "@lucide/svelte/icons/swords";
-  import PlaneIcon from "@lucide/svelte/icons/plane";
-  import AwardIcon from "@lucide/svelte/icons/award";
-  import BellIcon from "@lucide/svelte/icons/bell";
-  import BellOffIcon from "@lucide/svelte/icons/bell-off";
   import ShieldCheckIcon from "@lucide/svelte/icons/shield-check";
-  import KeyRoundIcon from "@lucide/svelte/icons/key-round";
-  import { copyText } from "$lib/clipboard.js";
 
   let { children } = $props();
 
-  let openIdDialog = $state(false);
-  let keyImport = $state("");
-  let keyBusy = $state(false);
-  let showKey = $state(false);
-  let idInput = $state("");
-  let existingPlayers = $state([]);
-  let showInactiveExisting = $state(false);
-  let activeExistingPlayers = $derived(
-    existingPlayers.filter((p) => isRecentlySeen(p.last_seen_at)),
-  );
-  let inactiveExistingPlayers = $derived(
-    existingPlayers.filter((p) => !isRecentlySeen(p.last_seen_at)),
-  );
-  let contactInput = $state("");
-  let contactError = $state("");
-  let verifying = $state(false);
-  let pushEnabled = $state(false);
-  let pushBusy = $state(false);
-  let openAdminDialog = $state(false);
-  let adminTokenInput = $state("");
-  let adminBusy = $state(false);
+  let profileDialog = $state(null);
+  let adminOpen = $state(false);
+  const openProfileDialog = () => profileDialog?.openDialog();
 
-  function urlBase64ToUint8Array(base64String) {
-    const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
-    const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
-    const raw = atob(base64);
-    const output = new Uint8Array(raw.length);
-    for (let i = 0; i < raw.length; i += 1) output[i] = raw.charCodeAt(i);
-    return output;
-  }
-
-  async function refreshPushState() {
-    if (
-      typeof window === "undefined" ||
-      !("serviceWorker" in navigator) ||
-      !("PushManager" in window) ||
-      !("Notification" in window) ||
-      Notification.permission !== "granted"
-    ) {
-      pushEnabled = false;
-      return;
-    }
-    try {
-      const registration = await navigator.serviceWorker.ready;
-      const subscription = await registration.pushManager.getSubscription();
-      pushEnabled = !!subscription;
-      // Make sure the backend still has this subscription after a DB reset.
-      if (subscription) {
-        await API.subscribePush(subscription.toJSON()).catch(() => {});
-      }
-    } catch (e) {
-      pushEnabled = false;
-    }
-  }
-
-  async function togglePush() {
-    if (pushBusy) return;
-    if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) {
-      toast.error("当前浏览器不支持比赛提醒");
-      return;
-    }
-    pushBusy = true;
-    try {
-      if (pushEnabled) {
-        const registration = await navigator.serviceWorker.ready;
-        const subscription = await registration.pushManager.getSubscription();
-        if (subscription) {
-          await API.unsubscribePush(subscription.endpoint).catch(() => {});
-          await subscription.unsubscribe();
-        }
-        pushEnabled = false;
-        toast.info("已关闭比赛提醒");
-        return;
-      }
-
-      const permission = await Notification.requestPermission();
-      if (permission !== "granted") {
-        toast.error("通知权限被拒绝，请在浏览器设置里允许通知");
-        return;
-      }
-      const registration = await navigator.serviceWorker.ready;
-      const { publicKey } = await API.getPushPublicKey();
-      let subscription = await registration.pushManager.getSubscription();
-      if (!subscription) {
-        subscription = await registration.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(publicKey),
-        });
-      }
-      await API.subscribePush(subscription.toJSON());
-      pushEnabled = true;
-      toast.success("比赛提醒已开启，开赛前 1 小时会通知你");
-    } catch (e) {
-      toast.error("开启比赛提醒失败: " + e.message);
-    } finally {
-      pushBusy = false;
-    }
-  }
-
-  // Admin token handling
-  function handleOpenAdminDialog() {
-    adminTokenInput = "";
-    openAdminDialog = true;
-  }
-
-  async function handleAdminLogin() {
-    const token = adminTokenInput.trim();
-    if (!token) {
-      toast.error("请输入管理员令牌");
-      return;
-    }
-    adminBusy = true;
-    try {
-      userState.setAdminToken(token);
-      await API.verifyAdmin();
-      toast.success("管理员登录成功");
-      openAdminDialog = false;
-      adminTokenInput = "";
-    } catch (err) {
-      userState.setAdminToken("");
-      if (err.status === 401) {
-        toast.error("管理员登录失败: 令牌不正确");
-      } else if (err.status === 503) {
-        toast.error("管理员登录失败: 服务器未配置 ADMIN_TOKEN");
-      } else {
-        toast.error("管理员登录失败: " + err.message);
-      }
-    } finally {
-      adminBusy = false;
-    }
-  }
-
-  function handleAdminLogout() {
-    userState.setAdminToken("");
-    adminTokenInput = "";
-    openAdminDialog = false;
-    toast.success("已退出管理员");
-  }
-
-  // Profile fields state
-  let editFlag = $state("cn");
-  let editTeam = $state("");
-  let editLink = $state("");
-  let editContactBase = $state({}); // untouched battle_tags keys kept across saves
-  let editQQ = $state("");
-  let editDiscord = $state("");
-
-  // Avatar gradient derived from player ID
+  // Avatar gradient derived from the player ID.
   const avatarColors = [
     "from-amber-500 to-orange-600",
     "from-purple-500 to-indigo-600",
@@ -187,61 +35,26 @@
     "from-rose-500 to-pink-600",
     "from-violet-500 to-fuchsia-600",
   ];
-
   let avatarGradient = $derived.by(() => {
     if (!userState.id) return avatarColors[0];
     let sum = 0;
-    for (let i = 0; i < userState.id.length; i++) {
-      sum += userState.id.charCodeAt(i);
-    }
+    for (let i = 0; i < userState.id.length; i++) sum += userState.id.charCodeAt(i);
     return avatarColors[sum % avatarColors.length];
   });
 
-  // Device key (apps/api/lib/player-key.js): the first device that uses an
-  // ID binds a key to it; other devices need that key to act for the ID.
-  async function ensurePlayerKey(id) {
-    if (!id || userState.keys[id]) return;
+  // Signed-in players without a contact are asked to add one.
+  async function checkProfileCompleteness(playerId) {
     try {
-      const res = await API.claimPlayerKey(id);
-      if (res.key) userState.setKey(id, res.key);
-    } catch (e) {
-      if (e.status === 409) {
-        userState.keyConflict = true;
-        notifyKeyConflict();
+      const player = await API.getPlayer(playerId);
+      if (player && contactIsEmpty(parseContact(player.battle_tags))) {
+        toast.warning("还没有填写 QQ / Discord 联系方式，报名和投票前需要先填写。", {
+          action: { label: "立即完善", onClick: openProfileDialog },
+          duration: 10000,
+        });
       }
-      // 404: the player has no record yet; bound on the next visit.
-    }
-  }
-
-  function notifyKeyConflict() {
-    toast.warning("这个选手 ID 已绑定其他设备，这台设备暂时不能报名、投票或修改资料。", {
-      id: "player-key",
-      description: "在已绑定的设备上打开「个人资料」复制设备密钥，再到这里导入。",
-      action: { label: "导入密钥", onClick: () => handleOpenDialog() },
-      duration: 12000,
-    });
-  }
-
-  async function importPlayerKey() {
-    const key = keyImport.trim();
-    if (!key || !userState.id) return;
-    keyBusy = true;
-    try {
-      await API.claimPlayerKey(userState.id, key);
-      userState.setKey(userState.id, key);
-      keyImport = "";
-      toast.success("设备密钥已导入，这台设备可以正常使用了");
     } catch (e) {
-      toast.error(e.status === 409 ? "密钥不正确" : "导入失败: " + e.message);
-    } finally {
-      keyBusy = false;
+      console.error("检查个人资料完整性失败:", e);
     }
-  }
-
-  async function copyPlayerKey() {
-    const ok = await copyText(userState.key);
-    if (ok) toast.success("设备密钥已复制，请妥善保管，不要发给别人");
-    else toast.error("复制失败，请手动选中后复制");
   }
 
   onMount(() => {
@@ -249,235 +62,19 @@
     if (userState.id) {
       const id = userState.id;
       API.touchPlayer(id)
-        .catch((e) => {
-          console.warn("touch player failed:", e);
-        })
+        .catch((e) => console.warn("touch player failed:", e))
         .finally(() => ensurePlayerKey(id));
-      checkProfileCompleteness(userState.id);
+      checkProfileCompleteness(id);
     }
-    const onKeyRequired = () => {
-      userState.keyConflict = true;
-      notifyKeyConflict();
-    };
-    window.addEventListener("player-key-required", onKeyRequired);
+    window.addEventListener("player-key-required", notifyKeyConflict);
     if (userState.adminToken) {
       API.verifyAdmin().catch(() => userState.setAdminToken(""));
     }
-    if (typeof navigator !== "undefined" && "serviceWorker" in navigator) {
-      navigator.serviceWorker
-        .register("/sw.js")
-        .then(() => refreshPushState())
-        .catch((e) => console.warn("service worker registration failed:", e));
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("/sw.js").catch((e) => console.warn("service worker registration failed:", e));
     }
-    return () => window.removeEventListener("player-key-required", onKeyRequired);
+    return () => window.removeEventListener("player-key-required", notifyKeyConflict);
   });
-
-  async function checkProfileCompleteness(playerId) {
-    try {
-      const player = await API.getPlayer(playerId);
-      if (player) {
-        const contact = parseContact(player.battle_tags);
-        if (contactIsEmpty(contact)) {
-          toast.warning("还没有填写 QQ / Discord 联系方式，报名和投票前需要先填写。", {
-            action: {
-              label: "立即完善",
-              onClick: () => handleOpenDialog(),
-            },
-            duration: 10000,
-          });
-        }
-      }
-    } catch (e) {
-      console.error("检查个人资料完整性失败:", e);
-    }
-  }
-
-  async function handleOpenDialog() {
-    idInput = userState.id || "";
-    contactInput = userState.qqGroup || "";
-    contactError = "";
-    openIdDialog = true;
-
-    if (userState.id) {
-      try {
-        const p = await API.getPlayer(userState.id);
-        if (p) {
-          editFlag = p.flag || "cn";
-          editTeam = p.team || "";
-          editLink = p.link || "";
-
-          const contact = parseContact(p.battle_tags);
-          editContactBase = contact.base;
-          editQQ = contact.qq;
-          editDiscord = contact.discord;
-        }
-      } catch (e) {
-        console.error("获取选手资料失败:", e);
-        toast.error("获取选手资料失败: " + e.message);
-      }
-    } else {
-      try {
-        existingPlayers = await API.listPlayers();
-      } catch (e) {
-        console.error("加载选手列表失败:", e);
-      }
-    }
-  }
-
-  // Fills the join field with the contact already on file for a player.
-  function prefillContactFromPlayer(player) {
-    const contact = parseContact(player?.battle_tags);
-    contactInput = contact.qq || contact.discord || "";
-  }
-
-  // Writes the contact typed at sign-in onto the player profile. Only the
-  // channel that was typed is replaced, so an existing QQ or Discord value
-  // is never wiped by the other one.
-  async function saveSignInContact(playerId, rawContact) {
-    const parsed = splitContactInput(rawContact);
-    if (!parsed.qq && !parsed.discord) return;
-
-    let player = existingPlayers.find((p) => p.id === playerId);
-    if (!player) {
-      try {
-        player = await API.getPlayer(playerId);
-      } catch (_) {
-        player = null;
-      }
-    }
-
-    const current = parseContact(player?.battle_tags);
-    const nextQQ = parsed.qq || current.qq;
-    const nextDiscord = parsed.discord || current.discord;
-    if (nextQQ === current.qq && nextDiscord === current.discord) return;
-
-    await API.updatePlayer(playerId, {
-      flag: player?.flag || "cn",
-      team: player?.team || "",
-      link: player?.link || "",
-      battle_tags: buildContact(current.base, {
-        qq: nextQQ,
-        discord: nextDiscord,
-      }),
-    });
-  }
-
-  // Sign in: a player ID plus a required contact (QQ number or Discord
-  // user name), which is saved to the player's profile.
-  async function handleSaveId() {
-    const trimmedContact = contactInput.trim();
-    const trimmedId = idInput.trim();
-    contactError = contactInputProblem(trimmedContact);
-    if (contactError) return;
-    if (!trimmedId) {
-      toast.error("请输入选手 ID");
-      return;
-    }
-
-    verifying = true;
-    try {
-      userState.setQQGroup(trimmedContact);
-      userState.setId(trimmedId);
-      try {
-        await API.touchPlayer(trimmedId);
-      } catch (e) {
-        console.warn("touch player failed:", e);
-      }
-      await ensurePlayerKey(trimmedId);
-      try {
-        await saveSignInContact(trimmedId, trimmedContact);
-      } catch (e) {
-        // A device-key conflict is explained by its own prompt.
-        if (e.code !== "PLAYER_KEY_REQUIRED") {
-          contactError = e.message;
-          toast.error("联系方式保存失败: " + e.message);
-          return;
-        }
-      }
-      openIdDialog = false;
-      toast.success("身份配置已保存！");
-      setTimeout(() => {
-        window.location.reload();
-      }, 100);
-    } finally {
-      verifying = false;
-    }
-  }
-
-  async function handleSaveProfile() {
-    const trimmedId = idInput.trim();
-    if (!trimmedId) {
-      toast.error("请输入选手 ID");
-      return;
-    }
-
-    // 1. Handle Player ID rename ("两边一起改")
-    const oldId = userState.id;
-    if (trimmedId !== oldId) {
-      if (!userState.adminToken) {
-        toast.error("修改选手 ID 需要管理员权限，请先点击右上角盾牌图标登录");
-        return;
-      }
-      const confirmed = confirm(
-        `确定要将选手 ID 从 "${oldId}" 修改为 "${trimmedId}" 吗？\n此操作将同步更新所有历史赛事对阵、报名和投票数据。`,
-      );
-      if (!confirmed) return;
-
-      verifying = true;
-      try {
-        await API.renamePlayer(oldId, trimmedId);
-        userState.moveKey(oldId, trimmedId);
-        userState.setId(trimmedId);
-        toast.success("选手 ID 修改成功！");
-      } catch (err) {
-        toast.error("修改选手 ID 失败: " + err.message);
-        verifying = false;
-        return;
-      } finally {
-        verifying = false;
-      }
-    }
-
-    // 2. Save profile details (a contact is required)
-    const problem = requiredContactProblem({ qq: editQQ.trim(), discord: editDiscord.trim() });
-    if (problem) {
-      toast.error(problem);
-      return;
-    }
-    verifying = true;
-    try {
-      await API.updatePlayer(trimmedId, {
-        flag: editFlag || "cn",
-        team: editTeam || "",
-        link: editLink || "",
-        battle_tags: buildContact(editContactBase, {
-          qq: editQQ,
-          discord: editDiscord,
-        }),
-      });
-      toast.success("个人资料保存成功！");
-      openIdDialog = false;
-      setTimeout(() => {
-        window.location.reload();
-      }, 100);
-    } catch (err) {
-      toast.error("保存个人资料失败: " + err.message);
-    } finally {
-      verifying = false;
-    }
-  }
-
-  function handleClearId() {
-    userState.setId("");
-    userState.setQQGroup("");
-    idInput = "";
-    contactInput = "";
-    openIdDialog = false;
-    toast.success("已退出身份，目前为只读查看模式");
-    setTimeout(() => {
-      window.location.reload();
-    }, 100);
-  }
 </script>
 
 <svelte:head>
@@ -486,7 +83,7 @@
 
 <ModeWatcher defaultMode="dark" />
 
-{#if $page.url.pathname.includes('/overlay')}
+{#if page.url.pathname.includes('/overlay')}
   {#if children}
     {@render children()}
   {/if}
@@ -517,99 +114,14 @@
           </span>
         </a>
 
-        <!-- Center-left: Nav links -->
-        <nav class="flex items-center gap-0.5">
-          <a
-            href="/"
-            title="赛事大厅"
-            class="flex items-center gap-1 px-2 sm:px-3 h-8 rounded-md text-xs sm:text-sm font-medium transition-colors shrink-0 whitespace-nowrap
-              {$page.url.pathname === '/'
-              ? 'text-primary font-semibold bg-primary/8'
-              : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'}"
-          >
-            <TrophyIcon class="w-3.5 h-3.5" />
-            <span class="hidden md:inline">赛事大厅</span>
-          </a>
-          <a
-            href="/players"
-            title="选手列表"
-            class="flex items-center gap-1 px-2 sm:px-3 h-8 rounded-md text-xs sm:text-sm font-medium transition-colors shrink-0 whitespace-nowrap
-              {$page.url.pathname === '/players'
-              ? 'text-primary font-semibold bg-primary/8'
-              : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'}"
-          >
-            <UsersIcon class="w-3.5 h-3.5" />
-            <span class="hidden md:inline">选手列表</span>
-          </a>
-          <a
-            href="/stats"
-            title="数据统计"
-            class="flex items-center gap-1 px-2 sm:px-3 h-8 rounded-md text-xs sm:text-sm font-medium transition-colors shrink-0 whitespace-nowrap
-              {$page.url.pathname === '/stats'
-              ? 'text-primary font-semibold bg-primary/8'
-              : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'}"
-          >
-            <TrendingUpIcon class="w-3.5 h-3.5" />
-            <span class="hidden md:inline">数据统计</span>
-          </a>
-          <a
-            href="/ladder"
-            title="天梯"
-            class="flex items-center gap-1 px-2 sm:px-3 h-8 rounded-md text-xs sm:text-sm font-medium transition-colors shrink-0 whitespace-nowrap
-              {$page.url.pathname === '/ladder'
-              ? 'text-primary font-semibold bg-primary/8'
-              : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'}"
-          >
-            <SwordsIcon class="w-3.5 h-3.5" />
-            <span class="hidden md:inline">天梯</span>
-          </a>
-          <a
-            href="/points"
-            title="年度积分榜"
-            class="flex items-center gap-1 px-2 sm:px-3 h-8 rounded-md text-xs sm:text-sm font-medium transition-colors shrink-0 whitespace-nowrap
-              {$page.url.pathname === '/points'
-              ? 'text-primary font-semibold bg-primary/8'
-              : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'}"
-          >
-            <AwardIcon class="w-3.5 h-3.5" />
-            <span class="hidden md:inline">年度积分榜</span>
-          </a>
-          <a
-            href="/pools"
-            title="载具池"
-            class="flex items-center gap-1 px-2 sm:px-3 h-8 rounded-md text-xs sm:text-sm font-medium transition-colors shrink-0 whitespace-nowrap
-              {$page.url.pathname === '/pools'
-              ? 'text-primary font-semibold bg-primary/8'
-              : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'}"
-          >
-            <PlaneIcon class="w-3.5 h-3.5" />
-            <span class="hidden md:inline">载具池</span>
-          </a>
-        </nav>
+        <SiteNav />
 
         <!-- Spacer -->
         <div class="flex-1"></div>
 
         <!-- Right: Notifications + Dark mode + Profile -->
         <div class="flex items-center gap-2">
-          <!-- Match reminder toggle -->
-          <button
-            id="header-push-toggle"
-            onclick={togglePush}
-            disabled={pushBusy}
-            title={pushEnabled ? "关闭比赛提醒" : "开启比赛提醒（开赛前 1 小时）"}
-            aria-label={pushEnabled ? "关闭比赛提醒" : "开启比赛提醒"}
-            class="relative w-8 h-8 flex items-center justify-center rounded-md transition-colors cursor-pointer disabled:opacity-50
-              {pushEnabled
-                ? 'text-primary bg-primary/10 hover:bg-primary/15'
-                : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'}"
-          >
-            {#if pushEnabled}
-              <BellIcon class="h-4 w-4" />
-            {:else}
-              <BellOffIcon class="h-4 w-4" />
-            {/if}
-          </button>
+          <PushToggle />
 
           <!-- Language toggle: 中文 / English -->
           <button
@@ -643,7 +155,7 @@
           <!-- Admin login -->
           <button
             id="header-admin-button"
-            onclick={handleOpenAdminDialog}
+            onclick={() => (adminOpen = true)}
             title={userState.adminToken
               ? "管理员已登录（点击管理）"
               : "管理员登录"}
@@ -662,7 +174,7 @@
           <!-- Profile button -->
           <button
             id="header-profile-button"
-            onclick={handleOpenDialog}
+            onclick={openProfileDialog}
             class="flex items-center gap-2 px-2.5 py-1.5 rounded-md hover:bg-muted/60 transition-colors text-sm cursor-pointer group"
           >
             <div data-no-i18n
@@ -697,390 +209,5 @@
 <!-- Global Toaster -->
 <Toaster position="bottom-right" />
 
-<!-- Player ID Config Dialog -->
-<Dialog.Root bind:open={openIdDialog}>
-  <Dialog.Content
-    class="{userState.id
-      ? 'max-w-125'
-      : 'max-w-85 sm:max-w-95'} bg-card border border-border"
-  >
-    <Dialog.Header>
-      <Dialog.Title
-        class="text-lg font-bold tracking-tight text-foreground flex items-center gap-2"
-      >
-        <UserRoundIcon class="w-5 h-5 text-primary" />
-        {userState.id ? "完善个人资料" : "身份与联系方式验证"}
-      </Dialog.Title>
-      <Dialog.Description class="text-xs text-muted-foreground">
-        {#if userState.id}
-          修改您的游戏昵称、QQ / Discord 联系方式及关联 Wiki。
-        {:else}
-          填写您的 QQ 号或 Discord 用户名（联系方式）与游戏昵称 ID，以解锁创建、报名和修改权限。
-        {/if}
-      </Dialog.Description>
-    </Dialog.Header>
-
-    {#if userState.id}
-      <!-- Logged-in profile editor -->
-      <div class="space-y-3 py-1 max-h-[65vh] overflow-y-auto pr-1">
-        <!-- Player ID -->
-        <div class="space-y-1">
-          <label
-            for="player-id-input"
-            class="text-xs font-bold text-muted-foreground"
-            >选手游戏昵称 / ID</label
-          >
-          <Input
-            id="player-id-input"
-            bind:value={idInput}
-            disabled={!!userState.id && !userState.adminToken}
-            class="text-xs h-8 bg-background border-border text-foreground"
-          />
-          {#if userState.id && !userState.adminToken}
-            <p class="text-[9px] text-muted-foreground/70">
-              修改选手 ID 需要管理员权限；普通用户只能维护资料。
-            </p>
-          {/if}
-        </div>
-
-        <!-- Contact (QQ / Discord) -->
-        <div class="space-y-2">
-          <span class="text-xs font-bold text-muted-foreground"
-            >联系方式（QQ / Discord）</span
-          >
-          <div
-            class="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-muted/20 border border-border/60 p-3 rounded-xl"
-          >
-            <div class="space-y-1">
-              <label
-                for="layout-contact-qq"
-                class="text-[11px] font-bold text-muted-foreground">QQ 号</label
-              >
-              <Input
-                id="layout-contact-qq"
-                bind:value={editQQ}
-                placeholder="例如: 123456789"
-                class="text-xs h-8 bg-background border-border text-foreground"
-              />
-            </div>
-            <div class="space-y-1">
-              <label
-                for="layout-contact-discord"
-                class="text-[11px] font-bold text-muted-foreground"
-                >Discord 用户名</label
-              >
-              <Input
-                id="layout-contact-discord"
-                bind:value={editDiscord}
-                placeholder="例如: username"
-                class="text-xs h-8 bg-background border-border text-foreground"
-              />
-            </div>
-          </div>
-          <p class="text-[10px] text-muted-foreground/60">
-            赛务联系用，会显示在选手列表中。
-          </p>
-        </div>
-
-        <!-- Flag + Team -->
-        <div class="grid grid-cols-2 gap-3">
-          <div class="space-y-1">
-            <label
-              for="edit-flag"
-              class="text-xs font-bold text-muted-foreground">国籍 (Flag)</label
-            >
-            <div class="flex items-center gap-2">
-              <Flag code={editFlag} size={20} />
-              <Input
-                id="edit-flag"
-                bind:value={editFlag}
-                placeholder="cn / hk / tw"
-                class="text-xs h-8 bg-background border-border text-foreground flex-1"
-              />
-            </div>
-          </div>
-          <div class="space-y-1">
-            <label
-              for="edit-team"
-              class="text-xs font-bold text-muted-foreground">战队</label
-            >
-            <Input
-              id="edit-team"
-              bind:value={editTeam}
-              placeholder="战队缩写"
-              class="text-xs h-8 bg-background border-border text-foreground"
-            />
-          </div>
-        </div>
-
-        <!-- Wiki Link -->
-        <div class="space-y-1">
-          <label for="edit-link" class="text-xs font-bold text-muted-foreground"
-            >Wiki 页面名称</label
-          >
-          <Input
-            id="edit-link"
-            bind:value={editLink}
-            placeholder="例如: Vermilion"
-            class="text-xs h-8 bg-background border-border text-foreground"
-          />
-          <p class="text-[10px] text-muted-foreground/60">
-            Liquipedia Wiki 页面名称，最终将链接至
-            https://liquipedia.net/warthunder/&lt;名称&gt;
-          </p>
-        </div>
-
-      </div>
-    {:else}
-      <!-- Guest verification inputs -->
-      <div class="space-y-4 py-2">
-        <div class="space-y-1.5">
-          <label
-            for="layout-contact-input"
-            class="text-xs font-semibold text-muted-foreground"
-            >QQ 号 / Discord 用户名（必填）</label
-          >
-          <Input
-            id="layout-contact-input"
-            bind:value={contactInput}
-            placeholder="例如: 123456789 或 username"
-            class="bg-background border-border text-foreground"
-            onkeydown={(e) => {
-              if (e.key === "Enter") handleSaveId();
-            }}
-          />
-          <p class="text-[10px] text-muted-foreground/70">
-            赛务联系用，报名和投票前必须填写。纯数字视为 QQ 号，其余视为 Discord 用户名；会写入选手资料。
-          </p>
-          {#if contactError}
-            <p class="text-[10px] text-destructive font-medium animate-pulse">
-              {contactError}
-            </p>
-          {/if}
-        </div>
-
-        <div class="space-y-1.5">
-          <label
-            for="player-id-input"
-            class="text-xs font-medium text-muted-foreground"
-            >选手游戏昵称 / ID</label
-          >
-          <Input
-            id="player-id-input"
-            bind:value={idInput}
-            placeholder="例如: Vermilion"
-            class="bg-background border-border text-foreground"
-            onkeydown={(e) => {
-              if (e.key === "Enter") handleSaveId();
-            }}
-          />
-        </div>
-
-        {#if existingPlayers.length > 0}
-          <div class="space-y-1.5">
-            <span class="text-xs font-medium text-muted-foreground block"
-              >快捷选择最近一年活跃的选手 ID：</span
-            >
-            <div class="flex flex-wrap gap-1.5 max-h-25 overflow-y-auto pr-1">
-              {#each activeExistingPlayers as p}
-                <button
-                  type="button"
-                  onclick={() => {
-                    idInput = p.id;
-                    prefillContactFromPlayer(p);
-                  }}
-                  title={p.last_seen_at ? `最近活跃: ${new Date(p.last_seen_at).toLocaleDateString("zh-CN")}` : "无登录记录"}
-                  class="text-[11px] px-2 py-0.5 rounded bg-muted hover:bg-primary hover:text-primary-foreground border border-border/80 transition-colors cursor-pointer {idInput ===
-                  p.id
-                    ? 'bg-primary text-primary-foreground border-primary font-bold'
-                    : 'text-foreground'}"
-                >
-                  {p.display_name}
-                </button>
-              {:else}
-                <span class="text-[10px] text-muted-foreground/60 italic px-1">
-                  暂无最近一年活跃的选手
-                </span>
-              {/each}
-            </div>
-            {#if inactiveExistingPlayers.length > 0}
-              <details
-                class="mt-1 rounded-lg border border-border/60 bg-muted/20 px-2 py-1.5"
-                bind:open={showInactiveExisting}
-              >
-                <summary
-                  class="text-[10px] text-muted-foreground cursor-pointer select-none"
-                >
-                  显示一年未登录的选手（{inactiveExistingPlayers.length}）
-                </summary>
-                <div class="flex flex-wrap gap-1.5 max-h-25 overflow-y-auto pr-1 mt-1.5">
-                  {#each inactiveExistingPlayers as p}
-                    <button
-                      type="button"
-                      onclick={() => {
-                        idInput = p.id;
-                        prefillContactFromPlayer(p);
-                      }}
-                      title={p.last_seen_at ? `最近活跃: ${new Date(p.last_seen_at).toLocaleDateString("zh-CN")}` : "无登录记录"}
-                      class="text-[11px] px-2 py-0.5 rounded bg-muted/70 hover:bg-primary hover:text-primary-foreground border border-border/80 transition-colors cursor-pointer {idInput ===
-                      p.id
-                        ? 'bg-primary text-primary-foreground border-primary font-bold'
-                        : 'text-muted-foreground'}"
-                    >
-                      {p.display_name}
-                    </button>
-                  {/each}
-                </div>
-              </details>
-            {/if}
-          </div>
-        {/if}
-      </div>
-    {/if}
-
-    {#if userState.id}
-      <!-- Device key: copy it to use this ID on another device, or import it. -->
-      <div class="space-y-1.5 rounded-lg border border-border bg-muted/30 p-3">
-        <div class="flex items-center gap-1.5 text-xs font-bold text-foreground">
-          <KeyRoundIcon class="w-3.5 h-3.5" />
-          设备密钥
-        </div>
-        {#if userState.key}
-          <p class="text-[11px] text-muted-foreground">
-            这个 ID 已绑定到本设备。换设备或浏览器时，把密钥复制过去导入即可；不要发给别人，拿到密钥的人可以用你的 ID 报名和修改资料。
-          </p>
-          <div class="flex gap-2">
-            <input
-              readonly
-              value={showKey ? userState.key : "•".repeat(16)}
-              aria-label="设备密钥"
-              class="flex-1 min-w-0 h-8 rounded-md border border-border bg-background px-2 font-mono text-[11px] text-foreground"
-              onfocus={(e) => showKey && e.currentTarget.select()}
-            />
-            <Button variant="outline" size="sm" class="h-8 text-xs" onclick={() => (showKey = !showKey)}>{showKey ? "隐藏" : "显示"}</Button>
-            <Button variant="outline" size="sm" class="h-8 text-xs" onclick={copyPlayerKey}>复制</Button>
-          </div>
-        {:else}
-          <p class="text-[11px] {userState.keyConflict ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground'}">
-            {userState.keyConflict
-              ? "这个 ID 已绑定其他设备。请在那台设备的「个人资料」里复制设备密钥，粘贴到下面导入；找不到原设备请联系管理员重置。"
-              : "本设备还没有这个 ID 的密钥。如果你在别的设备上用过这个 ID，请把那边的密钥导入。"}
-          </p>
-          <div class="flex gap-2">
-            <Input bind:value={keyImport} placeholder="粘贴设备密钥" class="h-8 flex-1 font-mono text-[11px]" />
-            <Button size="sm" class="h-8 text-xs" disabled={keyBusy || !keyImport.trim()} onclick={importPlayerKey}>导入</Button>
-          </div>
-        {/if}
-      </div>
-    {/if}
-
-    <Dialog.Footer class="flex flex-col sm:flex-row gap-2 mt-2">
-      {#if userState.id || userState.qqGroup}
-        <Button
-          variant="destructive"
-          size="sm"
-          onclick={handleClearId}
-          class="w-full sm:w-auto text-xs"
-        >
-          退出当前身份
-        </Button>
-      {/if}
-      <div class="flex-1"></div>
-      <Button
-        variant="outline"
-        size="sm"
-        onclick={() => (openIdDialog = false)}
-        class="w-full sm:w-auto text-xs"
-      >
-        取消
-      </Button>
-      <Button
-        size="sm"
-        onclick={userState.id ? handleSaveProfile : handleSaveId}
-        disabled={verifying}
-        class="w-full sm:w-auto text-xs font-semibold"
-      >
-        {#if verifying}正在保存...{:else}保存{/if}
-      </Button>
-    </Dialog.Footer>
-  </Dialog.Content>
-</Dialog.Root>
-
-<!-- Admin Token Dialog -->
-<Dialog.Root bind:open={openAdminDialog}>
-  <Dialog.Content class="max-w-85 sm:max-w-95 bg-card border border-border">
-    <Dialog.Header>
-      <Dialog.Title
-        class="text-lg font-bold tracking-tight text-foreground flex items-center gap-2"
-      >
-        <ShieldCheckIcon class="w-5 h-5 text-primary" />
-        管理员权限
-      </Dialog.Title>
-      <Dialog.Description class="text-xs text-muted-foreground">
-        {#if userState.adminToken}
-          当前标签页已保存管理员令牌，可执行删除、批量导入、重解析等破坏性操作。
-        {:else}
-          输入服务器 .env 中配置的 ADMIN_TOKEN，以解锁删除、批量导入、重解析等破坏性操作。令牌只保存在本标签页。
-        {/if}
-      </Dialog.Description>
-    </Dialog.Header>
-
-    {#if !userState.adminToken}
-      <div class="space-y-1.5 py-1">
-        <label
-          for="admin-token-input"
-          class="text-xs font-bold text-muted-foreground">管理员令牌</label
-        >
-        <Input
-          id="admin-token-input"
-          type="password"
-          bind:value={adminTokenInput}
-          placeholder="ADMIN_TOKEN"
-          autocomplete="off"
-          class="text-xs h-8 bg-background border-border text-foreground"
-          onkeydown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              handleAdminLogin();
-            }
-          }}
-        />
-        <p class="text-[10px] text-muted-foreground/60">
-          令牌由部署者在 <code>apps/api/.env</code> 的 ADMIN_TOKEN 中设置。
-        </p>
-      </div>
-    {/if}
-
-    <Dialog.Footer class="flex flex-col sm:flex-row gap-2 mt-2">
-      {#if userState.adminToken}
-        <Button
-          variant="destructive"
-          size="sm"
-          onclick={handleAdminLogout}
-          class="w-full sm:w-auto text-xs"
-        >
-          退出管理员
-        </Button>
-      {/if}
-      <div class="flex-1"></div>
-      <Button
-        variant="outline"
-        size="sm"
-        onclick={() => (openAdminDialog = false)}
-        class="w-full sm:w-auto text-xs"
-      >
-        关闭
-      </Button>
-      {#if !userState.adminToken}
-        <Button
-          size="sm"
-          onclick={handleAdminLogin}
-          disabled={adminBusy}
-          class="w-full sm:w-auto text-xs font-semibold"
-        >
-          {#if adminBusy}正在验证...{:else}登录{/if}
-        </Button>
-      {/if}
-    </Dialog.Footer>
-  </Dialog.Content>
-</Dialog.Root>
+<ProfileDialog bind:this={profileDialog} />
+<AdminDialog bind:open={adminOpen} />
