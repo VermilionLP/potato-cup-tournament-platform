@@ -1,31 +1,30 @@
-// Vehicle pools for Ban / Pick, one per event type. Pools edited on the site
-// (saved on the server) replace the ones bundled in $lib/data.
+// Vehicle pool templates for Ban / Pick: { id, name, event_type,
+// game_modes, rules, sort_order, vehicles } from GET /api/vehicle-pools.
 // Kept free of $lib imports so it can be tested with node --test.
-
-import { POOL_VARIANTS, VEHICLE_POOLS } from "./tournament.js";
 
 export const POOL_FIELDS = ["name", "nation", "br", "type", "group"];
 
 /**
- * One entry per event type, in VEHICLE_POOLS order:
- * { id, name, code, vehicles, defaults, custom, updated_at }.
- * `saved` is the server's { [id]: { vehicles, updated_at } }; `defaults` the
- * bundled pools ($lib/data/vehiclePools.js).
+ * The template an event uses (mirrors resolveTemplate in
+ * apps/api/lib/vehicle-pools.js): the admin's choice when it exists;
+ * otherwise, among templates of the event's type by sort_order, the first
+ * made for its game mode, else the first made for every mode, else the first.
  */
-export function mergePools(saved = {}, defaults = []) {
-  return [...VEHICLE_POOLS, ...POOL_VARIANTS].map((type) => {
-    const bundled = defaults.find((p) => p.id === type.id)?.vehicles || [];
-    const own = saved?.[type.id];
-    return {
-      id: type.id,
-      name: type.name,
-      code: type.code,
-      vehicles: own?.vehicles?.length ? own.vehicles : bundled,
-      defaults: bundled,
-      custom: Boolean(own?.vehicles?.length),
-      updated_at: own?.updated_at || null,
-    };
-  });
+export function resolveTemplate(templates = [], { vehicle_pool: type, game_mode: mode, vehicle_template: chosen } = {}) {
+  if (chosen) {
+    const own = templates.find((t) => t.id === chosen);
+    if (own) return own;
+  }
+  const ofType = templates
+    .filter((t) => t.event_type === type)
+    .sort((a, b) => (a.sort_order ?? 100) - (b.sort_order ?? 100) || String(a.id).localeCompare(String(b.id)));
+  const modes = (t) => t.game_modes || [];
+  return ofType.find((t) => modes(t).includes(mode)) || ofType.find((t) => !modes(t).length) || ofType[0] || null;
+}
+
+/** "AB" / "AB · RB" / "全部模式" for a template's modes. */
+export function modesLabel(modes = []) {
+  return modes.length ? modes.map((m) => String(m).toUpperCase()).join(" · ") : "全部模式";
 }
 
 function cleanVehicle(raw) {

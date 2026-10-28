@@ -1,10 +1,15 @@
 <script>
+  // Ban / Pick for one match, following the rules of the event's vehicle pool
+  // template (bans per player, removal limits, whether a vehicle is drawn).
   import Flag from "$lib/components/Flag.svelte";
   import {
     availableGroups,
     availableVehicles,
     backToGroups,
     ban,
+    bannedBy,
+    bansOf,
+    banTurn,
     confirmGroup,
     drawGroup,
     drawVehicle,
@@ -13,6 +18,8 @@
     isGroupBanned,
     removeGroup,
     removeVehicle,
+    rerollsLeft,
+    rulesSummary,
   } from "$lib/banpick.js";
 
   let {
@@ -21,28 +28,32 @@
     player1 = { name: "A", flag: "" },
     player2 = { name: "B", flag: "" },
     // Owned by the page so its header can confirm the result and so reopening
-    // the same match keeps the Ban/Pick progress.
+    // the same match keeps the Ban/Pick progress. Starts with the template's rules.
     bp = $bindable(initialBanPick()),
   } = $props();
   let rolling = $state(false);
   let rollingLabel = $state("");
 
+  const rules = $derived(bp.rules);
   const grouped = $derived(groupVehicles(vehicles));
   const groupsLeft = $derived(availableGroups(bp, grouped));
-  const vehiclesLeft = $derived(
-    bp.group ? availableVehicles(bp, grouped, bp.group) : [],
+  const vehiclesLeft = $derived(bp.group ? availableVehicles(bp, grouped, bp.group) : []);
+  const left = $derived(rerollsLeft(bp));
+  const steps = $derived(
+    [
+      rules.bansPerPlayer > 0 && { id: "ban", label: rules.bansPerPlayer > 1 ? `禁用 ×${rules.bansPerPlayer}` : "禁用" },
+      { id: "drawGroup", label: "抽大组" },
+      rules.drawVehicle && { id: "drawVehicle", label: "抽载具" },
+    ].filter(Boolean),
   );
-  const steps = [
-    { id: "banA", label: "A 禁用" },
-    { id: "banB", label: "B 禁用" },
-    { id: "drawGroup", label: "抽大组" },
-    { id: "drawVehicle", label: "抽载具" },
-  ];
-  const stepIndex = $derived(
-    bp.phase === "done" ? steps.length : steps.findIndex((s) => s.id === bp.phase),
-  );
+  const stepIndex = $derived(bp.phase === "done" ? steps.length : steps.findIndex((s) => s.id === bp.phase));
   const vehicleCount = $derived(grouped.reduce((n, g) => n + g.vehicles.length, 0));
-  const banning = $derived(bp.phase === "banA" || bp.phase === "banB");
+  const banning = $derived(bp.phase === "ban");
+  const turn = $derived(banTurn(bp));
+  // With a removal limit, a drawn result can only be swapped by removing it.
+  const freeGroupRedraw = $derived(rules.groupRerolls === null);
+  const freeVehicleRedraw = $derived(rules.vehicleRerolls === null);
+  const canGoBack = $derived(rules.groupRerolls === null && rules.vehicleRerolls === null);
 
   // Short slot-machine effect before showing a random result.
   async function roll(options, apply) {
@@ -58,17 +69,19 @@
   }
 
   function banLabel(entry) {
-    if (!entry) return "—";
     if (!entry.group) return "空过";
     return entry.vehicle ? `${entry.group} · ${entry.vehicle}` : entry.group;
   }
+
+  const removalsLabel = (n) => (n === null ? "" : `（剩 ${n} 次）`);
 
   function vehicleInfo(v) {
     return [v.nation, v.br != null ? `BR ${v.br}` : null, v.type].filter(Boolean).join(" · ");
   }
 </script>
 
-{#snippet side(slot, player, entry, active)}
+{#snippet side(slot, player, active)}
+  {@const own = bansOf(bp, slot)}
   <div
     class="flex min-w-0 flex-1 items-center gap-2 rounded-lg border px-2.5 py-1.5 transition-colors
       {active
@@ -87,8 +100,8 @@
         <Flag code={player.flag} size={12} />
         <span class="truncate text-xs font-bold text-foreground">{player.name}</span>
       </div>
-      <div class="truncate text-[10px] {entry?.group ? 'font-semibold text-destructive' : 'text-muted-foreground'}">
-        禁用：{banLabel(entry)}
+      <div class="truncate text-[10px] {own.some((b) => b.group) ? 'font-semibold text-destructive' : 'text-muted-foreground'}">
+        禁用：{own.length ? own.map(banLabel).join("、") : rules.bansPerPlayer ? "—" : "无"}
       </div>
     </div>
     {#if active}
@@ -107,7 +120,7 @@
 <div class="space-y-3">
   <!-- Players and their bans, with the step indicator in between -->
   <div class="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center">
-    {@render side("A", player1, bp.banA, bp.phase === "banA")}
+    {@render side("A", player1, turn === "A")}
     <ol class="flex shrink-0 items-center justify-center gap-1 px-1">
       {#each steps as step, i (step.id)}
         <li
@@ -122,7 +135,7 @@
         </li>
       {/each}
     </ol>
-    {@render side("B", player2, bp.banB, bp.phase === "banB")}
+    {@render side("B", player2, turn === "B")}
   </div>
 
   <!-- Draw strip -->
@@ -147,6 +160,8 @@
               {rollingLabel}
             {:else if bp.vehicle}
               {bp.vehicle}
+            {:else if !rules.drawVehicle}
+              {bp.group ? "组内任选" : "—"}
             {:else}
               {bp.phase === "drawVehicle" ? "待抽取" : "—"}
             {/if}
@@ -157,79 +172,87 @@
         {#if bp.phase === "done"}
           <span class="rounded-full bg-primary px-3 py-1 text-xs font-bold text-primary-foreground">已确认</span>
         {:else if bp.phase === "drawGroup"}
-          <button
-            type="button"
-            disabled={rolling || !groupsLeft.length}
-            onclick={() => roll(groupsLeft, (s) => drawGroup(s, grouped))}
-            class="rounded-full bg-primary px-3 py-1 text-xs font-bold text-primary-foreground hover:bg-primary/85 disabled:opacity-50 cursor-pointer"
-          >
-            {bp.group ? "重新抽取" : "抽取大组"}
-          </button>
+          {#if !bp.group || freeGroupRedraw}
+            <button
+              type="button"
+              disabled={rolling || !groupsLeft.length}
+              onclick={() => roll(groupsLeft, (s) => drawGroup(s, grouped))}
+              class="rounded-full bg-primary px-3 py-1 text-xs font-bold text-primary-foreground hover:bg-primary/85 disabled:opacity-50 cursor-pointer"
+            >
+              {bp.group ? "重新抽取" : "抽取大组"}
+            </button>
+          {/if}
           {#if bp.group}
             <button
               type="button"
-              disabled={rolling}
+              disabled={rolling || left.groups === 0}
               onclick={() => (bp = removeGroup(bp))}
               class="rounded-full border border-border px-3 py-1 text-xs hover:bg-muted disabled:opacity-50 cursor-pointer"
             >
-              移出该组
+              移出该组{removalsLabel(left.groups)}
             </button>
-            <button
-              type="button"
-              disabled={rolling}
-              onclick={() => (bp = confirmGroup(bp))}
-              class="rounded-full border border-primary/50 px-3 py-1 text-xs font-bold text-primary hover:bg-primary/10 disabled:opacity-50 cursor-pointer"
-            >
-              使用该组
-            </button>
+            {#if rules.drawVehicle}
+              <button
+                type="button"
+                disabled={rolling}
+                onclick={() => (bp = confirmGroup(bp))}
+                class="rounded-full border border-primary/50 px-3 py-1 text-xs font-bold text-primary hover:bg-primary/10 disabled:opacity-50 cursor-pointer"
+              >
+                使用该组
+              </button>
+            {/if}
           {/if}
         {:else}
-          <button
-            type="button"
-            disabled={rolling || !vehiclesLeft.length}
-            onclick={() => roll(vehiclesLeft, (s) => drawVehicle(s, grouped))}
-            class="rounded-full bg-primary px-3 py-1 text-xs font-bold text-primary-foreground hover:bg-primary/85 disabled:opacity-50 cursor-pointer"
-          >
-            {bp.vehicle ? "重新抽取" : "抽取载具"}
-          </button>
+          {#if !bp.vehicle || freeVehicleRedraw}
+            <button
+              type="button"
+              disabled={rolling || !vehiclesLeft.length}
+              onclick={() => roll(vehiclesLeft, (s) => drawVehicle(s, grouped))}
+              class="rounded-full bg-primary px-3 py-1 text-xs font-bold text-primary-foreground hover:bg-primary/85 disabled:opacity-50 cursor-pointer"
+            >
+              {bp.vehicle ? "重新抽取" : "抽取载具"}
+            </button>
+          {/if}
           {#if bp.vehicle}
             <button
               type="button"
-              disabled={rolling}
+              disabled={rolling || left.vehicles === 0}
               onclick={() => (bp = removeVehicle(bp))}
               class="rounded-full border border-border px-3 py-1 text-xs hover:bg-muted disabled:opacity-50 cursor-pointer"
             >
-              移出该载具
+              移出该载具{removalsLabel(left.vehicles)}
             </button>
           {/if}
-          <button
-            type="button"
-            disabled={rolling}
-            onclick={() => (bp = backToGroups(bp))}
-            class="rounded-full border border-border px-3 py-1 text-xs hover:bg-muted disabled:opacity-50 cursor-pointer"
-          >
-            返回大组
-          </button>
+          {#if canGoBack}
+            <button
+              type="button"
+              disabled={rolling}
+              onclick={() => (bp = backToGroups(bp))}
+              class="rounded-full border border-border px-3 py-1 text-xs hover:bg-muted disabled:opacity-50 cursor-pointer"
+            >
+              返回大组
+            </button>
+          {/if}
         {/if}
       </div>
     </div>
     {#if bp.phase === "drawGroup" && !groupsLeft.length}
       <p class="text-center text-[11px] text-destructive">没有可抽的大组了，可以点"重置"重新开始。</p>
     {:else if bp.phase === "drawVehicle" && !vehiclesLeft.length}
-      <p class="text-center text-[11px] text-destructive">该组载具已全部移出，请返回大组重新抽取。</p>
+      <p class="text-center text-[11px] text-destructive">该组载具已全部移出，{canGoBack ? "请返回大组重新抽取" : "可以点\"重置\"重新开始"}。</p>
     {/if}
   {/if}
 
   <!-- Vehicle groups -->
   <div class="flex items-center justify-between text-[10px] text-muted-foreground">
     <span>
-      {poolName ? `${poolName} · ` : ""}{grouped.length} 个大组 · {vehicleCount} 架
-      {#if banning}· 点击大组名或载具即可禁用整组{/if}
+      {poolName ? `${poolName} · ` : ""}{grouped.length} 个大组 · {vehicleCount} 架 · {rulesSummary(rules)}
+      {#if banning}· 轮到 {turn} 禁用，点击大组名或载具即可禁用整组{/if}
     </span>
     <button
       type="button"
       disabled={rolling}
-      onclick={() => (bp = initialBanPick())}
+      onclick={() => (bp = initialBanPick(bp.rules))}
       class="rounded px-1.5 py-0.5 hover:bg-muted hover:text-foreground cursor-pointer"
     >
       重置
@@ -237,14 +260,14 @@
   </div>
   <div class="grid grid-cols-2 gap-1.5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
     {#each grouped as g (g.group)}
-      {@const bannedBy = bp.banA?.group === g.group ? "A" : bp.banB?.group === g.group ? "B" : null}
+      {@const banner = bannedBy(bp, g.group)}
       {@const removed = bp.removedGroups.includes(g.group)}
       {@const drawn = bp.group === g.group}
       {@const pickable = banning && !isGroupBanned(bp, g.group)}
       <div
         class="rounded-md border px-1.5 py-1 transition-colors
-          {bannedBy
-          ? bannedBy === 'A'
+          {banner
+          ? banner === 'A'
             ? 'border-rose-500/50 bg-rose-500/10'
             : 'border-sky-500/50 bg-sky-500/10'
           : drawn
@@ -261,10 +284,10 @@
           class="flex w-full items-center justify-between gap-1 text-left {pickable ? 'cursor-pointer' : 'cursor-default'}"
         >
           <span class="truncate text-[11px] font-bold text-foreground {removed ? 'line-through' : ''}">{g.group}</span>
-          {#if bannedBy}
+          {#if banner}
             <span
-              class="shrink-0 rounded px-1 text-[9px] font-black text-white {bannedBy === 'A' ? 'bg-rose-500' : 'bg-sky-500'}"
-              >{bannedBy} 禁</span
+              class="shrink-0 rounded px-1 text-[9px] font-black text-white {banner === 'A' ? 'bg-rose-500' : 'bg-sky-500'}"
+              >{banner} 禁</span
             >
           {:else}
             <span class="shrink-0 text-[9px] text-muted-foreground">{g.vehicles.length}</span>

@@ -38,14 +38,12 @@
   import FinalTimeDialog from "$lib/components/tournament/FinalTimeDialog.svelte";
   import PlayerEditDialog from "$lib/components/tournament/PlayerEditDialog.svelte";
   import { formatScheduled, parseLocal } from "$lib/datetime.js";
-  import { initialBanPick, poolVehicles } from "$lib/banpick.js";
-  import { defaultVehiclePools } from "$lib/data/vehiclePools.js";
-  import { mergePools } from "$lib/vehicle-pools.js";
+  import { initialBanPick } from "$lib/banpick.js";
+  import { resolveTemplate } from "$lib/vehicle-pools.js";
   import { copyText } from "$lib/clipboard.js";
   import { overlayStages, pickStage } from "$lib/overlay.js";
   import {
     canCorrectResult,
-    banpickPoolFor,
     isValidSwissRounds,
     MAX_SWISS_ROUNDS,
     MIN_SWISS_ROUNDS,
@@ -116,10 +114,10 @@
   );
   let isSwiss = $derived(tournament?.format === "swiss");
   let banpickEnabled = $derived(tournament?.banpick_enabled !== false);
-  // Ban / Pick always draws from the event type's vehicle pool.
-  let banpickPoolId = $derived(banpickPoolFor(tournament?.vehicle_pool, tournament?.game_mode));
-  // Pools edited on the site replace the bundled ones (loaded on mount).
-  let vehiclePools = $state(mergePools({}, defaultVehiclePools));
+  // Vehicle pool templates (loaded on mount); Ban / Pick uses the one picked
+  // for the event, else the best match for its type and game mode.
+  let vehicleTemplates = $state([]);
+  let bpTemplate = $derived(resolveTemplate(vehicleTemplates, tournament || {}));
   let swissRoundsLabel = $derived(
     tournament?.swiss_rounds_auto
       ? `${tournament?.swiss_rounds_effective ?? "?"} 轮（自动单循环）`
@@ -366,8 +364,8 @@
   onMount(load);
   onMount(() => {
     API.getVehiclePools()
-      .then((res) => (vehiclePools = mergePools(res.pools, defaultVehiclePools)))
-      .catch(() => {}); // keep the bundled pools
+      .then((res) => (vehicleTemplates = res.templates || []))
+      .catch((e) => console.warn("vehicle pools failed to load:", e));
   });
 
   let eventSource = null;
@@ -656,7 +654,7 @@
   // Clicking a card opens the score form; the card's BP button opens Ban/Pick.
   function openMatchReport(match, step = "score") {
     if (bpMatchId !== match.id) {
-      bpState = initialBanPick();
+      bpState = initialBanPick(bpTemplate?.rules);
       bpMatchId = match.id;
     }
     selectedMatch = match;
@@ -1650,6 +1648,8 @@
         {isTwoStage}
         {hasGroupBrackets}
         {swissRoundsLabel}
+        {vehicleTemplates}
+        {bpTemplate}
         onreload={load}
         onedittime={openTimeEdit}
       />
@@ -1751,8 +1751,8 @@
   correcting={correctingMatch}
   {banpickEnabled}
   {bpMatchId}
-  vehicles={poolVehicles(banpickPoolId, vehiclePools)}
-  poolName={vehiclePools.find((p) => p.id === banpickPoolId)?.name || ""}
+  vehicles={bpTemplate?.vehicles || []}
+  poolName={bpTemplate?.name || ""}
   submitting={submittingResult}
   roundLabel={matchRoundLabel}
   recordedLabel={recordedResultLabel}

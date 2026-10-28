@@ -5,7 +5,7 @@
   import { Button } from "$lib/components/ui/button/index.js";
   import BanPickPanel from "$lib/components/BanPickPanel.svelte";
   import ScoreForm from "$lib/components/ScoreForm.svelte";
-  import { canConfirm, confirmResult } from "$lib/banpick.js";
+  import { canConfirm, confirmResult, resultLabel } from "$lib/banpick.js";
 
   let {
     open = $bindable(false),
@@ -56,7 +56,7 @@
                 size="sm"
                 disabled={!canConfirm(bp)}
                 onclick={() => (bp = confirmResult(bp))}
-                title={canConfirm(bp) ? "锁定本场载具" : "抽到载具后才能确认"}>确认抽取结果</Button
+                title={canConfirm(bp) ? "锁定本场载具" : "抽到结果后才能确认"}>确认抽取结果</Button
               >
             {/if}
           </div>
@@ -65,7 +65,7 @@
             <span>填报比分</span>
             {#if banpickEnabled && bpMatchId === match?.id && bp.phase === "done"}
               <span class="rounded-full border border-primary/40 bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary">
-                本场载具：{bp.vehicle}
+                本场载具：{resultLabel(bp)}
               </span>
             {/if}
           </div>

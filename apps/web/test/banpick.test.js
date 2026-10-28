@@ -10,7 +10,6 @@ import {
   drawVehicle,
   groupVehicles,
   initialBanPick,
-  poolVehicles,
   removeGroup,
   removeVehicle,
 } from "../src/lib/banpick.js";
@@ -25,24 +24,18 @@ const vehicles = [
 const grouped = groupVehicles(vehicles);
 const first = () => 0; // always picks the first available option
 
-test("uses the tournament's own vehicle pool", () => {
-  const pools = [
-    { id: "proleague", vehicles: [{ name: "F-15E", group: "F-15" }] },
-    { id: "prop", vehicles: vehicles },
-  ];
-  assert.equal(poolVehicles("prop", pools), vehicles);
-  assert.deepEqual(poolVehicles("unknown", pools), pools[0].vehicles);
+test("vehicles are grouped in first-seen order", () => {
   assert.deepEqual(grouped.map((g) => g.group), ["A", "B", "C"]);
 });
 
 test("A then B ban a group; a pass also moves the turn on", () => {
   let s = ban(initialBanPick(), "A", "A2");
-  assert.equal(s.phase, "banB");
-  assert.deepEqual(s.banA, { group: "A", vehicle: "A2" });
+  assert.equal(s.phase, "ban");
+  assert.deepEqual(s.bans[0], { by: "A", group: "A", vehicle: "A2" });
   assert.equal(ban(s, "A"), s, "a banned group cannot be banned twice");
   s = ban(s, null);
   assert.equal(s.phase, "drawGroup");
-  assert.deepEqual(s.banB, { group: null, vehicle: null });
+  assert.deepEqual(s.bans[1], { by: "B", group: null, vehicle: null });
   assert.deepEqual(availableGroups(s, grouped), ["B", "C"]);
 });
 
@@ -95,7 +88,7 @@ test("repeated vehicle names are listed once per group", () => {
 
 test("every bundled pool groups without duplicate names", async () => {
   const { readFileSync } = await import("node:fs");
-  for (const file of ["ProLeague-Lineup", "Prop-Lineup", "Lagecy-Jet-Lineup"]) {
+  for (const file of ["ProLeague-Lineup", "Prop-Lineup", "Lagecy-Jet-Lineup", "Prop-AB-Lineup"]) {
     const vehicles = JSON.parse(readFileSync(new URL(`../src/lib/data/${file}.json`, import.meta.url)));
     for (const g of groupVehicles(vehicles)) {
       const names = g.vehicles.map((v) => v.name);
@@ -118,4 +111,56 @@ test("a drawn vehicle can be confirmed, which locks the result", async () => {
   assert.equal(drawVehicle(s, grouped, first), s, "locked");
   assert.equal(removeVehicle(s), s, "locked");
   assert.equal(backToGroups(s), s, "locked");
+});
+
+test("templates set the number of bans, alternating A and B", async () => {
+  const { banTurn, bansOf } = await import("../src/lib/banpick.js");
+  let s = initialBanPick({ bansPerPlayer: 2 });
+  assert.equal(banTurn(s), "A");
+  s = ban(s, "A");
+  assert.equal(banTurn(s), "B");
+  s = ban(s, null);
+  s = ban(s, "B");
+  assert.equal(s.phase, "ban");
+  s = ban(s, null);
+  assert.equal(s.phase, "drawGroup");
+  assert.deepEqual(bansOf(s, "A").map((b) => b.group), ["A", "B"]);
+  assert.deepEqual(availableGroups(s, grouped), ["C"]);
+  assert.equal(initialBanPick({ bansPerPlayer: 0 }).phase, "drawGroup");
+});
+
+test("removal limits stop removing and free redraws", async () => {
+  const { rerollsLeft } = await import("../src/lib/banpick.js");
+  let s = initialBanPick({ bansPerPlayer: 0, groupRerolls: 1, vehicleRerolls: 0 });
+  s = drawGroup(s, grouped, first);
+  assert.equal(drawGroup(s, grouped, first), s, "no free redraw with a limit");
+  s = removeGroup(s);
+  assert.equal(rerollsLeft(s).groups, 0);
+  s = drawGroup(s, grouped, first);
+  assert.equal(removeGroup(s), s, "limit reached");
+  s = confirmGroup(s);
+  assert.equal(backToGroups(s), s, "no way back with limits");
+  s = drawVehicle(s, grouped, first);
+  assert.equal(removeVehicle(s), s, "no vehicle removals allowed");
+  assert.equal(drawVehicle(s, grouped, first), s);
+});
+
+test("a template can end the draw at the group", async () => {
+  const { canConfirm, confirmResult, resultLabel } = await import("../src/lib/banpick.js");
+  let s = initialBanPick({ bansPerPlayer: 0, drawVehicle: false });
+  s = drawGroup(s, grouped, first);
+  assert.equal(confirmGroup(s), s, "no vehicle step");
+  assert.equal(canConfirm(s), true);
+  s = confirmResult(s);
+  assert.equal(s.phase, "done");
+  assert.equal(resultLabel(s), "A（组内任选）");
+});
+
+test("rules are normalized like the server does", async () => {
+  const { normalizeRules, rulesSummary, DEFAULT_BP_RULES } = await import("../src/lib/banpick.js");
+  assert.deepEqual(normalizeRules(), DEFAULT_BP_RULES);
+  assert.equal(normalizeRules({ groupRerolls: "" }).groupRerolls, null);
+  assert.equal(normalizeRules({ groupRerolls: "2" }).groupRerolls, 2);
+  assert.equal(rulesSummary(), "每人禁 1 组 · 大组可不限次移出 · 载具可不限次移出");
+  assert.equal(rulesSummary({ bansPerPlayer: 2, groupRerolls: 1, drawVehicle: false }), "每人禁 2 组 · 大组可移出 1 次 · 抽到大组即结束");
 });

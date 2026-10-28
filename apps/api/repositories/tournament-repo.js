@@ -90,6 +90,16 @@ export function TournamentRepo(db) {
     return getById(id);
   }
 
+  // Ban / Pick template chosen by an admin; null = automatic.
+  async function setVehicleTemplate(id, template) {
+    const res = await db.query(
+      'UPDATE axsuck.tournaments SET vehicle_template = $1, updated_at = NOW() WHERE id = $2 RETURNING id',
+      [template, id],
+    );
+    if (!res.rowCount) return null;
+    return getById(id);
+  }
+
   async function setPoints(id, table, season, kind = 'weekly', invite = null) {
     // invite null = keep the current setting (cleared with the table).
     const res = await db.query(`
@@ -375,5 +385,5 @@ export function TournamentRepo(db) {
     return getById(id);
   }
 
-  return { list, getById, create, rename, setVehiclePool, setPoints, setPointsInvite, setScheduledTime, setSwissRounds, updateStatus, updateOverlayState, getPlayers, addPlayer, autoRegisterVoters, removePlayer, setSeeds, getMatches, getVotes, getCustomVotes };
+  return { list, getById, create, rename, setVehiclePool, setVehicleTemplate, setPoints, setPointsInvite, setScheduledTime, setSwissRounds, updateStatus, updateOverlayState, getPlayers, addPlayer, autoRegisterVoters, removePlayer, setSeeds, getMatches, getVotes, getCustomVotes };
 }

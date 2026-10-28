@@ -34,15 +34,6 @@ export const VEHICLE_POOLS = [
   { id: "proleague", code: "BVR", name: "Pro League BVR" },
 ];
 
-// Pools for one game mode of an event type, used for Ban / Pick instead of
-// the type's pool (mirrors POOL_VARIANTS in apps/api/lib/tournament-config.js).
-export const POOL_VARIANTS = [{ id: "prop-ab", base: "prop", mode: "ab", code: "Prop AB", name: "AB 螺旋桨" }];
-
-/** Ban / Pick pool of an event: its mode's variant of the type, else the type. */
-export function banpickPoolFor(eventType, gameMode) {
-  return POOL_VARIANTS.find((v) => v.base === eventType && v.mode === gameMode)?.id || eventType;
-}
-
 // Tag colours per event type, so the type can be spotted at a glance.
 export const POOL_TAG = {
   prop: "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300",

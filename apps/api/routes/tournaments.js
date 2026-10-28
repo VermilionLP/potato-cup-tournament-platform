@@ -268,10 +268,11 @@ export default async function tournamentsRoutes(fastify) {
     const hasName = body.name !== undefined;
     const hasTime = body.scheduled_time !== undefined;
     const hasPool = body.vehicle_pool !== undefined;
+    const hasTemplate = body.vehicle_template !== undefined;
     const hasPoints = body.points_table !== undefined;
     const hasInvite = body.points_invite !== undefined;
-    if (!hasName && !hasTime && !hasPool && !hasPoints && !hasInvite) {
-      throw fastify.httpErrors.badRequest('name, scheduled_time, vehicle_pool, points_table or points_invite is required');
+    if (!hasName && !hasTime && !hasPool && !hasTemplate && !hasPoints && !hasInvite) {
+      throw fastify.httpErrors.badRequest('name, scheduled_time, vehicle_pool, vehicle_template, points_table or points_invite is required');
     }
     const points = hasPoints ? normalizePointsTable(body.points_table) : null;
     if (points?.error) throw fastify.httpErrors.badRequest(points.error);
@@ -317,6 +318,16 @@ export default async function tournamentsRoutes(fastify) {
     if (hasPool) {
       updated = await repo.setVehiclePool(req.params.id, body.vehicle_pool);
       fastify.tournamentEvents.emit(`update:${req.params.id}`, { type: 'vehicle_pool_changed', vehicle_pool: updated.vehicle_pool });
+    }
+    // Vehicle pool template for Ban / Pick: an id, or null / "" for automatic.
+    if (hasTemplate) {
+      const template = body.vehicle_template ? String(body.vehicle_template) : null;
+      if (template) {
+        const exists = await fastify.db.query('SELECT 1 FROM axsuck.vehicle_pools WHERE id = $1', [template]);
+        if (!exists.rowCount) throw fastify.httpErrors.badRequest('载具池模板不存在');
+      }
+      updated = await repo.setVehicleTemplate(req.params.id, template);
+      fastify.tournamentEvents.emit(`update:${req.params.id}`, { type: 'vehicle_template_changed', vehicle_template: template });
     }
     if (hasTime) {
       const time = String(body.scheduled_time || '').trim();
