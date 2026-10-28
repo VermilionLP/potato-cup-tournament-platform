@@ -180,3 +180,38 @@ test('Swiss groups + double-elimination playoff page', () => {
   assert.equal((text.match(/\{\{Matchlist/g) || []).length, 2);
   assert.match(text, /<!-- Grand Final -->\n\|R\d+M1=\{\{Match\|bestof=5/);
 });
+
+test('double-elimination groups follow Potato_Cup/2026/Fall/Europe', async () => {
+  const { groupBracketRows } = await import('../lib/group-brackets.js');
+  const { doubleElimGroupTemplate } = await import('../lib/liquipedia/export.js');
+  assert.deepEqual(doubleElimGroupTemplate(8, 2), { name: 'Bracket/8-1Q-U-4L2DSL1D-1Q', compact: true });
+  assert.equal(doubleElimGroupTemplate(8, 4), null);
+
+  const group = (g) => groupBracketRows('double_elim', ids(8).map((id) => `${g}${id}`), 2, g === 'a' ? 1 : 2)
+    .map((r) => ({ ...r, id: `${g}-${r.key}`, swiss_group: g === 'a' ? 1 : 2 }));
+  const rows = [...group('a'), ...group('b')];
+  // Same keys as the page's groups: upper R1M1-4, R2M1-2, R4M1; lower R1M5-6, R2M3-4, R3M1, R4M2.
+  assert.deepEqual(keyList(rows.filter((r) => r.swiss_group === 1), { double: true, upper: 'gwb', lower: 'glb' }), [
+    'R1M1', 'R1M2', 'R1M3', 'R1M4', 'R1M5', 'R1M6', 'R2M1', 'R2M2', 'R2M3', 'R2M4', 'R3M1', 'R4M1', 'R4M2',
+  ]);
+
+  const t = {
+    id: 'fall-eu', name: 'Potato Cup 2026 Fall Cup - Europe', status: 'in_progress', format: 'double_elim',
+    playoff_format: 'double_elim', current_stage: 'group', advance_per_group: 2, game_mode: 'rb',
+    points_kind: 'monthly', scheduled_time: '2026-10-03T21:00',
+  };
+  const groupStage = { groups: [{ label: 'A', rows: [] }, { label: 'B', rows: [] }] };
+  const { text, warnings } = buildWikiPage({
+    t, players: [...ids(8).map((id) => ({ id: `a${id}` })), ...ids(8).map((id) => ({ id: `b${id}` }))],
+    matches: rows, groupStage, meta: defaultWikiMeta(t),
+  });
+  assert.deepEqual(warnings, ['赛事还没有结束，导出的是当前进度。']);
+  assert.match(text, /===\{\{Stage\|Group Stage\}\}===\n\n====Group A====\n\{\{Bracket\|Bracket\/8-1Q-U-4L2DSL1D-1Q\|id=[A-Za-z0-9]{10}\n\n<!-- Upper Bracket Quarterfinals -->\n\|R1M1=\{\{Match\|bestof=1/);
+  assert.match(text, /<!-- Upper Bracket Final -->\n\|R4M1=/);
+  assert.match(text, /<!-- Lower Bracket Round 1 -->\n\|R1M5=/);
+  assert.match(text, /<!-- Lower Bracket Semifinal -->\n\|R3M1=/);
+  assert.match(text, /<!-- Lower Bracket Final -->\n\|R4M2=/);
+  assert.doesNotMatch(text, /Toggle group start|Grand Final -->[^]*Stage\|Playoffs/);
+  assert.match(text, /\}\}\n\{\{Box\|break\|padding=2em\}\}\n\n====Group B====/);
+  assert.match(text, /\{\{Box\|break\|padding=2em\}\}\n\n===\{\{Stage\|Playoffs\}\}===/);
+});

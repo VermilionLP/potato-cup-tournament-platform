@@ -50,6 +50,17 @@ export function doubleElimTemplate(n) {
   return { name: `Bracket/${size}U${size / 2}L${chain.join('SL')}`, compact: n === size };
 }
 
+/**
+ * Double-elimination group without a grand final where the upper and the
+ * lower bracket winner advance (Potato_Cup/2026/Fall/Europe: 8 players,
+ * Bracket/8-1Q-U-4L2DSL1D-1Q). Other splits have no known template (null).
+ */
+export function doubleElimGroupTemplate(n, perGroup) {
+  if (Number(perGroup) !== 2 || n < 4 || n !== pow2(n)) return null;
+  const base = doubleElimTemplate(n).name.replace(/^Bracket\//, '');
+  return { name: `Bracket/${base.replace(/^(\d+)U/, '$1-1Q-U-')}-1Q`, compact: true };
+}
+
 /** Single-elimination template for n players (byes left out up to 32). */
 export function singleElimTemplate(n) {
   const exact = LIQUIPEDIA_BRACKET_TEMPLATES[Math.max(2, n)];
@@ -291,14 +302,14 @@ export function buildWikiPage({ t, players = [], matches = [], groupStage = null
     return rounds.map((r) => ({ round: r, matches: list.filter((m) => m.round === r).sort((a, b) => a.position - b.position), id: wikiId(t.id, `${idSuffix}${r.toString(36)}`) }));
   };
 
-  const elimBracket = (list, { double, idSuffix, upper = 'wb', lower = 'lb', sdate = day, bo = boPlayoff, boLast = boFinal, toggle = true }) => {
+  const elimBracket = (list, { double, idSuffix, upper = 'wb', lower = 'lb', sdate = day, bo = boPlayoff, boLast = boFinal, toggle = true, template = null }) => {
     const ids = new Set();
     for (const m of list) {
       if (m.player1_id) ids.add(m.player1_id);
       if (m.player2_id) ids.add(m.player2_id);
     }
-    const tpl = double ? doubleElimTemplate(ids.size) : singleElimTemplate(ids.size);
-    if (!tpl.compact) warnings.push(`${ids.size} 人的${double ? '双败' : '单败'}对阵用了 ${tpl.name}（带轮空位），请在 Liquipedia 上确认模板。`);
+    const tpl = template || (double ? doubleElimTemplate(ids.size) : singleElimTemplate(ids.size));
+    if (!tpl.compact && !template) warnings.push(`${ids.size} 人的${double ? '双败' : '单败'}对阵用了 ${tpl.name}（带轮空位），请在 Liquipedia 上确认模板。`);
     const keys = bracketKeys(list, { double, compact: tpl.compact, upper, lower });
     const finals = new Set(list.filter((m) => m.bracket === 'gf' || (!double && m.round === 1)).map((m) => m.id));
     const side = (m) => (m.bracket === 'gf' ? 2 : m.bracket === lower ? 1 : 0);
@@ -352,25 +363,30 @@ export function buildWikiPage({ t, players = [], matches = [], groupStage = null
     });
   } else {
     if (twoStage) {
-      // Group stage: one table and match list (or bracket) per group.
+      // Group stage: Swiss groups get a table and a match list each inside a
+      // toggle box (June Europe); bracket groups one bracket each (Fall Europe).
+      const swissGroups = t.format === 'swiss';
       w('==={{Stage|Group Stage}}===');
-      w('{{Toggle group start|state=show}}');
-      w('{{Box|start|padding=2em}}');
+      if (swissGroups) {
+        w('{{Toggle group start|state=show}}');
+        w('{{Box|start|padding=2em}}');
+      }
       const groups = groupStage?.groups || [];
       groups.forEach((g, gi) => {
         const n = gi + 1;
+        const label = g.label || groupLabel(n);
         const own = groupMatches.filter((m) => Number(m.swiss_group || 1) === n);
-        const id = wikiId(t.id, `g${g.label || groupLabel(n)}`);
-        w();
-        w(`===={{HiddenSort|Group ${g.label || groupLabel(n)}}}====`);
-        if (t.format === 'swiss') {
+        const id = wikiId(t.id, `g${label}`);
+        if (swissGroups) {
           const k = Number(t.advance_per_group) || 0;
+          w();
+          w(`===={{HiddenSort|Group ${label}}}====`);
           w(`{{GroupTableLeague|id=${id}`);
           w(`|date=${day}`);
-          w(`|title=Group ${g.label}|width=320px`);
+          w(`|title=Group ${label}|width=320px`);
           w(`|pbg1=up${k && k < g.rows.length ? `|pbg${k + 1}=down` : ''}`);
           w('}}');
-          w(`{{Matchlist|id=${id}|width=320|title=Group ${g.label} Matches|collapsed=true`);
+          w(`{{Matchlist|id=${id}|width=320|title=Group ${label} Matches|collapsed=true`);
           let i = 0;
           for (const r of swissRounds(own, 's')) {
             r.matches.forEach((m, j) => {
@@ -379,15 +395,25 @@ export function buildWikiPage({ t, players = [], matches = [], groupStage = null
             });
           }
           w('}}');
+          if (gi < groups.length - 1) w('{{Box|break|padding=2em}}');
         } else {
           const double = t.format === 'double_elim';
-          elimBracket(own, { double, idSuffix: `g${g.label}`, upper: double ? 'gwb' : 'gse', lower: 'glb', bo: boGroup, boLast: boGroup, toggle: false });
-          warnings.push(`Group ${g.label} 的${double ? '双败' : '单败'}小组对阵请在 Liquipedia 上确认模板（小组内不打总决赛）。`);
+          const size = new Set(own.flatMap((m) => [m.player1_id, m.player2_id]).filter(Boolean)).size;
+          const template = double ? doubleElimGroupTemplate(pow2(size), t.advance_per_group) : null;
+          if (template && size !== pow2(size)) template.compact = false;
+          w();
+          w(`====Group ${label}====`);
+          elimBracket(own, { double, idSuffix: `g${label}`, upper: double ? 'gwb' : 'gse', lower: 'glb', bo: boGroup, boLast: boGroup, toggle: false, template });
+          if (!template || !template.compact) {
+            warnings.push(`Group ${label} 的${double ? '双败' : '单败'}小组对阵没有现成的 Liquipedia 模板对照，请确认模板名。`);
+          }
+          w('{{Box|break|padding=2em}}');
         }
-        if (gi < groups.length - 1) w('{{Box|break|padding=2em}}');
       });
-      w('{{Box|end}}');
-      w('{{Toggle group end}}');
+      if (swissGroups) {
+        w('{{Box|end}}');
+        w('{{Toggle group end}}');
+      }
       w();
       w('==={{Stage|Playoffs}}===');
     }
