@@ -12,6 +12,9 @@ import dotenv from 'dotenv';
 
 import databasePlugin from './plugins/database.js';
 import tournamentsRoutes from './routes/tournaments.js';
+import tournamentSettingsRoutes from './routes/tournament-settings.js';
+import tournamentBracketRoutes from './routes/tournament-bracket.js';
+import tournamentImportRoutes from './routes/tournament-import.js';
 import playersRoutes from './routes/players.js';
 import matchesRoutes from './routes/matches.js';
 import votesRoutes from './routes/votes.js';
@@ -56,6 +59,9 @@ await fastify.register(swagger, {
 await fastify.register(swaggerUi, { routePrefix: '/docs' });
 await fastify.register(databasePlugin);
 await fastify.register(tournamentsRoutes, { prefix: '/api' });
+await fastify.register(tournamentSettingsRoutes, { prefix: '/api' });
+await fastify.register(tournamentBracketRoutes, { prefix: '/api' });
+await fastify.register(tournamentImportRoutes, { prefix: '/api' });
 await fastify.register(playersRoutes, { prefix: '/api' });
 await fastify.register(matchesRoutes, { prefix: '/api' });
 await fastify.register(votesRoutes, { prefix: '/api' });
