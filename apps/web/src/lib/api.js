@@ -155,8 +155,8 @@ export const API = {
   removeCustomVote: (tournamentId, player_id, topic, value) =>
     request(`/tournaments/${enc(tournamentId)}/custom-vote`, { method: 'DELETE', body: JSON.stringify({ player_id, topic, value }) }),
 
-  // QQ group verification (player sign-in)
-
-  // Wiki Generation
-  getWikiScript: (tournamentId) => request(`/tournaments/${enc(tournamentId)}/wiki`)
+  // Liquipedia export: { wikiScript, warnings, meta, saved }
+  getWikiScript: (tournamentId) => request(`/tournaments/${enc(tournamentId)}/wiki`),
+  saveWikiSettings: (tournamentId, meta) =>
+    request(`/tournaments/${enc(tournamentId)}/wiki`, { method: 'PUT', body: JSON.stringify({ meta }) }),
 };

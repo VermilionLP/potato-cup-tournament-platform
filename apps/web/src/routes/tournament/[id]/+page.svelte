@@ -13,7 +13,6 @@
   import { formatScheduled, parseLocal } from "$lib/datetime.js";
   import { initialBanPick } from "$lib/banpick.js";
   import { resolveTemplate } from "$lib/vehicle-pools.js";
-  import { copyText } from "$lib/clipboard.js";
   import { overlayStages, pickStage } from "$lib/overlay.js";
   import { formatVoteTime, suggestedVoteTimes, voteOptionsFrom } from "$lib/votes.js";
   import {
@@ -150,9 +149,7 @@
   let showTimeEditDialog = $state(false);
   let timeEditValue = $state("");
   let savingTime = $state(false);
-  let showWikiDialog = $state(false);
-  let generatedWikiText = $state("");
-  let loadingWiki = $state(false);
+  let wikiDialog = $state(null);
   let playerEditor = $state(null);
 
   // "Going live" mode: only this browser forces the next-match flow.
@@ -506,25 +503,6 @@
     }
   }
 
-  async function openWikiExport() {
-    loadingWiki = true;
-    showWikiDialog = true;
-    try {
-      const res = await API.getWikiScript(tid);
-      generatedWikiText = res.wikiScript;
-    } catch (e) {
-      toast.error("生成 Wiki 脚本失败: " + e.message);
-    }
-    loadingWiki = false;
-  }
-
-  function copyWikiToClipboard() {
-    if (!generatedWikiText) return;
-    copyText(generatedWikiText).then((ok) =>
-      ok ? toast.success("Wiki 代码已成功复制到剪贴板！") : toast.error("复制失败，请手动选中后复制"),
-    );
-  }
-
   // Before a result is (re)entered: a correction first resets this match
   // (and anything it fed into); a new result over played later matches
   // resets those. Returns false if cancelled or the reset failed.
@@ -797,7 +775,7 @@
               {isAdmin}
               {playerName}
               onexportjson={triggerJsonDownload}
-              onexportwiki={openWikiExport}
+              onexportwiki={() => wikiDialog?.start()}
             />
           {/if}
 
@@ -842,7 +820,7 @@
 <FinalTimeDialog bind:open={showStatusTimeDialog} bind:value={selectedFinalTime} options={voteOptions} formatTime={formatVoteTime} onconfirm={confirmEndVoting} />
 
 <!-- Liquipedia Wiki Export Dialog -->
-<WikiExportDialog bind:open={showWikiDialog} loading={loadingWiki} text={generatedWikiText} oncopy={copyWikiToClipboard} />
+<WikiExportDialog bind:this={wikiDialog} {tid} />
 
 <!-- Participant Profile Edit Dialog -->
 <PlayerEditDialog bind:this={playerEditor} {tid} {ensureAdmin} onsaved={load} />
