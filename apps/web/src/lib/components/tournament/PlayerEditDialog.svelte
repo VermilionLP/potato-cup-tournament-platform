@@ -1,21 +1,77 @@
 <script>
-  // Admin: edit a participant's profile (ID, contact, flag, team, wiki link).
+  // Admin: edit a participant's profile (ID, contact, flag, team, wiki link)
+  // from the event page. Open with edit(player).
+  import { toast } from "svelte-sonner";
+  import { API } from "$lib/api.js";
+  import { userState } from "$lib/user.svelte.js";
+  import { buildContact, parseContact } from "$lib/contact.js";
   import * as Dialog from "$lib/components/ui/dialog/index.js";
   import { Button } from "$lib/components/ui/button/index.js";
   import { Input } from "$lib/components/ui/input/index.js";
   import Flag from "$lib/components/Flag.svelte";
   import SettingsIcon from "@lucide/svelte/icons/settings";
 
-  let {
-    open = $bindable(false),
-    id = $bindable(""),
-    qq = $bindable(""),
-    discord = $bindable(""),
-    flag = $bindable("cn"),
-    team = $bindable(""),
-    link = $bindable(""),
-    onsave,
-  } = $props();
+  let { tid, ensureAdmin, onsaved } = $props();
+
+  let open = $state(false);
+  let editingId = $state("");
+  let id = $state("");
+  let qq = $state("");
+  let discord = $state("");
+  let flag = $state("cn");
+  let team = $state("");
+  let link = $state("");
+  let contactBase = $state({});
+
+  export function edit(p) {
+    if (!ensureAdmin()) return;
+    editingId = p.id;
+    id = p.id;
+    flag = p.flag || "cn";
+    team = p.team || "";
+    link = p.link || "";
+    const contact = parseContact(p.battle_tags);
+    contactBase = contact.base;
+    qq = contact.qq;
+    discord = contact.discord;
+    open = true;
+  }
+
+  async function onsave() {
+    if (!ensureAdmin()) return;
+    try {
+      const cleanNewId = id.trim();
+      if (!cleanNewId) {
+        toast.error("选手唯一 ID 不能为空");
+        return;
+      }
+      if (cleanNewId !== editingId) {
+        const isMe = editingId === userState.id;
+        if (isMe && !confirm(`修改您的选手 ID 将会同时更新您的登录凭证，确定要修改吗？`)) return;
+        toast.loading("正在修改选手唯一 ID 并同步所有关联数据...", { id: "player-save" });
+        await API.renamePlayer(editingId, cleanNewId);
+        if (isMe) userState.setId(cleanNewId);
+        editingId = cleanNewId;
+      }
+      toast.loading("正在更新选手资料...", { id: "player-save" });
+      await API.updatePlayer(editingId, {
+        flag,
+        team,
+        link,
+        battle_tags: buildContact(contactBase, { qq, discord }),
+        tournament_id: tid,
+      });
+      toast.dismiss("player-save");
+      toast.success("选手资料更新成功");
+      open = false;
+      const isMe = editingId === userState.id;
+      await onsaved?.();
+      if (isMe) setTimeout(() => window.location.reload(), 100);
+    } catch (e) {
+      toast.dismiss("player-save");
+      toast.error("更新资料失败: " + e.message);
+    }
+  }
 </script>
 
 <Dialog.Root bind:open>
