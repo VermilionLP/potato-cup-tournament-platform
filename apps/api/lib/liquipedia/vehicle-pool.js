@@ -1,11 +1,15 @@
 // Which vehicle pool (line-up) a Liquipedia event used:
 //   prop        螺旋桨 (Prop Line-up)
-//   legacy-jet  早期喷气 (Legacy Jet / Top Jet Line-up)
+//   top-jet     顶级喷气: jet events before Weekly #23 (TOP_JET_UNTIL)
+//   legacy-jet  早期喷气 (Legacy Jet / Top Jet Line-up from Weekly #23 on)
 //   proleague   Pro League BVR (Pro League Line-up)
 //
 // Order: the event's own exceptions, then the "Line-up" line in the page's
 // Format section, then the event name / page title. Jet events before 2026
-// are Legacy Jet; anything that names no line-up is Prop.
+// are jet events; anything that names no line-up is Prop. A jet event dated
+// before Weekly #23 is Top Jet.
+
+import { TOP_JET_UNTIL } from '../tournament-config.js';
 
 // Organisers' decisions for events whose page names no line-up. Matched
 // on the page title and its subpages.
@@ -22,7 +26,7 @@ function poolFromText(text) {
   const t = String(text || '').toLowerCase();
   // "Prop League" on the BVR page is a typo for Pro League: check leagues first.
   if (/\bpro\s*-?\s*league\b|\bprop league\b|\bbvr\b/.test(t)) return 'proleague';
-  // "Top Jet" (Weekly #19, #20, #25) used the Legacy Jet pool.
+  // "Top Jet" (Weekly #19, #20, #25): a jet event, sorted by date below.
   if (/\blegacy\s*-?\s*jet\b|\btop\s*jet\b/.test(t)) return 'legacy-jet';
   if (/\bprop\b/.test(t)) return 'prop';
   return null;
@@ -40,9 +44,15 @@ export function formatSection(wikitext) {
 
 /**
  * @param {{ title: string, name?: string, wikitext?: string, date?: string|null }} page
- * @returns {'prop'|'legacy-jet'|'proleague'}
+ * @returns {'prop'|'top-jet'|'legacy-jet'|'proleague'}
  */
-export function detectVehiclePool({ title, name = '', wikitext = '', date = null }) {
+export function detectVehiclePool(page) {
+  const pool = jetOrOther(page);
+  if (pool === 'legacy-jet' && page.date && String(page.date).slice(0, 10) < TOP_JET_UNTIL) return 'top-jet';
+  return pool;
+}
+
+function jetOrOther({ title, name = '', wikitext = '', date = null }) {
   for (const [prefix, pool] of BY_TITLE) {
     if (title === prefix || String(title).startsWith(`${prefix}/`)) return pool;
   }

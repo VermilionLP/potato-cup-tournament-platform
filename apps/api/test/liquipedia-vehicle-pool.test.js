@@ -16,9 +16,10 @@ test('the Format section line-up comes first', () => {
   assert.equal(detectVehiclePool({ title: 'Potato Cup Weekly/12', wikitext: page('* All matches are Bo5.', '* Legacy Jet Line-up'), date: '2025-05-04' }), 'prop');
 });
 
-test('then the event name; Jet before 2026 is Legacy Jet; otherwise Prop', () => {
-  assert.equal(detectVehiclePool({ title: 'Potato Cup/2024/Autumn/Jet/Beginners Group', date: '2024-09-20' }), 'legacy-jet');
-  assert.equal(detectVehiclePool({ title: 'Potato Cup/2025/Winter/Jet', date: '2025-12-27' }), 'legacy-jet');
+test('then the event name; Jet before 2026 is a jet event (Top Jet before Weekly #23); otherwise Prop', () => {
+  assert.equal(detectVehiclePool({ title: 'Potato Cup/2024/Autumn/Jet/Beginners Group', date: '2024-09-20' }), 'top-jet');
+  assert.equal(detectVehiclePool({ title: 'Potato Cup/2025/Winter/Jet', date: '2025-12-27' }), 'top-jet');
+  assert.equal(detectVehiclePool({ title: 'Potato Cup/2025/Winter/Jet' }), 'legacy-jet', 'no date: Legacy Jet');
   assert.equal(detectVehiclePool({ title: 'Potato Cup/2025/Spring/Prop/Qualifier/Asia', date: '2025-02-21' }), 'prop');
   assert.equal(detectVehiclePool({ title: 'Potato Cup/2026/Winter/Legacy Jet', date: '2027-02-20' }), 'legacy-jet');
   assert.equal(detectVehiclePool({ title: 'Potato Cup/2024/Lunar New Year Cup', date: '2024-02-10' }), 'prop');
@@ -27,11 +28,14 @@ test('then the event name; Jet before 2026 is Legacy Jet; otherwise Prop', () =>
 });
 
 test('organiser exceptions', () => {
-  assert.equal(detectVehiclePool({ title: 'Potato Cup Weekly/14', date: '2025-08-22' }), 'legacy-jet');
-  assert.equal(detectVehiclePool({ title: 'Potato Cup Weekly/16', date: '2025-11-15' }), 'legacy-jet');
+  assert.equal(detectVehiclePool({ title: 'Potato Cup Weekly/14', date: '2025-08-22' }), 'top-jet');
+  assert.equal(detectVehiclePool({ title: 'Potato Cup Weekly/16', date: '2025-11-15' }), 'top-jet');
   const topJet = page('* Single-elimination Bracket:\n* Top Jet Line-up');
-  assert.equal(detectVehiclePool({ title: 'Potato Cup Weekly/19', wikitext: topJet, date: '2026-05-04' }), 'legacy-jet');
-  assert.equal(detectVehiclePool({ title: 'Potato Cup Weekly/20', wikitext: topJet, date: '2026-05-10' }), 'legacy-jet');
+  const legacyJet = page('* Single-elimination Bracket:\n* Legacy Jet Line-up');
+  assert.equal(detectVehiclePool({ title: 'Potato Cup Weekly/19', wikitext: topJet, date: '2026-05-04' }), 'top-jet');
+  assert.equal(detectVehiclePool({ title: 'Potato Cup Weekly/20', wikitext: topJet, date: '2026-05-10' }), 'top-jet');
+  // From Weekly #23 on, jet events are Legacy Jet, whatever the page calls the line-up.
+  assert.equal(detectVehiclePool({ title: 'Potato Cup Weekly/23', wikitext: legacyJet, date: '2026-05-30' }), 'legacy-jet');
   assert.equal(detectVehiclePool({ title: 'Potato Cup Weekly/25', wikitext: topJet, date: '2026-06-27' }), 'legacy-jet');
   assert.equal(detectVehiclePool({ title: 'Potato Cup Weekly/1', date: '2023-10-21' }), 'prop', 'not Weekly/14 by prefix');
   assert.equal(detectVehiclePool({ title: 'Potato Cup/2026/June/Europe', date: '2026-06-13' }), 'prop');

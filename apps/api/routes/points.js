@@ -2,7 +2,7 @@
 // the points every player earned in finished events with a points table.
 
 import { getPlayerDisplayName } from '../repositories/player-repo.js';
-import { VEHICLE_POOLS } from '../lib/tournament-config.js';
+import { pointsBoardOf, VEHICLE_POOLS } from '../lib/tournament-config.js';
 import { eventPlacements } from '../lib/placements.js';
 import { buildBoard, finalsQualifiers, FINALS_SPOTS, normalizeSeason, pointsFor } from '../lib/points.js';
 import { requireAdmin } from '../lib/admin.js';
@@ -15,7 +15,7 @@ const EVENTS_SQL = `
 `;
 
 /** Live leaderboard boards of a season (one per event type). */
-async function computeBoards(db, season, events) {
+export async function computeBoards(db, season, events) {
   const finished = events.filter((e) => e.points_season === season && e.status === 'completed');
   if (!finished.length) return [];
 
@@ -51,15 +51,17 @@ async function computeBoards(db, season, events) {
     })
     .sort((a, b) => new Date(a.played_at) - new Date(b.played_at) || a.id.localeCompare(b.id));
 
+  // One board per event type; Top Jet events count towards Legacy Jet.
   const boards = VEHICLE_POOLS
+    .filter((pool) => pointsBoardOf(pool) === pool)
     .map((pool) => {
-      const evs = scored.filter((e) => e.vehicle_pool === pool);
+      const evs = scored.filter((e) => pointsBoardOf(e.vehicle_pool) === pool);
       if (!evs.length) return null;
       const ranked = buildBoard(evs);
       // Invite events of this board, unfinished ones included (their place
       // is reserved), in date order.
       const invites = events
-        .filter((e) => e.points_season === season && e.vehicle_pool === pool && e.points_invite)
+        .filter((e) => e.points_season === season && pointsBoardOf(e.vehicle_pool) === pool && e.points_invite)
         .sort((a, b) => new Date(a.played_at) - new Date(b.played_at) || a.id.localeCompare(b.id))
         .map((e) => ({ id: e.id, name: e.name, finished: e.status === 'completed', order: evs.find((x) => x.id === e.id)?.order || null }));
       const qualified = finalsQualifiers(ranked, invites);

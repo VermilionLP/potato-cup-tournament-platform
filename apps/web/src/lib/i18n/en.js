@@ -203,6 +203,7 @@ export default {
   "不启用时比赛仍按上一步选的比赛类型分类统计。": "Without Ban / Pick the event is still classed and counted under the event type chosen in the first step.",
   "螺旋桨": "Prop",
   "早期喷气": "Legacy Jet",
+  "顶级喷气": "Top Jet",
   "全部": "All",
   "昨天完赛": "Finished yesterday",
   "今天完赛": "Finished today",

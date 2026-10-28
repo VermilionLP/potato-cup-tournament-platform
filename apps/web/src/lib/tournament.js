@@ -30,6 +30,8 @@ export function gameModeTitle(value) {
 // Vehicle pools (line-ups) events are grouped by.
 export const VEHICLE_POOLS = [
   { id: "prop", code: "Prop", name: "螺旋桨" },
+  // Jet events before Potato Cup Weekly #23 (2026-05-30).
+  { id: "top-jet", code: "Top Jet", name: "顶级喷气" },
   { id: "legacy-jet", code: "Legacy Jet", name: "早期喷气" },
   { id: "proleague", code: "BVR", name: "Pro League BVR" },
 ];
@@ -37,11 +39,12 @@ export const VEHICLE_POOLS = [
 // Tag colours per event type, so the type can be spotted at a glance.
 export const POOL_TAG = {
   prop: "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300",
+  "top-jet": "border-rose-500/30 bg-rose-500/10 text-rose-700 dark:text-rose-300",
   "legacy-jet": "border-sky-500/30 bg-sky-500/10 text-sky-700 dark:text-sky-300",
   proleague: "border-violet-500/30 bg-violet-500/10 text-violet-700 dark:text-violet-300",
 };
 
-/** "螺旋桨" / "早期喷气" / "Pro League BVR"; '' for an unknown pool. */
+/** "螺旋桨" / "顶级喷气" / "早期喷气" / "Pro League BVR"; '' for an unknown pool. */
 export function vehiclePoolLabel(value) {
   return VEHICLE_POOLS.find((pool) => pool.id === value)?.name || "";
 }

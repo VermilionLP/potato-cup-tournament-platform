@@ -115,7 +115,7 @@ test("two-stage labels and elimination-group start checks", async () => {
 
 test("vehicle pool labels", async () => {
   const { vehiclePoolLabel, VEHICLE_POOLS } = await import("../src/lib/tournament.js");
-  assert.deepEqual(VEHICLE_POOLS.map((p) => p.id), ["prop", "legacy-jet", "proleague"]);
+  assert.deepEqual(VEHICLE_POOLS.map((p) => p.id), ["prop", "top-jet", "legacy-jet", "proleague"]);
   assert.equal(vehiclePoolLabel("prop"), "螺旋桨");
   assert.equal(vehiclePoolLabel("legacy-jet"), "早期喷气");
   assert.equal(vehiclePoolLabel("proleague"), "Pro League BVR");

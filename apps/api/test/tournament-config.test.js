@@ -76,3 +76,12 @@ test('two-stage swiss uses the group-stage start rules', () => {
   assert.equal(startBlockedReason('swiss', 4, 4, { groupSize: 2, perGroup: 1, playoffFormat: null }),
     '瑞士轮 4 轮至少需要 5 名选手（当前 4 人）');
 });
+
+test('Top Jet: its own type, counted on the Legacy Jet points board', async () => {
+  const { VEHICLE_POOLS, normalizeEventPool, pointsBoardOf } = await import('../lib/tournament-config.js');
+  assert.deepEqual(VEHICLE_POOLS, ['prop', 'top-jet', 'legacy-jet', 'proleague']);
+  assert.equal(normalizeEventPool('top-jet'), 'top-jet');
+  assert.equal(pointsBoardOf('top-jet'), 'legacy-jet');
+  assert.equal(pointsBoardOf('legacy-jet'), 'legacy-jet');
+  assert.equal(pointsBoardOf('prop'), 'prop');
+});

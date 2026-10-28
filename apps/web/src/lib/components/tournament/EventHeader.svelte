@@ -74,7 +74,7 @@
     }
   }
 
-  // Event type (螺旋桨 / 早期喷气 / Pro League BVR): admins can change it any time.
+  // Event type (螺旋桨 / 顶级喷气 / 早期喷气 / Pro League BVR): admins can change it any time.
   let savingPool = $state(false);
   async function saveEventPool(pool) {
     if (!adminOnly() || !pool || pool === tournament?.vehicle_pool) return;
