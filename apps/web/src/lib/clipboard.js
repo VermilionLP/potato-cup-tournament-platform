@@ -1,7 +1,9 @@
 // Copy text to the clipboard. navigator.clipboard only exists on HTTPS (and
 // localhost); the site is also served over plain HTTP, where a hidden
-// textarea and document.execCommand("copy") still work. Resolves to true
-// when the text was copied.
+// textarea and document.execCommand("copy") still work. The textarea goes
+// inside the open dialog, if any: a dialog keeps focus to itself, so one
+// outside it cannot be selected and nothing would be copied. Resolves to
+// true when the text was copied.
 export async function copyText(text) {
   const value = String(text ?? "");
   if (typeof navigator !== "undefined" && navigator.clipboard && window.isSecureContext) {
@@ -19,7 +21,10 @@ export async function copyText(text) {
   area.style.position = "fixed";
   area.style.top = "-1000px";
   area.style.opacity = "0";
-  document.body.appendChild(area);
+  const host = document.activeElement?.closest?.('[role="dialog"]') || document.querySelector('[role="dialog"][data-state="open"]') || document.body;
+  const previous = document.activeElement;
+  host.appendChild(area);
+  area.focus();
   area.select();
   area.setSelectionRange(0, value.length);
   let ok = false;
@@ -29,5 +34,6 @@ export async function copyText(text) {
     ok = false;
   }
   area.remove();
+  if (previous && typeof previous.focus === "function") previous.focus();
   return ok;
 }
