@@ -24,12 +24,13 @@ rem First run: make config.json and open it
 if not exist config.json (
   copy /y config.example.json config.json >nul
   echo 第一次使用：已创建 config.json，正在用记事本打开。
-  echo 请填写 site（网站地址）和 adminToken（管理员令牌），需要切 OBS 的再填 obs 开头的几项，然后保存并关闭记事本。
+  echo 请填写 obsPassword（OBS WebSocket 密码），并把 obsBattle / obsEnded / obsHangar 改成你 OBS 里的场景名，然后保存并关闭记事本。
+  echo 只切 OBS 场景时，site 和 adminToken 留空即可。
   notepad config.json
 )
 
 echo.
-echo 回车 = 沿用上次的值。停止：关闭本窗口或按 Ctrl+C。
+echo 停止：关闭本窗口或按 Ctrl+C。
 echo.
 node wt-autoscene.mjs --config config.json --ask
 echo.

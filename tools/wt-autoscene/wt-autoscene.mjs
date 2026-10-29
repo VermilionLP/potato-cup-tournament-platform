@@ -62,8 +62,9 @@ if (cli.config) {
 }
 const opt = mergeOptions(cli, fileConfig);
 
-// Ask for the event and channel (Enter keeps the last ones, saved back).
-if (opt.ask && process.stdin.isTTY) {
+// Ask for the event and channel (Enter keeps the last ones, saved back);
+// only when the site's overlay is switched, OBS alone needs neither.
+if (opt.ask && opt.site && process.stdin.isTTY) {
   const rl = createInterface({ input: process.stdin, output: process.stdout });
   const event = (await rl.question(`赛事 ID${opt.event ? ` [${opt.event}]` : ''}: `)).trim();
   const ch = (await rl.question(`直播频道 [${opt.channel}]: `)).trim();
@@ -152,6 +153,8 @@ async function setSiteScene(scene) {
 // ---------------------------------------------------------------- OBS
 
 let obs = null;
+let obsWarned = false;
+let lastObsScene = null;
 let obsReady = null;
 let requestId = 0;
 
@@ -168,19 +171,32 @@ function connectObs() {
         ws.send(JSON.stringify({ op: 1, d }));
       } else if (msg.op === 2) {
         obs = ws;
+        obsWarned = false;
+        lastObsScene = null;
         log('已连接 OBS');
         resolve(true);
+        // Connected late (OBS opened after this): catch up with the game.
+        if (shownState) setObsScene(obsSceneOf(shownState)).catch(() => {});
       } else if (msg.op === 7 && !msg.d.requestStatus?.result) {
         log('OBS 切换失败:', msg.d.requestStatus?.comment || msg.d.requestStatus?.code);
       }
     };
-    ws.onclose = () => {
+    // A refused connection fires only "error", a dropped one "close":
+    // handle whichever comes first, once.
+    let done = false;
+    const lost = (code) => {
+      if (done) return;
+      done = true;
       if (obs === ws) log('OBS 连接断开，5 秒后重连');
+      else if (code === 4009) log('OBS 密码不对：请检查 obsPassword（OBS → 工具 → WebSocket 服务器设置）');
+      else if (!obsWarned) log('连不上 OBS：请确认 OBS 已打开，并在"工具 → WebSocket 服务器设置"里启用了服务器；之后每 5 秒自动重试');
+      obsWarned = obs !== ws;
       obs = null;
       resolve(false);
       setTimeout(connectObs, 5000);
     };
-    ws.onerror = () => {};
+    ws.onclose = (ev) => lost(ev.code);
+    ws.onerror = () => setTimeout(() => lost(0), 100);
   });
 }
 
@@ -189,6 +205,8 @@ async function setObsScene(name) {
   if (opt['dry-run']) return log(`[试运行] OBS → ${name}`);
   if (!obs) await Promise.race([obsReady, new Promise((r) => setTimeout(r, 2000))]);
   if (!obs) return log('OBS 未连接，跳过切换');
+  if (name === lastObsScene) return;
+  lastObsScene = name;
   obs.send(JSON.stringify({ op: 6, d: { requestType: 'SetCurrentProgramScene', requestId: String(++requestId), requestData: { sceneName: name } } }));
   log(`OBS → ${name}`);
 }
@@ -199,9 +217,13 @@ const NAMES = { offline: '游戏未运行', hangar: '机库', battle: '战斗中
 const track = stateTracker(Number(opt.stable));
 let pending = null;
 
+let shownState = null; // last state whose scenes were applied
+const obsSceneOf = (state) => ({ battle: opt['obs-battle'], ended: opt['obs-ended'], hangar: opt['obs-hangar'] })[state];
+
 async function apply(state) {
+  shownState = state;
   const site = { battle: opt['scene-battle'], ended: opt['scene-ended'], hangar: opt['scene-hangar'] }[state];
-  const obsScene = { battle: opt['obs-battle'], ended: opt['obs-ended'], hangar: opt['obs-hangar'] }[state];
+  const obsScene = obsSceneOf(state);
   await Promise.all([
     setSiteScene(site).catch((e) => log('网站切换失败:', e.message)),
     setObsScene(obsScene).catch((e) => log('OBS 切换失败:', e.message)),

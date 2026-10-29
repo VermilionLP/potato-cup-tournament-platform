@@ -1,18 +1,19 @@
 {
-  "site": "https://你的网站域名",
+  "obs": "ws://127.0.0.1:4455",
+  "obsPassword": "",
+  "obsBattle": "游戏中",
+  "obsEnded": "间歇",
+  "obsHangar": "间歇",
+  "endDelay": 8,
+  "record": "",
+  "dryRun": false,
+
+  "site": "",
   "adminToken": "",
   "event": "",
   "channel": 1,
   "askEvent": true,
-  "endDelay": 8,
   "sceneBattle": "ingame",
   "sceneEnded": "intermission",
-  "sceneHangar": "hybrid",
-  "obs": "",
-  "obsPassword": "",
-  "obsBattle": "",
-  "obsEnded": "",
-  "obsHangar": "",
-  "record": "",
-  "dryRun": false
+  "sceneHangar": "hybrid"
 }
