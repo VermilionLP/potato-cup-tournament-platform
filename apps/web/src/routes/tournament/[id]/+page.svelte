@@ -1,7 +1,8 @@
 <script>
-  // Event page: loads the event, keeps it live (SSE) and holds the actions
-  // (registration, seeds, results, stages). What it shows is derived in
-  // $lib/event-view.js; sections and dialogs live in
+  // Event page: loads the event, keeps it live (SSE) and wires the actions
+  // ($lib/event-registration.js, $lib/event-stage.js; reporting is
+  // MatchReport, the time dialogs carry their own flows). What it shows is
+  // derived in $lib/event-view.js; sections and dialogs live in
   // $lib/components/tournament.
   import { onMount } from "svelte";
   import { toast } from "svelte-sonner";
@@ -10,18 +11,10 @@
   import { goto } from "$app/navigation";
   import { userState } from "$lib/user.svelte.js";
   import { buildMatchOrder } from "$lib/bracket.js";
-  import { formatScheduled, parseLocal } from "$lib/datetime.js";
   import { resolveTemplate } from "$lib/vehicle-pools.js";
   import { overlayStages, pickStage } from "$lib/overlay.js";
-  import { formatVoteTime, suggestedVoteTimes, voteOptionsFrom } from "$lib/votes.js";
-  import {
-    eventFormatLabel,
-    GROUP_FORMATS,
-    isValidSwissRounds,
-    MAX_SWISS_ROUNDS,
-    MIN_SWISS_ROUNDS,
-    startBlockedMessage,
-  } from "$lib/tournament.js";
+  import { suggestedVoteTimes, voteOptionsFrom } from "$lib/votes.js";
+  import { GROUP_FORMATS, startBlockedMessage } from "$lib/tournament.js";
   import {
     bracketMatchesOf,
     eventStandings,
@@ -56,6 +49,7 @@
   import EventBracketCard from "$lib/components/tournament/EventBracketCard.svelte";
   import LiveHandoff from "$lib/components/tournament/LiveHandoff.svelte";
   import { registrationActions } from "$lib/event-registration.js";
+  import { stageActions } from "$lib/event-stage.js";
   import { channelOptions, liveElsewhere, savedChannel, savedStreamMode, saveChannel, withChannel } from "$lib/live-channels.js";
   import { coalescedRefresh } from "$lib/coalesced-refresh.js";
   import TrophyIcon from "@lucide/svelte/icons/trophy";
@@ -129,11 +123,8 @@
 
 
   // Dialogs
-  let showStatusTimeDialog = $state(false);
-  let selectedFinalTime = $state("");
-  let showTimeEditDialog = $state(false);
-  let timeEditValue = $state("");
-  let savingTime = $state(false);
+  let finalTimeDialog = $state(null);
+  let timeEditDialog = $state(null);
   let wikiDialog = $state(null);
   let matchReport = $state(null);
   let playerEditor = $state(null);
@@ -250,43 +241,6 @@
     tournament = { ...tournament, matches };
   }
 
-  async function changeStatus(status) {
-    if (!ensureAdmin()) return;
-    try {
-      tournament = await API.updateStatus(tid, status);
-      toast.success(`赛事状态已切换至: ${eventStatusLabel(status)}`);
-      await load();
-    } catch (e) {
-      toast.error(e.message);
-    }
-  }
-
-  // "结束投票并开启报名": preselect the most voted future time.
-  function openEndVoting() {
-    if (needsIdentity()) return;
-    const future = voteOptions.filter((opt) => new Date(opt.proposed_time).getTime() >= Date.now());
-    const top = [...future].sort((a, b) => b.count - a.count)[0];
-    selectedFinalTime = top ? formatVoteTime(top.proposed_time) : "";
-    showStatusTimeDialog = true;
-  }
-
-  async function confirmEndVoting() {
-    if (!ensureAdmin()) return;
-    if (!selectedFinalTime.trim()) return toast.error("请选择或输入确定的比赛时间");
-    try {
-      const res = await API.updateStatus(tid, "registration", selectedFinalTime.trim());
-      tournament = res;
-      const autoCount = res.auto_registered?.length || 0;
-      toast.success(
-        `赛事已开启报名，比赛时间已定为: ${selectedFinalTime}` + (autoCount > 0 ? `，已自动报名 ${autoCount} 名投票选手` : ""),
-      );
-      showStatusTimeDialog = false;
-      await load();
-    } catch (e) {
-      toast.error(e.message);
-    }
-  }
-
   // Registration and seeds ($lib/event-registration.js).
   const { doRegister, doBatchRegister, doUnregister, autoSeed, randomizeSeed, moveSeed } = registrationActions({
     tid: () => tid,
@@ -301,118 +255,25 @@
     needsIdentity: () => needsIdentity(),
   });
 
-  async function toggleActiveMatch(match) {
-    const isActive = live?.active_match_id === match.id;
-    try {
-      await API.setActiveMatch(tid, isActive ? null : match.id, liveChannel);
-      tournament = await API.getTournament(tid);
-      toast.success(isActive ? "已取消直播该场次" : "已开启该场次直播！");
-    } catch (err) {
-      toast.error("更新直播状态失败: " + err.message);
-    }
-  }
+  // Status, playoffs, Swiss rounds, live match, JSON ($lib/event-stage.js).
+  const { changeStatus, toggleActiveMatch, startPlayoffs, withdrawPlayoffs, editSwissRounds, downloadJson } = stageActions({
+    tid: () => tid,
+    tournament: () => tournament,
+    setTournament: (t) => (tournament = t),
+    bracketMatches: () => bracketMatches,
+    live: () => live,
+    liveChannel: () => liveChannel,
+    setStageView: (v) => (stageView = v),
+    setPlayoffBusy: (b) => (playoffBusy = b),
+    isAdmin: () => isAdmin,
+    load: () => load(),
+    ensureAdmin: () => ensureAdmin(),
+  });
 
-
-  async function startPlayoffs() {
-    if (!ensureAdmin()) return;
-    const q = tournament?.group_stage?.qualifiers?.length || 0;
-    const warn = tournament?.group_stage?.warnings?.length
-      ? "\n\n注意：晋级线上有同分，由报名种子决定（详见名单上方提示）。"
-      : "";
-    if (!confirm(`按当前名单生成淘汰赛（${q} 人）？生成后小组赛结果将被锁定。${warn}`)) return;
-    playoffBusy = true;
-    try {
-      await API.startPlayoffs(tid);
-      stageView = null;
-      toast.success("淘汰赛已生成");
-      await load();
-    } catch (e) {
-      toast.error(e.message);
-    } finally {
-      playoffBusy = false;
-    }
-  }
-
-  async function withdrawPlayoffs() {
-    if (!ensureAdmin()) return;
-    const played = bracketMatches.some(
-      (m) => (m.status === "completed" || m.status === "walkover") && m.player1_id && m.player2_id,
-    );
-    const msg = played
-      ? "【警告】淘汰赛已有比赛打完！撤回会删除整个淘汰赛对阵和比分，回到小组赛（可修改小组赛结果）。确定继续吗？"
-      : "撤回淘汰赛并回到小组赛？淘汰赛对阵会被删除。";
-    if (!confirm(msg)) return;
-    playoffBusy = true;
-    try {
-      await API.withdrawPlayoffs(tid);
-      stageView = null;
-      toast.success("已撤回淘汰赛，回到小组赛");
-      await load();
-    } catch (e) {
-      toast.error(e.message);
-    } finally {
-      playoffBusy = false;
-    }
-  }
-
-  async function editSwissRounds() {
-    if (!ensureAdmin()) return;
-    const current = tournament?.swiss_rounds ?? "";
-    const input = prompt(
-      `瑞士轮总轮数（${MIN_SWISS_ROUNDS}-${MAX_SWISS_ROUNDS}）。留空 = 自动（单循环，每人与同组所有人各打一场）。比赛进行中修改时，不能少于当前轮次。`,
-      String(current),
-    );
-    if (input === null) return;
-    const trimmed = input.trim();
-    const rounds = trimmed === "" ? null : Number(trimmed);
-    if (rounds !== null && !isValidSwissRounds(rounds)) {
-      toast.error(`轮数必须是 ${MIN_SWISS_ROUNDS}-${MAX_SWISS_ROUNDS} 之间的整数，或留空表示自动`);
-      return;
-    }
-    try {
-      await API.setSwissRounds(tid, rounds);
-      toast.success(rounds === null ? "瑞士轮轮数已改为自动（单循环）" : `瑞士轮已设为 ${rounds} 轮`);
-      await load();
-    } catch (e) {
-      toast.error(e.message);
-    }
-  }
-
-  function openTimeEdit() {
-    if (!ensureAdmin()) return;
-    timeEditValue = parseLocal(tournament?.scheduled_time) ? tournament.scheduled_time : "";
-    showTimeEditDialog = true;
-  }
-
-  async function saveTimeEdit() {
-    if (!parseLocal(timeEditValue)) return toast.error("请选择日期和时间");
-    savingTime = true;
-    try {
-      tournament = await API.updateTournament(tid, { scheduled_time: timeEditValue });
-      toast.success(`比赛时间已改为北京时间 ${formatScheduled(timeEditValue)}`);
-      showTimeEditDialog = false;
-      await load();
-    } catch (e) {
-      toast.error(e.message);
-    } finally {
-      savingTime = false;
-    }
-  }
-
-
-  // Admin: download the event as JSON.
-  function triggerJsonDownload() {
-    if (!tournament || !isAdmin) return;
-    const blob = new Blob([JSON.stringify(tournament, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `potato-cup-${tournament.id}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    toast.success("赛事 JSON 导出成功");
+  // After a time dialog saved: show its result, then reload.
+  async function savedEvent(t) {
+    tournament = t;
+    await load();
   }
 </script>
 
@@ -510,14 +371,14 @@
         {vehicleTemplates}
         {bpTemplate}
         onreload={load}
-        onedittime={openTimeEdit}
+        onedittime={() => timeEditDialog?.start()}
       />
       {#if isAdmin}
         <StatusControls
           status={tournament.status}
           {startBlocked}
           canStart={!startBlocked}
-          onendvoting={openEndVoting}
+          onendvoting={() => finalTimeDialog?.start()}
           onstatus={changeStatus}
         />
       {/if}
@@ -582,7 +443,7 @@
               swissTable={isSwiss && !isTwoStage}
               {isAdmin}
               {playerName}
-              onexportjson={triggerJsonDownload}
+              onexportjson={downloadJson}
               onexportwiki={() => wikiDialog?.start()}
             />
           {/if}
@@ -617,10 +478,10 @@
 />
 
 <!-- Admin: adjust the match time -->
-<TimeEditDialog bind:open={showTimeEditDialog} bind:value={timeEditValue} current={tournament?.scheduled_time} saving={savingTime} onsave={saveTimeEdit} />
+<TimeEditDialog bind:this={timeEditDialog} {tid} current={tournament?.scheduled_time} {ensureAdmin} onsaved={savedEvent} />
 
 <!-- Ending the vote: pick the final time -->
-<FinalTimeDialog bind:open={showStatusTimeDialog} bind:value={selectedFinalTime} options={voteOptions} formatTime={formatVoteTime} onconfirm={confirmEndVoting} />
+<FinalTimeDialog bind:this={finalTimeDialog} {tid} options={voteOptions} {ensureAdmin} {needsIdentity} onsaved={savedEvent} />
 
 <!-- Liquipedia Wiki Export Dialog -->
 <WikiExportDialog bind:this={wikiDialog} {tid} />

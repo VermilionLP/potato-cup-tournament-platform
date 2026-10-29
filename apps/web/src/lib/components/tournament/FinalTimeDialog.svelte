@@ -1,12 +1,44 @@
 <script>
-  // Ending the time vote: pick or type the final match time.
+  // Ending the time vote ("结束投票并开启报名"): pick or type the final match
+  // time; start() preselects the most voted future time. onsaved(tournament)
+  // gets the event, now open for registration.
   import * as Dialog from "$lib/components/ui/dialog/index.js";
   import { Button } from "$lib/components/ui/button/index.js";
   import { Input } from "$lib/components/ui/input/index.js";
   import { Badge } from "$lib/components/ui/badge/index.js";
   import ClockIcon from "@lucide/svelte/icons/clock";
+  import { toast } from "svelte-sonner";
+  import { API } from "$lib/api.js";
+  import { formatVoteTime as formatTime } from "$lib/votes.js";
 
-  let { open = $bindable(false), value = $bindable(""), options = [], formatTime, onconfirm } = $props();
+  let { tid, options = [], ensureAdmin, needsIdentity, onsaved } = $props();
+
+  let open = $state(false);
+  let value = $state("");
+
+  export function start() {
+    if (needsIdentity()) return;
+    const future = options.filter((opt) => new Date(opt.proposed_time).getTime() >= Date.now());
+    const top = [...future].sort((a, b) => b.count - a.count)[0];
+    value = top ? formatTime(top.proposed_time) : "";
+    open = true;
+  }
+
+  async function confirmTime() {
+    if (!ensureAdmin()) return;
+    if (!value.trim()) return toast.error("请选择或输入确定的比赛时间");
+    try {
+      const res = await API.updateStatus(tid, "registration", value.trim());
+      const autoCount = res.auto_registered?.length || 0;
+      toast.success(
+        `赛事已开启报名，比赛时间已定为: ${value}` + (autoCount > 0 ? `，已自动报名 ${autoCount} 名投票选手` : ""),
+      );
+      open = false;
+      await onsaved?.(res);
+    } catch (e) {
+      toast.error(e.message);
+    }
+  }
 </script>
 
 <Dialog.Root bind:open>
@@ -57,7 +89,7 @@
 
     <Dialog.Footer class="flex flex-col sm:flex-row gap-2 mt-2">
       <Button variant="outline" size="sm" onclick={() => (open = false)} class="w-full sm:w-auto text-xs">取消</Button>
-      <Button size="sm" onclick={onconfirm} class="w-full sm:w-auto text-xs font-bold">确定并开启报名</Button>
+      <Button size="sm" onclick={confirmTime} class="w-full sm:w-auto text-xs font-bold">确定并开启报名</Button>
     </Dialog.Footer>
   </Dialog.Content>
 </Dialog.Root>
