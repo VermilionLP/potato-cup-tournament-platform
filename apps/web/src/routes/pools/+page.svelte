@@ -8,12 +8,14 @@
   import { toast } from "svelte-sonner";
   import { API } from "$lib/api.js";
   import { userState } from "$lib/user.svelte.js";
-  import { DEFAULT_BP_RULES, groupVehicles, initialBanPick, normalizeRules, rulesSummary } from "$lib/banpick.js";
-  import { GAME_MODES, POOL_TAG, VEHICLE_POOLS } from "$lib/tournament.js";
-  import { groupSummary, modesLabel, parsePoolFile, poolToCsv, poolToJson, previewVehicles, vehicleListProblem } from "$lib/vehicle-pools.js";
-  import BanPickPanel from "$lib/components/BanPickPanel.svelte";
+  import { DEFAULT_BP_RULES, groupVehicles, normalizeRules, rulesSummary } from "$lib/banpick.js";
+  import { VEHICLE_POOLS } from "$lib/tournament.js";
+  import { parsePoolFile, poolToCsv, poolToJson, vehicleListProblem } from "$lib/vehicle-pools.js";
+  import TemplatePicker from "$lib/components/pools/TemplatePicker.svelte";
+  import TemplateSettings from "$lib/components/pools/TemplateSettings.svelte";
+  import VehicleTable from "$lib/components/pools/VehicleTable.svelte";
+  import PoolPreview from "$lib/components/pools/PoolPreview.svelte";
   import { Button } from "$lib/components/ui/button/index.js";
-  import { Input } from "$lib/components/ui/input/index.js";
   import PlaneIcon from "@lucide/svelte/icons/plane";
   import DownloadIcon from "@lucide/svelte/icons/download";
   import UploadIcon from "@lucide/svelte/icons/upload";
@@ -22,7 +24,6 @@
   import Trash2Icon from "@lucide/svelte/icons/trash-2";
   import CheckIcon from "@lucide/svelte/icons/check";
   import XIcon from "@lucide/svelte/icons/x";
-  import SearchIcon from "@lucide/svelte/icons/search";
   import TableIcon from "@lucide/svelte/icons/table";
   import EyeIcon from "@lucide/svelte/icons/eye";
 
@@ -57,26 +58,6 @@
   let rows = $derived(current?.vehicles || []);
   let problem = $derived(dirty ? (!String(current.name || "").trim() ? "请填写模板名称" : vehicleListProblem(rows)) : "");
   let groupCount = $derived(groupVehicles(rows.filter((v) => String(v.name ?? "").trim())).length);
-  let shownRows = $derived.by(() => {
-    const q = query.trim().toLowerCase();
-    const indexed = rows.map((v, i) => ({ v, i }));
-    if (!q) return indexed;
-    return indexed.filter(({ v }) =>
-      ["name", "nation", "type", "group"].some((f) => String(v[f] ?? "").toLowerCase().includes(q)),
-    );
-  });
-  // Preview: the template as it is now (unsaved edits included), in the
-  // match Ban / Pick panel; trying it out changes nothing. It starts over
-  // when the template, its rules or its vehicles change.
-  let preview = $derived(previewVehicles(rows));
-  let summary = $derived(groupSummary(preview));
-  let previewKey = $derived(JSON.stringify([activeId, current?.rules, preview.map((v) => [v.name, v.group])]));
-  let previewBp = $state(initialBanPick());
-  $effect(() => {
-    previewKey;
-    previewBp = initialBanPick(current?.rules);
-  });
-  const brRange = (g) => (g.brMin === null ? "—" : g.brMin === g.brMax ? g.brMin.toFixed(1) : `${g.brMin.toFixed(1)}–${g.brMax.toFixed(1)}`);
 
   // Templates by event type, in the order events choose them.
   let byType = $derived(
@@ -245,14 +226,6 @@
       toast.error("导入失败: " + e.message);
     }
   }
-
-  // Removal limits: "" = unlimited, else 0-20.
-  const limitValue = (n) => (n === null || n === undefined ? "" : String(n));
-  const parseLimit = (value) => (value === "" ? null : Math.max(0, Math.min(20, Math.round(Number(value)) || 0)));
-
-  const cellInput =
-    "h-7 w-full rounded border border-transparent bg-transparent px-1.5 text-xs text-foreground hover:border-border focus:border-primary focus:bg-background focus:outline-none";
-  const fieldInput = "h-8 rounded-md border border-border bg-background px-2 text-xs text-foreground focus:border-primary focus:outline-none disabled:opacity-60";
 </script>
 
 <div class="mx-auto max-w-5xl space-y-4 px-4 py-6">
@@ -272,127 +245,12 @@
     <p class="py-8 text-center text-xs text-muted-foreground">加载中...</p>
   {:else}
     <!-- Templates grouped by event type -->
-    <div class="space-y-2">
-      {#each byType as type (type.id)}
-        <div class="flex flex-wrap items-center gap-1.5">
-          <span class="w-28 shrink-0 rounded-md border px-2 py-0.5 text-center text-xs font-semibold {POOL_TAG[type.id] || 'border-border'}">{type.name}</span>
-          {#each type.templates as t (t.id)}
-            <button
-              type="button"
-              onclick={() => pick(t.id)}
-              aria-pressed={activeId === t.id}
-              class="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold transition-colors cursor-pointer
-                {activeId === t.id
-                ? 'border-primary bg-primary text-primary-foreground'
-                : 'border-border text-muted-foreground hover:border-foreground/40 hover:text-foreground'}"
-            >
-              {t.name}
-              <span class="text-[10px] font-normal opacity-75">{modesLabel(t.game_modes)} · {(drafts[t.id] ?? t).vehicles.length}</span>
-              {#if drafts[t.id]}
-                <span class="h-1.5 w-1.5 rounded-full bg-amber-400" title="有未保存的修改"></span>
-              {/if}
-            </button>
-          {:else}
-            <span class="text-xs text-muted-foreground">没有模板，这类比赛无法 Ban / Pick</span>
-          {/each}
-        </div>
-      {/each}
-      {#if isAdmin}
-        <div class="flex flex-wrap items-center gap-1.5 pt-1">
-          {#if drafts[NEW_ID]}
-            <button
-              type="button"
-              onclick={() => pick(NEW_ID)}
-              aria-pressed={isNew}
-              class="inline-flex items-center gap-1.5 rounded-full border border-dashed px-3 py-1 text-xs font-semibold cursor-pointer {isNew ? 'border-primary text-primary' : 'border-border text-muted-foreground'}"
-            >
-              {drafts[NEW_ID].name || "新模板"}（未保存）
-            </button>
-          {:else}
-            <Button variant="outline" size="sm" class="h-7 gap-1.5 text-xs cursor-pointer" onclick={() => startNew(null)}>
-              <PlusIcon class="h-3.5 w-3.5" /> 新建模板
-            </Button>
-          {/if}
-        </div>
-      {/if}
-    </div>
+    <TemplatePicker {byType} {activeId} {drafts} {isAdmin} newId={NEW_ID} {isNew} onpick={pick} onnew={() => startNew(null)} />
 
     {#if current}
       <div class="space-y-3 rounded-xl border border-border bg-card/40 p-3 sm:p-4">
         <!-- Template settings -->
-        {#if isAdmin}
-          <div class="grid gap-3 sm:grid-cols-2">
-            <label class="space-y-1 text-xs">
-              <span class="font-semibold text-foreground">模板名称</span>
-              <input class="{fieldInput} w-full" maxlength="40" value={current.name} oninput={(e) => setField("name", e.currentTarget.value)} placeholder="例如：AB 螺旋桨" />
-            </label>
-            <div class="grid grid-cols-[1fr_6rem] gap-2">
-              <label class="space-y-1 text-xs">
-                <span class="font-semibold text-foreground">比赛类型</span>
-                <select class="{fieldInput} w-full cursor-pointer" value={current.event_type} onchange={(e) => setField("event_type", e.currentTarget.value)}>
-                  {#each VEHICLE_POOLS as type (type.id)}
-                    <option value={type.id}>{type.name}</option>
-                  {/each}
-                </select>
-              </label>
-              <label class="space-y-1 text-xs" title="同类型有多个模板都匹配时，数字小的优先">
-                <span class="font-semibold text-foreground">排序</span>
-                <input class="{fieldInput} w-full font-mono" type="number" min="0" max="9999" value={current.sort_order} oninput={(e) => setField("sort_order", e.currentTarget.value)} />
-              </label>
-            </div>
-            <div class="space-y-1 text-xs">
-              <span class="font-semibold text-foreground">适用游戏模式</span>
-              <div class="flex flex-wrap items-center gap-3">
-                {#each GAME_MODES as mode (mode.id)}
-                  <label class="inline-flex items-center gap-1.5 cursor-pointer" title={mode.name}>
-                    <input type="checkbox" class="cursor-pointer" checked={current.game_modes.includes(mode.id)} onchange={() => toggleMode(mode.id)} />
-                    <span class="font-mono font-semibold">{mode.code}</span>
-                  </label>
-                {/each}
-                <span class="text-muted-foreground">{current.game_modes.length ? "" : "都不勾选 = 全部模式"}</span>
-              </div>
-            </div>
-            <div class="space-y-1 text-xs">
-              <span class="font-semibold text-foreground">Ban / Pick 规则</span>
-              <div class="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-                <label class="inline-flex items-center gap-1.5">
-                  每人禁
-                  <select class="{fieldInput} h-7 cursor-pointer" value={String(current.rules.bansPerPlayer)} onchange={(e) => setRule("bansPerPlayer", Number(e.currentTarget.value))}>
-                    {#each [0, 1, 2, 3] as n (n)}<option value={String(n)}>{n}</option>{/each}
-                  </select>
-                  组
-                </label>
-                <label class="inline-flex items-center gap-1.5 cursor-pointer">
-                  <input type="checkbox" class="cursor-pointer" checked={current.rules.drawVehicle} onchange={(e) => setRule("drawVehicle", e.currentTarget.checked)} />
-                  抽完大组再抽具体载具
-                </label>
-              </div>
-              <div class="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-                <label class="inline-flex items-center gap-1.5" title="留空 = 不限次数（可随时重抽）">
-                  大组可移出
-                  <input class="{fieldInput} h-7 w-14 font-mono" type="number" min="0" max="20" placeholder="不限" value={limitValue(current.rules.groupRerolls)} oninput={(e) => setRule("groupRerolls", parseLimit(e.currentTarget.value))} />
-                  次
-                </label>
-                {#if current.rules.drawVehicle}
-                  <label class="inline-flex items-center gap-1.5" title="留空 = 不限次数（可随时重抽）">
-                    载具可移出
-                    <input class="{fieldInput} h-7 w-14 font-mono" type="number" min="0" max="20" placeholder="不限" value={limitValue(current.rules.vehicleRerolls)} oninput={(e) => setRule("vehicleRerolls", parseLimit(e.currentTarget.value))} />
-                    次
-                  </label>
-                {/if}
-              </div>
-            </div>
-          </div>
-        {:else}
-          <div class="space-y-1 text-xs">
-            <div class="flex flex-wrap items-center gap-1.5">
-              <span class="text-base font-bold text-foreground">{current.name}</span>
-              <span class="rounded-md border px-2 py-0.5 font-semibold {POOL_TAG[current.event_type] || 'border-border'}">{VEHICLE_POOLS.find((t) => t.id === current.event_type)?.name || current.event_type}</span>
-              <span class="rounded-md border border-border bg-muted/60 px-2 py-0.5 font-mono font-semibold text-muted-foreground">{modesLabel(current.game_modes)}</span>
-            </div>
-            <p class="text-muted-foreground">Ban / Pick：{rulesSummary(current.rules)}</p>
-          </div>
-        {/if}
+        <TemplateSettings {current} {isAdmin} onfield={setField} onrule={setRule} ontogglemode={toggleMode} />
 
         <div class="flex flex-wrap items-center gap-2 border-t border-border/50 pt-3">
           <div class="min-w-0 flex-1 text-xs text-muted-foreground">
@@ -476,103 +334,9 @@
         </div>
 
         {#if view === "preview"}
-          <div class="space-y-3">
-            <p class="text-[11px] text-muted-foreground">
-              <span>{dirty ? "比赛里打开 Ban / Pick 时看到的样子，包含未保存的修改。" : "比赛里打开 Ban / Pick 时看到的样子。"}</span>
-              <span>可以直接禁用、抽取试一遍，不会保存，也不影响任何比赛；改动模板后会自动重置。</span>
-            </p>
-            {#if preview.length}
-              <div class="rounded-lg border border-border/60 bg-background/40 p-3">
-                <BanPickPanel
-                  bind:bp={previewBp}
-                  vehicles={preview}
-                  poolName={current.name}
-                  player1={{ name: "选手 A", flag: "" }}
-                  player2={{ name: "选手 B", flag: "" }}
-                />
-              </div>
-              <div class="overflow-x-auto rounded-lg border border-border/60">
-                <table class="w-full min-w-[480px] text-xs">
-                  <thead class="bg-muted/40 text-[10px] uppercase tracking-wider text-muted-foreground">
-                    <tr>
-                      <th class="px-2 py-2 text-left font-semibold">分组</th>
-                      <th class="w-16 px-2 py-2 text-right font-semibold">载具</th>
-                      <th class="w-28 px-2 py-2 text-left font-semibold">BR 范围</th>
-                      <th class="px-2 py-2 text-left font-semibold">国家</th>
-                    </tr>
-                  </thead>
-                  <tbody class="divide-y divide-border/50">
-                    {#each summary as g (g.group)}
-                      <tr class="hover:bg-muted/20">
-                        <td class="px-2 py-1.5 font-semibold text-foreground">{g.group}</td>
-                        <td class="px-2 py-1.5 text-right font-mono text-muted-foreground">{g.count}</td>
-                        <td class="px-2 py-1.5 font-mono text-muted-foreground">{brRange(g)}</td>
-                        <td class="px-2 py-1.5 text-muted-foreground">{g.nations.join(" / ") || "—"}</td>
-                      </tr>
-                    {/each}
-                  </tbody>
-                </table>
-              </div>
-            {:else}
-              <p class="py-8 text-center text-xs text-muted-foreground">载具池是空的，先在载具表里添加或导入载具</p>
-            {/if}
-          </div>
+          <PoolPreview templateId={activeId} {current} {rows} {dirty} />
         {:else}
-        <div class="relative">
-          <SearchIcon class="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-          <Input bind:value={query} placeholder="搜索载具、国家、类型或分组..." class="h-8 pl-8 text-xs" />
-        </div>
-
-        <div class="overflow-x-auto rounded-lg border border-border/60">
-          <table class="w-full min-w-[640px] text-xs">
-            <thead class="bg-muted/40 text-[10px] uppercase tracking-wider text-muted-foreground">
-              <tr>
-                <th class="w-8 px-2 py-2 text-right font-semibold">#</th>
-                <th class="px-2 py-2 text-left font-semibold">载具名称</th>
-                <th class="w-28 px-2 py-2 text-left font-semibold">国家</th>
-                <th class="w-16 px-2 py-2 text-left font-semibold">BR</th>
-                <th class="w-24 px-2 py-2 text-left font-semibold">类型</th>
-                <th class="w-36 px-2 py-2 text-left font-semibold" title="Ban / Pick 按分组禁用和抽取">分组</th>
-                {#if isAdmin}<th class="w-8 px-1 py-2"></th>{/if}
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-border/50">
-              {#each shownRows as { v, i } (i)}
-                <tr class="hover:bg-muted/20">
-                  <td class="px-2 py-1 text-right font-mono text-[10px] text-muted-foreground">{i + 1}</td>
-                  {#if isAdmin}
-                    <td class="px-1 py-0.5"><input aria-label="载具名称" class="{cellInput} font-semibold" value={v.name} oninput={(e) => editCell(i, "name", e.currentTarget.value)} /></td>
-                    <td class="px-1 py-0.5"><input aria-label="国家" class={cellInput} value={v.nation} oninput={(e) => editCell(i, "nation", e.currentTarget.value)} /></td>
-                    <td class="px-1 py-0.5"><input aria-label="BR" inputmode="decimal" class="{cellInput} font-mono" value={v.br ?? ""} oninput={(e) => editCell(i, "br", e.currentTarget.value)} /></td>
-                    <td class="px-1 py-0.5"><input aria-label="类型" class={cellInput} value={v.type} oninput={(e) => editCell(i, "type", e.currentTarget.value)} /></td>
-                    <td class="px-1 py-0.5"><input aria-label="分组" class={cellInput} value={v.group} placeholder={v.name} oninput={(e) => editCell(i, "group", e.currentTarget.value)} /></td>
-                    <td class="px-1 py-0.5 text-center">
-                      <button type="button" onclick={() => removeRow(i)} class="rounded p-1 text-muted-foreground hover:bg-red-500/10 hover:text-red-500 cursor-pointer" title="删除这一行" aria-label="删除 {v.name}">
-                        <Trash2Icon class="h-3.5 w-3.5" />
-                      </button>
-                    </td>
-                  {:else}
-                    <td class="px-2 py-1.5 font-semibold text-foreground">{v.name}</td>
-                    <td class="px-2 py-1.5 text-muted-foreground">{v.nation}</td>
-                    <td class="px-2 py-1.5 font-mono text-muted-foreground">{v.br ?? ""}</td>
-                    <td class="px-2 py-1.5 text-muted-foreground">{v.type}</td>
-                    <td class="px-2 py-1.5 text-muted-foreground">{v.group}</td>
-                  {/if}
-                </tr>
-              {:else}
-                <tr>
-                  <td colspan={isAdmin ? 7 : 6} class="py-8 text-center text-muted-foreground">
-                    {query ? "没有匹配的载具" : "载具池是空的"}
-                  </td>
-                </tr>
-              {/each}
-            </tbody>
-          </table>
-        </div>
-        <p class="text-[10px] text-muted-foreground">
-          导入格式：JSON 数组 <code class="font-mono">[{"{"}"name", "nation", "br", "type", "group"{"}"}]</code>，或第一行为列名
-          <code class="font-mono">name,nation,br,type,group</code> 的 CSV；只有 name 必填，分组留空时等于载具名称。导入只替换载具表，模板设置不变。
-        </p>
+        <VehicleTable {rows} {isAdmin} bind:query onedit={editCell} onremove={removeRow} />
         {/if}
       </div>
     {:else}
