@@ -4,6 +4,7 @@
   import Flag from "$lib/components/Flag.svelte";
   import { canCorrectResult } from "$lib/tournament.js";
   import { groupSwissRounds } from "$lib/bracket.js";
+  import { isMine, isPlayableIn, slotScore } from "$lib/match-card.js";
 
   let {
     matches = [],
@@ -59,22 +60,8 @@
     return Boolean(match.player1_id) !== Boolean(match.player2_id);
   }
 
-  function isPlayable(match) {
-    return (
-      status === "in_progress" &&
-      match.status === "pending" &&
-      Boolean(match.player1_id && match.player2_id)
-    );
-  }
-
-  function scoreLabel(match, slot) {
-    if (match.status === "pending") return "";
-    if (match.status === "walkover") {
-      const id = slot === 1 ? match.player1_id : match.player2_id;
-      return match.winner_id === id ? "W" : "FF";
-    }
-    return slot === 1 ? match.score1 : match.score2;
-  }
+  const isPlayable = (match) => isPlayableIn(match, status);
+  const scoreLabel = slotScore;
 
   function signed(n) {
     return n > 0 ? `+${n}` : String(n);
@@ -146,7 +133,7 @@
           otherChannel={other}
           {isAdmin}
           {banpickEnabled}
-          mine={Boolean(userId && match.status === "pending" && (match.player1_id === userId || match.player2_id === userId))}
+          mine={isMine(match, userId)}
           correctable={editable}
           ontoggleactive={onToggleActive}
           onbanpick={onBanPick}

@@ -1,14 +1,20 @@
 <script>
+  // Double-elimination bracket (Challonge style): winners band with the
+  // grand final as its last column, losers band below, SVG connectors.
+  // Layout maths in $lib/bracket.js, card helpers in $lib/match-card.js.
   import MatchCardActions from "$lib/components/tournament/MatchCardActions.svelte";
   import CrownIcon from "@lucide/svelte/icons/crown";
   import Flag from "$lib/components/Flag.svelte";
   import {
-    bracketConnectorPath,
     bracketRoundLabel,
     bracketRoundTotal,
+    columnConnectors,
     layoutBracketBand,
+    numberMatches,
     roundLabel,
+    withGrandFinalColumn,
   } from "$lib/bracket.js";
+  import { isCompletedBye, isMine, isPlayableIn, slotScore } from "$lib/match-card.js";
   import { canCorrectResult } from "$lib/tournament.js";
 
   let {
@@ -52,22 +58,9 @@
   const wbTotal = $derived(bracketRoundTotal(bandMatches, wbCode));
   const lbTotal = $derived(bracketRoundTotal(bandMatches, lbCode));
 
-  const wbBand = $derived(
-    layoutBracketBand(bandMatches, wbCode, {
-      cardHeight: CARD_H,
-      slotHeight: SLOT_H,
-      columnWidth: CARD_W,
-      columnGap: GAP,
-    }),
-  );
-  const lbBand = $derived(
-    layoutBracketBand(bandMatches, lbCode, {
-      cardHeight: CARD_H,
-      slotHeight: SLOT_H,
-      columnWidth: CARD_W,
-      columnGap: GAP,
-    }),
-  );
+  const bandSize = { cardHeight: CARD_H, slotHeight: SLOT_H, columnWidth: CARD_W, columnGap: GAP };
+  const wbBand = $derived(layoutBracketBand(bandMatches, wbCode, bandSize));
+  const lbBand = $derived(layoutBracketBand(bandMatches, lbCode, bandSize));
 
   const grandFinals = $derived(
     (matches || [])
@@ -77,29 +70,14 @@
 
   // The grand final is shown as the last column of the winners band, the way
   // Challonge lays it out next to the winners final.
-  const wbColumns = $derived.by(() => {
-    const columns = wbBand.columns.map((column) => ({
-      ...column,
-      grandFinal: false,
-    }));
-    if (!grandFinals.length) return columns;
-    const last = columns[columns.length - 1];
-    const x = last ? last.x + CARD_W + GAP : 0;
-    const anchorY = last?.matches?.[0]?.y ?? CARD_H / 2;
-    return [
-      ...columns,
-      {
-        round: 1,
-        x,
-        grandFinal: true,
-        matches: grandFinals.map((match, index) => ({
-          match,
-          x,
-          y: anchorY + index * (CARD_H + GF_GAP),
-        })),
-      },
-    ];
-  });
+  const wbColumns = $derived(
+    withGrandFinalColumn(wbBand.columns, grandFinals, {
+      cardWidth: CARD_W,
+      cardHeight: CARD_H,
+      columnGap: GAP,
+      stackGap: GF_GAP,
+    }),
+  );
 
   const wbWidth = $derived(
     wbColumns.length ? wbColumns[wbColumns.length - 1].x + CARD_W : 0,
@@ -113,41 +91,12 @@
     ),
   );
 
-  function connectorPaths(columns) {
-    const paths = [];
-    for (let index = 0; index < columns.length - 1; index += 1) {
-      const nextById = new Map(
-        columns[index + 1].matches.map((item) => [item.match.id, item]),
-      );
-      for (const source of columns[index].matches) {
-        const target = nextById.get(source.match.next_match_id);
-        if (!target) continue;
-        paths.push({
-          d: bracketConnectorPath(source, target, CARD_W, HEADER_H),
-          active: Boolean(source.match.winner_id),
-        });
-      }
-    }
-    return paths;
-  }
-
-  const wbPaths = $derived(connectorPaths(wbColumns));
-  const lbPaths = $derived(connectorPaths(lbBand.columns));
+  const wbPaths = $derived(columnConnectors(wbColumns, CARD_W, HEADER_H));
+  const lbPaths = $derived(columnConnectors(lbBand.columns, CARD_W, HEADER_H));
 
   // Challonge-style global match numbers: winners bracket first, then losers
-  // bracket, then the grand final (and its reset).
-  const matchNumbers = $derived.by(() => {
-    const ids = [];
-    for (const column of wbBand.columns) {
-      for (const item of column.matches) ids.push(item.match.id);
-    }
-    for (const column of lbBand.columns) {
-      for (const item of column.matches) ids.push(item.match.id);
-    }
-    for (const match of grandFinals) ids.push(match.id);
-    for (const match of thirdPlace) ids.push(match.id);
-    return new Map(ids.map((id, index) => [id, index + 1]));
-  });
+  // bracket, then the grand final (and its reset), then third place.
+  const matchNumbers = $derived(numberMatches(wbBand.columns, lbBand.columns, grandFinals, thirdPlace));
 
   // Column headers. A group's last winners/losers round decides who qualifies.
   function columnLabel(side, round, total) {
@@ -169,14 +118,6 @@
     return "TBD";
   }
 
-  function isBye(match) {
-    return (
-      match.status === "completed" &&
-      Boolean(match.winner_id) &&
-      (!match.player1_id || !match.player2_id)
-    );
-  }
-
   function isVoid(match) {
     return (
       match.status === "completed" &&
@@ -184,30 +125,6 @@
       !match.player1_id &&
       !match.player2_id
     );
-  }
-
-  function isPlayable(match) {
-    return (
-      status === "in_progress" &&
-      match.status === "pending" &&
-      Boolean(match.player1_id && match.player2_id)
-    );
-  }
-
-  function canEditResult(match) {
-    return isAdmin && canCorrectResult(match);
-  }
-
-  function scoreLabel(match, slot) {
-    if (match.status === "pending") return "";
-    if (match.status === "walkover") {
-      const won =
-        slot === 1
-          ? match.winner_id === match.player1_id
-          : match.winner_id === match.player2_id;
-      return won ? "W" : "FF";
-    }
-    return slot === 1 ? match.score1 : match.score2;
   }
 
   function cardTitle(match) {
@@ -220,11 +137,87 @@
   }
 </script>
 
+{#snippet playerRow(match, slot)}
+  {@const id = slot === 1 ? match.player1_id : match.player2_id}
+  {@const won = match.winner_id === id}
+  <div
+    class="flex h-[28px] items-center justify-between {slot === 1 ? 'border-b border-neutral-200/60 dark:border-neutral-900/50' : ''}"
+  >
+    <div class="flex min-w-0 flex-1 items-center gap-1.5 pl-2">
+      <Flag code={playerOf(id)?.flag} size={14} />
+      <span
+        class="truncate text-[10.5px]
+          {won
+          ? 'font-black text-foreground'
+          : 'font-semibold text-neutral-700 dark:text-neutral-300'}
+          {!id ? 'italic text-muted-foreground/70' : ''}"
+      >
+        {playerLabel(match, slot)}
+      </span>
+      {#if won && match.winner_id}
+        <CrownIcon class="h-2.5 w-2.5 shrink-0 text-amber-500" />
+      {/if}
+    </div>
+    {#if match.status !== "pending"}
+      <div
+        class="flex h-full w-7 shrink-0 items-center justify-center border-l border-neutral-200 font-mono text-[11px] font-bold dark:border-neutral-900/60
+          {won
+          ? 'text-primary'
+          : 'text-neutral-400 dark:text-neutral-500'}"
+      >
+        {slotScore(match, slot)}
+      </div>
+    {/if}
+  </div>
+{/snippet}
+
+{#snippet bandHeader(label)}
+  <div
+    class="flex h-7 items-center justify-center rounded-md border border-neutral-700/50 bg-neutral-800/85 px-2 text-[11px] font-bold tracking-wide text-neutral-100 shadow-sm"
+  >
+    {label}
+  </div>
+{/snippet}
+
+{#snippet connectors(paths, width, height)}
+  <svg
+    class="pointer-events-none absolute left-0 top-0"
+    {width}
+    {height}
+    aria-hidden="true"
+  >
+    {#each paths as path, index (index)}
+      <path
+        d={path.d}
+        fill="none"
+        stroke-width="1.5"
+        stroke-linecap="round"
+        class={path.active
+          ? "stroke-primary/60"
+          : "stroke-neutral-400/45 dark:stroke-neutral-600/50"}
+      />
+    {/each}
+  </svg>
+{/snippet}
+
+{#snippet placedCards(columns)}
+  {#each columns as column (column.grandFinal ? "gf-cards" : column.round)}
+    {#each column.matches as item (item.match.id)}
+      <div
+        class="absolute"
+        style="left: {item.x}px; top: {item.y + HEADER_H - CARD_H / 2}px; width: {CARD_W}px; height: {CARD_H}px"
+      >
+        {@render matchCard(item.match)}
+      </div>
+    {/each}
+  {/each}
+{/snippet}
+
 {#snippet matchCard(match)}
-  {@const bye = isBye(match)}
+  {@const bye = isCompletedBye(match)}
   {@const voided = isVoid(match)}
-  {@const playable = isPlayable(match)}
-  {@const editable = canEditResult(match)}
+  {@const playable = isPlayableIn(match, status)}
+  {@const editable = isAdmin && canCorrectResult(match)}
   {@const clickable = playable || editable}
   {@const active = activeMatchId === match.id}
   {@const other = liveElsewhere.get(match.id)}
@@ -270,70 +263,15 @@
             otherChannel={other}
             {isAdmin}
             {banpickEnabled}
-            mine={Boolean(userId && match.status === "pending" && (match.player1_id === userId || match.player2_id === userId))}
+            mine={isMine(match, userId)}
             correctable={editable}
             ontoggleactive={onToggleActive}
             onbanpick={onBanPick}
           />
         </div>
 
-        <div
-          class="flex h-[28px] items-center justify-between border-b border-neutral-200/60 dark:border-neutral-900/50"
-        >
-          <div class="flex min-w-0 flex-1 items-center gap-1.5 pl-2">
-            <Flag code={playerOf(match.player1_id)?.flag} size={14} />
-            <span
-              class="truncate text-[10.5px]
-                {match.winner_id === match.player1_id
-                ? 'font-black text-foreground'
-                : 'font-semibold text-neutral-700 dark:text-neutral-300'}
-                {!match.player1_id ? 'italic text-muted-foreground/70' : ''}"
-            >
-              {playerLabel(match, 1)}
-            </span>
-            {#if match.winner_id === match.player1_id && match.winner_id}
-              <CrownIcon class="h-2.5 w-2.5 shrink-0 text-amber-500" />
-            {/if}
-          </div>
-          {#if match.status !== "pending"}
-            <div
-              class="flex h-full w-7 shrink-0 items-center justify-center border-l border-neutral-200 font-mono text-[11px] font-bold dark:border-neutral-900/60
-                {match.winner_id === match.player1_id
-                ? 'text-primary'
-                : 'text-neutral-400 dark:text-neutral-500'}"
-            >
-              {scoreLabel(match, 1)}
-            </div>
-          {/if}
-        </div>
-
-        <div class="flex h-[28px] items-center justify-between">
-          <div class="flex min-w-0 flex-1 items-center gap-1.5 pl-2">
-            <Flag code={playerOf(match.player2_id)?.flag} size={14} />
-            <span
-              class="truncate text-[10.5px]
-                {match.winner_id === match.player2_id
-                ? 'font-black text-foreground'
-                : 'font-semibold text-neutral-700 dark:text-neutral-300'}
-                {!match.player2_id ? 'italic text-muted-foreground/70' : ''}"
-            >
-              {playerLabel(match, 2)}
-            </span>
-            {#if match.winner_id === match.player2_id && match.winner_id}
-              <CrownIcon class="h-2.5 w-2.5 shrink-0 text-amber-500" />
-            {/if}
-          </div>
-          {#if match.status !== "pending"}
-            <div
-              class="flex h-full w-7 shrink-0 items-center justify-center border-l border-neutral-200 font-mono text-[11px] font-bold dark:border-neutral-900/60
-                {match.winner_id === match.player2_id
-                ? 'text-primary'
-                : 'text-neutral-400 dark:text-neutral-500'}"
-            >
-              {scoreLabel(match, 2)}
-            </div>
-          {/if}
-        </div>
+        {@render playerRow(match, 1)}
+        {@render playerRow(match, 2)}
       </div>
     {/if}
   {/if}
@@ -367,47 +305,13 @@
               class="absolute"
               style="left: {column.x}px; top: 0; width: {CARD_W}px"
             >
-              <div
-                class="flex h-7 items-center justify-center rounded-md border border-neutral-700/50 bg-neutral-800/85 px-2 text-[11px] font-bold tracking-wide text-neutral-100 shadow-sm"
-              >
-                {#if column.grandFinal}
-                  总决赛
-                {:else}
-                  {columnLabel("wb", column.round, wbTotal)}
-                {/if}
-              </div>
+              {@render bandHeader(column.grandFinal ? "总决赛" : columnLabel("wb", column.round, wbTotal))}
             </div>
           {/each}
 
-          <svg
-            class="pointer-events-none absolute left-0 top-0"
-            width={wbWidth}
-            height={wbHeight + HEADER_H}
-            aria-hidden="true"
-          >
-            {#each wbPaths as path, index (index)}
-              <path
-                d={path.d}
-                fill="none"
-                stroke-width="1.5"
-                stroke-linecap="round"
-                class={path.active
-                  ? "stroke-primary/60"
-                  : "stroke-neutral-400/45 dark:stroke-neutral-600/50"}
-              />
-            {/each}
-          </svg>
+          {@render connectors(wbPaths, wbWidth, wbHeight + HEADER_H)}
 
-          {#each wbColumns as column (column.grandFinal ? "gf-cards" : column.round)}
-            {#each column.matches as item (item.match.id)}
-              <div
-                class="absolute"
-                style="left: {item.x}px; top: {item.y + HEADER_H - CARD_H / 2}px; width: {CARD_W}px; height: {CARD_H}px"
-              >
-                {@render matchCard(item.match)}
-              </div>
-            {/each}
-          {/each}
+          {@render placedCards(wbColumns)}
         </div>
       </div>
       {#if thirdPlace.length}
@@ -450,43 +354,13 @@
               class="absolute"
               style="left: {column.x}px; top: 0; width: {CARD_W}px"
             >
-              <div
-                class="flex h-7 items-center justify-center rounded-md border border-neutral-700/50 bg-neutral-800/85 px-2 text-[11px] font-bold tracking-wide text-neutral-100 shadow-sm"
-              >
-                {columnLabel("lb", column.round, lbTotal)}
-              </div>
+              {@render bandHeader(columnLabel("lb", column.round, lbTotal))}
             </div>
           {/each}
 
-          <svg
-            class="pointer-events-none absolute left-0 top-0"
-            width={lbBand.width}
-            height={lbBand.height + HEADER_H}
-            aria-hidden="true"
-          >
-            {#each lbPaths as path, index (index)}
-              <path
-                d={path.d}
-                fill="none"
-                stroke-width="1.5"
-                stroke-linecap="round"
-                class={path.active
-                  ? "stroke-primary/60"
-                  : "stroke-neutral-400/45 dark:stroke-neutral-600/50"}
-              />
-            {/each}
-          </svg>
+          {@render connectors(lbPaths, lbBand.width, lbBand.height + HEADER_H)}
 
-          {#each lbBand.columns as column (column.round)}
-            {#each column.matches as item (item.match.id)}
-              <div
-                class="absolute"
-                style="left: {item.x}px; top: {item.y + HEADER_H - CARD_H / 2}px; width: {CARD_W}px; height: {CARD_H}px"
-              >
-                {@render matchCard(item.match)}
-              </div>
-            {/each}
-          {/each}
+          {@render placedCards(lbBand.columns)}
         </div>
       </div>
     </section>

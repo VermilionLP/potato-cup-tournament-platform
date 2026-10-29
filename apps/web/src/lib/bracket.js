@@ -214,3 +214,87 @@ export function bracketConnectorPath(source, target, cardWidth, topOffset = 0) {
   const midX = startX + Math.max(12, (endX - startX) / 2);
   return `M ${startX} ${startY} L ${midX} ${startY} L ${midX} ${endY} L ${endX} ${endY}`;
 }
+
+/**
+ * Single-elimination tree: card tops and centres so each match sits between
+ * the two that feed it (pairs of first-round cards `g` apart, pairs `G`
+ * apart, cards `H` high). Used by the event page and the overlay.
+ */
+export function treePositions(rounds, specs) {
+  const empty = { positions: {}, centers: {}, totalHeight: 600 };
+  if (!rounds?.length) return empty;
+  const { H, g, G } = specs;
+  const positions = {};
+  const centers = {};
+  const localMax = Math.max(...rounds.map((r) => r.round));
+  const first = rounds.find((r) => r.round === localMax);
+  if (!first) return empty;
+  first.matches.forEach((m, idx) => {
+    const pair = Math.floor(idx / 2);
+    const top = idx % 2 === 0 ? pair * (2 * H + g + G) : pair * (2 * H + g + G) + H + g;
+    positions[m.id] = { top, height: H };
+    centers[m.id] = top + H / 2;
+  });
+  for (let round = localMax - 1; round >= 1; round -= 1) {
+    const cur = rounds.find((r) => r.round === round);
+    const prev = rounds.find((r) => r.round === round + 1);
+    if (!cur || !prev) continue;
+    cur.matches.forEach((m, idx) => {
+      const p1 = prev.matches[idx * 2];
+      const p2 = prev.matches[idx * 2 + 1];
+      const center = p1 && p2 ? (centers[p1.id] + centers[p2.id]) / 2 : p1 ? centers[p1.id] : idx * 300 + 150;
+      positions[m.id] = { top: center - H / 2, height: H };
+      centers[m.id] = center;
+    });
+  }
+  const totalHeight = first.matches.length ? Math.ceil(first.matches.length / 2) * (2 * H + g + G) - G : 600;
+  return { positions, centers, totalHeight };
+}
+
+/**
+ * Columns of a winners band with the grand final (and its reset) as one more
+ * column after the winners final, Challonge-style.
+ */
+export function withGrandFinalColumn(columns, grandFinals, { cardWidth, cardHeight, columnGap, stackGap }) {
+  const out = columns.map((column) => ({ ...column, grandFinal: false }));
+  if (!grandFinals.length) return out;
+  const last = out[out.length - 1];
+  const x = last ? last.x + cardWidth + columnGap : 0;
+  const anchorY = last?.matches?.[0]?.y ?? cardHeight / 2;
+  out.push({
+    round: 1,
+    x,
+    grandFinal: true,
+    matches: grandFinals.map((match, index) => ({ match, x, y: anchorY + index * (cardHeight + stackGap) })),
+  });
+  return out;
+}
+
+/** Connectors between neighbouring columns: { d, active } per fed match. */
+export function columnConnectors(columns, cardWidth, topOffset = 0) {
+  const paths = [];
+  for (let index = 0; index < columns.length - 1; index += 1) {
+    const nextById = new Map(columns[index + 1].matches.map((item) => [item.match.id, item]));
+    for (const source of columns[index].matches) {
+      const target = nextById.get(source.match.next_match_id);
+      if (!target) continue;
+      paths.push({
+        d: bracketConnectorPath(source, target, cardWidth, topOffset),
+        active: Boolean(source.match.winner_id),
+      });
+    }
+  }
+  return paths;
+}
+
+/** Match numbers 1.. in the order given: lists of band columns or matches. */
+export function numberMatches(...groups) {
+  const ids = [];
+  for (const group of groups) {
+    for (const entry of group) {
+      if (entry.matches) for (const item of entry.matches) ids.push(item.match.id);
+      else ids.push(entry.id);
+    }
+  }
+  return new Map(ids.map((id, index) => [id, index + 1]));
+}

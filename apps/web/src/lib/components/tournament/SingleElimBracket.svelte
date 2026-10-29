@@ -2,10 +2,13 @@
   import MatchCardActions from "./MatchCardActions.svelte";
   // Single-elimination bracket (Liquipedia style): one column per round,
   // cards placed between their two feeder matches, connector lines, and the
-  // third-place match under the final.
+  // third-place match under the final. Card placement is treePositions
+  // ($lib/bracket.js, shared with the overlay); card helpers in
+  // $lib/match-card.js.
   import { userState } from "$lib/user.svelte.js";
   import { canCorrectResult } from "$lib/tournament.js";
-  import { roundLabel } from "$lib/bracket.js";
+  import { roundLabel, treePositions } from "$lib/bracket.js";
+  import { isCompletedBye, isMine, isPlayableIn, slotScore } from "$lib/match-card.js";
   import CrownIcon from "@lucide/svelte/icons/crown";
 
   // rounds: the rounds shown (all, one section, or the final stage), first
@@ -59,65 +62,7 @@
     }
   });
 
-  let matchPositions = $derived.by(() => {
-    const rs = rounds;
-    if (!rs.length)
-      return { positions: {}, centers: {}, totalHeight: 600 };
-
-    const H = bracketSpecs.H; // Card height
-    const g = bracketSpecs.g; // Intra-pair gap
-    const G = bracketSpecs.G; // Inter-pair gap
-
-    const positions = {}; // map of matchId -> { top, height }
-    const centers = {}; // map of matchId -> center px
-
-    const localMaxRound = Math.max(...rs.map((r) => r.round));
-    const firstRound = rs.find((r) => r.round === localMaxRound);
-    if (!firstRound) return { positions: {}, centers: {}, totalHeight: 600 };
-
-    const firstRoundMatches = firstRound.matches;
-    firstRoundMatches.forEach((m, idx) => {
-      const pairIdx = Math.floor(idx / 2);
-      const isEven = idx % 2 === 0;
-      const top = isEven
-        ? pairIdx * (2 * H + g + G)
-        : pairIdx * (2 * H + g + G) + H + g;
-
-      positions[m.id] = { top, height: H };
-      centers[m.id] = top + H / 2;
-    });
-
-    for (let rNum = localMaxRound - 1; rNum >= 1; rNum--) {
-      const roundData = rs.find((r) => r.round === rNum);
-      const prevRoundData = rs.find((r) => r.round === rNum + 1);
-      if (!roundData || !prevRoundData) continue;
-
-      roundData.matches.forEach((m, idx) => {
-        const parent1 = prevRoundData.matches[idx * 2];
-        const parent2 = prevRoundData.matches[idx * 2 + 1];
-
-        let center = 0;
-        if (parent1 && parent2) {
-          center = (centers[parent1.id] + centers[parent2.id]) / 2;
-        } else if (parent1) {
-          center = centers[parent1.id];
-        } else {
-          center = idx * 300 + 150;
-        }
-
-        const top = center - H / 2;
-        positions[m.id] = { top, height: H };
-        centers[m.id] = center;
-      });
-    }
-
-    const totalHeight =
-      firstRoundMatches.length > 0
-        ? Math.ceil(firstRoundMatches.length / 2) * (2 * H + g + G) - G
-        : 600;
-
-    return { positions, centers, totalHeight };
-  });
+  let matchPositions = $derived(treePositions(rounds, bracketSpecs));
 
   let adjustedTotalHeight = $derived.by(() => {
     let base = matchPositions.totalHeight;
@@ -156,6 +101,34 @@
   }
 </script>
 
+{#snippet playerRows(m)}
+  {#each [1, 2] as slot (slot)}
+    {@const id = slot === 1 ? m.player1_id : m.player2_id}
+    {@const won = m.winner_id === id}
+    <div class="flex items-center justify-between w-full h-6 transition-colors
+      {slot === 1 ? 'border-b border-neutral-200/50 dark:border-neutral-900/40' : ''}
+      {getPlayerRowBgClass(id)}">
+      <div class="flex items-center gap-1.5 pl-1.5  flex-1 min-w-0 h-full py-0">
+        <span class=" font-semibold flex items-center gap-0.5 text-[10.5px]
+          {won ? 'text-black dark:text-white font-black' : 'text-neutral-700 dark:text-neutral-300'}
+          {!id ? 'text-neutral-400 dark:text-neutral-500/80' : ''}"
+        >
+          {#if won && m.winner_id}
+            <CrownIcon class="w-2.5 h-2.5 text-amber-500 dark:text-amber-400 shrink-0" />
+          {/if}
+          <span class="">{playerName(id, m)}</span>
+        </span>
+      </div>
+      {#if m.status !== "pending"}
+        <div class="w-6 h-full flex items-center justify-center font-mono font-bold text-[11px] bg-neutral-100/60 dark:bg-black/40 text-center shrink-0 border-l border-neutral-200 dark:border-neutral-900/60
+          {won ? 'text-primary font-black' : 'text-neutral-400 dark:text-neutral-500'}">
+          {slotScore(m, slot)}
+        </div>
+      {/if}
+    </div>
+  {/each}
+{/snippet}
+
 <div class="flex justify-start items-stretch min-w-max py-4 {bracketSpecs.colGap}">
   {#each rounds as r, colIdx (r.round)}
     <div class="shrink-0 flex flex-col justify-start h-full {bracketSpecs.cardWidth}">
@@ -169,13 +142,8 @@
       <div class="relative w-full" style="height: {adjustedTotalHeight}px">
         {#each r.matches as m, idx (m.id)}
           {@const pos = matchPositions.positions[m.id] || { top: 0, height: 110 }}
-          {@const userInMatch = userState.id && (m.player1_id === userState.id || m.player2_id === userState.id)}
-          {@const bothPlayersReady = m.player1_id && m.player2_id}
-          {@const isPending = m.status === "pending"}
-          {@const isPlayable = bothPlayersReady && isPending && tournament.status === "in_progress"}
-          {@const isBye = m.status === "completed" && m.winner_id && (!m.player1_id || !m.player2_id)}
-          {@const p1 = tournament.players?.find(p => p.id === m.player1_id)}
-          {@const p2 = tournament.players?.find(p => p.id === m.player2_id)}
+          {@const isPlayable = isPlayableIn(m, tournament.status)}
+          {@const isBye = isCompletedBye(m)}
 
           <div class="absolute left-0 w-full" style="top: {pos.top}px; height: {pos.height}px;">
             {#if isBye}
@@ -204,7 +172,7 @@
                     otherChannel={liveElsewhere.get(m.id)}
                     {isAdmin}
                     {banpickEnabled}
-                    mine={Boolean(userInMatch && isPending)}
+                    mine={isMine(m, userState.id)}
                     correctable={isCorrectable}
                     gap="gap-1.5"
                     ontoggleactive={ontoggleactive}
@@ -212,51 +180,7 @@
                   />
                 </div>
 
-                <!-- Player 1 Row -->
-                <div class="flex items-center justify-between w-full h-6 border-b border-neutral-200/50 dark:border-neutral-900/40 transition-colors
-                  {getPlayerRowBgClass(m.player1_id)}">
-                  <div class="flex items-center gap-1.5 pl-1.5  flex-1 min-w-0 h-full py-0">
-                    <span class=" font-semibold flex items-center gap-0.5 text-[10.5px]
-                      {m.winner_id === m.player1_id ? 'text-black dark:text-white font-black' : 'text-neutral-700 dark:text-neutral-300'}
-                      {!m.player1_id ? 'text-neutral-400 dark:text-neutral-500/80' : ''}"
-                    >
-                      {#if m.winner_id === m.player1_id && m.winner_id}
-                        <CrownIcon class="w-2.5 h-2.5 text-amber-500 dark:text-amber-400 shrink-0" />
-                      {/if}
-                      <span class="">{playerName(m.player1_id, m)}</span>
-                    </span>
-                  </div>
-                  <!-- Score -->
-                  {#if m.status !== "pending"}
-                    <div class="w-6 h-full flex items-center justify-center font-mono font-bold text-[11px] bg-neutral-100/60 dark:bg-black/40 text-center shrink-0 border-l border-neutral-200 dark:border-neutral-900/60
-                      {m.winner_id === m.player1_id ? 'text-primary font-black' : 'text-neutral-400 dark:text-neutral-500'}">
-                      {m.status === 'walkover' ? (m.winner_id === m.player1_id ? 'W' : 'FF') : m.score1}
-                    </div>
-                  {/if}
-                </div>
-
-                <!-- Player 2 Row -->
-                <div class="flex items-center justify-between w-full h-6 transition-colors
-                  {getPlayerRowBgClass(m.player2_id)}">
-                  <div class="flex items-center gap-1.5 pl-1.5  flex-1 min-w-0 h-full py-0">
-                    <span class=" font-semibold flex items-center gap-0.5 text-[10.5px]
-                      {m.winner_id === m.player2_id ? 'text-black dark:text-white font-black' : 'text-neutral-700 dark:text-neutral-300'}
-                      {!m.player2_id ? 'text-neutral-400 dark:text-neutral-500/80' : ''}"
-                    >
-                      {#if m.winner_id === m.player2_id && m.winner_id}
-                        <CrownIcon class="w-2.5 h-2.5 text-amber-500 dark:text-amber-400 shrink-0" />
-                      {/if}
-                      <span class="">{playerName(m.player2_id, m)}</span>
-                    </span>
-                  </div>
-                  <!-- Score -->
-                  {#if m.status !== "pending"}
-                    <div class="w-6 h-full flex items-center justify-center font-mono font-bold text-[11px] bg-neutral-100/60 dark:bg-black/40 text-center shrink-0 border-l border-neutral-200 dark:border-neutral-900/60
-                      {m.winner_id === m.player2_id ? 'text-primary font-black' : 'text-neutral-400 dark:text-neutral-500'}">
-                      {m.status === 'walkover' ? (m.winner_id === m.player2_id ? 'W' : 'FF') : m.score2}
-                    </div>
-                  {/if}
-                </div>
+                {@render playerRows(m)}
               </div>
             {/if}
 
@@ -273,8 +197,8 @@
                   {@const vHeight = center2 - center1}
                   {@const isWinner1Alive = m.winner_id && isAlive(m.winner_id)}
                   {@const isWinner2Alive = sibling.winner_id && isAlive(sibling.winner_id)}
-                  {@const isMBye = m.status === "completed" && m.winner_id && (!m.player1_id || !m.player2_id)}
-                  {@const isSiblingBye = sibling.status === "completed" && sibling.winner_id && (!sibling.player1_id || !sibling.player2_id)}
+                  {@const isMBye = isCompletedBye(m)}
+                  {@const isSiblingBye = isCompletedBye(sibling)}
 
                   <!-- Top card horizontal right line -->
                   {#if !isMBye}
@@ -332,10 +256,9 @@
         {#if colIdx === rounds.length - 1}
           {@const thirdPlaceMatch = matches.find(m => m.round === 0)}
           {#if thirdPlaceMatch}
-            {@const tp1 = tournament.players?.find(p => p.id === thirdPlaceMatch.player1_id)}
-            {@const tp2 = tournament.players?.find(p => p.id === thirdPlaceMatch.player2_id)}
             {@const gfMatch = r.matches[0]}
-            {@const tpClickable = (thirdPlaceMatch.player1_id && thirdPlaceMatch.player2_id && thirdPlaceMatch.status === "pending" && tournament.status === "in_progress") || (isAdmin && canCorrectResult(thirdPlaceMatch))}
+            {@const tpPlayable = isPlayableIn(thirdPlaceMatch, tournament.status)}
+            {@const tpClickable = tpPlayable || (isAdmin && canCorrectResult(thirdPlaceMatch))}
             {#if gfMatch}
               {@const gfPos = matchPositions.positions[gfMatch.id] || { top: 0, height: 64 }}
               {@const tpTop = gfPos.top + gfPos.height + 28}
@@ -344,7 +267,7 @@
               <div class="absolute left-0 w-full text-[9px] font-bold text-center text-neutral-500 uppercase tracking-wider h-4 flex items-center justify-center gap-1.5"
                    style="top: {tpTop - 18}px;">
                 三四名决赛
-                {#if banpickEnabled && thirdPlaceMatch.player1_id && thirdPlaceMatch.player2_id && thirdPlaceMatch.status === "pending" && tournament.status === "in_progress"}
+                {#if banpickEnabled && tpPlayable}
                   <button
                     type="button"
                     onclick={() => onbanpick(thirdPlaceMatch)}
@@ -367,49 +290,7 @@
                     <span>场次 {thirdPlaceMatch.position}</span>
                   </div>
 
-                  <!-- Player 1 Row -->
-                  <div class="flex items-center justify-between w-full h-6 border-b border-neutral-200/50 dark:border-neutral-900/40 transition-colors
-                    {getPlayerRowBgClass(thirdPlaceMatch.player1_id)}">
-                    <div class="flex items-center gap-1.5 pl-1.5  flex-1 min-w-0 h-full py-0">
-                      <span class=" font-semibold flex items-center gap-0.5 text-[10.5px]
-                        {thirdPlaceMatch.winner_id === thirdPlaceMatch.player1_id ? 'text-black dark:text-white font-black' : 'text-neutral-700 dark:text-neutral-300'}
-                        {!thirdPlaceMatch.player1_id ? 'text-neutral-400 dark:text-neutral-500/80' : ''}"
-                      >
-                        {#if thirdPlaceMatch.winner_id === thirdPlaceMatch.player1_id && thirdPlaceMatch.winner_id}
-                          <CrownIcon class="w-2.5 h-2.5 text-amber-500 dark:text-amber-400 shrink-0" />
-                        {/if}
-                        <span class="">{playerName(thirdPlaceMatch.player1_id, thirdPlaceMatch)}</span>
-                      </span>
-                    </div>
-                    {#if thirdPlaceMatch.status !== "pending"}
-                      <div class="w-6 h-full flex items-center justify-center font-mono font-bold text-[11px] bg-neutral-100/60 dark:bg-black/40 text-center shrink-0 border-l border-neutral-200 dark:border-neutral-900/60
-                        {thirdPlaceMatch.winner_id === thirdPlaceMatch.player1_id ? 'text-primary font-black' : 'text-neutral-400 dark:text-neutral-500'}">
-                        {thirdPlaceMatch.status === 'walkover' ? (thirdPlaceMatch.winner_id === thirdPlaceMatch.player1_id ? 'W' : 'FF') : thirdPlaceMatch.score1}
-                      </div>
-                    {/if}
-                  </div>
-
-                  <!-- Player 2 Row -->
-                  <div class="flex items-center justify-between w-full h-6 transition-colors
-                    {getPlayerRowBgClass(thirdPlaceMatch.player2_id)}">
-                    <div class="flex items-center gap-1.5 pl-1.5  flex-1 min-w-0 h-full py-0">
-                      <span class=" font-semibold flex items-center gap-0.5 text-[10.5px]
-                        {thirdPlaceMatch.winner_id === thirdPlaceMatch.player2_id ? 'text-black dark:text-white font-black' : 'text-neutral-700 dark:text-neutral-300'}
-                        {!thirdPlaceMatch.player2_id ? 'text-neutral-400 dark:text-neutral-500/80' : ''}"
-                      >
-                        {#if thirdPlaceMatch.winner_id === thirdPlaceMatch.player2_id && thirdPlaceMatch.winner_id}
-                          <CrownIcon class="w-2.5 h-2.5 text-amber-500 dark:text-amber-400 shrink-0" />
-                        {/if}
-                        <span class="">{playerName(thirdPlaceMatch.player2_id, thirdPlaceMatch)}</span>
-                      </span>
-                    </div>
-                    {#if thirdPlaceMatch.status !== "pending"}
-                      <div class="w-6 h-full flex items-center justify-center font-mono font-bold text-[11px] bg-neutral-100/60 dark:bg-black/40 text-center shrink-0 border-l border-neutral-200 dark:border-neutral-900/60
-                        {thirdPlaceMatch.winner_id === thirdPlaceMatch.player2_id ? 'text-primary font-black' : 'text-neutral-400 dark:text-neutral-500'}">
-                        {thirdPlaceMatch.status === 'walkover' ? (thirdPlaceMatch.winner_id === thirdPlaceMatch.player2_id ? 'W' : 'FF') : thirdPlaceMatch.score2}
-                      </div>
-                    {/if}
-                  </div>
+                  {@render playerRows(thirdPlaceMatch)}
                 </button>
               </div>
             {/if}

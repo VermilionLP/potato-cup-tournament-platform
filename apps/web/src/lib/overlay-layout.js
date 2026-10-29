@@ -3,7 +3,7 @@
 // grouped Swiss. Pure functions, no $lib imports beyond plain JS helpers, so
 // they can be tested with node --test.
 
-import { bracketConnectorPath, layoutBracketBand } from "./bracket.js";
+import { bracketConnectorPath, layoutBracketBand, treePositions } from "./bracket.js";
 import { stageKey } from "./overlay.js";
 
 export const isDecided = (m) => m.status === "completed" || m.status === "walkover";
@@ -104,37 +104,9 @@ export function treeSections(rounds, { sectionIndex = 0, activeRound = null, sel
   return { rounds: shown, maxRound, isLarge, sectionCount, finalStartRound, showFinal };
 }
 
-/** Card tops and centres so each match sits between the two that feed it. */
-export function treePositions(rounds, specs) {
-  const empty = { positions: {}, centers: {}, totalHeight: 600 };
-  if (!rounds?.length) return empty;
-  const { H, g, G } = specs;
-  const positions = {};
-  const centers = {};
-  const localMax = Math.max(...rounds.map((r) => r.round));
-  const first = rounds.find((r) => r.round === localMax);
-  if (!first) return empty;
-  first.matches.forEach((m, idx) => {
-    const pair = Math.floor(idx / 2);
-    const top = idx % 2 === 0 ? pair * (2 * H + g + G) : pair * (2 * H + g + G) + H + g;
-    positions[m.id] = { top, height: H };
-    centers[m.id] = top + H / 2;
-  });
-  for (let round = localMax - 1; round >= 1; round -= 1) {
-    const cur = rounds.find((r) => r.round === round);
-    const prev = rounds.find((r) => r.round === round + 1);
-    if (!cur || !prev) continue;
-    cur.matches.forEach((m, idx) => {
-      const p1 = prev.matches[idx * 2];
-      const p2 = prev.matches[idx * 2 + 1];
-      const center = p1 && p2 ? (centers[p1.id] + centers[p2.id]) / 2 : p1 ? centers[p1.id] : idx * 300 + 150;
-      positions[m.id] = { top: center - H / 2, height: H };
-      centers[m.id] = center;
-    });
-  }
-  const totalHeight = first.matches.length ? Math.ceil(first.matches.length / 2) * (2 * H + g + G) - G : 600;
-  return { positions, centers, totalHeight };
-}
+// Card tops and centres of the single-elimination tree: treePositions in
+// bracket.js, shared with the event page.
+export { treePositions };
 
 // ---------------------------------------------------------------- double elim
 
