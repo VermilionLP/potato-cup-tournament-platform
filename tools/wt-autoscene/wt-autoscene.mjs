@@ -7,6 +7,7 @@
 
 import { appendFileSync, readFileSync, writeFileSync } from 'node:fs';
 import { createInterface } from 'node:readline/promises';
+import { resolve as resolvePath } from 'node:path';
 import { parseArgs } from 'node:util';
 import { detectState, obsAuth, stateTracker } from './detect.mjs';
 import { mergeOptions } from './config.mjs';
@@ -105,23 +106,42 @@ async function getJson(path) {
 }
 
 let lastRecorded = '';
+let recordFailed = false;
+let lastReadError = '';
+
+// One line per change, without the per-frame map grid. Write errors are
+// reported, never mistaken for the game being offline.
+function record(entry) {
+  if (!opt.record || recordFailed) return;
+  const line = JSON.stringify(entry);
+  if (line === lastRecorded) return;
+  lastRecorded = line;
+  try {
+    appendFileSync(opt.record, JSON.stringify({ at: new Date().toISOString(), ...entry }) + '\n');
+  } catch (e) {
+    recordFailed = true;
+    log(`写入记录文件失败（${e.message}），之后不再记录`);
+  }
+}
+
 async function readGame() {
+  let snap;
   try {
     const [mapInfo, mission] = await Promise.all([getJson('/map_info.json'), getJson('/mission.json').catch(() => null)]);
-    const snap = { reachable: true, mapInfo, mission };
-    if (opt.record) {
-      // Only changes, without the per-frame map grid.
-      const { grid_steps, grid_zero, grid_size, map_min, map_max, ...info } = mapInfo || {};
-      const line = JSON.stringify({ map_info: info, mission });
-      if (line !== lastRecorded) {
-        lastRecorded = line;
-        appendFileSync(opt.record, JSON.stringify({ at: new Date().toISOString(), state: detectState(snap), map_info: info, mission }) + '\n');
-      }
+    snap = { reachable: true, mapInfo, mission };
+    lastReadError = '';
+  } catch (e) {
+    const reason = e.cause?.code || e.name || e.message;
+    if (reason !== lastReadError) {
+      lastReadError = reason;
+      log(`读不到游戏接口 ${opt.game}（${reason}）：游戏没开、还在启动，或接口被防火墙拦截`);
     }
-    return snap;
-  } catch {
+    record({ state: 'offline', error: String(reason) });
     return { reachable: false };
   }
+  const { grid_steps, grid_zero, grid_size, map_min, map_max, ...info } = snap.mapInfo || {};
+  record({ state: detectState(snap), map_info: info, mission: snap.mission });
+  return snap;
 }
 
 // ---------------------------------------------------------------- site
@@ -247,5 +267,5 @@ async function tick() {
 }
 
 connectObs();
-log(`开始读取 ${opt.game}` + (siteOn ? `，赛事 ${opt.event} 频道 ${channel}` : '') + (opt.record ? `，记录到 ${opt.record}` : '') + (opt['dry-run'] ? '（试运行）' : ''));
+log(`开始读取 ${opt.game}` + (siteOn ? `，赛事 ${opt.event} 频道 ${channel}` : '') + (opt.record ? `，记录到 ${resolvePath(opt.record)}` : '（未开启记录）') + (opt['dry-run'] ? '（试运行）' : ''));
 tick();
