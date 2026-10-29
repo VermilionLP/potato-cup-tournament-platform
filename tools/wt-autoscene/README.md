@@ -10,7 +10,17 @@
 
 不需要安装依赖，只需要 [Node.js 22 或更新版本](https://nodejs.org/)。
 
-## 使用（Windows PowerShell）
+## 一键启动（推荐）
+
+双击 `start-autoscene.bat`：
+
+1. 第一次运行会创建 `config.json` 并用记事本打开。填写 `site`（网站地址，如 `https://example.com`）和 `adminToken`（管理员令牌），保存并关闭记事本。
+2. 每次启动会问赛事 ID 和直播频道，直接回车沿用上次的值。
+3. 停止：关闭窗口或按 Ctrl+C。
+
+`config.json` 只保存在这台电脑上（已加入 .gitignore，不会被提交），里面有管理员令牌，不要发给别人。想先试运行就把 `dryRun` 改成 `true`；要切 OBS 就填 `obs`（如 `ws://127.0.0.1:4455`）、`obsPassword` 和 `obsBattle` / `obsEnded` / `obsHangar` 场景名；要记录校准数据就把 `record` 填成 `wt-log.jsonl`。
+
+## 命令行使用（Windows PowerShell）
 
 ```powershell
 cd 路径\potato-cup-tournament-platform\tools\wt-autoscene

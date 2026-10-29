@@ -5,52 +5,89 @@
 // event's overlay scene on the site (one live channel) and, optionally, the
 // OBS program scene. Node 22+, no dependencies. See README.md.
 
-import { appendFileSync } from 'node:fs';
+import { appendFileSync, readFileSync, writeFileSync } from 'node:fs';
+import { createInterface } from 'node:readline/promises';
 import { parseArgs } from 'node:util';
 import { detectState, obsAuth, stateTracker } from './detect.mjs';
+import { mergeOptions } from './config.mjs';
 
-const { values: opt } = parseArgs({
+const { values: cli } = parseArgs({
   options: {
+    config: { type: 'string' },
     site: { type: 'string' },
     event: { type: 'string' },
-    channel: { type: 'string', default: '1' },
-    game: { type: 'string', default: 'http://127.0.0.1:8111' },
-    interval: { type: 'string', default: '1000' },
-    stable: { type: 'string', default: '2' },
-    'end-delay': { type: 'string', default: '8' },
-    'scene-battle': { type: 'string', default: 'ingame' },
-    'scene-ended': { type: 'string', default: 'intermission' },
-    'scene-hangar': { type: 'string', default: 'hybrid' },
+    channel: { type: 'string' },
+    game: { type: 'string' },
+    interval: { type: 'string' },
+    stable: { type: 'string' },
+    'end-delay': { type: 'string' },
+    'scene-battle': { type: 'string' },
+    'scene-ended': { type: 'string' },
+    'scene-hangar': { type: 'string' },
     obs: { type: 'string' },
     'obs-battle': { type: 'string' },
     'obs-ended': { type: 'string' },
     'obs-hangar': { type: 'string' },
     record: { type: 'string' },
-    'dry-run': { type: 'boolean', default: false },
+    'dry-run': { type: 'boolean' },
+    ask: { type: 'boolean' },
     help: { type: 'boolean', short: 'h', default: false },
   },
 });
 
-if (opt.help) {
+if (cli.help) {
   console.log(`用法: node wt-autoscene.mjs --site https://你的网站 --event <赛事ID> [--channel 1]
-  管理员令牌放在环境变量 POTATO_ADMIN_TOKEN（不要写在命令行里）
+  或: node wt-autoscene.mjs --config config.json   （一键启动用 start-autoscene.bat）
+  管理员令牌放在环境变量 POTATO_ADMIN_TOKEN 或 config.json 的 adminToken
   --scene-battle/--scene-ended/--scene-hangar  网站大屏场景（auto|intro|ingame|intermission|hybrid，none = 不切）
   --end-delay 8        战斗结束后等几秒再切
-  --obs ws://127.0.0.1:4455   同时切 OBS 场景（密码放在环境变量 OBS_PASSWORD）
+  --obs ws://127.0.0.1:4455   同时切 OBS 场景（密码放在环境变量 OBS_PASSWORD 或 config.json 的 obsPassword）
   --obs-battle/--obs-ended/--obs-hangar  对应的 OBS 场景名
   --record log.jsonl   记录游戏接口返回的原始数据（用来校准）
+  --ask                启动时询问赛事 ID 和频道（回车沿用上次的值）
   --dry-run            只打印，不切换`);
   process.exit(0);
 }
 
-const token = process.env.POTATO_ADMIN_TOKEN || '';
+// Config file (config.json next to the script, made by start-autoscene.bat):
+// command-line options win over it, it wins over the defaults.
+let fileConfig = {};
+if (cli.config) {
+  try {
+    fileConfig = JSON.parse(readFileSync(cli.config, 'utf8'));
+  } catch (e) {
+    console.error(`读取配置文件 ${cli.config} 失败: ${e.message}`);
+    process.exit(1);
+  }
+}
+const opt = mergeOptions(cli, fileConfig);
+
+// Ask for the event and channel (Enter keeps the last ones, saved back).
+if (opt.ask && process.stdin.isTTY) {
+  const rl = createInterface({ input: process.stdin, output: process.stdout });
+  const event = (await rl.question(`赛事 ID${opt.event ? ` [${opt.event}]` : ''}: `)).trim();
+  const ch = (await rl.question(`直播频道 [${opt.channel}]: `)).trim();
+  rl.close();
+  if (event) opt.event = event;
+  if (ch) opt.channel = ch;
+  if (cli.config && (event || ch)) {
+    writeFileSync(cli.config, JSON.stringify({ ...fileConfig, event: opt.event, channel: Number(opt.channel) }, null, 2) + '\n');
+  }
+}
+
+const token = process.env.POTATO_ADMIN_TOKEN || fileConfig.adminToken || '';
+const obsPassword = process.env.OBS_PASSWORD || fileConfig.obsPassword || '';
 const siteOn = Boolean(opt.site && opt.event);
 if (!siteOn && !opt.obs && !opt.record) {
-  console.error('至少需要 --site 和 --event（切网站大屏），或 --obs（切 OBS），或 --record（只记录）。--help 查看用法');
+  console.error('至少需要网站地址和赛事 ID（切网站大屏），或 OBS 地址（切 OBS），或记录文件。--help 查看用法');
   process.exit(1);
 }
 if (siteOn && !token && !opt['dry-run']) {
-  console.error('缺少管理员令牌：请设置环境变量 POTATO_ADMIN_TOKEN');
+  console.error('缺少管理员令牌：请在 config.json 填写 adminToken，或设置环境变量 POTATO_ADMIN_TOKEN');
+  process.exit(1);
+}
+if (!Number.isInteger(Number(opt.channel)) || Number(opt.channel) < 1 || Number(opt.channel) > 9) {
+  console.error('直播频道必须是 1-9');
   process.exit(1);
 }
 
@@ -127,7 +164,7 @@ function connectObs() {
       if (msg.op === 0) {
         const auth = msg.d.authentication;
         const d = { rpcVersion: 1 };
-        if (auth) d.authentication = await obsAuth(process.env.OBS_PASSWORD || '', auth.salt, auth.challenge);
+        if (auth) d.authentication = await obsAuth(obsPassword, auth.salt, auth.challenge);
         ws.send(JSON.stringify({ op: 1, d }));
       } else if (msg.op === 2) {
         obs = ws;

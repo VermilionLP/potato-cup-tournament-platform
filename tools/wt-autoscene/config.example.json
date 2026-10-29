@@ -1,0 +1,18 @@
+{
+  "site": "https://你的网站域名",
+  "adminToken": "",
+  "event": "",
+  "channel": 1,
+  "askEvent": true,
+  "endDelay": 8,
+  "sceneBattle": "ingame",
+  "sceneEnded": "intermission",
+  "sceneHangar": "hybrid",
+  "obs": "",
+  "obsPassword": "",
+  "obsBattle": "",
+  "obsEnded": "",
+  "obsHangar": "",
+  "record": "",
+  "dryRun": false
+}

@@ -29,3 +29,16 @@ test('obsAuth follows obs-websocket v5', async () => {
   const want = createHash('sha256').update(secret + 'ch').digest('base64');
   assert.equal(await obsAuth('pw', 'salt', 'ch'), want);
 });
+
+import { mergeOptions } from './config.mjs';
+
+test('options: command line > config.json > defaults', () => {
+  const opt = mergeOptions({ channel: '3' }, { site: 'https://x', channel: 2, endDelay: 5, obs: '', dryRun: true, askEvent: true });
+  assert.equal(opt.site, 'https://x');
+  assert.equal(opt.channel, '3');
+  assert.equal(opt['end-delay'], '5');
+  assert.equal(opt.obs, undefined, 'empty values are ignored');
+  assert.equal(opt['dry-run'], true);
+  assert.equal(opt.ask, true);
+  assert.equal(opt['scene-battle'], 'ingame');
+});
