@@ -11,12 +11,10 @@
   import { userState } from "$lib/user.svelte.js";
   import { buildMatchOrder } from "$lib/bracket.js";
   import { formatScheduled, parseLocal } from "$lib/datetime.js";
-  import { initialBanPick } from "$lib/banpick.js";
   import { resolveTemplate } from "$lib/vehicle-pools.js";
   import { overlayStages, pickStage } from "$lib/overlay.js";
   import { formatVoteTime, suggestedVoteTimes, voteOptionsFrom } from "$lib/votes.js";
   import {
-    canCorrectResult,
     eventFormatLabel,
     GROUP_FORMATS,
     isValidSwissRounds,
@@ -26,10 +24,8 @@
   } from "$lib/tournament.js";
   import {
     bracketMatchesOf,
-    correctionWarning,
     eventStandings,
     eventStatusLabel,
-    hasDependentMatchPlayed,
     inPlayoffStage,
     isDoubleElimEvent,
     isTwoStageEvent,
@@ -38,8 +34,6 @@
     playerNamer,
     podiumOf,
     previewMinPlayers,
-    recordedResultLabel,
-    resultMessage,
     roundLabeler,
     seedOrderOf,
   } from "$lib/event-view.js";
@@ -51,7 +45,7 @@
   import EventHeader from "$lib/components/tournament/EventHeader.svelte";
   import StatusControls from "$lib/components/tournament/StatusControls.svelte";
   import PhaseStepper from "$lib/components/tournament/PhaseStepper.svelte";
-  import MatchResultDialog from "$lib/components/tournament/MatchResultDialog.svelte";
+  import MatchReport from "$lib/components/tournament/MatchReport.svelte";
   import ResultsPanel from "$lib/components/tournament/ResultsPanel.svelte";
   import RosterCard from "$lib/components/tournament/RosterCard.svelte";
   import ObsControlCard from "$lib/components/tournament/ObsControlCard.svelte";
@@ -61,6 +55,7 @@
   import PlayerEditDialog from "$lib/components/tournament/PlayerEditDialog.svelte";
   import EventBracketCard from "$lib/components/tournament/EventBracketCard.svelte";
   import LiveHandoff from "$lib/components/tournament/LiveHandoff.svelte";
+  import { registrationActions } from "$lib/event-registration.js";
   import { channelOptions, liveElsewhere, savedChannel, savedStreamMode, saveChannel, withChannel } from "$lib/live-channels.js";
   import TrophyIcon from "@lucide/svelte/icons/trophy";
   import ArrowLeftIcon from "@lucide/svelte/icons/arrow-left";
@@ -131,18 +126,6 @@
   let voteWeekOffset = $state(0);
   let voteOptions = $derived(voteOptionsFrom(tournament?.votes || [], suggestedVoteTimes(playTimes, voteWeekOffset)));
 
-  // Match result dialog
-  let showMatchDialog = $state(false);
-  let reportStep = $state("banpick");
-  // True while an admin is correcting a match that already has a result.
-  let correctingMatch = $state(false);
-  // Ban/Pick progress for the match it was started on.
-  let bpState = $state(initialBanPick());
-  let bpMatchId = $state(null);
-  let score1Input = $state(0);
-  let score2Input = $state(0);
-  let selectedMatch = $state(null);
-  let submittingResult = $state(false);
 
   // Dialogs
   let showStatusTimeDialog = $state(false);
@@ -151,6 +134,7 @@
   let timeEditValue = $state("");
   let savingTime = $state(false);
   let wikiDialog = $state(null);
+  let matchReport = $state(null);
   let playerEditor = $state(null);
 
   // Live channel of this console (remembered per event in this browser):
@@ -292,103 +276,19 @@
     }
   }
 
-  // Registration. targetId: another player (admins); "" registers the
-  // visitor. Resolves to true once registered.
-  async function doRegister(targetId = "") {
-    targetId = String(targetId || "").trim();
-    if (targetId && targetId !== userState.id && !ensureAdmin()) return;
-    if (!targetId && needsIdentity()) return;
-    const id = targetId || userState.id;
-    if (!id) return toast.error("请输入选手 ID");
-    try {
-      const players = await API.register(tid, id);
-      tournament = { ...tournament, players };
-      toast.success(`选手 ${id} 报名成功`);
-      await load();
-      if (isAdmin) await refreshPreview();
-      return true;
-    } catch (e) {
-      toast.error(e.message);
-    }
-  }
-
-  async function doBatchRegister(ids = []) {
-    if (!ensureAdmin()) return;
-    if (ids.length === 0) return toast.error("请先选择选手");
-    let ok = 0;
-    const errors = [];
-    for (const id of ids) {
-      try {
-        await API.register(tid, id);
-        ok += 1;
-      } catch (e) {
-        errors.push(`${id}: ${e.message}`);
-      }
-    }
-    await load();
-    try {
-      await refreshPreview();
-    } catch (e) {
-      console.warn("bracket regeneration failed:", e);
-    }
-    if (ok > 0) toast.success(`已批量报名 ${ok} 人`);
-    if (errors.length > 0) toast.error(errors[0]);
-  }
-
-  async function doUnregister(pid) {
-    if (pid !== userState.id) {
-      if (!ensureAdmin()) return;
-    } else if (needsIdentity()) return;
-    try {
-      await API.unregister(tid, pid);
-      toast.success(`选手 ${pid} 已取消报名`);
-      await load();
-      if (isAdmin) await refreshPreview();
-      else tournament = { ...tournament, matches: [] };
-    } catch (e) {
-      toast.error(e.message);
-    }
-  }
-
-  // Seeds
-  async function autoSeed() {
-    if (!ensureAdmin()) return;
-    try {
-      await API.autoSeeds(tid);
-      await load();
-      toast.success("已按天梯 MMR 自动重排种子");
-    } catch (e) {
-      toast.error("自动排序失败: " + e.message);
-    }
-  }
-
-  async function randomizeSeed() {
-    if (!ensureAdmin()) return;
-    if (!confirm("随机微调会打乱 MMR 相近的选手（保留前 2 和后 2 名），继续？")) return;
-    try {
-      await API.randomizeSeeds(tid, { band: 80, keep_top: 2, keep_bottom: 2 });
-      await load();
-      toast.success("已在相近分段内随机微调种子");
-    } catch (e) {
-      toast.error("随机微调失败: " + e.message);
-    }
-  }
-
-  async function moveSeed(idx, dir) {
-    if (!ensureAdmin()) return;
-    const target = idx + dir;
-    if (target < 0 || target >= seedOrder.length) return;
-    [seedOrder[idx], seedOrder[target]] = [seedOrder[target], seedOrder[idx]];
-    seedOrder = [...seedOrder];
-    try {
-      await API.setSeeds(tid, seedOrder);
-      // Reload so the seed panel keeps the ladder MMR/tier fields and the
-      // preview stays in sync with the server-side seed order.
-      await load();
-    } catch (e) {
-      toast.error("保存种子排序失败: " + e.message);
-    }
-  }
+  // Registration and seeds ($lib/event-registration.js).
+  const { doRegister, doBatchRegister, doUnregister, autoSeed, randomizeSeed, moveSeed } = registrationActions({
+    tid: () => tid,
+    tournament: () => tournament,
+    setTournament: (t) => (tournament = t),
+    seedOrder: () => seedOrder,
+    setSeedOrder: (ids) => (seedOrder = ids),
+    isAdmin: () => isAdmin,
+    load: () => load(),
+    refreshPreview: () => refreshPreview(),
+    ensureAdmin: () => ensureAdmin(),
+    needsIdentity: () => needsIdentity(),
+  });
 
   async function toggleActiveMatch(match) {
     const isActive = live?.active_match_id === match.id;
@@ -401,39 +301,6 @@
     }
   }
 
-  // Match report: clicking a card opens the score form; the card's BP
-  // button opens Ban/Pick.
-  function openMatchReport(match, step = "score") {
-    if (bpMatchId !== match.id) {
-      bpState = initialBanPick(bpTemplate?.rules);
-      bpMatchId = match.id;
-    }
-    selectedMatch = match;
-    correctingMatch = false;
-    reportStep = step === "banpick" && banpickEnabled ? "banpick" : "score";
-    score1Input = 0;
-    score2Input = 0;
-    showMatchDialog = true;
-  }
-
-  function openBanPick(match) {
-    openMatchReport(match, "banpick");
-  }
-
-  // Opens the score step pre-filled with the recorded result so an admin can fix it.
-  function openMatchCorrection(match) {
-    selectedMatch = match;
-    correctingMatch = true;
-    reportStep = "score";
-    score1Input = match.status === "walkover" ? 0 : Number(match.score1) || 0;
-    score2Input = match.status === "walkover" ? 0 : Number(match.score2) || 0;
-    showMatchDialog = true;
-  }
-
-  function openMatchDetails(match) {
-    if (match.status === "pending" && tournament.status !== "completed") openMatchReport(match);
-    else if (isAdmin && canCorrectResult(match)) openMatchCorrection(match);
-  }
 
   async function startPlayoffs() {
     if (!ensureAdmin()) return;
@@ -521,99 +388,6 @@
     }
   }
 
-  // Before a result is (re)entered: a correction first resets this match
-  // (and anything it fed into); a new result over played later matches
-  // resets those. Returns false if cancelled or the reset failed.
-  async function prepareResult(correctionLabel, overwriteWarning) {
-    if (correctingMatch) {
-      if (!ensureAdmin()) return false;
-      if (!confirm(correctionWarning(selectedMatch, tournament.matches || [], correctionLabel))) return false;
-      try {
-        await API.rollbackResult(tid, selectedMatch.id);
-      } catch (err) {
-        toast.error("重置原结果失败: " + err.message);
-        return false;
-      }
-    } else if (hasDependentMatchPlayed(selectedMatch, tournament?.matches || [])) {
-      if (!confirm(overwriteWarning)) return false;
-      try {
-        await API.rollbackResult(tid, selectedMatch.id);
-      } catch (err) {
-        toast.error("重置后续比赛失败: " + err.message);
-        return false;
-      }
-    }
-    return true;
-  }
-
-  // After a result: the live match is over; close the dialog and reload.
-  async function finishResult() {
-    if (isAdmin && live && live.active_match_id === selectedMatch.id) {
-      await API.setActiveMatch(tid, null, liveChannel);
-      await handoff?.matchFinished();
-    }
-    showMatchDialog = false;
-    selectedMatch = null;
-    await load();
-  }
-
-  async function selectGameWinner(winnerId) {
-    if (needsIdentity() || !selectedMatch) return;
-    const ok = await prepareResult(
-      "修正比分",
-      "【警告】该场比赛的晋级选手已在后续轮次进行了比赛！\n修改此场比赛将导致后续所有相关比赛的比分与晋级状态都被清空重置。\n\n确定要继续修改并重置后续比赛吗？",
-    );
-    if (!ok) return;
-    submittingResult = true;
-    try {
-      await API.submitResult(tid, selectedMatch.id, Number(score1Input) || 0, Number(score2Input) || 0);
-      toast.success(resultMessage(tournament, selectedMatch, winnerId, playerName));
-      await finishResult();
-    } catch (e) {
-      toast.error(e.message);
-    } finally {
-      submittingResult = false;
-    }
-  }
-
-  async function recordWalkover(winnerId) {
-    if (needsIdentity() || !selectedMatch) return;
-    const ok = await prepareResult(
-      "改判弃权",
-      "【警告】该场比赛的晋级选手已在后续轮次进行了比赛！\n判定弃权将导致后续所有相关比赛的比分与晋级状态都被清空重置。\n\n确定要继续修改并重置后续比赛吗？",
-    );
-    if (!ok) return;
-    submittingResult = true;
-    try {
-      await API.submitWalkover(tid, selectedMatch.id, winnerId);
-      toast.success("已记录弃权并晋级胜者");
-      await finishResult();
-    } catch (e) {
-      toast.error(e.message);
-    } finally {
-      submittingResult = false;
-    }
-  }
-
-  async function doRollback() {
-    if (!ensureAdmin() || !selectedMatch) return;
-    const confirmMsg = hasDependentMatchPlayed(selectedMatch, tournament.matches || [])
-      ? "【警告】该场比赛的晋级选手已在后续轮次进行了比赛！\n如果确认回滚，后续所有相关的比赛比分与晋级状态都将被清空重置。\n\n确定要继续回滚并重置后续比赛吗？"
-      : "确定要回滚这场比赛的比分并将其重设为未开始状态吗？";
-    if (!confirm(confirmMsg)) return;
-    submittingResult = true;
-    try {
-      await API.rollbackResult(tid, selectedMatch.id);
-      toast.success("比赛已成功回滚并重设");
-      showMatchDialog = false;
-      selectedMatch = null;
-      await load();
-    } catch (e) {
-      toast.error("回滚失败: " + e.message);
-    } finally {
-      submittingResult = false;
-    }
-  }
 
   // Admin: download the event as JSON.
   function triggerJsonDownload() {
@@ -701,8 +475,8 @@
       {playoffBusy}
       {shownStage}
       bind:stageView
-      onopen={openMatchDetails}
-      onbanpick={openBanPick}
+      onopen={(m) => matchReport?.openDetails(m)}
+      onbanpick={(m) => matchReport?.openBanPick(m)}
       ontoggleactive={toggleActiveMatch}
       oneditrounds={editSwissRounds}
       onstartplayoffs={startPlayoffs}
@@ -813,27 +587,22 @@
   </div>
 {/if}
 
-<!-- Match Result Submission Dialog -->
-<MatchResultDialog
-  bind:open={showMatchDialog}
-  bind:step={reportStep}
-  bind:bp={bpState}
-  bind:score1={score1Input}
-  bind:score2={score2Input}
-  match={selectedMatch}
+<!-- Reporting a match: Ban / Pick, score, walkover, correction -->
+<MatchReport
+  bind:this={matchReport}
   {tournament}
-  correcting={correctingMatch}
+  {tid}
+  {isAdmin}
   {banpickEnabled}
-  {bpMatchId}
-  vehicles={bpTemplate?.vehicles || []}
-  poolName={bpTemplate?.name || ""}
-  submitting={submittingResult}
-  roundLabel={matchRoundLabel}
-  recordedLabel={(m) => recordedResultLabel(m, playerName)}
+  {bpTemplate}
   {playerName}
-  onwalkover={recordWalkover}
-  onrollback={doRollback}
-  onsubmit={selectGameWinner}
+  {matchRoundLabel}
+  {live}
+  {liveChannel}
+  {handoff}
+  {ensureAdmin}
+  {needsIdentity}
+  onreload={load}
 />
 
 <!-- Admin: adjust the match time -->
