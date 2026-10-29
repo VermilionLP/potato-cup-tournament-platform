@@ -1,7 +1,8 @@
 // Event tiers (migration 031): a tier like Liquipedia's (S / A / B / C / D,
 // liquipediatier 1-5) and a kind (season / monthly / weekly / qualifier /
-// misc). Imported events take Liquipedia's tier; new events default from
-// their points table (monthly cup B, weekly C); admins can change both.
+// misc). Past imported events got Liquipedia's tier (migration 031); new
+// events default from their points table (monthly cup B, weekly C); admins
+// can change both.
 
 export const EVENT_TIERS = ['S', 'A', 'B', 'C', 'D'];
 export const EVENT_KINDS = ['season', 'monthly', 'weekly', 'qualifier', 'misc'];
@@ -23,34 +24,6 @@ export function normalizeKind(value) {
 export function liquipediaTierOf(tier) {
   const i = EVENT_TIERS.indexOf(tier);
   return i < 0 ? '' : String(i + 1);
-}
-
-const MONTH = /\/(Jan|Feb|Mar|Apr|May|June?|July?|Aug|Sept?|Oct|Nov|Dec|Fall)\b/i;
-const SEASON = /\/(Spring|Summer|Autumn|Winter)\b/i;
-
-/**
- * Kind of an event from its Liquipedia page title (or name), tier type and
- * points table kind.
- */
-export function kindOf({ title = '', tiertype = '', pointsKind = '' } = {}) {
-  const t = String(title);
-  if (/^weekly$/i.test(tiertype) || /weekly|周赛/i.test(t)) return 'weekly';
-  if (/^qualifier$/i.test(tiertype) || /qualifier|资格赛|预选赛/i.test(t)) return 'qualifier';
-  if (pointsKind === 'monthly' || /^monthly$/i.test(tiertype) || MONTH.test(t) || /月赛/.test(t)) return 'monthly';
-  if (SEASON.test(t) || /季度赛|季赛/.test(t)) return 'season';
-  return 'misc';
-}
-
-/**
- * Tier of a page whose infobox has none: season groups by level, qualifiers
- * and weeklies C; null otherwise.
- */
-export function tierFallback({ title = '', kind = '' } = {}) {
-  if (/Advanced Group/i.test(title)) return 'A';
-  if (/Intermediate Group/i.test(title)) return 'B';
-  if (/Beginners/i.test(title) || kind === 'qualifier' || kind === 'weekly') return 'C';
-  if (kind === 'monthly') return 'B';
-  return null;
 }
 
 /** Tier and kind of a new event created on the site. */

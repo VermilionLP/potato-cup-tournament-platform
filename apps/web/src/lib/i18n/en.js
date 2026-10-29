@@ -733,7 +733,7 @@ export default {
   "合并到": "into",
   "？合并后 {0} 将被删除，无法撤销。": "? {0} will be deleted afterwards; this can't be undone.",
   "确认合并": "Confirm merge",
-  "合并后此选手的所有对阵、报名、投票和赛事账号转移到目标选手；目标选手没填的国籍、战队、联系方式和 Liquipedia 链接用此选手的补上；然后删除此选手。旧 ID 会被记住，重新导入 Liquipedia 时不会再出现。": "All matches, registrations, votes and event accounts move to the target player; nationality, team, contact and Liquipedia link fill in where the target has none; then this player is deleted. The old ID is remembered, so re-importing from Liquipedia won't bring it back.",
+  "合并后此选手的所有对阵、报名、投票和赛事账号转移到目标选手；目标选手没填的国籍、战队、联系方式和 Liquipedia 链接用此选手的补上；然后删除此选手。": "All matches, registrations, votes and event accounts move to the target player; nationality, team, contact and Liquipedia link fill in where the target has none; then this player is deleted.",
   "确定要删除选手": "Delete player",
   "吗？若已出现在对阵记录中，请改用\"合并\"功能。": "? If they already appear in brackets, use \"Merge\" instead.",
   "修改你自己的选手 ID 会同时更新你的登录凭证，确定要改成": "Changing your own player ID also changes your login. Change it to",

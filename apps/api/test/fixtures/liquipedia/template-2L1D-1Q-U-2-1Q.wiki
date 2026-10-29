@@ -1,4 +1,0 @@
-<noinclude>{{TemplateMatch|matchid=R02-M001|toupper=|tolower=R01-M001|header=!u2!2|qualwin=true|quallose=|skipround=}}<!--
--->{{TemplateMatch|matchid=R02-M002|toupper=|tolower=|header=!l2!2|qualwin=true|quallose=|skipround=true}}<!--
--->{{TemplateMatch|matchid=R01-M001|toupper=|tolower=|header=!u3!1|qualwin=|quallose=|skipround=}}<!--
--->{{BracketDocumentation}}[[Category:Extension Brackets]][[Category:3P2Q-Bracket]]</noinclude>

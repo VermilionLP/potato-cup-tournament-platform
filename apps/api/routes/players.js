@@ -48,7 +48,7 @@ export default async function playersRoutes(fastify) {
 
       // A rename is a merge into a fresh record: everything (registrations,
       // matches, votes, device key, profile) moves over and the old
-      // id is kept as an alias for the Liquipedia import.
+      // id is kept as an alias (player_aliases).
       await client.query('INSERT INTO axsuck.players (id, flag) VALUES ($1, $2)', [newId, '']);
       await mergePlayerInto(client, oldId, newId);
       await client.query('UPDATE axsuck.players SET last_ip = $2 WHERE id = $1', [newId, oldPlayer.last_ip || null]);

@@ -48,34 +48,13 @@ Device keys (`lib/player-key.js`): the first device that uses a player ID binds 
 
 Write requests (not admin) are rate-limited per IP in memory (`lib/rate-limit.js`): 60 per minute, 10 per minute for key binding; over that the API answers `429` with `Retry-After`. `X-Forwarded-For` is trusted only from a local proxy unless `TRUST_PROXY` is set. Request bodies are capped at 5 MB.
 
-## Importing past events from Liquipedia
+## Past events
 
-`scripts/import-liquipedia.js` imports the finished Potato Cup events
-(`Potato Cup/...` and `Potato Cup Weekly/...`) from the War Thunder
-Liquipedia wiki through the MediaWiki API, following its terms of use
-(identifying User-Agent, gzip, one request every 2 s). The download is
-cached in `.cache/liquipedia/potato-cup.json`.
-
-```bash
-node scripts/import-liquipedia.js            # dry run: events, skipped pages, data warnings, look-alike names
-node scripts/import-liquipedia.js --apply    # write; re-running replaces the imported events (ids lp-...)
-node scripts/import-liquipedia.js --refresh  # download again instead of using the cache
-```
-
-Set `LIQUIPEDIA_CONTACT` (e.g. an e-mail) so Liquipedia can reach you about
-the requests. Names that only differ in letter case, spaces, underscores,
-dashes, dots or look-alike Cyrillic letters are merged into one player (an
-existing platform id wins, otherwise the most used spelling). Imported
-events are `completed`, carry `played_at`/`source_url`, and link back to
-their Liquipedia page (CC-BY-SA 3.0). The ladder rates all games in date
-order; `GET /api/ladder?window=year` rates only the last 365 days.
-
-`scripts/import-liquipedia-flags.js` fills in player nationality: the
-player's Liquipedia page (Infobox country) first, otherwise the most recent
-Potato Cup page that shows a flag for them (participant tables, match
-opponents). Dry run by default, `--apply` writes. Players without a flag and
-players that only appear in imported events are updated; a different flag on
-a player who uses the platform is only listed unless `--overwrite` is given.
+Past Potato Cup events (2022-2026) were imported from the War Thunder
+Liquipedia wiki once (ids `lp-...`, `source_url` / `source_title` point
+to their page, CC-BY-SA 3.0); the import code has since been removed. The
+ladder rates all games in date order; `GET /api/ladder?window=year` rates
+only the last 365 days.
 
 ## Elasticsearch logs
 
