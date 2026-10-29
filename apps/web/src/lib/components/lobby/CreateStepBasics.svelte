@@ -32,6 +32,7 @@
     <span class="text-xs font-semibold text-foreground/80">比赛类型</span>
     <Segmented
       options={VEHICLE_POOLS.map((p) => ({ id: p.id, label: p.name, title: p.code }))}
+      cols="grid-cols-2 sm:grid-cols-4"
       value={form.eventPool}
       onpick={(id) => (form.eventPool = id)}
     />

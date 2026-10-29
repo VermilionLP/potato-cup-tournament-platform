@@ -70,7 +70,7 @@
 
 <Dialog.Root bind:open>
   <!-- The form scrolls inside the dialog; title and buttons stay in view. -->
-  <Dialog.Content class="sm:max-w-[560px] max-h-[90vh] flex flex-col gap-3 bg-card border border-border">
+  <Dialog.Content class="sm:max-w-[640px] max-h-[90vh] flex flex-col gap-3 bg-card border border-border">
     <Dialog.Header class="shrink-0">
       <Dialog.Title class="text-lg font-bold tracking-tight text-foreground">创建新赛事</Dialog.Title>
       <Dialog.Description class="text-xs text-muted-foreground">填写比赛时间会跳过时间投票，直接开启报名。</Dialog.Description>
