@@ -1,5 +1,6 @@
 // In-memory cache for the ladder: the rated games, the player rows and the
-// computed ratings per division. Rating every game since the first event on
+// computed ratings per division; also the statistics page data
+// (routes/player-stats.js). Rating every game since the first event on
 // each event page / ladder load is the slow part, and the data only changes
 // when someone writes something.
 //

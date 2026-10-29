@@ -48,3 +48,33 @@ test('scoped to a tier: only its events and the players in them', () => {
   assert.deepEqual(season.global, { total_players: 2, total_tournaments: 1, total_matches: 1 });
   assert.equal(season.players.find((p) => p.id === 'a').championships, 0);
 });
+
+test('the statistics route caches per scope until a write', async () => {
+  const { default: playerStatsRoutes } = await import('../routes/player-stats.js');
+  const { invalidateLadder } = await import('../lib/ladder-cache.js');
+  let reads = 0;
+  const db = {
+    async query(sql) {
+      const text = String(sql);
+      if (text.includes('FROM axsuck.tournaments')) reads += 1;
+      if (text.includes('FROM axsuck.players')) return { rows: players };
+      if (text.includes('FROM axsuck.tournaments')) return { rows: tournaments };
+      if (text.includes('FROM axsuck.tournament_players')) return { rows: registrations };
+      if (text.includes('FROM axsuck.matches m')) return { rows: [] }; // ladder games
+      if (text.includes('FROM axsuck.matches')) return { rows: matches };
+      return { rows: [] };
+    },
+  };
+  const routes = new Map();
+  await playerStatsRoutes({ db, get: (path, handler) => routes.set(path, handler) });
+  const get = (query) => routes.get('/players/statistics')({ query });
+  const first = await get({});
+  await get({});
+  assert.equal(reads, 1);
+  await get({ tier: 'A' });
+  assert.equal(reads, 2, 'another scope is computed on its own');
+  invalidateLadder(db);
+  const again = await get({});
+  assert.equal(reads, 3);
+  assert.deepEqual(again.global, first.global);
+});
