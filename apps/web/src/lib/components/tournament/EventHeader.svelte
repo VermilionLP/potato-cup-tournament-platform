@@ -14,6 +14,8 @@
     TIER_TAG,
     tierTagText,
     eventFormatLabel,
+    GAME_MODES,
+    gameModeInfo,
     gameModeLabel,
     gameModeTitle,
     vehiclePoolLabel,
@@ -91,6 +93,22 @@
       toast.error(e.message);
     } finally {
       savingPool = false;
+    }
+  }
+
+  // Game mode (AB / RB / SB): admins can change it any time.
+  let savingMode = $state(false);
+  async function saveGameMode(mode) {
+    if (!adminOnly() || !mode || mode === tournament?.game_mode) return;
+    savingMode = true;
+    try {
+      const res = await API.updateTournament(tid, { game_mode: mode });
+      tournament = { ...tournament, game_mode: res.game_mode };
+      toast.success(`比赛模式已改为 ${gameModeInfo(res.game_mode).code} ${gameModeInfo(res.game_mode).name}`);
+    } catch (e) {
+      toast.error(e.message);
+    } finally {
+      savingMode = false;
     }
   }
 
@@ -252,7 +270,22 @@
     {:else if tierTagText(tournament)}
       <span class="rounded-md border px-2 py-0.5 font-bold {TIER_TAG[tournament.tier] || 'border-border bg-muted/60 text-muted-foreground'}" title="赛事等级">{tierTagText(tournament)}</span>
     {/if}
-    <span class="rounded-md border border-border bg-muted/60 px-2 py-0.5 font-mono font-bold text-foreground/80" title={gameModeTitle(tournament.game_mode)}>{gameModeLabel(tournament.game_mode)}</span>
+    {#if isAdmin}
+      <select
+        aria-label="比赛模式"
+        title="比赛模式"
+        value={tournament.game_mode || "rb"}
+        disabled={savingMode}
+        onchange={(e) => saveGameMode(e.currentTarget.value)}
+        class="h-6 rounded-md border border-border bg-background px-1.5 text-xs font-mono font-bold text-foreground cursor-pointer disabled:opacity-60"
+      >
+        {#each GAME_MODES as mode (mode.id)}
+          <option value={mode.id}>{mode.code} {mode.name}</option>
+        {/each}
+      </select>
+    {:else}
+      <span class="rounded-md border border-border bg-muted/60 px-2 py-0.5 font-mono font-bold text-foreground/80" title={gameModeTitle(tournament.game_mode)}>{gameModeLabel(tournament.game_mode)}</span>
+    {/if}
     {#if isAdmin}
       <select
         aria-label="比赛类型"

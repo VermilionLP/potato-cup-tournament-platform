@@ -90,6 +90,14 @@ export function TournamentRepo(db) {
     return getById(id);
   }
 
+  async function setGameMode(id, mode) {
+    await db.query(
+      'UPDATE axsuck.tournaments SET game_mode = $1, updated_at = NOW() WHERE id = $2',
+      [normalizeGameMode(mode), id],
+    );
+    return getById(id);
+  }
+
   async function setVehiclePool(id, pool) {
     const res = await db.query(`
       UPDATE axsuck.tournaments
@@ -384,5 +392,5 @@ export function TournamentRepo(db) {
     }));
   }
 
-  return { list, getById, create, rename, setVehiclePool, setVehicleTemplate, setPoints, setPointsInvite, setScheduledTime, setSwissRounds, updateStatus, setTier, getPlayers, addPlayer, autoRegisterVoters, removePlayer, setSeeds, getMatches, getVotes, getCustomVotes };
+  return { list, getById, create, rename, setVehiclePool, setVehicleTemplate, setPoints, setPointsInvite, setScheduledTime, setSwissRounds, updateStatus, setTier, setGameMode, getPlayers, addPlayer, autoRegisterVoters, removePlayer, setSeeds, getMatches, getVotes, getCustomVotes };
 }

@@ -9,7 +9,7 @@ import { requireAdmin } from '../lib/admin.js';
 import { normalizePointsKind, normalizePointsTable, normalizeSeason } from '../lib/points.js';
 import { endedSeason } from '../lib/points-seasons.js';
 import { groupStageOf } from '../lib/group-stage-view.js';
-import { startBlockedReason, VEHICLE_POOLS } from '../lib/tournament-config.js';
+import { GAME_MODES, startBlockedReason, VEHICLE_POOLS } from '../lib/tournament-config.js';
 import { EVENT_KINDS, EVENT_TIERS, normalizeKind, normalizeTier } from '../lib/event-tier.js';
 import {
   currentSwissRound,
@@ -38,8 +38,12 @@ export default async function tournamentSettingsRoutes(fastify) {
     const hasPoints = body.points_table !== undefined;
     const hasInvite = body.points_invite !== undefined;
     const hasTier = body.tier !== undefined || body.event_kind !== undefined;
-    if (!hasName && !hasTime && !hasPool && !hasTemplate && !hasPoints && !hasInvite && !hasTier) {
-      throw fastify.httpErrors.badRequest('name, scheduled_time, vehicle_pool, vehicle_template, points_table, points_invite, tier or event_kind is required');
+    const hasMode = body.game_mode !== undefined;
+    if (!hasName && !hasTime && !hasPool && !hasTemplate && !hasPoints && !hasInvite && !hasTier && !hasMode) {
+      throw fastify.httpErrors.badRequest('name, scheduled_time, game_mode, vehicle_pool, vehicle_template, points_table, points_invite, tier or event_kind is required');
+    }
+    if (hasMode && !GAME_MODES.includes(String(body.game_mode))) {
+      throw fastify.httpErrors.badRequest(`game_mode must be one of: ${GAME_MODES.join(', ')}`);
     }
     if (body.tier && !normalizeTier(body.tier)) {
       throw fastify.httpErrors.badRequest(`tier must be one of: ${EVENT_TIERS.join(', ')}`);
@@ -93,6 +97,12 @@ export default async function tournamentSettingsRoutes(fastify) {
       const kind = body.event_kind === undefined ? t.event_kind : normalizeKind(body.event_kind);
       updated = await repo.setTier(req.params.id, tier, kind);
       fastify.tournamentEvents.emit(`update:${req.params.id}`, { type: 'tier_changed', tier, event_kind: kind });
+    }
+    // The game mode too (it picks the ladder division and the vehicle pool
+    // template), finished events included.
+    if (hasMode) {
+      updated = await repo.setGameMode(req.params.id, body.game_mode);
+      fastify.tournamentEvents.emit(`update:${req.params.id}`, { type: 'game_mode_changed', game_mode: updated.game_mode });
     }
     // The event type can be changed at any time, finished events included.
     if (hasPool) {
