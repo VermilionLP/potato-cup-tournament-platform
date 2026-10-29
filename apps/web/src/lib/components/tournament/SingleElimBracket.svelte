@@ -1,9 +1,8 @@
 <script>
+  import MatchCardActions from "./MatchCardActions.svelte";
   // Single-elimination bracket (Liquipedia style): one column per round,
   // cards placed between their two feeder matches, connector lines, and the
   // third-place match under the final.
-  import { toast } from "svelte-sonner";
-  import { API } from "$lib/api.js";
   import { userState } from "$lib/user.svelte.js";
   import { canCorrectResult } from "$lib/tournament.js";
   import { roundLabel } from "$lib/bracket.js";
@@ -24,6 +23,7 @@
     playerName,
     onopen,
     onbanpick,
+    ontoggleactive = () => {},
   } = $props();
 
   let displayFirstRoundCount = $derived(rounds[0]?.matches?.length || 0);
@@ -197,42 +197,19 @@
                 <!-- Tiny Header Bar -->
                 <div class="px-2 py-1 bg-neutral-100 dark:bg-neutral-900 text-[8px] font-mono text-neutral-500 dark:text-neutral-400 flex items-center justify-between border-b border-neutral-200 dark:border-neutral-800/80 shrink-0">
                   <span>#{matchOrder.get(m.id)} · 场次 {m.position}</span>
-                  <div class="flex items-center gap-1.5">
-                    {#if liveElsewhere.get(m.id)}
-                      <span class="px-1 py-0.5 rounded font-bold text-[7px] bg-sky-500/15 text-sky-600 dark:text-sky-300" title="该对局在其他直播频道直播中">频道 {liveElsewhere.get(m.id)}</span>
-                    {:else if isAdmin && isPlayable}
-                      {@const isActive = tournament.active_match_id === m.id}
-                      <button
-                        onclick={async (e) => {
-                          e.stopPropagation();
-                          try {
-                            await API.setActiveMatch(tid, isActive ? null : m.id, tournament.live_channel ?? 1);
-                            toast.success(isActive ? "已取消直播该场次" : "已开启该场次直播！");
-                          } catch (err) {
-                            toast.error("更新直播状态失败: " + err.message);
-                          }
-                        }}
-                        class="px-1 py-0.5 rounded font-bold text-[7px] flex items-center gap-0.5 cursor-pointer transition-all
-                          {isActive ? 'bg-amber-500 text-black hover:bg-amber-400' : 'bg-primary text-primary-foreground hover:bg-primary/85'}"
-                      >
-                        {isActive ? "直播中" : "推流直播"}
-                      </button>
-                    {/if}
-                    {#if banpickEnabled && isPlayable}
-                      <button
-                        type="button"
-                        onclick={(e) => { e.stopPropagation(); onbanpick(m); }}
-                        class="px-1 py-0.5 rounded font-bold text-[7px] cursor-pointer border border-primary/40 text-primary hover:bg-primary hover:text-primary-foreground transition-all"
-                        title="打开 Ban / Pick"
-                      >BP</button>
-                    {/if}
-                    {#if userInMatch && isPending}
-                      <span class="text-primary font-bold animate-pulse">我的比赛</span>
-                    {/if}
-                    {#if isCorrectable}
-                      <span class="rounded bg-amber-500/15 px-1 py-0.5 text-[7px] font-bold text-amber-500">修正</span>
-                    {/if}
-                  </div>
+                  <MatchCardActions
+                    match={m}
+                    playable={isPlayable}
+                    active={tournament.active_match_id === m.id}
+                    otherChannel={liveElsewhere.get(m.id)}
+                    {isAdmin}
+                    {banpickEnabled}
+                    mine={Boolean(userInMatch && isPending)}
+                    correctable={isCorrectable}
+                    gap="gap-1.5"
+                    ontoggleactive={ontoggleactive}
+                    onbanpick={onbanpick}
+                  />
                 </div>
 
                 <!-- Player 1 Row -->

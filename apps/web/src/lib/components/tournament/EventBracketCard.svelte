@@ -236,6 +236,7 @@
         {tournament}
         {tid}
         {liveElsewhere}
+        {ontoggleactive}
         rounds={sections.displayRounds}
         matches={bracketMatches}
         {totalRounds}

@@ -1,4 +1,5 @@
 <script>
+  import MatchCardActions from "$lib/components/tournament/MatchCardActions.svelte";
   import CrownIcon from "@lucide/svelte/icons/crown";
   import Flag from "$lib/components/Flag.svelte";
   import {
@@ -262,44 +263,18 @@
           class="flex h-[18px] shrink-0 items-center justify-between border-b border-neutral-200 bg-neutral-100 px-2 text-[8px] font-mono text-neutral-500 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-400"
         >
           <span>{cardTitle(match)}</span>
-          <div class="flex items-center gap-1">
-            {#if other}
-              <span class="rounded bg-sky-500/15 px-1 py-0.5 text-[7px] font-bold text-sky-600 dark:text-sky-300" title="该对局在其他直播频道直播中">频道 {other}</span>
-            {:else if isAdmin && playable}
-              <button
-                type="button"
-                onclick={(e) => {
-                  e.stopPropagation();
-                  onToggleActive(match);
-                }}
-                class="rounded px-1 py-0.5 text-[7px] font-bold transition-all
-                  {active
-                  ? 'bg-amber-500 text-black hover:bg-amber-400'
-                  : 'bg-primary text-primary-foreground hover:bg-primary/85'}"
-              >
-                {active ? "直播中" : "推流直播"}
-              </button>
-            {/if}
-            {#if banpickEnabled && playable}
-              <button
-                type="button"
-                onclick={(e) => {
-                  e.stopPropagation();
-                  onBanPick(match);
-                }}
-                class="rounded border border-primary/40 px-1 py-0.5 text-[7px] font-bold text-primary transition-all hover:bg-primary hover:text-primary-foreground"
-                title="打开 Ban / Pick"
-              >
-                BP
-              </button>
-            {/if}
-            {#if userId && match.status === "pending" && (match.player1_id === userId || match.player2_id === userId)}
-              <span class="animate-pulse font-bold text-primary">我的比赛</span>
-            {/if}
-            {#if editable}
-              <span class="rounded bg-amber-500/15 px-1 py-0.5 text-[7px] font-bold text-amber-500">修正</span>
-            {/if}
-          </div>
+          <MatchCardActions
+            {match}
+            {playable}
+            {active}
+            otherChannel={other}
+            {isAdmin}
+            {banpickEnabled}
+            mine={Boolean(userId && match.status === "pending" && (match.player1_id === userId || match.player2_id === userId))}
+            correctable={editable}
+            ontoggleactive={onToggleActive}
+            onbanpick={onBanPick}
+          />
         </div>
 
         <div
