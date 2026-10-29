@@ -10,6 +10,6 @@
     "build:web": "pnpm --filter suck-tournament-web build",
     "build:all": "pnpm -r build",
     "migrate": "pnpm --filter suck-tournament-api migrate",
-    "test": "pnpm --filter suck-tournament-web test && pnpm --filter suck-tournament-api test"
+    "test": "pnpm --filter suck-tournament-web test && pnpm --filter suck-tournament-api test && node --test tools/wt-autoscene/test.mjs"
   }
 }
