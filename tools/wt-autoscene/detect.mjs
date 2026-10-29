@@ -4,10 +4,13 @@
 //   offline  the client is not running (or the API is off)
 //   hangar   no battle loaded (map_info.valid is false)
 //   battle   a battle is loaded and its mission is still running
-//   ended    a battle is loaded but its mission is over (result screen)
+//   ended    a battle is loaded but its mission is over
 //
-// The exact field values are checked against recordings (--record); until
-// then anything that is not clearly over counts as running.
+// Recordings of full spectated battles (2026-10) show mission.status stays
+// "running" and objectives null until the client leaves the battle (a
+// second or two without answers, then the hangar), so the end of a battle
+// is normally seen as battle -> hangar; see nextScene(). The "ended" check
+// stays for modes that do report a result.
 
 const OVER = new Set(['success', 'fail', 'failed', 'win', 'lose', 'loss', 'completed', 'finished']);
 
@@ -17,6 +20,22 @@ export function detectState({ reachable, mapInfo, mission }) {
   const status = String(mission?.status ?? '').toLowerCase();
   if (OVER.has(status)) return 'ended';
   return 'battle';
+}
+
+/**
+ * Scene to show after a state change, given the last state that was not
+ * "offline" (the API stops answering for a few seconds while loading and
+ * leaving a battle). Returns { scene, delayed } or null to keep the scene:
+ * leaving a battle counts as its end, shown after the end delay so viewers
+ * see the result first.
+ */
+export function nextScene(lastActive, to) {
+  if (to === 'offline') return null;
+  if (to === 'battle') return { scene: 'battle', delayed: false };
+  if (to === 'ended') return { scene: 'ended', delayed: true };
+  if (lastActive === 'battle') return { scene: 'ended', delayed: true };
+  if (lastActive === 'ended') return null;
+  return { scene: 'hangar', delayed: false };
 }
 
 /**

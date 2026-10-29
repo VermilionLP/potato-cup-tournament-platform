@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { detectState, obsAuth, stateTracker } from './detect.mjs';
+import { detectState, nextScene, obsAuth, stateTracker } from './detect.mjs';
 
 test('detectState', () => {
   assert.equal(detectState({ reachable: false }), 'offline');
@@ -41,4 +41,37 @@ test('options: command line > config.json > defaults', () => {
   assert.equal(opt['dry-run'], true);
   assert.equal(opt.ask, true);
   assert.equal(opt['scene-battle'], 'ingame');
+});
+
+test('nextScene: leaving a battle is its end, loading gaps are ignored', () => {
+  assert.deepEqual(nextScene(null, 'hangar'), { scene: 'hangar', delayed: false });
+  assert.deepEqual(nextScene('hangar', 'battle'), { scene: 'battle', delayed: false });
+  assert.equal(nextScene('battle', 'offline'), null, 'a few seconds without answers keep the scene');
+  assert.deepEqual(nextScene('battle', 'hangar'), { scene: 'ended', delayed: true });
+  assert.deepEqual(nextScene('battle', 'ended'), { scene: 'ended', delayed: true });
+  assert.equal(nextScene('ended', 'hangar'), null);
+});
+
+test('the recorded spectated battle: hangar, battle, back to hangar', () => {
+  // tools/wt-autoscene recordings, 2026-10-29: status stays "running".
+  const polls = [
+    { reachable: true, mapInfo: { valid: false }, mission: { objectives: null, status: 'running' } },
+    { reachable: false },
+    { reachable: true, mapInfo: { hud_type: 0, map_generation: 3, valid: true }, mission: { objectives: null, status: 'running' } },
+    { reachable: false },
+    { reachable: true, mapInfo: { valid: false }, mission: { objectives: null, status: 'running' } },
+  ];
+  const track = stateTracker(2);
+  let lastActive = null;
+  const scenes = [];
+  for (const p of polls) {
+    for (let i = 0; i < 3; i += 1) {
+      const change = track(detectState(p));
+      if (!change) continue;
+      const next = nextScene(lastActive, change.to);
+      if (change.to !== 'offline') lastActive = change.to;
+      if (next) scenes.push(next.scene + (next.delayed ? '+delay' : ''));
+    }
+  }
+  assert.deepEqual(scenes, ['hangar', 'battle', 'ended+delay']);
 });

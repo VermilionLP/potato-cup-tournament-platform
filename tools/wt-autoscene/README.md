@@ -12,8 +12,10 @@
 | 游戏状态 | OBS 场景 | 网站大屏（默认） |
 |---|---|---|
 | 进入战斗 | `obsBattle` | `ingame` 游戏内 |
-| 战斗结束（等 `endDelay` 秒，默认 8） | `obsEnded` | `intermission` 间歇 |
-| 回到机库 | `obsHangar` | `hybrid` 综合 |
+| 战斗结束：从战斗回到机库（再等 `endDelay` 秒，默认 8，让观众看完结算） | `obsEnded` | `intermission` 间歇 |
+| 启动时就在机库 | `obsHangar` | `hybrid` 综合 |
+
+观战时游戏接口在整场战斗中一直报告 `running`，不会给出"战斗结束"的信号（2026-10 两局完整对局的记录），所以"从战斗回到机库"就是比赛结束。加载地图和退出战斗时接口会有几秒没有响应，这是正常的，不会触发切换。
 
 不需要安装依赖，只需要 [Node.js 22 或更新版本](https://nodejs.org/)。
 

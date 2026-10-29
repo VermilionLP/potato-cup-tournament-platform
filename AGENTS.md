@@ -57,7 +57,7 @@ Ban / Pick 的载具池是 `axsuck.vehicle_pools` 里的模板（迁移 027）�
 
 ## Auto scene switching
 
-`tools/wt-autoscene/` 是在直播电脑上运行的独立小程序（Node 22，无依赖）：读取战争雷霆本地接口 `localhost:8111` 的 `map_info.json` / `mission.json`，判断机库 / 战斗中 / 战斗结束，然后调用 `POST /tournaments/:id/overlay-state` 切换某个直播频道的大屏场景（保留当前轮次），也可以通过 obs-websocket v5 切 OBS 场景。判断规则在 `detect.mjs`（有测试）；`--record` 记录原始数据用于校准。
+`tools/wt-autoscene/` 是在直播电脑上运行的独立小程序（Node 22，无依赖）：读取战争雷霆本地接口 `localhost:8111` 的 `map_info.json` / `mission.json`，判断机库 / 战斗中，把"从战斗回到机库"当作比赛结束（观战时 `mission.json` 一直是 running），然后调用 `POST /tournaments/:id/overlay-state` 切换某个直播频道的大屏场景（保留当前轮次），也可以通过 obs-websocket v5 切 OBS 场景。判断规则在 `detect.mjs`（有测试）；`--record` 记录原始数据用于校准。
 
 ## Event tiers
 

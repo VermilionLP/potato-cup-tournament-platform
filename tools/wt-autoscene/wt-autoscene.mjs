@@ -9,7 +9,7 @@ import { appendFileSync, readFileSync, writeFileSync } from 'node:fs';
 import { createInterface } from 'node:readline/promises';
 import { resolve as resolvePath } from 'node:path';
 import { parseArgs } from 'node:util';
-import { detectState, obsAuth, stateTracker } from './detect.mjs';
+import { detectState, nextScene, obsAuth, stateTracker } from './detect.mjs';
 import { mergeOptions } from './config.mjs';
 
 const { values: cli } = parseArgs({
@@ -100,7 +100,7 @@ const log = (...a) => console.log(new Date().toLocaleTimeString(), ...a);
 // ---------------------------------------------------------------- game API
 
 async function getJson(path) {
-  const res = await fetch(opt.game + path, { signal: AbortSignal.timeout(1500) });
+  const res = await fetch(opt.game + path, { signal: AbortSignal.timeout(3000) });
   if (!res.ok) throw new Error(`${path} ${res.status}`);
   return res.json();
 }
@@ -108,6 +108,7 @@ async function getJson(path) {
 let lastRecorded = '';
 let recordFailed = false;
 let lastReadError = '';
+let everReached = false;
 
 // One line per change, without the per-frame map grid. Write errors are
 // reported, never mistaken for the game being offline.
@@ -130,11 +131,14 @@ async function readGame() {
     const [mapInfo, mission] = await Promise.all([getJson('/map_info.json'), getJson('/mission.json').catch(() => null)]);
     snap = { reachable: true, mapInfo, mission };
     lastReadError = '';
+    everReached = true;
   } catch (e) {
     const reason = e.cause?.code || e.name || e.message;
     if (reason !== lastReadError) {
       lastReadError = reason;
-      log(`读不到游戏接口 ${opt.game}（${reason}）：游戏没开、还在启动，或接口被防火墙拦截`);
+      // Loading or leaving a battle: the client stops answering for a few seconds.
+      if (everReached) log('游戏接口暂时无响应（加载或退出战斗时正常）');
+      else log(`读不到游戏接口 ${opt.game}（${reason}）：游戏没开、还在启动，或接口被防火墙拦截`);
     }
     record({ state: 'offline', error: String(reason) });
     return { reachable: false };
@@ -250,17 +254,24 @@ async function apply(state) {
   ]);
 }
 
+let lastActive = null; // last state that was not "offline"
+
 async function tick() {
   const change = track(detectState(await readGame()));
   if (change) {
     log(`状态: ${NAMES[change.from] || '启动'} → ${NAMES[change.to]}`);
-    clearTimeout(pending);
-    pending = null;
-    if (change.to === 'ended') {
-      // Let viewers see the result screen first.
-      pending = setTimeout(() => apply('ended'), Number(opt['end-delay']) * 1000);
-    } else if (change.to !== 'offline') {
-      await apply(change.to);
+    const next = nextScene(lastActive, change.to);
+    if (change.to !== 'offline') lastActive = change.to;
+    if (next) {
+      clearTimeout(pending);
+      pending = null;
+      if (next.delayed) {
+        // Let viewers see the result first.
+        log(`比赛结束，${opt['end-delay']} 秒后切换`);
+        pending = setTimeout(() => apply(next.scene), Number(opt['end-delay']) * 1000);
+      } else {
+        await apply(next.scene);
+      }
     }
   }
   setTimeout(tick, Number(opt.interval));
