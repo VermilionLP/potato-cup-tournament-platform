@@ -1,10 +1,11 @@
 <script>
-  // Top-five boards: titles (with titles per tier), win rate (5+ matches),
-  // matches played and walkovers.
+  // Top-five boards: titles and runner-ups (each with counts per tier), win
+  // rate (5+ matches), matches played and walkovers.
   import Flag from "$lib/components/Flag.svelte";
   import { TIER_TAG, tierBreakdown } from "$lib/tournament.js";
   import TrendingUpIcon from "@lucide/svelte/icons/trending-up";
   import TrophyIcon from "@lucide/svelte/icons/trophy";
+  import MedalIcon from "@lucide/svelte/icons/medal";
   import ActivityIcon from "@lucide/svelte/icons/activity";
   import ShieldAlertIcon from "@lucide/svelte/icons/shield-alert";
 
@@ -38,6 +39,36 @@
       {/each}
       {#if !rankings.by_championships?.length}
         <div class="text-center py-4 text-[10px] text-muted-foreground italic">暂无冠军记录</div>
+      {/if}
+    </div>
+  </div>
+
+  <!-- Board 1b: Runner-ups -->
+  <div class="bg-card border border-border rounded-xl p-4.5 shadow-sm space-y-4">
+    <h3 class="text-xs font-black text-foreground uppercase tracking-wider flex items-center gap-1.5">
+      <MedalIcon class="w-4 h-4 text-slate-400" />
+      苦涩的他~（亚军次数）
+    </h3>
+    <div class="space-y-3">
+      {#each rankings.by_runner_ups || [] as p, idx (p.id)}
+        <div class="flex items-center justify-between p-2 rounded-lg bg-muted/10 border border-border/40 text-xs">
+          <div class="flex items-center gap-2">
+            <span class="w-5 h-5 rounded-full bg-slate-400/10 text-slate-400 flex items-center justify-center font-mono font-bold text-[10px]">{idx + 1}</span>
+            <Flag code={p.flag} size={18} />
+            <span class="font-bold truncate max-w-28">{p.display_name}</span>
+          </div>
+          <div class="flex flex-col items-end gap-0.5">
+            <span class="font-mono font-black text-slate-400">{p.runner_ups} <span class="text-[9px] font-normal text-muted-foreground">次亚军</span></span>
+            <span class="flex flex-wrap justify-end gap-0.5">
+              {#each tierBreakdown(p.runner_ups_by_tier) as t (t.id)}
+                <span class="rounded border px-1 text-[9px] font-bold leading-tight {TIER_TAG[t.id] || 'border-border text-muted-foreground'}">{t.id === "none" ? "未分级" : t.id} ×{t.count}</span>
+              {/each}
+            </span>
+          </div>
+        </div>
+      {/each}
+      {#if !rankings.by_runner_ups?.length}
+        <div class="text-center py-4 text-[10px] text-muted-foreground italic">暂无亚军记录</div>
       {/if}
     </div>
   </div>

@@ -78,3 +78,15 @@ test('the statistics route caches per scope until a write', async () => {
   assert.equal(reads, 3);
   assert.deepEqual(again.global, first.global);
 });
+
+test('runner-ups by tier (qualifiers excluded) and their board', () => {
+  const all = run();
+  const a = all.players.find((p) => p.id === 'a');
+  const b = all.players.find((p) => p.id === 'b');
+  assert.equal(a.runner_ups, 1, 'second in Spring; the qualifier loss does not count');
+  assert.deepEqual(a.runner_ups_by_tier, { A: 1 });
+  assert.deepEqual(b.runner_ups_by_tier, { C: 1 });
+  assert.deepEqual(all.rankings.by_runner_ups.map((p) => p.id).sort(), ['a', 'b']);
+  const weekly = run({ kind: 'weekly' });
+  assert.deepEqual(weekly.rankings.by_runner_ups.map((p) => p.id), ['b']);
+});

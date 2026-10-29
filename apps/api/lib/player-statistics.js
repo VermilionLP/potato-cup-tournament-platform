@@ -53,6 +53,8 @@ export function buildPlayerStatistics({ players, tournaments, registrations, mat
       pools: emptyRecords(VEHICLE_POOLS),
       championships: 0,
       championships_by_tier: {},
+      runner_ups: 0,
+      runner_ups_by_tier: {},
       opponents: {},
       tournament_ids: []
     };
@@ -177,7 +179,14 @@ export function buildPlayerStatistics({ players, tournaments, registrations, mat
     }
     for (const [playerId, place] of eventPlacements(t, evMatches, evPlayers)) {
       placeOf.set(`${t.id}|${playerId}`, place);
-      if (!qualifier) bestPlace[playerId] = betterPlace(bestPlace[playerId], place);
+      if (qualifier) continue;
+      bestPlace[playerId] = betterPlace(bestPlace[playerId], place);
+      // Runner-up: second on its own (qualifiers excluded, like titles).
+      if (place.from === 2 && place.to === 2 && stats[playerId]) {
+        const tier = t.tier || 'none';
+        stats[playerId].runner_ups += 1;
+        stats[playerId].runner_ups_by_tier[tier] = (stats[playerId].runner_ups_by_tier[tier] || 0) + 1;
+      }
     }
   }
   const qualifierIds = new Set(tournaments.filter(isQualifierEvent).map((t) => t.id));
@@ -240,6 +249,8 @@ export function buildPlayerStatistics({ players, tournaments, registrations, mat
       pools: s.pools,
       championships: s.championships,
       championships_by_tier: s.championships_by_tier,
+      runner_ups: s.runner_ups,
+      runner_ups_by_tier: s.runner_ups_by_tier,
       nemesis: nemesis ? { id: nemesis, display_name: nemesisDisp, count: maxLostMatches } : null,
       favorite: favorite ? { id: favorite, display_name: favoriteDisp, count: maxWonMatches } : null,
       best_place: bestPlace[s.id] || null,
@@ -282,6 +293,10 @@ export function buildPlayerStatistics({ players, tournaments, registrations, mat
       by_championships: [...shown]
         .filter(p => p.championships > 0)
         .sort((a, b) => b.championships - a.championships || b.match_win_rate - a.match_win_rate)
+        .slice(0, 5),
+      by_runner_ups: [...shown]
+        .filter(p => p.runner_ups > 0)
+        .sort((a, b) => b.runner_ups - a.runner_ups || b.championships - a.championships || b.match_win_rate - a.match_win_rate)
         .slice(0, 5),
       by_win_rate: [...eligibleForRate]
         .sort((a, b) => b.match_win_rate - a.match_win_rate)
