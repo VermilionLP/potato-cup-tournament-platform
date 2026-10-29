@@ -17,6 +17,7 @@
   import IntermissionScene from "$lib/components/overlay/IntermissionScene.svelte";
   import IngameScene from "$lib/components/overlay/IngameScene.svelte";
   import HybridScene from "$lib/components/overlay/HybridScene.svelte";
+  import { coalescedRefresh } from "$lib/coalesced-refresh.js";
 
   let tid = $derived(page.params.id);
   let sceneParam = $derived(page.url.searchParams.get("scene") || "auto"); // auto, intro, ingame, intermission, hybrid
@@ -98,23 +99,29 @@
   // ambient background unless transparent=true.
   let isTransparent = $derived(transparentParam || (currentScene === "ingame" && bgParam !== "true"));
 
-  // Live updates: reload on every event message.
+  // Live updates: a burst of event messages becomes one reload (kept short
+  // so the stream scene follows quickly).
   $effect(() => {
     if (!tid) return;
     load();
+    const refresh = coalescedRefresh(refreshData, { delay: 150, maxWait: 600 });
     const es = new EventSource(`/api/tournaments/${tid}/stream`);
-    es.onmessage = async (event) => {
+    es.onmessage = (event) => {
       try {
         JSON.parse(event.data); // malformed messages are skipped
-        await refreshData();
       } catch (e) {
         console.error("Overlay failed to parse event message", e);
+        return;
       }
+      refresh();
     };
     es.onerror = (e) => {
       console.warn("Overlay SSE lost connection. Retrying...", e);
     };
-    return () => es.close();
+    return () => {
+      es.close();
+      refresh.stop();
+    };
   });
 
   async function load() {

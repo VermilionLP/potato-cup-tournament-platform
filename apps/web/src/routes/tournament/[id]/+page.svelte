@@ -57,6 +57,7 @@
   import LiveHandoff from "$lib/components/tournament/LiveHandoff.svelte";
   import { registrationActions } from "$lib/event-registration.js";
   import { channelOptions, liveElsewhere, savedChannel, savedStreamMode, saveChannel, withChannel } from "$lib/live-channels.js";
+  import { coalescedRefresh } from "$lib/coalesced-refresh.js";
   import TrophyIcon from "@lucide/svelte/icons/trophy";
   import ArrowLeftIcon from "@lucide/svelte/icons/arrow-left";
 
@@ -185,23 +186,33 @@
       .catch((e) => console.warn("vehicle pools failed to load:", e));
   });
 
-  // Live updates: reload on every event message.
+  // Live updates: a burst of event messages becomes one reload.
   $effect(() => {
     if (!tid) return;
-    const es = new EventSource(`/api/tournaments/${tid}/stream`);
-    es.onmessage = async (event) => {
+    const id = tid;
+    const refresh = coalescedRefresh(async () => {
+      const next = await API.getTournament(id);
+      if (id !== tid) return; // route moved to another event meanwhile
+      tournament = next;
+      seedOrder = seedOrderOf(tournament?.players);
+    });
+    const es = new EventSource(`/api/tournaments/${id}/stream`);
+    es.onmessage = (event) => {
       try {
         JSON.parse(event.data); // malformed messages are skipped
-        tournament = await API.getTournament(tid);
-        seedOrder = seedOrderOf(tournament?.players);
       } catch (e) {
         console.error("解析实时事件失败", e);
+        return;
       }
+      refresh();
     };
     es.onerror = (e) => {
       console.warn("实时推送连接发生错误，正在尝试重连...", e);
     };
-    return () => es.close();
+    return () => {
+      es.close();
+      refresh.stop();
+    };
   });
 
   let loadedTournamentId = null;
