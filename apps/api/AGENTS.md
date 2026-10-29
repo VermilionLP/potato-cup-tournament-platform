@@ -48,7 +48,7 @@ Route (routes/*.js)
 ## Verification Commands
 
 - Lint/typecheck: none defined.
-- Tests: `pnpm --filter suck-tournament-api test` (`node --test`, no DB needed); smoke test `node scripts/test-api.js` (manual, needs a reachable `DATABASE_URL`).
+- Tests: `pnpm --filter suck-tournament-api test` (`node --test`, no DB needed; `test/route-permissions.test.js` calls every route through `test/helpers/route-harness.js` and checks who may write — add new self-service routes to its `SELF_WRITES`); smoke test `node scripts/test-api.js` (manual, needs a reachable `DATABASE_URL`).
 - Build: none (plain ESM Node, `node app.js`).
 - Dev server: `pnpm --filter suck-tournament-api dev` (port 3100); web + API via `pnpm dev:suck`.
 - Migrations: `pnpm --filter suck-tournament-api migrate`
