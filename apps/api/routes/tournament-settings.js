@@ -6,6 +6,7 @@ import { TournamentRepo } from '../repositories/tournament-repo.js';
 import { MatchRepo } from '../repositories/match-repo.js';
 import { LadderRepo } from '../repositories/ladder-repo.js';
 import { requireAdmin } from '../lib/admin.js';
+import { inTransaction } from '../lib/transaction.js';
 import { normalizePointsKind, normalizePointsTable, normalizeSeason } from '../lib/points.js';
 import { endedSeason } from '../lib/points-seasons.js';
 import { groupStageOf } from '../lib/group-stage-view.js';
@@ -150,20 +151,12 @@ export default async function tournamentSettingsRoutes(fastify) {
       if (reason) throw fastify.httpErrors.badRequest(reason);
     }
 
-    const client = await fastify.db.connect();
-    try {
-      await client.query('BEGIN');
+    await inTransaction(fastify.db, async (client) => {
       if (status === 'registration' || status === 'voting') {
         await client.query(`UPDATE axsuck.tournaments SET current_stage = 'group' WHERE id = $1`, [req.params.id]);
         await client.query('DELETE FROM axsuck.matches WHERE tournament_id = $1', [req.params.id]);
       }
-      await client.query('COMMIT');
-    } catch (e) {
-      await client.query('ROLLBACK');
-      throw e;
-    } finally {
-      client.release();
-    }
+    });
 
     await repo.updateStatus(req.params.id, status, scheduled_time, created_at, updated_at);
 

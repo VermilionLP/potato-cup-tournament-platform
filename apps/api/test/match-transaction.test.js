@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { inTransaction } from '../repositories/match/transaction.js';
+import { inTransaction } from '../lib/transaction.js';
 import { MatchRepo } from '../repositories/match-repo.js';
 
 function fakeDb() {

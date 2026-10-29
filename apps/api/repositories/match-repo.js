@@ -1,7 +1,7 @@
 // Matches of an event. The work is split by concern under ./match/:
 // queries.js (reads / plain writes), generation.js (building brackets,
 // Swiss rounds, groups, playoffs), progression.js (results moving through
-// a bracket), rows.js (inserting generated rows), transaction.js.
+// a bracket), rows.js (inserting generated rows); transactions use lib/transaction.js.
 
 import { matchQueries } from './match/queries.js';
 import { matchGeneration } from './match/generation.js';

@@ -1,4 +1,5 @@
 import { getPlayerDisplayName } from './player-repo.js';
+import { inTransaction } from '../lib/transaction.js';
 import { isSameVoteTime, normalizeVoteTime } from '../lib/vote-time.js';
 import {
   normalizeEventPool,
@@ -300,10 +301,7 @@ export function TournamentRepo(db) {
   }
 
   async function removePlayer(tournamentId, playerId) {
-    const client = await db.connect();
-    try {
-      await client.query('BEGIN');
-
+    await inTransaction(db, async (client) => {
       await client.query(`
         DELETE FROM axsuck.tournament_players WHERE tournament_id = $1 AND player_id = $2
       `, [tournamentId, playerId]);
@@ -322,20 +320,11 @@ export function TournamentRepo(db) {
           WHERE tournament_id = $2 AND player_id = $3
         `, [idx + 1, tournamentId, p.player_id]);
       }
-
-      await client.query('COMMIT');
-    } catch (err) {
-      await client.query('ROLLBACK');
-      throw err;
-    } finally {
-      client.release();
-    }
+    });
   }
 
   async function setSeeds(tournamentId, playerIds) {
-    const client = await db.connect();
-    try {
-      await client.query('BEGIN');
+    await inTransaction(db, async (client) => {
       await client.query(`
         UPDATE axsuck.tournament_players SET seed = NULL WHERE tournament_id = $1
       `, [tournamentId]);
@@ -345,14 +334,7 @@ export function TournamentRepo(db) {
           UPDATE axsuck.tournament_players SET seed = $1 WHERE tournament_id = $2 AND player_id = $3
         `, [idx + 1, tournamentId, playerIds[idx]]);
       }
-
-      await client.query('COMMIT');
-    } catch (err) {
-      await client.query('ROLLBACK');
-      throw err;
-    } finally {
-      client.release();
-    }
+    });
   }
 
   async function getMatches(tournamentId) {

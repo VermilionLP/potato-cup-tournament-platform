@@ -31,7 +31,7 @@ Route (routes/*.js)
 ```
 
 - Routes live in `routes/`. Events are split by area: `tournaments.js` (list, detail, SSE, calendars, create, delete), `tournament-settings.js` (PATCH, status, Swiss rounds, playoffs), `tournament-bracket.js` (seeds, bracket, live match, overlay state) and `tournament-import.js`; keep route handlers thin and put pure logic in `lib/` (e.g. `lib/tournament-detail.js` builds `GET /tournaments/:id`).
-- Repositories live in `repositories/`. `match-repo.js` composes `repositories/match/` (queries, generation, progression, rows, transaction).
+- Repositories live in `repositories/`. `match-repo.js` composes `repositories/match/` (queries, generation, progression, rows). Multi-statement writes go through `inTransaction(db, fn)` from `lib/transaction.js`, not hand-written BEGIN / COMMIT.
 - Player routes: `players.js` (profiles, rename, merge, delete), `player-keys.js`, `registrations.js`, `player-stats.js` (statistics computed by `lib/player-statistics.js`).
 - Ladder ratings and the statistics page data are cached in memory (`lib/ladder-cache.js`, per division / scope, 5 min TTL). Any successful non-GET request drops the cache (hook in `app.js`); code that changes matches, players or events outside a request (scripts, timers) must call `invalidateLadder(db)` or wait for the TTL. Don't mutate what `getRatings` returns from the cache (`history`, `games`).
 - Migrations live in `migrations/` (`{NNN}.do.description.sql` + `{NNN}.undo.description.sql`).

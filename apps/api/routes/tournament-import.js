@@ -2,6 +2,7 @@
 // instance): players, seeds and the bracket, rebuilt in lib/import-bracket.js.
 
 import { requireAdmin } from '../lib/admin.js';
+import { inTransaction } from '../lib/transaction.js';
 import { reconstructImportedMatches } from '../lib/import-bracket.js';
 
 export default async function tournamentImportRoutes(fastify) {
@@ -13,10 +14,7 @@ export default async function tournamentImportRoutes(fastify) {
       throw fastify.httpErrors.badRequest('player_capacity must be between 2 and 128');
     }
 
-    const client = await fastify.db.connect();
-    try {
-      await client.query('BEGIN');
-
+    await inTransaction(fastify.db, async (client) => {
       // 1. Upsert tournament
       await client.query(`
         INSERT INTO axsuck.tournaments (id, name, description, status, player_capacity, hold_third_place, scheduled_time, created_at, updated_at)
@@ -86,14 +84,7 @@ export default async function tournamentImportRoutes(fastify) {
           m.status
         ]);
       }
-
-      await client.query('COMMIT');
-    } catch (err) {
-      await client.query('ROLLBACK');
-      throw err;
-    } finally {
-      client.release();
-    }
+    });
 
     // Trigger real-time broadcast
     fastify.tournamentEvents.emit(`update:${id}`, { type: 'imported' });

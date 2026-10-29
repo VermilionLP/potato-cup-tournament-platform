@@ -12,7 +12,7 @@ import {
 } from '../../lib/swiss.js';
 import { assignGroups, groupCountFor } from '../../lib/group-stage.js';
 import { GROUP_BRACKETS, groupBracketRows } from '../../lib/group-brackets.js';
-import { inTransaction } from './transaction.js';
+import { inTransaction } from '../../lib/transaction.js';
 import { buildRounds, insertDoubleElimRows, insertSwissRound, loadSeededPlayers, saveGroups } from './rows.js';
 
 // Matches of the group stage of a two-stage event (Swiss or group brackets);

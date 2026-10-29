@@ -6,9 +6,16 @@
 import { PlayerRepo, mergePlayerInto } from '../repositories/player-repo.js';
 import { isAdminRequest, requireAdmin, requireSelfOrAdmin } from '../lib/admin.js';
 import { contactProblem, parseContact, CONTACT_REQUIRED } from '../lib/contact.js';
+import { inTransaction } from '../lib/transaction.js';
 
 export default async function playersRoutes(fastify) {
   const repo = PlayerRepo(fastify.db);
+
+  // Profile changes show on every event that isn't finished yet.
+  async function notifyActiveEvents(message) {
+    const { rows } = await fastify.db.query("SELECT id FROM axsuck.tournaments WHERE status != 'completed'");
+    for (const t of rows) fastify.tournamentEvents.emit(`update:${t.id}`, message);
+  }
 
   fastify.get('/players', async () => {
     return await repo.list();
@@ -42,30 +49,16 @@ export default async function playersRoutes(fastify) {
     const oldPlayer = await repo.getById(oldId);
     if (!oldPlayer) throw fastify.httpErrors.notFound('Old player not found');
 
-    const client = await fastify.db.connect();
-    try {
-      await client.query('BEGIN');
-
-      // A rename is a merge into a fresh record: everything (registrations,
-      // matches, votes, device key, profile) moves over and the old
-      // id is kept as an alias (player_aliases).
+    // A rename is a merge into a fresh record: everything (registrations,
+    // matches, votes, device key, profile) moves over and the old
+    // id is kept as an alias (player_aliases).
+    await inTransaction(fastify.db, async (client) => {
       await client.query('INSERT INTO axsuck.players (id, flag) VALUES ($1, $2)', [newId, '']);
       await mergePlayerInto(client, oldId, newId);
       await client.query('UPDATE axsuck.players SET last_ip = $2 WHERE id = $1', [newId, oldPlayer.last_ip || null]);
-
-      await client.query('COMMIT');
-    } catch (e) {
-      await client.query('ROLLBACK');
-      throw e;
-    } finally {
-      client.release();
-    }
-
-    // Trigger global update to all active tournaments
-    const activeTournaments = (await fastify.db.query("SELECT id FROM axsuck.tournaments WHERE status != 'completed'")).rows;
-    activeTournaments.forEach(t => {
-      fastify.tournamentEvents.emit(`update:${t.id}`, { type: 'player_id_changed', oldId, newId });
     });
+
+    await notifyActiveEvents({ type: 'player_id_changed', oldId, newId });
 
     return { success: true, oldId, newId };
   });
@@ -77,35 +70,23 @@ export default async function playersRoutes(fastify) {
     const p = await repo.getById(id);
     if (!p) throw fastify.httpErrors.notFound('Player not found');
 
-    // Check if player has match appearances
-    const matchCountObj = (await fastify.db.query(
-      'SELECT COUNT(*)::int as count FROM axsuck.matches WHERE player1_id = $1 OR player2_id = $2 OR winner_id = $3',
-      [id, id, id]
-    )).rows[0];
-
-    if (matchCountObj && matchCountObj.count > 0) {
+    // Players who have played can only be merged, not deleted.
+    const { rows: played } = await fastify.db.query(
+      'SELECT 1 FROM axsuck.matches WHERE player1_id = $1 OR player2_id = $1 OR winner_id = $1 LIMIT 1',
+      [id]
+    );
+    if (played.length > 0) {
       throw fastify.httpErrors.badRequest('该选手已经在对阵比赛中出场，无法直接删除。请使用“合并选手”功能将此选手合并到正确的选手中。');
     }
 
-    const client = await fastify.db.connect();
-    try {
-      await client.query('BEGIN');
+    await inTransaction(fastify.db, async (client) => {
       await client.query('DELETE FROM axsuck.tournament_players WHERE player_id = $1', [id]);
       await client.query('DELETE FROM axsuck.time_votes WHERE player_id = $1', [id]);
       await client.query('DELETE FROM axsuck.custom_votes WHERE player_id = $1', [id]);
       await client.query('DELETE FROM axsuck.players WHERE id = $1', [id]);
-      await client.query('COMMIT');
-    } catch (e) {
-      await client.query('ROLLBACK');
-      throw e;
-    } finally {
-      client.release();
-    }
-
-    const activeTournaments = (await fastify.db.query("SELECT id FROM axsuck.tournaments WHERE status != 'completed'")).rows;
-    activeTournaments.forEach(t => {
-      fastify.tournamentEvents.emit(`update:${t.id}`, { type: 'player_deleted', id });
     });
+
+    await notifyActiveEvents({ type: 'player_deleted', id });
 
     return { success: true };
   });
@@ -122,22 +103,9 @@ export default async function playersRoutes(fastify) {
     if (!targetPlayer) throw fastify.httpErrors.notFound('Target player not found');
     if (oldId === targetId) throw fastify.httpErrors.badRequest('Cannot merge a player into themselves');
 
-    const client = await fastify.db.connect();
-    try {
-      await client.query('BEGIN');
-      await mergePlayerInto(client, oldId, targetId);
-      await client.query('COMMIT');
-    } catch (e) {
-      await client.query('ROLLBACK');
-      throw e;
-    } finally {
-      client.release();
-    }
+    await inTransaction(fastify.db, (client) => mergePlayerInto(client, oldId, targetId));
 
-    const activeTournaments = (await fastify.db.query("SELECT id FROM axsuck.tournaments WHERE status != 'completed'")).rows;
-    activeTournaments.forEach(t => {
-      fastify.tournamentEvents.emit(`update:${t.id}`, { type: 'player_merged', oldId, targetId });
-    });
+    await notifyActiveEvents({ type: 'player_merged', oldId, targetId });
 
     return { success: true };
   });
@@ -174,11 +142,7 @@ export default async function playersRoutes(fastify) {
       // Trigger real-time broadcast
       fastify.tournamentEvents.emit(`update:${tournament_id}`, { type: 'player_updated', id });
     } else {
-      // If global profile edit, broadcast to active tournaments
-      const activeTournaments = (await fastify.db.query("SELECT id FROM axsuck.tournaments WHERE status != 'completed'")).rows;
-      activeTournaments.forEach(t => {
-        fastify.tournamentEvents.emit(`update:${t.id}`, { type: 'player_updated', id });
-      });
+      await notifyActiveEvents({ type: 'player_updated', id });
     }
 
     return updatedPlayer;

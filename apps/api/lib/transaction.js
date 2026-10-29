@@ -1,3 +1,4 @@
+// Shared by repositories and routes (match generation, player merges, seeds).
 // Runs `fn(client)` inside BEGIN / COMMIT on a pooled client; rolls back
 // and rethrows on error, and always releases the client.
 export async function inTransaction(db, fn) {

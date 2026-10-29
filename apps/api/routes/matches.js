@@ -1,5 +1,6 @@
 import { MatchRepo } from '../repositories/match-repo.js';
 import { requireAdmin, requireMatchPlayerOrAdmin } from '../lib/admin.js';
+import { inTransaction } from '../lib/transaction.js';
 
 export default async function matchesRoutes(fastify) {
   const repo = MatchRepo(fastify.db);
@@ -105,10 +106,7 @@ export default async function matchesRoutes(fastify) {
     if (!match) throw fastify.httpErrors.notFound('Match not found');
     await rejectGroupEditDuringPlayoffs(match);
 
-    const client = await fastify.db.connect();
-    try {
-      await client.query('BEGIN');
-
+    await inTransaction(fastify.db, async (client) => {
       async function recursiveRollback(mId, depth = 0) {
         if (depth > 64) return;
         const mRes = await client.query('SELECT * FROM axsuck.matches WHERE id = $1', [mId]);
@@ -186,13 +184,7 @@ export default async function matchesRoutes(fastify) {
       }
 
       await recursiveRollback(matchId);
-      await client.query('COMMIT');
-    } catch (err) {
-      await client.query('ROLLBACK');
-      throw err;
-    } finally {
-      client.release();
-    }
+    });
 
     // Trigger real-time broadcast
     fastify.tournamentEvents.emit(`update:${req.params.id}`, { type: 'match_rolled_back', matchId });
