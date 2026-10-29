@@ -122,11 +122,8 @@ export default async function matchesRoutes(fastify) {
             WHERE tournament_id = $1 AND bracket = 'gf' AND position = 2
           `, [m.tournament_id]);
           for (const reset of resetRes.rows) {
+            // A live channel showing it drops it (live_channels FK).
             await client.query('DELETE FROM axsuck.matches WHERE id = $1', [reset.id]);
-            await client.query(`
-              UPDATE axsuck.tournaments SET active_match_id = NULL
-              WHERE id = $1 AND active_match_id = $2
-            `, [m.tournament_id, reset.id]);
           }
         }
 
@@ -181,19 +178,11 @@ export default async function matchesRoutes(fastify) {
       // Swiss rounds after this one were paired from its result, so they go
       // (only in the match's own group for two-stage events).
       if (match.bracket === 'sw') {
-        const later = await client.query(`
+        await client.query(`
           DELETE FROM axsuck.matches
           WHERE tournament_id = $1 AND bracket = 'sw' AND round > $2
             AND swiss_group IS NOT DISTINCT FROM $3
-          RETURNING id
         `, [match.tournament_id, match.round, match.swiss_group ?? null]);
-        const removed = later.rows.map((r) => r.id);
-        if (removed.length > 0) {
-          await client.query(`
-            UPDATE axsuck.tournaments SET active_match_id = NULL
-            WHERE id = $1 AND active_match_id = ANY($2::int[])
-          `, [match.tournament_id, removed]);
-        }
       }
 
       await recursiveRollback(matchId);

@@ -154,7 +154,7 @@ export default async function tournamentSettingsRoutes(fastify) {
     try {
       await client.query('BEGIN');
       if (status === 'registration' || status === 'voting') {
-        await client.query(`UPDATE axsuck.tournaments SET active_match_id = NULL, current_stage = 'group' WHERE id = $1`, [req.params.id]);
+        await client.query(`UPDATE axsuck.tournaments SET current_stage = 'group' WHERE id = $1`, [req.params.id]);
         await client.query('DELETE FROM axsuck.matches WHERE tournament_id = $1', [req.params.id]);
       }
       await client.query('COMMIT');

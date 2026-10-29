@@ -161,13 +161,9 @@ export function matchGeneration(db, { getByTournament }) {
     return getByTournament(tournamentId);
   }
 
-  // Deletes the playoff matches (group-stage matches stay).
+  // Deletes the playoff matches (group-stage matches stay); live channels
+  // showing one drop it (live_channels FK).
   async function deletePlayoff(client, tournamentId) {
-    await client.query(`
-      UPDATE axsuck.tournaments SET active_match_id = NULL
-      WHERE id = $1 AND active_match_id IN (
-        SELECT id FROM axsuck.matches WHERE tournament_id = $1 AND bracket <> ALL($2::text[]))
-    `, [tournamentId, GROUP_STAGE_BRACKETS]);
     await client.query(
       'DELETE FROM axsuck.matches WHERE tournament_id = $1 AND bracket <> ALL($2::text[])',
       [tournamentId, GROUP_STAGE_BRACKETS],
