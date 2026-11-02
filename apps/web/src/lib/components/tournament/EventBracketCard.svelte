@@ -2,7 +2,8 @@
   // The event's bracket card: Swiss table, group brackets, double or single
   // elimination, with the group / playoff switch of two-stage events and
   // the section controls of big single-elimination brackets (32 players per
-  // section on desktop, 16 on phones).
+  // section on desktop, 16 on phones). On phones elimination brackets open
+  // as a list per round (BracketRoundList), with a switch to the bracket.
   import { onMount } from "svelte";
   import { userState } from "$lib/user.svelte.js";
   import { maxRound } from "$lib/bracket.js";
@@ -16,6 +17,7 @@
   import PlayoffPanel from "$lib/components/PlayoffPanel.svelte";
   import GroupBracketsView from "$lib/components/GroupBracketsView.svelte";
   import SingleElimBracket from "./SingleElimBracket.svelte";
+  import BracketRoundList from "./BracketRoundList.svelte";
   import ShieldCheckIcon from "@lucide/svelte/icons/shield-check";
 
   let {
@@ -33,6 +35,7 @@
     banpickEnabled = false,
     matchOrder,
     playerName,
+    roundLabel = () => "",
     playoffBusy = false,
     shownStage = "group",
     stageView = $bindable(null),
@@ -67,6 +70,10 @@
 
   let swissShown = $derived(isSwiss && (!isTwoStage || shownStage === "group"));
   let groupBracketsShown = $derived(hasGroupBrackets && shownStage === "group");
+  // Phones: elimination brackets as a list per round unless the bracket is asked for.
+  let phoneView = $state("list"); // list | bracket
+  let eliminationShown = $derived(!swissShown && !groupBracketsShown && bracketMatches.length > 0);
+  let listShown = $derived(isMobileViewport && eliminationShown && phoneView === "list");
 </script>
 
 <Card.Root class="border-border bg-card/40">
@@ -109,7 +116,21 @@
     </div>
   </Card.Header>
 
-  {#if sections.sectionCount > 1 && !isDoubleElim && !swissShown && !groupBracketsShown}
+  {#if isMobileViewport && eliminationShown}
+    <div class="flex items-center gap-1 px-3 pt-3 text-[11px]">
+      {#each [["list", "按轮次"], ["bracket", "对阵图"]] as [value, label] (value)}
+        <button
+          type="button"
+          onclick={() => (phoneView = value)}
+          class="rounded-md px-2.5 py-1 font-semibold cursor-pointer {phoneView === value ? 'bg-primary text-primary-foreground' : 'text-muted-foreground border border-border'}"
+        >
+          {label}
+        </button>
+      {/each}
+    </div>
+  {/if}
+
+  {#if sections.sectionCount > 1 && !isDoubleElim && !swissShown && !groupBracketsShown && !listShown}
     <div class="flex flex-wrap items-center gap-2 px-3 sm:px-6 pt-4">
       <Badge variant="outline" class="text-[10px] font-mono">
         第 {sectionIndex + 1} / {sections.sectionCount} 组 · {sections.sectionFirstMatches * 2} 人
@@ -215,6 +236,23 @@
         onToggleActive={ontoggleactive}
         {banpickEnabled}
         onBanPick={onbanpick}
+      />
+    {:else if listShown}
+      <BracketRoundList
+        matches={bracketMatches}
+        players={tournament.players || []}
+        status={tournament.status}
+        {roundLabel}
+        order={matchOrder}
+        {playerName}
+        activeMatchId={tournament.active_match_id}
+        {liveElsewhere}
+        {isAdmin}
+        userId={userState.id}
+        {banpickEnabled}
+        {onopen}
+        {onbanpick}
+        {ontoggleactive}
       />
     {:else if isDoubleElim}
       <DoubleElimBracket
