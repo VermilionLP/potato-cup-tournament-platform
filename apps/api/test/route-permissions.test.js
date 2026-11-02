@@ -8,7 +8,7 @@ import { hashPlayerKey } from '../lib/player-key.js';
 const MODULE_FILES = [
   'tournaments', 'tournament-settings', 'tournament-bracket', 'tournament-import', 'players',
   'player-keys', 'player-stats', 'registrations', 'matches', 'votes', 'ladder', 'wiki', 'push',
-  'admin', 'vehicle-pools', 'points', 'discord',
+  'admin', 'vehicle-pools', 'points',
 ];
 const modules = await Promise.all(MODULE_FILES.map(async (f) => (await import(`../routes/${f}.js`)).default));
 

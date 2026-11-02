@@ -8,8 +8,6 @@ import { LadderRepo } from '../repositories/ladder-repo.js';
 import { requireAdmin } from '../lib/admin.js';
 import { inTransaction } from '../lib/transaction.js';
 import { afterResult } from '../lib/match-flow.js';
-import { announce, podiumFrom } from '../lib/discord.js';
-import { eventPlacements } from '../lib/placements.js';
 import { normalizePointsKind, normalizePointsTable, normalizeSeason } from '../lib/points.js';
 import { endedSeason } from '../lib/points-seasons.js';
 import { groupStageOf } from '../lib/group-stage-view.js';
@@ -190,7 +188,6 @@ export default async function tournamentSettingsRoutes(fastify) {
     }
 
     const updated = await repo.getById(req.params.id);
-    await announceStatus(t, updated);
     
     // Trigger real-time broadcast
     fastify.tournamentEvents.emit(`update:${req.params.id}`, { type: 'status_changed', status });
@@ -203,23 +200,6 @@ export default async function tournamentSettingsRoutes(fastify) {
     
     return { ...updated, auto_registered: autoRegistered };
   });
-
-  // Discord (lib/discord.js): registration opened, the event started, the champion.
-  async function announceStatus(before, after) {
-    if (!after || before.status === after.status) return;
-    if (after.status === 'registration' && before.status === 'voting') announce(fastify, 'registration', after);
-    else if (after.status === 'in_progress' && before.status === 'registration') announce(fastify, 'start', after, { players: after.player_count });
-    else if (after.status === 'completed') {
-      try {
-        const players = await repo.getPlayers(after.id);
-        const ms = await matches.getByTournament(after.id);
-        const podium = podiumFrom(eventPlacements(after, ms, players.map((p) => ({ id: p.id, seed: p.seed, swiss_group: p.swiss_group }))));
-        if (podium[0]?.length) announce(fastify, 'champion', after, { champion: podium[0].join(' / '), podium });
-      } catch (err) {
-        fastify.log.error({ err, tournament: after.id }, 'champion announcement failed');
-      }
-    }
-  }
 
   // Start an event that asks for check-in: the players listed in `remove`
   // leave it (seeds and bracket are rebuilt without them), those in
@@ -251,7 +231,6 @@ export default async function tournamentSettingsRoutes(fastify) {
     await matches.generateBracket(req.params.id);
     await repo.updateStatus(req.params.id, 'in_progress');
     await afterResult(fastify, req.params.id);
-    announce(fastify, 'start', t, { players: remaining });
 
     fastify.tournamentEvents.emit(`update:${req.params.id}`, { type: 'status_changed', status: 'in_progress', removed: remove, forfeited: forfeit });
     return { ...(await repo.getById(req.params.id)), removed: remove, forfeited: forfeit };

@@ -3,7 +3,6 @@
 // overlay in tournament-bracket.js, imports in tournament-import.js.
 
 import { TournamentRepo } from '../repositories/tournament-repo.js';
-import { announce } from '../lib/discord.js';
 import { LadderRepo } from '../repositories/ladder-repo.js';
 import { LiveChannelRepo } from '../repositories/live-channel-repo.js';
 import { Readable } from 'stream';
@@ -184,8 +183,6 @@ export default async function tournamentsRoutes(fastify) {
       // Tier / kind: as given, else from the points table (or a weekly by name).
       ...defaultTier({ tier, kind: event_kind, pointsKind: points.table ? normalizePointsKind(points_kind) : '', name }),
     });
-    // With a time set, registration opens at once.
-    if (created?.status === 'registration') announce(fastify, 'registration', created);
     return created;
   });
 

@@ -56,10 +56,6 @@ const enc = encodeURIComponent;
 export const API = {
   // Admin
   verifyAdmin: () => request('/admin/session'),
-  // Discord announcements (admins)
-  getDiscordSettings: () => request('/admin/discord'),
-  saveDiscordSettings: (settings) => request('/admin/discord', { method: 'PUT', body: JSON.stringify(settings) }),
-  testDiscord: () => request('/admin/discord/test', { method: 'POST', body: JSON.stringify({}) }),
 
   // Potato Cup points leaderboard (积分榜); season '' = the latest
   getPointsLeaderboard: (season) => request(`/points-leaderboard${season ? `?season=${enc(season)}` : ''}`),

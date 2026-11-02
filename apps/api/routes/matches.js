@@ -3,7 +3,6 @@ import { getRequesterId, isAdminRequest, requireAdmin, requireMatchPlayerOrAdmin
 import { inTransaction } from '../lib/transaction.js';
 import { canConfirm, canDispute, playerReport, reportToApply, scoreProblem } from '../lib/match-reports.js';
 import { afterResult, applyReport, notifyReportToConfirm, recordWalkover } from '../lib/match-flow.js';
-import { announceResult } from '../lib/discord.js';
 
 export default async function matchesRoutes(fastify) {
   const repo = MatchRepo(fastify.db);
@@ -49,7 +48,6 @@ export default async function matchesRoutes(fastify) {
       const result = await applyReport(fastify.db, req.params.id, match.id, pending);
       emitReport(req.params.id, match.id, 'match_result_submitted');
       await afterResult(fastify, req.params.id);
-      announceResult(fastify, req.params.id, match.id);
       return { ...result, report: 'confirmed' };
     }
     await fastify.db.query('UPDATE axsuck.matches SET pending_report = $1 WHERE id = $2', [JSON.stringify(pending), match.id]);
@@ -83,7 +81,6 @@ export default async function matchesRoutes(fastify) {
     // Trigger real-time broadcast
     fastify.tournamentEvents.emit(`update:${req.params.id}`, { type: 'match_result_submitted', matchId: match.id });
     await afterResult(fastify, req.params.id);
-    announceResult(fastify, req.params.id, match.id);
 
     return { match: updated, advanced };
   });
@@ -110,7 +107,6 @@ export default async function matchesRoutes(fastify) {
     // Trigger real-time broadcast
     fastify.tournamentEvents.emit(`update:${req.params.id}`, { type: 'match_walkover_submitted', matchId: match.id });
     await afterResult(fastify, req.params.id);
-    announceResult(fastify, req.params.id, match.id);
 
     return result;
   });
@@ -131,7 +127,6 @@ export default async function matchesRoutes(fastify) {
     const result = await applyReport(fastify.db, req.params.id, match.id, chosen);
     emitReport(req.params.id, match.id, 'match_result_submitted');
     await afterResult(fastify, req.params.id);
-    announceResult(fastify, req.params.id, match.id);
     return result;
   });
 
