@@ -1,9 +1,9 @@
 <script>
-  // Admin buttons that move the event between its stages, and the check-in
-  // switch while registration is open.
+  // Admin buttons that move the event between its stages, the check-in
+  // switch while registration is open, and the match-day console link.
   import { Button } from "$lib/components/ui/button/index.js";
 
-  let { status, startBlocked = "", canStart = false, checkinEnabled = false, onendvoting, onstatus, oncheckinchange } = $props();
+  let { status, startBlocked = "", canStart = false, checkinEnabled = false, consoleHref = "", onendvoting, onstatus, oncheckinchange } = $props();
 
   function backToVoting() {
     if (confirm("返回时间投票会清空已生成的对阵，确定继续吗？")) onstatus("voting");
@@ -11,6 +11,15 @@
 </script>
 
 <div class="flex items-center gap-2 flex-wrap">
+  {#if consoleHref && (status === "registration" || status === "in_progress")}
+    <a
+      href={consoleHref}
+      class="inline-flex h-8 items-center rounded-md border border-primary/40 px-3 text-xs font-semibold text-primary hover:bg-primary hover:text-primary-foreground transition-colors"
+      title="一屏查看可开打、待确认、有争议的比赛和签到情况"
+    >
+      比赛日控制台
+    </a>
+  {/if}
   {#if status === "voting"}
     <Button size="sm" onclick={onendvoting} class="text-xs font-semibold cursor-pointer">结束投票并开启报名</Button>
   {:else if status === "registration"}

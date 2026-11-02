@@ -391,6 +391,7 @@
           {startBlocked}
           canStart={!startBlocked}
           checkinEnabled={Boolean(tournament.checkin?.enabled)}
+          consoleHref="/tournament/{encodeURIComponent(tid)}/console"
           onendvoting={() => finalTimeDialog?.start()}
           onstatus={onStatus}
           oncheckinchange={setCheckin}
