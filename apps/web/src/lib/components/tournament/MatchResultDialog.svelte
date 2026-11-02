@@ -1,12 +1,13 @@
 <script>
   // Reporting (or, for admins, correcting) a match: Ban / Pick first when it
-  // is on, then the score form.
+  // is on, then the score form with the ladder MMR estimate (LadderPreview).
   import * as Dialog from "$lib/components/ui/dialog/index.js";
   import { Button } from "$lib/components/ui/button/index.js";
   import BanPickPanel from "$lib/components/BanPickPanel.svelte";
   import ScoreForm from "$lib/components/ScoreForm.svelte";
   import { canConfirm, confirmResult, resultLabel } from "$lib/banpick.js";
   import PendingReportPanel from "./PendingReportPanel.svelte";
+  import LadderPreview from "./LadderPreview.svelte";
 
   let {
     open = $bindable(false),
@@ -120,6 +121,9 @@
             disabled={submitting}
             onWalkover={onwalkover}
           />
+          {#if !correcting && match.player1_id && match.player2_id && match.status !== "completed" && match.status !== "walkover"}
+            <LadderPreview {match} {tournament} {playerName} {score1} {score2} />
+          {/if}
         </div>
         <Dialog.Footer class="flex gap-2">
           {#if correcting}
