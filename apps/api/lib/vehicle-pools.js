@@ -1,9 +1,15 @@
-// Vehicle pool contents: [{ name, nation, br, type, group }]. Pure: shared
+// Vehicle pool contents: [{ name, nation, br, type, group, wiki? }] (wiki:
+// War Thunder unit id for the picture, optional). Pure: shared
 // by the API routes and their tests.
 
 export const MAX_POOL_VEHICLES = 500;
 
 const text = (value, max) => String(value ?? '').replace(/\s+/g, ' ').trim().slice(0, max);
+// A War Thunder unit id ("p-47d-28"); anything else is dropped.
+const wikiId = (value) => {
+  const id = String(value ?? '').trim().toLowerCase();
+  return /^[a-z0-9][a-z0-9_.-]{0,79}$/.test(id) ? id : '';
+};
 
 /**
  * Cleans a vehicle list for storage. Returns { vehicles } or { error }.
@@ -30,6 +36,7 @@ export function normalizeVehicles(input) {
       br,
       type: text(raw.type, 30),
       group: text(raw.group, 80) || name,
+      ...(wikiId(raw.wiki) ? { wiki: wikiId(raw.wiki) } : {}),
     });
   }
   return { vehicles };

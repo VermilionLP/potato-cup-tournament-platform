@@ -68,3 +68,10 @@ test("preview: unsaved rows as Ban / Pick uses them, and a summary per group", a
     { group: "Su-27", count: 1, brMin: null, brMax: null, nations: ["USSR"] },
   ]);
 });
+
+test("the wiki unit id survives import and export", async () => {
+  const { parsePoolFile, poolToCsv, poolToJson } = await import("../src/lib/vehicle-pools.js");
+  const vehicles = [{ name: "Bf 109 E-7", nation: "Germany", br: 3, type: "Fighter", group: "Bf 109", wiki: "bf-109e-7" }, { name: "Yak-3", nation: "USSR", br: 4.3, type: "Fighter", group: "Yak" }];
+  assert.deepEqual(parsePoolFile(poolToJson(vehicles), "a.json"), vehicles);
+  assert.deepEqual(parsePoolFile(poolToCsv(vehicles), "a.csv"), vehicles);
+});

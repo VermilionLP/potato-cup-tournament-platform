@@ -2,7 +2,9 @@
 // game_modes, rules, sort_order, vehicles } from GET /api/vehicle-pools.
 // Kept free of $lib imports so it can be tested with node --test.
 
-export const POOL_FIELDS = ["name", "nation", "br", "type", "group"];
+// wiki: War Thunder unit id for the picture (optional; looked up by name
+// when empty, $lib/wt-units.js).
+export const POOL_FIELDS = ["name", "nation", "br", "type", "group", "wiki"];
 
 /**
  * The template an event uses (mirrors resolveTemplate in
@@ -38,6 +40,7 @@ function cleanVehicle(raw) {
     br: Number.isFinite(br) ? br : brText === "" ? null : NaN,
     type: text(raw?.type, 30),
     group: text(raw?.group, 80) || name,
+    ...(text(raw?.wiki, 80) ? { wiki: text(raw.wiki, 80).toLowerCase() } : {}),
   };
 }
 
