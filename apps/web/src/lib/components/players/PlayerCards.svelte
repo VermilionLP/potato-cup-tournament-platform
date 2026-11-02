@@ -21,7 +21,7 @@
           <PlayerAvatar player={p} size="w-9 h-9" />
           <div class="min-w-0">
             <div class="font-bold text-foreground text-sm flex items-center gap-2 flex-wrap">
-              <span class="truncate max-w-[120px]">{p.display_name || p.id}</span>
+              <a href="/player/{encodeURIComponent(p.id)}" class="truncate max-w-[120px] hover:text-primary hover:underline">{p.display_name || p.id}</a>
               {#if p.team}
                 <Badge variant="outline" class="text-[9px] px-1.5 py-0 bg-secondary/15 text-secondary border-secondary/25 font-semibold">
                   {p.team}

@@ -19,7 +19,7 @@
         <div class="text-2xl"><Flag code={player.flag} size={32} /></div>
         <div>
           <div class="text-base font-bold flex items-center gap-2 flex-wrap">
-            {player.display_name}
+            <a href="/player/{encodeURIComponent(player.id)}" class="hover:text-primary hover:underline">{player.display_name}</a>
             <TierBadge tier={player.tier} />
             {#if player.active === false}
               <Badge variant="outline" class="text-[9px] px-1.5 py-0 border-amber-500/30 bg-amber-500/10 text-amber-500">

@@ -25,7 +25,7 @@
       </div>
       <div>
         <div class="flex items-center gap-2">
-          <h3 class="text-base font-extrabold text-foreground">{player.display_name}</h3>
+          <h3 class="text-base font-extrabold text-foreground"><a href="/player/{encodeURIComponent(player.id)}" class="hover:text-primary hover:underline">{player.display_name}</a></h3>
           <Flag code={player.flag} size={18} />
           <Badge variant="outline" class="text-[9px] px-1.5 py-0 tracking-wider {modeColors(player.main_mode).badge}" title="最常参加的游戏模式">
             {getModeName(player.main_mode)}

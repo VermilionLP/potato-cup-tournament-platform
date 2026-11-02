@@ -34,7 +34,7 @@
               <div class="flex items-center gap-3">
                 <PlayerAvatar player={p} />
                 <div>
-                  <div class="font-semibold text-foreground leading-tight">{p.display_name || p.id}</div>
+                  <div class="font-semibold text-foreground leading-tight"><a href="/player/{encodeURIComponent(p.id)}" class="hover:text-primary hover:underline">{p.display_name || p.id}</a></div>
                 </div>
               </div>
             </td>
