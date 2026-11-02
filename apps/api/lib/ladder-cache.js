@@ -48,12 +48,41 @@ export function invalidateLadder(db) {
 
 const READ_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 
-// Results, players, merges, event dates / modes: anything written through
-// the API can move ratings, so any successful write drops the cache.
+// Writes that never move ratings, statistics or the event pages' ladder
+// data. Some run on every page load (touch, push re-subscribe), so letting
+// them drop the cache would make every visit recompute all ratings.
+export const CACHE_NEUTRAL_ROUTES = new Set([
+  'POST /players/:id/touch',
+  'POST /push/subscribe',
+  'DELETE /push/unsubscribe',
+  'POST /players/:id/key',
+  'DELETE /players/:id/key',
+  'POST /tournaments/:id/vote',
+  'DELETE /tournaments/:id/vote',
+  'POST /tournaments/:id/custom-vote',
+  'DELETE /tournaments/:id/custom-vote',
+  'POST /tournaments/:id/checkin',
+  'DELETE /tournaments/:id/checkin',
+  'POST /tournaments/:id/overlay-state',
+  'POST /tournaments/:id/active-match',
+  'POST /tournaments/:id/matches/:matchId/report/dispute',
+  'DELETE /tournaments/:id/matches/:matchId/report',
+]);
+
+/** Whether a finished request may have changed what the cache holds. */
+export function dropsCache(method, routeUrl, statusCode) {
+  if (READ_METHODS.has(method)) return false;
+  // Rejected writes (4xx) changed nothing; a 5xx may have got part way.
+  if (statusCode >= 400 && statusCode < 500) return false;
+  // Routes are registered under /api; compare without the prefix.
+  const path = String(routeUrl || '').replace(/^\/api(?=\/)/, '');
+  return !CACHE_NEUTRAL_ROUTES.has(`${method} ${path}`);
+}
+
+// Results, players, merges, event dates / modes: anything else written
+// through the API can move ratings, so it drops the cache.
 export function registerLadderCacheInvalidation(fastify) {
   fastify.addHook('onResponse', async (req, reply) => {
-    // Rejected writes (4xx) changed nothing; a 5xx may have got part way.
-    const rejected = reply.statusCode >= 400 && reply.statusCode < 500;
-    if (!READ_METHODS.has(req.method) && !rejected) invalidateLadder(fastify.db);
+    if (dropsCache(req.method, req.routeOptions?.url, reply.statusCode)) invalidateLadder(fastify.db);
   });
 }

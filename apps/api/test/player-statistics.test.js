@@ -90,3 +90,22 @@ test('runner-ups by tier (qualifiers excluded) and their board', () => {
   const weekly = run({ kind: 'weekly' });
   assert.deepEqual(weekly.rankings.by_runner_ups.map((p) => p.id), ['b']);
 });
+
+test('page-load writes (touch, push, votes, check-in, live) keep the cache; results drop it', async () => {
+  const { dropsCache, CACHE_NEUTRAL_ROUTES } = await import('../lib/ladder-cache.js');
+  assert.equal(dropsCache('POST', '/api/players/:id/touch', 200), false);
+  assert.equal(dropsCache('POST', '/push/subscribe', 200), false);
+  assert.equal(dropsCache('POST', '/api/tournaments/:id/checkin', 200), false);
+  assert.equal(dropsCache('POST', '/api/tournaments/:id/matches/:matchId/result', 200), true);
+  assert.equal(dropsCache('POST', '/api/tournaments/:id/matches/:matchId/report/confirm', 200), true);
+  assert.equal(dropsCache('POST', '/api/players/:id/merge', 200), true);
+  assert.equal(dropsCache('POST', '/api/tournaments/:id/matches/:matchId/result', 403), false, 'rejected writes changed nothing');
+  assert.equal(dropsCache('GET', '/api/ladder', 200), false);
+  // Every listed route exists.
+  const { buildRoutes, fakeDb } = await import('./helpers/route-harness.js');
+  const files = ['players', 'player-keys', 'push', 'votes', 'registrations', 'tournament-bracket', 'matches'];
+  const mods = await Promise.all(files.map(async (f) => (await import(`../routes/${f}.js`)).default));
+  const { routes } = await buildRoutes(mods, fakeDb());
+  const known = new Set(routes.map((r) => `${r.method} ${r.path}`));
+  for (const r of CACHE_NEUTRAL_ROUTES) assert.ok(known.has(r), `${r} is not a route`);
+});
