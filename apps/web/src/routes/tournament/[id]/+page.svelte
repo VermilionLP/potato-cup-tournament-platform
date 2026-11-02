@@ -1,19 +1,18 @@
 <script>
-  // Event page: loads the event, keeps it live (SSE) and wires the actions
+  // Event page: wires the event's data ($lib/event-data.svelte.js: loading,
+  // live updates, templates, players) to its sections and actions
   // ($lib/event-registration.js, $lib/event-stage.js; reporting is
-  // MatchReport, the time dialogs carry their own flows). What it shows is
-  // derived in $lib/event-view.js; sections and dialogs live in
-  // $lib/components/tournament. Admin-only parts (seeding, time / player
-  // dialogs, wiki export, going live) load only for admins, and the vote
-  // proposals (calendar), vehicle pool view and share dialog only when shown
-  // ($lib/lazy.js), so visitors download less.
-  import { onMount, tick, untrack } from "svelte";
+  // MatchReport). What it shows is derived in $lib/event-view.js; the tabs
+  // are EventOverviewTab / EventBracketCard / EventPoolTab / RosterCard /
+  // EventLiveTab in $lib/components/tournament. Admin-only dialogs load only
+  // for admins and the share dialog on first use ($lib/lazy.js).
+  import { onMount, tick } from "svelte";
   import { lazy } from "$lib/lazy.js";
   import { toast } from "svelte-sonner";
-  import { API } from "$lib/api.js";
   import { page } from "$app/state";
   import { goto } from "$app/navigation";
   import { userState } from "$lib/user.svelte.js";
+  import { EventData } from "$lib/event-data.svelte.js";
   import { buildMatchOrder } from "$lib/bracket.js";
   import { overlayStages, pickStage } from "$lib/overlay.js";
   import { suggestedVoteTimes, voteOptionsFrom } from "$lib/votes.js";
@@ -29,62 +28,51 @@
     playableInOrder,
     playerNamer,
     podiumOf,
-    previewMinPlayers,
     roundLabeler,
-    seedOrderOf,
   } from "$lib/event-view.js";
   import { Button } from "$lib/components/ui/button/index.js";
-  import VoteBoard from "$lib/components/tournament/VoteBoard.svelte";
-  import RegistrationCard from "$lib/components/tournament/RegistrationCard.svelte";
   import EventHeader from "$lib/components/tournament/EventHeader.svelte";
   import StatusControls from "$lib/components/tournament/StatusControls.svelte";
   import PhaseStepper from "$lib/components/tournament/PhaseStepper.svelte";
-  import MatchReport from "$lib/components/tournament/MatchReport.svelte";
-  import ResultsPanel from "$lib/components/tournament/ResultsPanel.svelte";
-  import RosterCard from "$lib/components/tournament/RosterCard.svelte";
-  import ObsControlCard from "$lib/components/tournament/ObsControlCard.svelte";
-  import EventBracketCard from "$lib/components/tournament/EventBracketCard.svelte";
   import MyMatchCard from "$lib/components/tournament/MyMatchCard.svelte";
-  import LiveNow from "$lib/components/tournament/LiveNow.svelte";
-  import PrizeCard from "$lib/components/tournament/PrizeCard.svelte";
-  import Share2Icon from "@lucide/svelte/icons/share-2";
+  import EventTabBar from "$lib/components/tournament/EventTabBar.svelte";
+  import EventOverviewTab from "$lib/components/tournament/EventOverviewTab.svelte";
+  import EventBracketCard from "$lib/components/tournament/EventBracketCard.svelte";
+  import EventPoolTab from "$lib/components/tournament/EventPoolTab.svelte";
+  import EventLiveTab from "$lib/components/tournament/EventLiveTab.svelte";
+  import RosterCard from "$lib/components/tournament/RosterCard.svelte";
+  import MatchReport from "$lib/components/tournament/MatchReport.svelte";
   import { registrationActions } from "$lib/event-registration.js";
   import { stageActions } from "$lib/event-stage.js";
   import { channelOptions, liveElsewhere, savedChannel, savedStreamMode, saveChannel, withChannel } from "$lib/live-channels.js";
-  import { coalescedRefresh } from "$lib/coalesced-refresh.js";
   import TrophyIcon from "@lucide/svelte/icons/trophy";
   import ArrowLeftIcon from "@lucide/svelte/icons/arrow-left";
 
-  const loadAdminParts = lazy(async () => {
-    const [seeding, wiki, time, finalTime, playerEdit, handoffPart, startCheckin, poolPicker] = await Promise.all([
-      import("$lib/components/tournament/SeedingCard.svelte"),
+  const loadAdminDialogs = lazy(async () => {
+    const [wiki, time, finalTime, playerEdit, handoffPart, startCheckin] = await Promise.all([
       import("$lib/components/tournament/WikiExportDialog.svelte"),
       import("$lib/components/tournament/TimeEditDialog.svelte"),
       import("$lib/components/tournament/FinalTimeDialog.svelte"),
       import("$lib/components/tournament/PlayerEditDialog.svelte"),
       import("$lib/components/tournament/LiveHandoff.svelte"),
       import("$lib/components/tournament/StartCheckinDialog.svelte"),
-      import("$lib/components/tournament/PoolTemplatePicker.svelte"),
     ]);
     return {
-      SeedingCard: seeding.default,
       WikiExportDialog: wiki.default,
       TimeEditDialog: time.default,
       FinalTimeDialog: finalTime.default,
       PlayerEditDialog: playerEdit.default,
       LiveHandoff: handoffPart.default,
       StartCheckinDialog: startCheckin.default,
-      PoolTemplatePicker: poolPicker.default,
     };
   });
-  const loadVoteProposals = lazy(() => import("$lib/components/tournament/VoteProposals.svelte"));
-  const loadPoolView = lazy(() => import("$lib/components/tournament/VehiclePoolView.svelte"));
   const loadShareDialog = lazy(() => import("$lib/components/tournament/ShareDialog.svelte"));
 
   let tid = $derived(page.params.id);
-  let tournament = $state(null);
-  let loading = $state(true);
   let isAdmin = $derived(!!userState.adminToken);
+  const data = new EventData(() => tid, () => isAdmin);
+  let tournament = $derived(data.tournament);
+  const load = () => data.load();
 
   // Two-stage events: a group stage (Swiss, or single-/double-elimination
   // brackets per group; `format` says which), then an elimination playoff
@@ -103,46 +91,13 @@
   let shownStage = $derived(inPlayoffs ? stageView || "playoff" : "group");
   let playoffBusy = $state(false);
 
-  // Overlay controls: round controls need a non-empty list even before a
-  // playoff exists; stages as the overlay picks them.
-  let overlayMatches = $derived(bracketMatches.length ? bracketMatches : tournament?.matches || []);
-  let overlayStageList = $derived(overlayStages(overlayStageMatches(tournament)));
-  let overlayShownStage = $derived(pickStage(overlayStageList, live?.overlay_stage || null));
-
   let matchOrder = $derived(buildMatchOrder(tournament?.matches || []));
   let playerName = $derived(playerNamer(tournament, bracketMatches));
   let matchRoundLabel = $derived(roundLabeler(tournament, bracketMatches));
   let podium = $derived(podiumOf(tournament, bracketMatches));
   let standings = $derived(tournament ? eventStandings(tournament, bracketMatches) : []);
-
   let banpickEnabled = $derived(tournament?.banpick_enabled !== false);
-  // The event's vehicle pool template, as the server resolves it (the one
-  // picked for the event, else the best match for its type and game mode),
-  // with wiki units filled in; reloaded when those settings change. Admins
-  // also get every template, for the template picker.
-  let bpTemplate = $state(null);
-  let poolKey = $derived(tournament ? [tid, tournament.vehicle_pool, tournament.game_mode, tournament.vehicle_template ?? ""].join("|") : "");
-  $effect(() => {
-    const key = poolKey;
-    if (!key) return;
-    untrack(() =>
-      API.getEventVehiclePool(tid)
-        .then((res) => key === poolKey && (bpTemplate = res.template || null))
-        .catch((e) => console.warn("vehicle pool failed to load:", e)),
-    );
-  });
-  let vehicleTemplates = $state([]);
-  let templatesLoaded = false;
-  $effect(() => {
-    if (!isAdmin || templatesLoaded) return;
-    templatesLoaded = true;
-    API.getVehiclePools()
-      .then((res) => (vehicleTemplates = res.templates || []))
-      .catch((e) => {
-        templatesLoaded = false;
-        console.warn("vehicle pools failed to load:", e);
-      });
-  });
+  let isRegistered = $derived(tournament?.players?.some((p) => p.id === userState.id));
 
   let swissRoundsLabel = $derived(
     tournament?.swiss_rounds_auto
@@ -160,34 +115,24 @@
     ),
   );
 
-  // Every player, for the admins' batch registration only (fetched for
-  // admins, alongside the event, while it takes sign-ups).
-  let allPlayers = $state([]);
-  let rosterFor = null; // event whose player list was requested
-  let unregisteredPlayers = $derived(allPlayers.filter((ap) => !(tournament?.players || []).some((tp) => tp.id === ap.id)));
-  let isRegistered = $derived(tournament?.players?.some((p) => p.id === userState.id));
-  let seedOrder = $state([]);
-
   // Time vote: suggested times (moved by "顺延一周") merged with the votes cast.
-  let playTimes = $state(null);
   let voteWeekOffset = $state(0);
-  let voteOptions = $derived(voteOptionsFrom(tournament?.votes || [], suggestedVoteTimes(playTimes, voteWeekOffset)));
-
+  let voteOptions = $derived(voteOptionsFrom(tournament?.votes || [], suggestedVoteTimes(data.playTimes, voteWeekOffset)));
 
   // Dialogs
   let finalTimeDialog = $state(null);
   let timeEditDialog = $state(null);
   let startDialog = $state(null);
   let shareDialog = $state(null);
+  let wikiDialog = $state(null);
+  let matchReport = $state(null);
+  let playerEditor = $state(null);
   // Podium for the results post: champion, runner-up, third place(s).
   let sharePodium = $derived.by(() => {
     if (!podium) return [];
     const thirds = standings.filter((r) => String(r.rank).startsWith("第 3")).map((r) => r.display_name || r.id);
     return [[playerName(podium.champion)], podium.runnerUp ? [playerName(podium.runnerUp)] : [], thirds];
   });
-  let wikiDialog = $state(null);
-  let matchReport = $state(null);
-  let playerEditor = $state(null);
 
   // Live channel of this console (remembered per event in this browser):
   // the live match and overlay controls act on it; other channels' live
@@ -197,6 +142,11 @@
   let live = $derived(withChannel(tournament, liveChannel));
   let otherChannels = $derived(liveElsewhere(tournament, liveChannel));
   let channelChoices = $derived(channelOptions(tournament, liveChannel));
+  // Overlay controls: round controls need a non-empty list even before a
+  // playoff exists; stages as the overlay picks them.
+  let overlayMatches = $derived(bracketMatches.length ? bracketMatches : tournament?.matches || []);
+  let overlayStageList = $derived(overlayStages(overlayStageMatches(tournament)));
+  let overlayShownStage = $derived(pickStage(overlayStageList, live?.overlay_stage || null));
 
   // "Going live" mode: only this browser forces the next-match flow.
   let handoff = $state(null);
@@ -230,125 +180,47 @@
     return true;
   }
 
-  onMount(() => {
-    load();
-  });
-
-  // Live updates: a burst of event messages becomes one reload.
-  $effect(() => {
-    if (!tid) return;
-    const id = tid;
-    const refresh = coalescedRefresh(async () => {
-      const next = await API.getTournament(id);
-      if (id !== tid) return; // route moved to another event meanwhile
-      tournament = next;
-      seedOrder = seedOrderOf(tournament?.players);
-    });
-    const es = new EventSource(`/api/tournaments/${id}/stream`);
-    es.onmessage = (event) => {
-      try {
-        JSON.parse(event.data); // malformed messages are skipped
-      } catch (e) {
-        console.error("解析实时事件失败", e);
-        return;
-      }
-      refresh();
-    };
-    es.onerror = (e) => {
-      console.warn("实时推送连接发生错误，正在尝试重连...", e);
-    };
-    return () => {
-      es.close();
-      refresh.stop();
-    };
-  });
-
-  let loadedTournamentId = null;
-
-  function loadRoster() {
-    rosterFor = tid;
-    API.listPlayers()
-      .then((list) => (allPlayers = list))
-      .catch((e) => console.warn("load players failed:", e));
-  }
-  // An admin who signs in on the page still gets the list.
-  $effect(() => {
-    if (isAdmin && tournament?.status === "registration" && rosterFor !== tid) untrack(loadRoster);
-  });
-
-  async function load() {
-    // Only show the full-page loading state on the first load (or when the
-    // route switches to another tournament). Refreshes after a vote,
-    // registration or SSE event must keep the page mounted.
-    const isInitial = !tournament || loadedTournamentId !== tid;
-    if (isInitial) loading = true;
-    // Admins: the player list loads in parallel with the event.
-    if (isAdmin && (isInitial || tournament?.status === "registration")) loadRoster();
-    try {
-      tournament = await API.getTournament(tid);
-      loadedTournamentId = tid;
-      if (isInitial && !playTimes) {
-        API.getPlayTimes()
-          .then((times) => (playTimes = times))
-          .catch((e) => console.warn("load play times failed:", e));
-      }
-      seedOrder = seedOrderOf(tournament?.players);
-      // Registration: refresh the bracket preview.
-      if (isAdmin && tournament.status === "registration") await refreshPreview();
-    } catch (e) {
-      toast.error("加载赛事详情失败: " + e.message);
-    } finally {
-      if (isInitial) loading = false;
-    }
-  }
-
-  // Regenerates the bracket preview once there are enough players (admins;
-  // the server rejects it for other users).
-  async function refreshPreview() {
-    if ((tournament?.players?.length || 0) < previewMinPlayers(tournament)) return;
-    const matches = await API.generateBracket(tid);
-    tournament = { ...tournament, matches };
-  }
+  onMount(load);
 
   // Registration and seeds ($lib/event-registration.js).
   const { doRegister, doBatchRegister, doUnregister, autoSeed, randomizeSeed, moveSeed } = registrationActions({
     tid: () => tid,
-    tournament: () => tournament,
-    setTournament: (t) => (tournament = t),
-    seedOrder: () => seedOrder,
-    setSeedOrder: (ids) => (seedOrder = ids),
+    tournament: () => data.tournament,
+    setTournament: (t) => (data.tournament = t),
+    seedOrder: () => data.seedOrder,
+    setSeedOrder: (ids) => (data.seedOrder = ids),
     isAdmin: () => isAdmin,
-    load: () => load(),
-    refreshPreview: () => refreshPreview(),
-    ensureAdmin: () => ensureAdmin(),
-    needsIdentity: () => needsIdentity(),
+    load,
+    refreshPreview: () => data.refreshPreview(),
+    ensureAdmin,
+    needsIdentity,
   });
 
   // Status, playoffs, Swiss rounds, live match, JSON ($lib/event-stage.js).
   const { changeStatus, setCheckin, checkInFor, toggleActiveMatch, startPlayoffs, withdrawPlayoffs, editSwissRounds, downloadJson } = stageActions({
     tid: () => tid,
-    tournament: () => tournament,
-    setTournament: (t) => (tournament = t),
+    tournament: () => data.tournament,
+    setTournament: (t) => (data.tournament = t),
     bracketMatches: () => bracketMatches,
     live: () => live,
     liveChannel: () => liveChannel,
     setStageView: (v) => (stageView = v),
     setPlayoffBusy: (b) => (playoffBusy = b),
     isAdmin: () => isAdmin,
-    load: () => load(),
-    ensureAdmin: () => ensureAdmin(),
+    load,
+    ensureAdmin,
   });
 
   // Tabs (remembered in the address as #overview / #bracket / #pool /
   // #players / #live). A running event opens on its bracket, the others on
-  // the overview. The vehicle pool tab shows when the event has a template.
+  // the overview. The vehicle pool tab shows when the event has a template
+  // (for admins also without one, to pick it).
   const TAB_IDS = ["overview", "bracket", "pool", "players", "live"];
   let chosenTab = $state("");
   let tabs = $derived([
     { id: "overview", label: "概览" },
     { id: "bracket", label: tournament?.status === "registration" ? "对阵预览" : "对阵" },
-    // Admins see it without a template too, to pick one.
-    ...(bpTemplate || (isAdmin && banpickEnabled) ? [{ id: "pool", label: "载具池" }] : []),
+    ...(data.bpTemplate || (isAdmin && banpickEnabled) ? [{ id: "pool", label: "载具池" }] : []),
     { id: "players", label: "选手", count: tournament?.players?.length ?? 0 },
     { id: "live", label: "直播" },
   ]);
@@ -386,63 +258,35 @@
 
   // After a time dialog saved: show its result, then reload.
   async function savedEvent(t) {
-    tournament = t;
+    data.tournament = t;
     await load();
   }
+
+  const openMatch = (m) => matchReport?.openDetails(m);
 </script>
 
-{#if loading}
-  <div
-    class="flex flex-col items-center justify-center py-20 gap-3 text-muted-foreground"
-  >
-    <div
-      class="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin"
-    ></div>
+{#if data.loading}
+  <div class="flex flex-col items-center justify-center py-20 gap-3 text-muted-foreground">
+    <div class="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin"></div>
     <p class="text-sm">正在加载赛事详情...</p>
   </div>
 {:else if !tournament}
-  <div
-    class="text-center py-16 border border-border bg-card/30 rounded-2xl max-w-xl mx-auto space-y-4"
-  >
+  <div class="text-center py-16 border border-border bg-card/30 rounded-2xl max-w-xl mx-auto space-y-4">
     <TrophyIcon class="w-12 h-12 text-muted-foreground mx-auto" />
     <div>
       <h2 class="text-lg font-bold text-foreground">赛事不存在</h2>
-      <p class="text-xs text-muted-foreground mt-1">
-        您访问的赛事 ID 在数据库中未找到。
-      </p>
+      <p class="text-xs text-muted-foreground mt-1">您访问的赛事 ID 在数据库中未找到。</p>
     </div>
     <Button size="sm" onclick={() => goto("/")} class="gap-1 text-xs">
       <ArrowLeftIcon class="w-3.5 h-3.5" /> 返回首页
     </Button>
   </div>
 {:else}
-  {#snippet rosterSidebar()}
+  {#snippet roster()}
     <RosterCard {tournament} {isAdmin} onedit={(p) => playerEditor?.edit(p)} onunregister={doUnregister} oncheckin={checkInFor} />
   {/snippet}
 
-  {#snippet obsControl()}
-    <ObsControlCard
-      tournament={live}
-      {tid}
-      channel={liveChannel}
-      {channelChoices}
-      elsewhere={otherChannels}
-      onchannel={changeChannel}
-      {isAdmin}
-      {streamMode}
-      {matchOrder}
-      roundLabel={matchRoundLabel}
-      {playerName}
-      {overlayMatches}
-      {overlayStageList}
-      {overlayShownStage}
-      onstreamstart={() => handoff?.start()}
-      onstreamend={() => handoff?.stop()}
-      onclearhud={() => handoff?.clearHud()}
-    />
-  {/snippet}
-
-  {#snippet bracketView()}
+  {#snippet bracket()}
     <EventBracketCard
       tournament={live}
       {tid}
@@ -462,7 +306,7 @@
       {playoffBusy}
       {shownStage}
       bind:stageView
-      onopen={(m) => matchReport?.openDetails(m)}
+      onopen={openMatch}
       onbanpick={(m) => matchReport?.openBanPick(m)}
       ontoggleactive={toggleActiveMatch}
       oneditrounds={editSwissRounds}
@@ -475,7 +319,7 @@
     <!-- Header: title, tags, time; admin stage controls -->
     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border/60 pb-5">
       <EventHeader
-        bind:tournament
+        bind:tournament={data.tournament}
         {tid}
         {isAdmin}
         statusText={eventStatusLabel(tournament.status)}
@@ -518,118 +362,71 @@
       onreload={load}
     />
 
-    <!-- Tabs: overview (the stage's main panel), bracket, players, live -->
-    <div class="flex gap-1 overflow-x-auto border-b border-border/60" role="tablist" aria-label="赛事页">
-      {#each tabs as tb (tb.id)}
-        <button
-          type="button"
-          role="tab"
-          aria-selected={activeTab === tb.id}
-          onclick={() => selectTab(tb.id)}
-          class="shrink-0 -mb-px border-b-2 px-3 py-2 text-sm font-semibold cursor-pointer transition-colors
-            {activeTab === tb.id ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}"
-        >
-          {tb.label}{#if tb.count != null}<span class="ml-1 text-[11px] font-normal opacity-70">{tb.count}</span>{/if}
-        </button>
-      {/each}
-      <button
-        type="button"
-        onclick={openShare}
-        class="ml-auto shrink-0 inline-flex items-center gap-1 px-3 py-2 text-xs font-semibold text-muted-foreground hover:text-primary cursor-pointer"
-        title="生成可以发到 Discord 的赛事公告或结果"
-      >
-        <Share2Icon class="w-3.5 h-3.5" />
-        分享到 Discord
-      </button>
-    </div>
+    <EventTabBar {tabs} active={activeTab} onselect={selectTab} onshare={openShare} />
 
     {#if activeTab === "overview"}
-      {#if tournament.status === "registration"}
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div class="lg:col-span-2 space-y-6">
-            <RegistrationCard
-              {tournament}
-              {isAdmin}
-              {isRegistered}
-              {unregisteredPlayers}
-              onregister={doRegister}
-              onunregister={doUnregister}
-              onbatch={doBatchRegister}
-            />
-            {#if isAdmin && (tournament.players?.length || 0) >= 2}
-              {#await loadAdminParts() then A}
-                <A.SeedingCard {tournament} {seedOrder} {playerName} onauto={autoSeed} onrandom={randomizeSeed} onmove={moveSeed} />
-              {/await}
-            {/if}
-          </div>
-          <div class="space-y-6">
-            <PrizeCard {tournament} />
-            {@render rosterSidebar()}
-          </div>
-        </div>
-        <!-- Admins seeding: the preview follows the seeds, so it stays here too. -->
-        {#if isAdmin && (tournament.players?.length || 0) >= (isDoubleElim ? 4 : 2)}
-          {@render bracketView()}
-        {/if}
-      {:else if tournament.status === "voting"}
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div class="lg:col-span-2 space-y-6">
-            <VoteBoard {tournament} {tid} {isAdmin} {voteOptions} bind:weekOffset={voteWeekOffset} {playerName} onchanged={load} />
-          </div>
-          <div class="space-y-6">
-            {#await loadVoteProposals() then m}
-              <m.default {tid} onchanged={load} />
-            {/await}
-            <PrizeCard {tournament} />
-          </div>
-        </div>
-      {:else if tournament.status === "completed"}
-        <ResultsPanel
-          {tournament}
-          {podium}
-          {standings}
-          swissTable={isSwiss && !isTwoStage}
-          {isAdmin}
-          {playerName}
-          onexportjson={downloadJson}
-          onexportwiki={() => wikiDialog?.start()}
-        />
-      {:else}
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div class="lg:col-span-2">
-            <LiveNow tournament={live} order={matchOrder} roundLabel={matchRoundLabel} {playerName} onopen={(m) => matchReport?.openDetails(m)} />
-          </div>
-          <PrizeCard {tournament} />
-        </div>
-      {/if}
+      <EventOverviewTab
+        {tournament}
+        {live}
+        {tid}
+        {isAdmin}
+        {isRegistered}
+        unregisteredPlayers={data.unregisteredPlayers}
+        seedOrder={data.seedOrder}
+        {voteOptions}
+        bind:weekOffset={voteWeekOffset}
+        {podium}
+        {standings}
+        {isSwiss}
+        {isTwoStage}
+        {isDoubleElim}
+        {matchOrder}
+        roundLabel={matchRoundLabel}
+        {playerName}
+        {bracket}
+        {roster}
+        onregister={doRegister}
+        onunregister={doUnregister}
+        onbatch={doBatchRegister}
+        onautoseed={autoSeed}
+        onrandomseed={randomizeSeed}
+        onmoveseed={moveSeed}
+        onreload={load}
+        onexportjson={downloadJson}
+        onexportwiki={() => wikiDialog?.start()}
+        onopenmatch={openMatch}
+      />
     {:else if activeTab === "bracket"}
       {#if tournament.status === "registration" && (tournament.players?.length || 0) < (isDoubleElim ? 4 : 2)}
         <p class="py-12 text-center text-xs italic text-muted-foreground">报名人数够了之后这里会显示对阵预览。</p>
       {:else}
-        {@render bracketView()}
+        {@render bracket()}
       {/if}
     {:else if activeTab === "pool"}
-      {#if isAdmin}
-        {#await loadAdminParts() then A}
-          <div class="mb-4"><A.PoolTemplatePicker bind:tournament {tid} templates={vehicleTemplates} {bpTemplate} /></div>
-        {/await}
-      {/if}
-      {#await loadPoolView()}
-        <p class="py-12 text-center text-xs text-muted-foreground">正在加载载具池...</p>
-      {:then m}
-        <m.default template={bpTemplate} {banpickEnabled} />
-      {:catch e}
-        <p class="py-12 text-center text-xs text-destructive">载具池加载失败：{e.message}</p>
-      {/await}
+      <EventPoolTab bind:tournament={data.tournament} {tid} {isAdmin} template={data.bpTemplate} templates={data.vehicleTemplates} {banpickEnabled} />
     {:else if activeTab === "players"}
-      {@render rosterSidebar()}
+      {@render roster()}
     {:else if activeTab === "live"}
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {#if tournament.status === "in_progress"}
-          <LiveNow tournament={live} order={matchOrder} roundLabel={matchRoundLabel} {playerName} onopen={(m) => matchReport?.openDetails(m)} />
-        {/if}
-        {@render obsControl()}
-      </div>
+      <EventLiveTab
+        {live}
+        {tid}
+        channel={liveChannel}
+        {channelChoices}
+        elsewhere={otherChannels}
+        {isAdmin}
+        {streamMode}
+        {matchOrder}
+        roundLabel={matchRoundLabel}
+        {playerName}
+        {overlayMatches}
+        {overlayStageList}
+        {overlayShownStage}
+        onchannel={changeChannel}
+        onopenmatch={openMatch}
+        onstreamstart={() => handoff?.start()}
+        onstreamend={() => handoff?.stop()}
+        onclearhud={() => handoff?.clearHud()}
+      />
     {/if}
   </div>
 {/if}
@@ -641,7 +438,7 @@
   {tid}
   {isAdmin}
   {banpickEnabled}
-  {bpTemplate}
+  bpTemplate={data.bpTemplate}
   {playerName}
   {matchRoundLabel}
   {live}
@@ -653,22 +450,12 @@
 />
 
 {#if isAdmin}
-  {#await loadAdminParts() then A}
-    <!-- Admin: adjust the match time -->
+  {#await loadAdminDialogs() then A}
     <A.TimeEditDialog bind:this={timeEditDialog} {tid} current={tournament?.scheduled_time} {ensureAdmin} onsaved={savedEvent} />
-
-    <!-- Ending the vote: pick the final time -->
     <A.FinalTimeDialog bind:this={finalTimeDialog} {tid} options={voteOptions} {ensureAdmin} {needsIdentity} onsaved={savedEvent} />
-
-    <!-- Starting with check-in: what happens to the players who did not check in -->
-    <A.StartCheckinDialog bind:this={startDialog} {tid} {tournament} onstarted={() => load()} />
-
-    <!-- Liquipedia Wiki Export Dialog -->
+    <A.StartCheckinDialog bind:this={startDialog} {tid} {tournament} onstarted={load} />
     <A.WikiExportDialog bind:this={wikiDialog} {tid} />
-
-    <!-- Participant Profile Edit Dialog -->
     <A.PlayerEditDialog bind:this={playerEditor} {tid} {ensureAdmin} onsaved={load} />
-
     <!-- Going live: next-match hand-off, HUD countdown, pre-flight checklist -->
     <A.LiveHandoff
       bind:this={handoff}
