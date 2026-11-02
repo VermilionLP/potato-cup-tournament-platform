@@ -56,7 +56,7 @@
   import ArrowLeftIcon from "@lucide/svelte/icons/arrow-left";
 
   const loadAdminParts = lazy(async () => {
-    const [seeding, wiki, time, finalTime, playerEdit, handoffPart, startCheckin] = await Promise.all([
+    const [seeding, wiki, time, finalTime, playerEdit, handoffPart, startCheckin, poolPicker] = await Promise.all([
       import("$lib/components/tournament/SeedingCard.svelte"),
       import("$lib/components/tournament/WikiExportDialog.svelte"),
       import("$lib/components/tournament/TimeEditDialog.svelte"),
@@ -64,6 +64,7 @@
       import("$lib/components/tournament/PlayerEditDialog.svelte"),
       import("$lib/components/tournament/LiveHandoff.svelte"),
       import("$lib/components/tournament/StartCheckinDialog.svelte"),
+      import("$lib/components/tournament/PoolTemplatePicker.svelte"),
     ]);
     return {
       SeedingCard: seeding.default,
@@ -73,6 +74,7 @@
       PlayerEditDialog: playerEdit.default,
       LiveHandoff: handoffPart.default,
       StartCheckinDialog: startCheckin.default,
+      PoolTemplatePicker: poolPicker.default,
     };
   });
   const loadVoteProposals = lazy(() => import("$lib/components/tournament/VoteProposals.svelte"));
@@ -345,7 +347,8 @@
   let tabs = $derived([
     { id: "overview", label: "概览" },
     { id: "bracket", label: tournament?.status === "registration" ? "对阵预览" : "对阵" },
-    ...(bpTemplate ? [{ id: "pool", label: "载具池" }] : []),
+    // Admins see it without a template too, to pick one.
+    ...(bpTemplate || (isAdmin && banpickEnabled) ? [{ id: "pool", label: "载具池" }] : []),
     { id: "players", label: "选手", count: tournament?.players?.length ?? 0 },
     { id: "live", label: "直播" },
   ]);
@@ -480,8 +483,6 @@
         {isTwoStage}
         {hasGroupBrackets}
         {swissRoundsLabel}
-        {vehicleTemplates}
-        {bpTemplate}
         onreload={load}
         onedittime={() => timeEditDialog?.start()}
       />
@@ -608,6 +609,11 @@
         {@render bracketView()}
       {/if}
     {:else if activeTab === "pool"}
+      {#if isAdmin}
+        {#await loadAdminParts() then A}
+          <div class="mb-4"><A.PoolTemplatePicker bind:tournament {tid} templates={vehicleTemplates} {bpTemplate} /></div>
+        {/await}
+      {/if}
       {#await loadPoolView()}
         <p class="py-12 text-center text-xs text-muted-foreground">正在加载载具池...</p>
       {:then m}

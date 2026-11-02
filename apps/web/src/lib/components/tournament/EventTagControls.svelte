@@ -1,9 +1,9 @@
 <script>
   // The editable tags of an event (admins get selects, others tags): tier
-  // and kind, game mode, event type and the Ban / Pick vehicle pool template.
+  // and kind, game mode and event type. The Ban / Pick template is chosen on
+  // the 载具池 tab (PoolTemplatePicker).
   import { toast } from "svelte-sonner";
   import { API } from "$lib/api.js";
-  import { resolveTemplate } from "$lib/vehicle-pools.js";
   import {
     POOL_TAG,
     VEHICLE_POOLS,
@@ -18,7 +18,7 @@
     vehiclePoolLabel,
   } from "$lib/tournament.js";
 
-  let { tournament = $bindable(), tid, isAdmin = false, vehicleTemplates = [], bpTemplate = null } = $props();
+  let { tournament = $bindable(), tid, isAdmin = false } = $props();
 
   function adminOnly() {
     if (isAdmin) return true;
@@ -74,24 +74,6 @@
     }
   }
 
-  // Ban / Pick vehicle pool template: automatic (best match for the event
-  // type and game mode) unless an admin picks one.
-  let typeTemplates = $derived(vehicleTemplates.filter((t) => t.event_type === tournament?.vehicle_pool));
-  let autoTemplate = $derived(resolveTemplate(vehicleTemplates, { ...tournament, vehicle_template: null }));
-  let savingTemplate = $state(false);
-  async function saveTemplate(id) {
-    if (!adminOnly() || id === (tournament?.vehicle_template || "")) return;
-    savingTemplate = true;
-    try {
-      const res = await API.updateTournament(tid, { vehicle_template: id || null });
-      tournament = { ...tournament, vehicle_template: res.vehicle_template ?? null };
-      toast.success(id ? "已指定载具池模板" : "载具池模板改为自动匹配");
-    } catch (e) {
-      toast.error(e.message);
-    } finally {
-      savingTemplate = false;
-    }
-  }
 </script>
 
 {#if isAdmin}
@@ -158,26 +140,4 @@
   </select>
 {:else if vehiclePoolLabel(tournament.vehicle_pool)}
   <span class="rounded-md border px-2 py-0.5 font-semibold {POOL_TAG[tournament.vehicle_pool] || 'border-border bg-muted/60 text-muted-foreground'}">{vehiclePoolLabel(tournament.vehicle_pool)}</span>
-{/if}
-{#if tournament.banpick_enabled !== false && (isAdmin ? vehicleTemplates.length : bpTemplate)}
-  {#if isAdmin}
-    <select
-      aria-label="载具池模板"
-      title="Ban / Pick 使用的载具池模板"
-      value={tournament.vehicle_template || ""}
-      disabled={savingTemplate}
-      onchange={(e) => saveTemplate(e.currentTarget.value)}
-      class="h-6 rounded-md border border-border bg-background px-1.5 text-xs font-semibold text-foreground cursor-pointer disabled:opacity-60"
-    >
-      <option value="">载具池：自动（{autoTemplate?.name || "无"}）</option>
-      {#if tournament.vehicle_template && !typeTemplates.some((t) => t.id === tournament.vehicle_template)}
-        <option value={tournament.vehicle_template}>载具池：{bpTemplate?.name || tournament.vehicle_template}</option>
-      {/if}
-      {#each typeTemplates as t (t.id)}
-        <option value={t.id}>载具池：{t.name}</option>
-      {/each}
-    </select>
-  {:else if bpTemplate}
-    <a href="/pools?template={bpTemplate.id}" class="rounded-md border border-border bg-muted/60 px-2 py-0.5 font-semibold text-muted-foreground hover:text-primary" title="Ban / Pick 载具池">载具池：{bpTemplate.name}</a>
-  {/if}
 {/if}

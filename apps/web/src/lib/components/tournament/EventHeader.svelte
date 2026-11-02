@@ -28,8 +28,6 @@
     isTwoStage = false,
     hasGroupBrackets = false,
     swissRoundsLabel = "",
-    vehicleTemplates = [],
-    bpTemplate = null,
     onreload,
     onedittime,
   } = $props();
@@ -163,7 +161,7 @@
 
   <!-- Event tags: tier, mode · type · format · detail, then points. -->
   <div class="flex flex-wrap items-center gap-1.5 pt-1 text-xs">
-    <EventTagControls bind:tournament {tid} {isAdmin} {vehicleTemplates} {bpTemplate} />
+    <EventTagControls bind:tournament {tid} {isAdmin} />
     <span class="rounded-md border border-border bg-muted/60 px-2 py-0.5 font-semibold text-muted-foreground">{isSwiss && !isTwoStage ? `瑞士轮 · ${swissRoundsLabel}` : eventFormatLabel(tournament)}</span>
     {#if isTwoStage}
       <span class="text-muted-foreground">{tournament.swiss_group_size ? `每组 ${tournament.swiss_group_size} 人` : "不分组"}{hasGroupBrackets ? "" : ` · ${swissRoundsLabel}`} · 每组前 {tournament.advance_per_group} 名晋级</span>

@@ -1618,4 +1618,8 @@ export default {
   "加载失败:": "Failed to load:",
   "正在加载载具池...": "Loading the vehicle pool...",
   "载具池加载失败：{0}": "The vehicle pool failed to load: {0}",
+  "管理员 · Ban / Pick 载具池模板": "Admin · Ban / Pick pool template",
+  "自动（{0}）": "Automatic ({0})",
+  "只列出「{0}」类型的模板": "Only {0} templates are listed",
+  "编辑模板 →": "Edit template →",
 };
