@@ -1,0 +1,45 @@
+<script>
+  // One match card of the overlay's brackets and boards (single and double
+  // elimination trees, Swiss / group boards), so every format looks alike:
+  // flag and name per row, the winner in amber, the loser dimmed, scores
+  // once the match is live or played, W / FF for walkovers; amber border
+  // while live. `size`: sm (stage boards), md (trees), lg (8-player single
+  // elimination, where the cards are big). The parent sets the box size.
+  import Flag from "$lib/components/Flag.svelte";
+
+  let { match: m, tournament, who, isAlive = null, size = "md", bye = false, class: extra = "", style = "" } = $props();
+
+  const SIZES = {
+    sm: { box: "rounded-lg px-3 gap-0.5", row: "text-sm gap-2", name: "gap-1.5", flag: 18, score: "text-xs" },
+    md: { box: "rounded-xl px-3.5 gap-0.5", row: "text-base leading-tight gap-2", name: "gap-2", flag: 22, score: "text-sm" },
+    lg: { box: "rounded-xl px-5 gap-2", row: "text-3xl leading-tight gap-3", name: "gap-3", flag: 36, score: "text-2xl" },
+  };
+  let s = $derived(SIZES[size] || SIZES.md);
+  let done = $derived(m.status === "completed" || m.status === "walkover");
+  let live = $derived(m.id === tournament?.active_match_id);
+</script>
+
+<div
+  class="border-2 flex flex-col justify-center shadow-xl {s.box}
+    {bye ? 'opacity-35 border-slate-800 bg-slate-950/50' : live ? 'border-amber-500 bg-amber-950/40' : done ? 'border-slate-800 bg-slate-950/80' : 'border-slate-700/60 bg-slate-900/80'}
+    {extra}"
+  {style}
+>
+  {#each [[m.player1_id, m.score1], [m.player2_id, m.score2]] as [pid, score], slot (slot)}
+    {@const won = done && m.winner_id && m.winner_id === pid}
+    {@const lost = done && m.winner_id && pid && m.winner_id !== pid}
+    {@const out = !done && pid && isAlive && !isAlive(pid)}
+    <div class="flex items-center justify-between {s.row} {lost ? 'opacity-45' : ''}">
+      <span class="flex min-w-0 items-center {s.name}">
+        {#if pid}<Flag code={who.flag(pid)} size={s.flag} />{/if}
+        <span
+          class="truncate font-bold
+            {!pid ? 'text-slate-600 italic' : won ? 'text-amber-300' : lost || out ? 'text-slate-400' : 'text-white'}"
+        >{pid ? who.name(pid) : bye ? "—" : "TBD"}</span>
+      </span>
+      <span class="font-orbitron font-black shrink-0 {s.score} {won ? 'text-amber-400' : 'text-slate-500'}">
+        {#if bye}{:else if m.status === "walkover"}{won ? "W" : "FF"}{:else if done || live}{score ?? 0}{/if}
+      </span>
+    </div>
+  {/each}
+</div>

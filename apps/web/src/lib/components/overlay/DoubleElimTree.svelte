@@ -1,6 +1,6 @@
 <script>
   // Overlay double-elimination tree (layout in $lib/overlay-layout.js).
-  import Flag from "$lib/components/Flag.svelte";
+  import OverlayMatchCard from "./OverlayMatchCard.svelte";
   import { DT } from "$lib/overlay-layout.js";
 
   let { tournament, tree, selectedKey = null, who } = $props();
@@ -27,30 +27,14 @@
     {/each}
     {#each tree.items as it (it.match.id)}
       {@const m = it.match}
-      {@const done = m.status === "completed" || m.status === "walkover"}
-      {@const live = m.id === tournament.active_match_id}
-      {@const bye = done && (!m.player1_id || !m.player2_id)}
-      <div
-        class="absolute rounded-xl border-2 px-3.5 flex flex-col justify-center gap-0.5 shadow-xl
-          {bye ? 'opacity-35 border-slate-800 bg-slate-950/50' : live ? 'border-amber-500 bg-amber-950/40' : done ? 'border-slate-800 bg-slate-950/80' : 'border-slate-700/60 bg-slate-900/80'}"
+      <OverlayMatchCard
+        match={m}
+        {tournament}
+        {who}
+        bye={(m.status === "completed" || m.status === "walkover") && (!m.player1_id || !m.player2_id)}
+        class="absolute"
         style="left: {it.x}px; top: {it.y - DT.cardHeight / 2}px; width: {DT.columnWidth}px; height: {DT.cardHeight}px;"
-      >
-        {#each [[m.player1_id, m.score1], [m.player2_id, m.score2]] as [pid, score], slot (slot)}
-          {@const won = done && m.winner_id && m.winner_id === pid}
-          {@const lost = done && m.winner_id && pid && m.winner_id !== pid}
-          <div class="flex items-center justify-between gap-2 text-base leading-tight {lost ? 'opacity-45' : ''}">
-            <span class="flex min-w-0 items-center gap-2">
-              {#if pid}<Flag code={who.flag(pid)} size={22} />{/if}
-              <span class="truncate font-bold {!pid ? 'text-slate-600 italic' : won ? 'text-amber-300' : lost ? 'text-slate-400' : 'text-white'}"
-                >{pid ? who.name(pid) : bye ? "—" : "TBD"}</span
-              >
-            </span>
-            <span class="font-orbitron font-black text-sm shrink-0 {won ? 'text-amber-400' : 'text-slate-500'}">
-              {#if bye}{:else if m.status === "walkover"}{won ? "W" : "FF"}{:else if done || live}{score ?? 0}{/if}
-            </span>
-          </div>
-        {/each}
-      </div>
+      />
     {/each}
   </div>
 </div>
