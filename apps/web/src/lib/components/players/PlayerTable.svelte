@@ -23,7 +23,7 @@
           <th class="px-5 py-3">国籍</th>
           <th class="px-5 py-3">联系方式</th>
           <th class="px-5 py-3">Liquipedia</th>
-          <th class="px-5 py-3">IP 地址</th>
+          {#if isAdmin}<th class="px-5 py-3">IP 地址</th>{/if}
           <th class="px-5 py-3 text-right">操作</th>
         </tr>
       </thead>
@@ -67,7 +67,7 @@
                 <span class="text-muted-foreground/40 text-xs">—</span>
               {/if}
             </td>
-            <td class="px-5 py-3 font-mono text-xs text-muted-foreground/85">{p.last_ip || "—"}</td>
+            {#if isAdmin}<td class="px-5 py-3 font-mono text-xs text-muted-foreground/85">{p.last_ip || "—"}</td>{/if}
             <td class="px-5 py-3 text-right">
               {#if isAdmin || p.id === userState.id}
                 <Button
@@ -85,7 +85,7 @@
 
         {#if players.length === 0}
           <tr>
-            <td colspan="7" class="px-5 py-16 text-center">
+            <td colspan={isAdmin ? 7 : 6} class="px-5 py-16 text-center">
               <div class="flex flex-col items-center gap-2 text-muted-foreground">
                 <UsersIcon class="w-8 h-8 opacity-30" />
                 <p class="text-sm">{emptyText}</p>

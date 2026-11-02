@@ -62,17 +62,20 @@
         </div>
       </div>
 
-      <div class="grid grid-cols-2 gap-3 pt-1 min-w-0">
+      <div class="grid {isAdmin ? 'grid-cols-2' : 'grid-cols-1'} gap-3 pt-1 min-w-0">
         <div class="space-y-1 min-w-0">
           <span class="text-[10px] text-muted-foreground block">联系方式</span>
           <div class="flex flex-wrap gap-1">
             <ContactBadges tags={p.battle_tags} compact empty="未设置" />
           </div>
         </div>
-        <div class="space-y-1 min-w-0">
-          <span class="text-[10px] text-muted-foreground block">上次活跃 IP</span>
-          <span class="text-[10px] font-mono text-muted-foreground/80 block truncate" title={p.last_ip || "—"}>{p.last_ip || "—"}</span>
-        </div>
+        {#if isAdmin}
+          <!-- IP addresses are for admins only (the API leaves them out for others). -->
+          <div class="space-y-1 min-w-0">
+            <span class="text-[10px] text-muted-foreground block">上次活跃 IP</span>
+            <span class="text-[10px] font-mono text-muted-foreground/80 block truncate" title={p.last_ip || "—"}>{p.last_ip || "—"}</span>
+          </div>
+        {/if}
       </div>
     </div>
   {/each}

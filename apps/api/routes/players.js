@@ -7,6 +7,7 @@ import { PlayerRepo, mergePlayerInto } from '../repositories/player-repo.js';
 import { isAdminRequest, requireAdmin, requireSelfOrAdmin } from '../lib/admin.js';
 import { contactProblem, parseContact, CONTACT_REQUIRED } from '../lib/contact.js';
 import { inTransaction } from '../lib/transaction.js';
+import { publicPlayer } from '../lib/player-privacy.js';
 
 export default async function playersRoutes(fastify) {
   const repo = PlayerRepo(fastify.db);
@@ -17,15 +18,17 @@ export default async function playersRoutes(fastify) {
     for (const t of rows) fastify.tournamentEvents.emit(`update:${t.id}`, message);
   }
 
-  fastify.get('/players', async () => {
-    return await repo.list();
+  // IP addresses only for admins (lib/player-privacy.js).
+  fastify.get('/players', async (req) => {
+    const admin = isAdminRequest(req);
+    return (await repo.list()).map((p) => publicPlayer(p, admin));
   });
 
   fastify.get('/players/:id', async (req) => {
     const p = await repo.getById(req.params.id);
     if (!p) throw fastify.httpErrors.notFound('Player not found');
     return {
-      ...p,
+      ...publicPlayer(p, isAdminRequest(req)),
       tournaments: await repo.getTournaments(req.params.id)
     };
   });
