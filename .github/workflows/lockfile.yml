@@ -1,0 +1,35 @@
+name: Update lockfile
+
+# Push a branch named deps/... with a package.json change; this job runs
+# pnpm install (which updates pnpm-lock.yaml) and commits the lockfile back
+# to that branch, then runs the tests. For sessions that cannot reach the npm
+# registry. Merge the branch into main once it is green.
+
+on:
+  push:
+    branches: ['deps/**']
+
+permissions:
+  contents: write
+
+jobs:
+  lockfile:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: pnpm install --no-frozen-lockfile
+      - run: pnpm build:web
+      - run: pnpm test
+      - name: Commit the lockfile
+        run: |
+          if git diff --quiet pnpm-lock.yaml; then echo "lockfile unchanged"; exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add pnpm-lock.yaml
+          git commit -m "Update pnpm-lock.yaml"
+          git push
