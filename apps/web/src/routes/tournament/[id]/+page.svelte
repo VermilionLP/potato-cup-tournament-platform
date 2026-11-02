@@ -50,6 +50,7 @@
   import LiveHandoff from "$lib/components/tournament/LiveHandoff.svelte";
   import MyMatchCard from "$lib/components/tournament/MyMatchCard.svelte";
   import StartCheckinDialog from "$lib/components/tournament/StartCheckinDialog.svelte";
+  import LiveNow from "$lib/components/tournament/LiveNow.svelte";
   import { registrationActions } from "$lib/event-registration.js";
   import { stageActions } from "$lib/event-stage.js";
   import { channelOptions, liveElsewhere, savedChannel, savedStreamMode, saveChannel, withChannel } from "$lib/live-channels.js";
@@ -273,6 +274,26 @@
     ensureAdmin: () => ensureAdmin(),
   });
 
+  // Tabs (remembered in the address as #overview / #bracket / #players /
+  // #live). A running event opens on its bracket, the others on the overview.
+  const TAB_IDS = ["overview", "bracket", "players", "live"];
+  let chosenTab = $state("");
+  let tabs = $derived([
+    { id: "overview", label: "概览" },
+    { id: "bracket", label: tournament?.status === "registration" ? "对阵预览" : "对阵" },
+    { id: "players", label: "选手", count: tournament?.players?.length ?? 0 },
+    { id: "live", label: "直播" },
+  ]);
+  let activeTab = $derived(chosenTab || (tournament?.status === "in_progress" ? "bracket" : "overview"));
+  onMount(() => {
+    const fromHash = window.location.hash.slice(1);
+    if (TAB_IDS.includes(fromHash)) chosenTab = fromHash;
+  });
+  function selectTab(id) {
+    chosenTab = id;
+    history.replaceState(history.state, "", `#${id}`);
+  }
+
   // Starting an event with check-in goes through the absentees dialog.
   function onStatus(status) {
     if (status === "in_progress" && tournament?.status === "registration" && tournament?.checkin?.enabled) {
@@ -356,6 +377,7 @@
       {banpickEnabled}
       {matchOrder}
       {playerName}
+      roundLabel={matchRoundLabel}
       {playoffBusy}
       {shownStage}
       bind:stageView
@@ -417,74 +439,84 @@
       onreload={load}
     />
 
-    <!-- Active Panel based on current stage -->
-    {#if tournament.status === "registration"}
-      <!-- STAGE 1: REGISTRATION -->
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <!-- Join / Seeding Panel -->
-        <div class="lg:col-span-2 space-y-6">
-          <RegistrationCard
-            {tournament}
-            {isAdmin}
-            {isRegistered}
-            {unregisteredPlayers}
-            onregister={doRegister}
-            onunregister={doUnregister}
-            onbatch={doBatchRegister}
-          />
-          {#if isAdmin && (tournament.players?.length || 0) >= 2}
-            <SeedingCard {tournament} {seedOrder} {playerName} onauto={autoSeed} onrandom={randomizeSeed} onmove={moveSeed} />
-          {/if}
-        </div>
+    <!-- Tabs: overview (the stage's main panel), bracket, players, live -->
+    <div class="flex gap-1 overflow-x-auto border-b border-border/60" role="tablist" aria-label="赛事页">
+      {#each tabs as tb (tb.id)}
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeTab === tb.id}
+          onclick={() => selectTab(tb.id)}
+          class="shrink-0 -mb-px border-b-2 px-3 py-2 text-sm font-semibold cursor-pointer transition-colors
+            {activeTab === tb.id ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}"
+        >
+          {tb.label}{#if tb.count != null}<span class="ml-1 text-[11px] font-normal opacity-70">{tb.count}</span>{/if}
+        </button>
+      {/each}
+    </div>
 
-        <!-- Sidebar Player List -->
-        <div class="space-y-6">
-          {@render obsControl()}
-          {@render rosterSidebar()}
-        </div>
-      </div>
-
-      <!-- Bracket Preview in Registration stage -->
-      {#if (tournament.players?.length || 0) >= (isDoubleElim ? 4 : 2)}
-        <div class="mt-6">
-          {@render bracketView()}
-        </div>
-      {/if}
-    {:else if tournament.status === "voting"}
-      <!-- STAGE 2: VOTING -->
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div class="lg:col-span-2 space-y-6">
-          <VoteBoard {tournament} {tid} {isAdmin} {voteOptions} bind:weekOffset={voteWeekOffset} {playerName} onchanged={load} />
-        </div>
-        <div class="space-y-6">
-          <VoteProposals {tid} onchanged={load} />
-          {@render obsControl()}
-          {@render rosterSidebar()}
-        </div>
-      </div>
-    {:else if ["in_progress", "completed"].includes(tournament.status)}
-      <!-- STAGE 3 & 4: BRACKET & RESULT -->
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div class="lg:col-span-2 space-y-6">
-          {#if tournament.status === "completed"}
-            <ResultsPanel
+    {#if activeTab === "overview"}
+      {#if tournament.status === "registration"}
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div class="lg:col-span-2 space-y-6">
+            <RegistrationCard
               {tournament}
-              {podium}
-              {standings}
-              swissTable={isSwiss && !isTwoStage}
               {isAdmin}
-              {playerName}
-              onexportjson={downloadJson}
-              onexportwiki={() => wikiDialog?.start()}
+              {isRegistered}
+              {unregisteredPlayers}
+              onregister={doRegister}
+              onunregister={doUnregister}
+              onbatch={doBatchRegister}
             />
-          {/if}
-
+            {#if isAdmin && (tournament.players?.length || 0) >= 2}
+              <SeedingCard {tournament} {seedOrder} {playerName} onauto={autoSeed} onrandom={randomizeSeed} onmove={moveSeed} />
+            {/if}
+          </div>
+          <div class="space-y-6">
+            {@render rosterSidebar()}
+          </div>
+        </div>
+        <!-- Admins seeding: the preview follows the seeds, so it stays here too. -->
+        {#if isAdmin && (tournament.players?.length || 0) >= (isDoubleElim ? 4 : 2)}
           {@render bracketView()}
+        {/if}
+      {:else if tournament.status === "voting"}
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div class="lg:col-span-2 space-y-6">
+            <VoteBoard {tournament} {tid} {isAdmin} {voteOptions} bind:weekOffset={voteWeekOffset} {playerName} onchanged={load} />
+          </div>
+          <div class="space-y-6">
+            <VoteProposals {tid} onchanged={load} />
+          </div>
         </div>
-        <div class="space-y-6">
-          {@render obsControl()}
-          {@render rosterSidebar()}
-        </div>
+      {:else if tournament.status === "completed"}
+        <ResultsPanel
+          {tournament}
+          {podium}
+          {standings}
+          swissTable={isSwiss && !isTwoStage}
+          {isAdmin}
+          {playerName}
+          onexportjson={downloadJson}
+          onexportwiki={() => wikiDialog?.start()}
+        />
+      {:else}
+        <LiveNow tournament={live} order={matchOrder} roundLabel={matchRoundLabel} {playerName} onopen={(m) => matchReport?.openDetails(m)} />
+      {/if}
+    {:else if activeTab === "bracket"}
+      {#if tournament.status === "registration" && (tournament.players?.length || 0) < (isDoubleElim ? 4 : 2)}
+        <p class="py-12 text-center text-xs italic text-muted-foreground">报名人数够了之后这里会显示对阵预览。</p>
+      {:else}
+        {@render bracketView()}
+      {/if}
+    {:else if activeTab === "players"}
+      {@render rosterSidebar()}
+    {:else if activeTab === "live"}
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {#if tournament.status === "in_progress"}
+          <LiveNow tournament={live} order={matchOrder} roundLabel={matchRoundLabel} {playerName} onopen={(m) => matchReport?.openDetails(m)} />
+        {/if}
+        {@render obsControl()}
       </div>
     {/if}
   </div>
