@@ -7,6 +7,8 @@
   import SwordsIcon from "@lucide/svelte/icons/swords";
   import AwardIcon from "@lucide/svelte/icons/award";
   import PlaneIcon from "@lucide/svelte/icons/plane";
+  import BugIcon from "@lucide/svelte/icons/bug";
+  import { userState } from "$lib/user.svelte.js";
 
   const LINKS = [
     { href: "/", label: "赛事大厅", icon: TrophyIcon },
@@ -16,10 +18,12 @@
     { href: "/points", label: "年度积分榜", icon: AwardIcon },
     { href: "/pools", label: "载具池", icon: PlaneIcon },
   ];
+  // Admins also see the front-end error reports.
+  let links = $derived(userState.adminToken ? [...LINKS, { href: "/errors", label: "报错", icon: BugIcon }] : LINKS);
 </script>
 
 <nav class="flex items-center gap-0.5">
-  {#each LINKS as link (link.href)}
+  {#each links as link (link.href)}
     <a
       href={link.href}
       title={link.label}

@@ -48,6 +48,7 @@ async function request(path, options = {}) {
     }
     throw error;
   }
+  if (res.status === 204) return null;
   return res.json();
 }
 
@@ -56,6 +57,12 @@ const enc = encodeURIComponent;
 export const API = {
   // Admin
   verifyAdmin: () => request('/admin/session'),
+
+  // Front-end error reports ($lib/error-report.js); admins read them on /errors
+  reportClientError: (report) =>
+    request('/client-errors', { method: 'POST', body: JSON.stringify(report), keepalive: true }),
+  getClientErrors: () => request('/client-errors'),
+  clearClientErrors: () => request('/client-errors', { method: 'DELETE' }),
 
   // Potato Cup points leaderboard (积分榜); season '' = the latest
   getPointsLeaderboard: (season) => request(`/points-leaderboard${season ? `?season=${enc(season)}` : ''}`),

@@ -103,7 +103,7 @@ test('page-load writes (touch, push, votes, check-in, live) keep the cache; resu
   assert.equal(dropsCache('GET', '/api/ladder', 200), false);
   // Every listed route exists.
   const { buildRoutes, fakeDb } = await import('./helpers/route-harness.js');
-  const files = ['players', 'player-keys', 'push', 'votes', 'registrations', 'tournament-bracket', 'matches'];
+  const files = ['players', 'player-keys', 'push', 'votes', 'registrations', 'tournament-bracket', 'matches', 'client-errors'];
   const mods = await Promise.all(files.map(async (f) => (await import(`../routes/${f}.js`)).default));
   const { routes } = await buildRoutes(mods, fakeDb());
   const known = new Set(routes.map((r) => `${r.method} ${r.path}`));

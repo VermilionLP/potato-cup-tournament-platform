@@ -35,6 +35,7 @@ import { registerRateLimit } from './lib/rate-limit.js';
 import { registerLadderCacheInvalidation } from './lib/ladder-cache.js';
 import { staticCacheHeaders } from './lib/static-cache.js';
 import { registerCompression } from './lib/compression.js';
+import clientErrorRoutes from './routes/client-errors.js';
 import { corsOrigin } from './lib/cors.js';
 import fastifySse from '@fastify/sse';
 
@@ -89,6 +90,7 @@ await fastify.register(vehicleImageRoutes, { prefix: '/api' });
 await fastify.register(adminRoutes, { prefix: '/api' });
 await fastify.register(vehiclePoolRoutes, { prefix: '/api' });
 await fastify.register(pointsRoutes, { prefix: '/api' });
+await fastify.register(clientErrorRoutes, { prefix: '/api' });
 // Background jobs (push reminders, auto-confirming reports). BACKGROUND_JOBS=off
 // for a second copy that only answers requests: the deploy preflight on a
 // spare port and the CI smoke test.

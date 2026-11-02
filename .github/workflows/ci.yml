@@ -20,8 +20,8 @@ jobs:
       - run: pnpm test
 
   # Runs the real server against a fresh PostgreSQL: every migration from
-  # scratch, then the deploy's smoke test (scripts/smoke.sh) on the built
-  # web app, the API and the docs.
+  # scratch, the deploy's smoke test (scripts/smoke.sh) on the built web
+  # app, the API and the docs, then the browser tests (e2e/).
   smoke:
     runs-on: ubuntu-latest
     services:
@@ -54,6 +54,11 @@ jobs:
           for i in $(seq 1 60); do curl -sf localhost:3100/api/ping >/dev/null && exit 0; sleep 1; done
           cat server.log; exit 1
       - run: bash scripts/smoke.sh http://localhost:3100
+      - name: Browser tests (e2e/)
+        run: |
+          npm install --prefix e2e --no-save --no-package-lock playwright@1.55.0
+          npx --prefix e2e playwright install --with-deps chromium
+          E2E_BASE=http://localhost:3100 E2E_ADMIN_TOKEN=ci-admin-token node --test e2e/*.test.mjs
       - name: Server log
         if: always()
         run: tail -n 100 server.log || true

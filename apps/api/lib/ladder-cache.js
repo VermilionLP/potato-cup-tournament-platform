@@ -91,6 +91,8 @@ export const CACHE_NEUTRAL_ROUTES = new Set([
   'POST /tournaments/:id/active-match',
   'POST /tournaments/:id/matches/:matchId/report/dispute',
   'DELETE /tournaments/:id/matches/:matchId/report',
+  'POST /client-errors',
+  'DELETE /client-errors',
 ]);
 
 /** Whether a finished request may have changed what the cache holds. */

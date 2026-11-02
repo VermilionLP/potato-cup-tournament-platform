@@ -8,7 +8,7 @@ import { hashPlayerKey } from '../lib/player-key.js';
 const MODULE_FILES = [
   'tournaments', 'tournament-settings', 'tournament-bracket', 'tournament-import', 'players',
   'player-keys', 'player-stats', 'registrations', 'matches', 'votes', 'ladder', 'wiki', 'push',
-  'admin', 'vehicle-pools', 'points',
+  'admin', 'vehicle-pools', 'points', 'client-errors',
 ];
 const modules = await Promise.all(MODULE_FILES.map(async (f) => (await import(`../routes/${f}.js`)).default));
 
@@ -17,7 +17,7 @@ const player = (id, key) => ({ 'x-player-id': id, ...(key ? { 'x-player-key': ke
 process.env.ADMIN_TOKEN = ADMIN['x-admin-token'];
 
 // Writes anyone may make without an identity.
-const PUBLIC_WRITES = new Set(['POST /push/subscribe', 'DELETE /push/unsubscribe']);
+const PUBLIC_WRITES = new Set(['POST /push/subscribe', 'DELETE /push/unsubscribe', 'POST /client-errors']);
 // Writes a player may make for themselves (checked separately below).
 const SELF_WRITES = new Set([
   'POST /players', 'POST /players/:id/touch', 'POST /players/:id/key',
@@ -30,7 +30,7 @@ const SELF_WRITES = new Set([
   'DELETE /tournaments/:id/matches/:matchId/report',
 ]);
 // Reads only admins may make.
-const ADMIN_READS = ['GET /players/:id/key', 'GET /tournaments/:id/wiki'];
+const ADMIN_READS = ['GET /players/:id/key', 'GET /tournaments/:id/wiki', 'GET /client-errors'];
 const body = { player_id: 'p1', id: 'p1', score1: 2, score2: 0, winner_id: 'p1', newId: 'p9', targetId: 'p2', name: 'X', battle_tags: { qq: '123456' } };
 
 test('every write needs an identity; a request without one writes nothing', async () => {

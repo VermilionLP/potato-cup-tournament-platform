@@ -15,6 +15,7 @@
   import SiteNav from "$lib/components/layout/SiteNav.svelte";
   import PushToggle from "$lib/components/layout/PushToggle.svelte";
   import AdminDialog from "$lib/components/layout/AdminDialog.svelte";
+  import { installErrorReporting } from "$lib/error-report.js";
   import ProfileDialog from "$lib/components/layout/ProfileDialog.svelte";
   import SunIcon from "@lucide/svelte/icons/sun";
   import MoonIcon from "@lucide/svelte/icons/moon";
@@ -59,6 +60,8 @@
 
   onMount(() => {
     initLocale();
+    // Uncaught errors go to the API for admins (/errors).
+    const stopReporting = installErrorReporting((r) => API.reportClientError(r));
     if (userState.id) {
       const id = userState.id;
       API.touchPlayer(id)
@@ -73,7 +76,10 @@
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker.register("/sw.js").catch((e) => console.warn("service worker registration failed:", e));
     }
-    return () => window.removeEventListener("player-key-required", notifyKeyConflict);
+    return () => {
+      stopReporting();
+      window.removeEventListener("player-key-required", notifyKeyConflict);
+    };
   });
 </script>
 
