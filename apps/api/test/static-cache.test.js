@@ -19,3 +19,11 @@ test('headers set on the response', () => {
   assert.match(headers['Cache-Control'], /immutable/);
   assert.equal(headers.Vary, 'Accept-Encoding');
 });
+
+test('headers set through a Fastify reply (@fastify/static 10)', () => {
+  const headers = {};
+  const reply = { header(k, v) { headers[k] = v; return this; } };
+  staticCacheHeaders(reply, '/x/index.html');
+  assert.equal(headers['Cache-Control'], 'no-cache');
+  assert.equal(headers.Vary, 'Accept-Encoding');
+});

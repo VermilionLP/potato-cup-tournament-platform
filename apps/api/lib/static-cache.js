@@ -20,9 +20,14 @@ export function cacheControlFor(filePath) {
   return ALWAYS_CHECK;
 }
 
-/** setHeaders for @fastify/static (with cacheControl: false). */
-export function staticCacheHeaders(res, filePath) {
-  res.setHeader('Cache-Control', cacheControlFor(filePath));
+/**
+ * setHeaders for @fastify/static (with cacheControl: false). Since v10 it
+ * is called with the Fastify reply (`reply.header`); before, with the raw
+ * response (`res.setHeader`). Both are accepted.
+ */
+export function staticCacheHeaders(reply, filePath) {
+  const set = typeof reply.header === 'function' ? (k, v) => reply.header(k, v) : (k, v) => reply.setHeader(k, v);
+  set('Cache-Control', cacheControlFor(filePath));
   // The same URL may be sent as br, gzip or plain.
-  res.setHeader('Vary', 'Accept-Encoding');
+  set('Vary', 'Accept-Encoding');
 }
