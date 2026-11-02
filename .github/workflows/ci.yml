@@ -23,7 +23,8 @@ jobs:
   # scratch, the deploy's smoke test (scripts/smoke.sh) on the built web
   # app, the API and the docs, then the browser tests (e2e/).
   smoke:
-    runs-on: ubuntu-latest
+    # Pinned: Playwright's browsers support only some Ubuntu releases.
+    runs-on: ubuntu-24.04
     services:
       postgres:
         image: postgres:16
