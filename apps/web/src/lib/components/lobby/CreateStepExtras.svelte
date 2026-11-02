@@ -1,5 +1,5 @@
 <script>
-  // Create-event wizard, last step: Ban / Pick, points and a summary.
+  // Create-event wizard, last step: Ban / Pick, check-in, points and a summary.
   import { GROUP_FORMATS, gameModeLabel, vehiclePoolLabel } from "$lib/tournament.js";
   import { cleanTable } from "$lib/points.js";
   import { isTwoStage } from "$lib/create-event.js";
@@ -28,6 +28,15 @@
       ? `每张对阵卡片上显示 BP 按钮，使用${vehiclePoolLabel(form.eventPool)}载具池禁用和抽取。`
       : "不启用时比赛仍按上一步选的比赛类型分类统计。"}
   </p>
+</section>
+
+<section class="space-y-2 rounded-xl border border-border/60 bg-background/30 p-3">
+  <div class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">签到</div>
+  <label class="flex items-center gap-2 text-xs text-foreground/80 cursor-pointer">
+    <input type="checkbox" bind:checked={form.checkinEnabled} class="accent-primary" />
+    需要赛前签到
+  </label>
+  <p class="text-[10px] text-muted-foreground">开赛前 30 分钟开放签到；开赛时由管理员决定没签到的选手移出还是判弃权。</p>
 </section>
 
 <section class="space-y-2 rounded-xl border border-border/60 bg-background/30 p-3">

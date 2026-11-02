@@ -1,10 +1,12 @@
 <script>
   // "Create event" wizard (admins): basics, format, one page per stage of a
   // two-stage event, then Ban / Pick, points and a summary. Form logic is in
-  // $lib/create-event.js. Call start() to open it with a fresh form.
+  // $lib/create-event.js. Call start() to open it with a fresh form; "复制"
+  // fills it from an earlier event (next number, next week's time).
   import { toast } from "svelte-sonner";
   import { API } from "$lib/api.js";
-  import { createEventBody, createSteps, newEventForm, stepError } from "$lib/create-event.js";
+  import { copyableEvents, createEventBody, createSteps, formFromEvent, newEventForm, stepError } from "$lib/create-event.js";
+  import { formatScheduled } from "$lib/datetime.js";
   import * as Dialog from "$lib/components/ui/dialog/index.js";
   import { Button } from "$lib/components/ui/button/index.js";
   import CreateStepBasics from "./CreateStepBasics.svelte";
@@ -13,7 +15,23 @@
   import CreateStepPlayoff from "./CreateStepPlayoff.svelte";
   import CreateStepExtras from "./CreateStepExtras.svelte";
 
-  let { defaultSeason = "", oncreated } = $props();
+  let { defaultSeason = "", events = [], oncreated } = $props();
+
+  let copyChoices = $derived(copyableEvents(events));
+  let copySource = $state("");
+
+  function copyFrom(id) {
+    copySource = id;
+    const src = copyChoices.find((t) => t.id === id);
+    if (!src) {
+      form = newEventForm(defaultSeason);
+      return;
+    }
+    form = formFromEvent(src, defaultSeason);
+    step = 0;
+    triedStep = -1;
+    toast.success(form.name ? `已复制「${src.name}」的设置` : `已复制「${src.name}」的设置，请填写赛事名称`);
+  }
 
   let open = $state(false);
   let form = $state(newEventForm());
@@ -28,8 +46,10 @@
   let isLastStep = $derived(stepIndex === steps.length - 1);
   let currentError = $derived(stepError(form, stepId));
 
-  export function start() {
+  export function start(fromId = "") {
+    copySource = "";
     form = newEventForm(defaultSeason);
+    if (fromId) copyFrom(fromId);
     step = 0;
     triedStep = -1;
     open = true;
@@ -76,6 +96,26 @@
       <Dialog.Description class="text-xs text-muted-foreground">填写比赛时间会跳过时间投票，直接开启报名。</Dialog.Description>
     </Dialog.Header>
     <div class="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain -mx-4 px-4 py-1">
+      {#if copyChoices.length}
+        <div class="flex flex-wrap items-center gap-2 rounded-lg border border-dashed border-border/70 px-3 py-2">
+          <label for="create-copy-from" class="text-xs font-semibold text-foreground/80 shrink-0">复制已有赛事</label>
+          <select
+            id="create-copy-from"
+            value={copySource}
+            onchange={(e) => copyFrom(e.currentTarget.value)}
+            class="min-w-0 flex-1 rounded-md border border-border bg-background px-2 py-1 text-xs"
+          >
+            <option value="">不复制，从头填写</option>
+            {#each copyChoices as t (t.id)}
+              <option value={t.id}>{t.name}{t.scheduled_time ? ` · ${formatScheduled(t.scheduled_time)}` : ""}</option>
+            {/each}
+          </select>
+          {#if copySource}
+            <span class="w-full text-[10px] text-muted-foreground">赛制、模式、类型、积分表、签到和载具池沿用原赛事，名称编号和时间自动顺延一周；选手和直邀名额不复制。</span>
+          {/if}
+        </div>
+      {/if}
+
       <ol class="flex flex-wrap items-center gap-1.5" aria-label="创建步骤">
         {#each steps as s, i (s.id)}
           <li>

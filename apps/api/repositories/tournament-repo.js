@@ -43,7 +43,7 @@ export function TournamentRepo(db) {
     return res.rows[0] || null;
   }
 
-  async function create({ id, name, description, player_capacity, hold_third_place, loser_advances, scheduled_time, game_mode, vehicle_pool, format, grand_final_reset, swiss_rounds, banpick_enabled, playoff_format, swiss_group_size, advance_per_group, points_table = null, points_season = '', points_kind = 'weekly', points_invite = false, tier = null, kind = null }) {
+  async function create({ id, name, description, player_capacity, hold_third_place, loser_advances, scheduled_time, game_mode, vehicle_pool, format, grand_final_reset, swiss_rounds, banpick_enabled, playoff_format, swiss_group_size, advance_per_group, points_table = null, points_season = '', points_kind = 'weekly', points_invite = false, tier = null, kind = null, checkin_enabled = false, vehicle_template = null }) {
     const scheduledTime = String(scheduled_time || '').trim();
     const bracketFormat = SUPPORTED_FORMATS.includes(format) ? format : SUPPORTED_FORMATS[0];
     // Two-stage events: `format` is the group stage, `playoff_format` the playoff.
@@ -51,8 +51,9 @@ export function TournamentRepo(db) {
     await db.query(`
       INSERT INTO axsuck.tournaments
         (id, name, description, status, player_capacity, hold_third_place, loser_advances, scheduled_time, game_mode, vehicle_pool, format, grand_final_reset, swiss_rounds, banpick_enabled,
-         playoff_format, swiss_group_size, advance_per_group, points_table, points_season, points_kind, points_invite, tier, event_kind)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18::jsonb, $19, $20, $21, $22, $23)
+         playoff_format, swiss_group_size, advance_per_group, points_table, points_season, points_kind, points_invite, tier, event_kind,
+         checkin_enabled, vehicle_template)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18::jsonb, $19, $20, $21, $22, $23, $24, $25)
     `, [
       id,
       name,
@@ -78,6 +79,8 @@ export function TournamentRepo(db) {
       Boolean(points_table && points_invite),
       tier,
       kind,
+      Boolean(checkin_enabled),
+      vehicle_template || null,
     ]);
     return getById(id);
   }

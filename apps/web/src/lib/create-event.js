@@ -34,7 +34,84 @@ export function newEventForm(season = "") {
     pointsSeason: season || currentSeason(),
     pointsKind: "weekly",
     pointsInvite: false,
+    // Check-in 30 minutes before the start (migration 034).
+    checkinEnabled: false,
+    // Copied from another event: its tier / kind and vehicle pool template.
+    tier: "",
+    eventKind: "",
+    vehicleTemplate: "",
+    copiedFrom: "",
   };
+}
+
+/** "Potato Cup Weekly #40" -> "Potato Cup Weekly #41"; "" when the name has no number. */
+export function nextEventName(name) {
+  const m = String(name || "").match(/^(.*?)(\d+)(\D*)$/);
+  if (!m) return "";
+  const next = String(Number(m[2]) + 1).padStart(m[2].length, "0");
+  return `${m[1]}${next}${m[3]}`;
+}
+
+const pad = (n) => String(n).padStart(2, "0");
+
+/**
+ * The same weekday and time, a week (or as many weeks as needed) later
+ * than `scheduled` ("YYYY-MM-DDTHH:mm", Beijing time), and after `now`;
+ * "" when there is no time to go by.
+ */
+export function nextWeekTime(scheduled, now = new Date()) {
+  const m = String(scheduled || "").match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/);
+  if (!m) return "";
+  // Work in UTC on the Beijing wall-clock time; the offset never changes.
+  let t = Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]);
+  const nowBeijing = now.getTime() + 8 * 3600 * 1000;
+  do t += 7 * 86400 * 1000;
+  while (t <= nowBeijing);
+  const d = new Date(t);
+  return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}T${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`;
+}
+
+/**
+ * A form copied from an earlier event: everything but the players, with
+ * the next number in the name and the next week's time. Points invites
+ * are per event and stay off.
+ */
+export function formFromEvent(t, season = "", now = new Date()) {
+  const form = newEventForm(season);
+  const twoStage = Boolean(t.playoff_format);
+  const pointsTable = Array.isArray(t.points_table) && t.points_table.length ? copyTable(t.points_table) : null;
+  return {
+    ...form,
+    name: nextEventName(t.name),
+    capacity: Number(t.player_capacity) || form.capacity,
+    scheduledTime: nextWeekTime(t.scheduled_time, now),
+    gameMode: t.game_mode || form.gameMode,
+    eventPool: t.vehicle_pool || form.eventPool,
+    format: twoStage ? "two_stage" : t.format || form.format,
+    loserAdvances: Boolean(Number(t.loser_advances)),
+    grandFinalReset: t.grand_final_reset !== false,
+    swissRoundsMode: t.swiss_rounds ? "manual" : "auto",
+    swissRounds: t.swiss_rounds || form.swissRounds,
+    groupFormat: twoStage ? t.format : form.groupFormat,
+    playoffFormat: twoStage ? t.playoff_format : form.playoffFormat,
+    groupSize: twoStage ? (t.swiss_group_size ?? "") : form.groupSize,
+    advancePerGroup: twoStage ? t.advance_per_group || form.advancePerGroup : form.advancePerGroup,
+    banpickEnabled: t.banpick_enabled !== false,
+    pointsEnabled: Boolean(pointsTable),
+    pointsTable: pointsTable || form.pointsTable,
+    pointsKind: t.points_kind || form.pointsKind,
+    pointsInvite: false,
+    checkinEnabled: Boolean(t.checkin_enabled),
+    tier: t.tier || "",
+    eventKind: t.event_kind || "",
+    vehicleTemplate: t.vehicle_template || "",
+    copiedFrom: t.id,
+  };
+}
+
+/** Events worth copying: made on the site (not imported), newest first. */
+export function copyableEvents(tournaments = [], limit = 15) {
+  return tournaments.filter((t) => !String(t.id).startsWith("lp-")).slice(0, limit);
 }
 
 export const isTwoStage = (form) => form.format === "two_stage";
@@ -170,6 +247,11 @@ export function createEventBody(form) {
       playoff_format: twoStage ? form.playoffFormat : null,
       swiss_group_size: twoStage ? groupSizeValue(form) : null,
       advance_per_group: twoStage ? Number(form.advancePerGroup) : null,
+      checkin_enabled: Boolean(form.checkinEnabled),
+      // Copied events keep their tier / kind and template; new ones get defaults.
+      ...(form.tier ? { tier: form.tier } : {}),
+      ...(form.eventKind ? { event_kind: form.eventKind } : {}),
+      ...(form.vehicleTemplate ? { vehicle_template: form.vehicleTemplate } : {}),
     },
   };
 }

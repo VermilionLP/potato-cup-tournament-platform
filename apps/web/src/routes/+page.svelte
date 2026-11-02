@@ -10,6 +10,8 @@
   import { Button } from "$lib/components/ui/button/index.js";
   import ActiveEventRow from "$lib/components/lobby/ActiveEventRow.svelte";
   import HistoryEventRow from "$lib/components/lobby/HistoryEventRow.svelte";
+  import { copyableEvents } from "$lib/create-event.js";
+  import CopyIcon from "@lucide/svelte/icons/copy";
   import CreateEventDialog from "$lib/components/lobby/CreateEventDialog.svelte";
   import ClockIcon from "@lucide/svelte/icons/clock";
   import PlusIcon from "@lucide/svelte/icons/plus";
@@ -63,7 +65,10 @@
     loading = false;
   }
 
-  function openCreateDialog() {
+  // The latest event made on the site: "复制上一场" starts from it.
+  let lastEvent = $derived(copyableEvents(tournaments, 1)[0] || null);
+
+  function openCreateDialog(fromId = "") {
     if (!isAdmin) {
       toast.error("创建赛事需要管理员权限，请先点击右上角盾牌图标登录");
       return;
@@ -73,7 +78,7 @@
       document.getElementById("header-profile-button")?.click();
       return;
     }
-    createDialog?.start();
+    createDialog?.start(typeof fromId === "string" ? fromId : "");
   }
 
   // Downloads an event's full data as JSON.
@@ -122,6 +127,17 @@
     </div>
     <div class="flex items-center gap-2 shrink-0">
       {#if isAdmin}
+        {#if lastEvent}
+          <Button
+            variant="outline"
+            onclick={() => openCreateDialog(lastEvent.id)}
+            title="按「{lastEvent.name}」的设置创建下一场：编号 +1，时间顺延一周"
+            class="gap-1.5 text-xs"
+          >
+            <CopyIcon class="w-4 h-4" />
+            复制上一场
+          </Button>
+        {/if}
         <Button
           onclick={openCreateDialog}
           class="gap-1.5 font-bold hover:scale-[1.02] transition-transform text-xs"
@@ -233,4 +249,4 @@
   {/if}
 </div>
 
-<CreateEventDialog bind:this={createDialog} defaultSeason={defaultPointsSeason} oncreated={load} />
+<CreateEventDialog bind:this={createDialog} defaultSeason={defaultPointsSeason} events={tournaments} oncreated={load} />

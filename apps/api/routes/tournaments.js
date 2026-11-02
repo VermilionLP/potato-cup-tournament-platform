@@ -3,6 +3,7 @@
 // overlay in tournament-bracket.js, imports in tournament-import.js.
 
 import { TournamentRepo } from '../repositories/tournament-repo.js';
+import { announce } from '../lib/discord.js';
 import { LadderRepo } from '../repositories/ladder-repo.js';
 import { LiveChannelRepo } from '../repositories/live-channel-repo.js';
 import { Readable } from 'stream';
@@ -92,6 +93,8 @@ export default async function tournamentsRoutes(fastify) {
       points_invite,
       tier,
       event_kind,
+      checkin_enabled,
+      vehicle_template,
     } = req.body;
     const points = normalizePointsTable(points_table);
     if (points.error) throw fastify.httpErrors.badRequest(points.error);
@@ -148,9 +151,17 @@ export default async function tournamentsRoutes(fastify) {
         if (problem) throw fastify.httpErrors.badRequest(problem);
       }
     }
-    return await repo.create({
+    // A copied event keeps its vehicle pool template, if it still exists.
+    let template = null;
+    if (vehicle_template) {
+      const found = await fastify.db.query('SELECT id FROM axsuck.vehicle_pools WHERE id = $1', [String(vehicle_template)]);
+      template = found.rows[0]?.id || null;
+    }
+    const created = await repo.create({
       id,
       name,
+      checkin_enabled: Boolean(checkin_enabled),
+      vehicle_template: template,
       description,
       player_capacity,
       hold_third_place,
@@ -173,6 +184,9 @@ export default async function tournamentsRoutes(fastify) {
       // Tier / kind: as given, else from the points table (or a weekly by name).
       ...defaultTier({ tier, kind: event_kind, pointsKind: points.table ? normalizePointsKind(points_kind) : '', name }),
     });
+    // With a time set, registration opens at once.
+    if (created?.status === 'registration') announce(fastify, 'registration', created);
+    return created;
   });
 
   fastify.get('/calendar.ics', async (req, reply) => {
