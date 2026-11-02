@@ -45,8 +45,9 @@
       url: channelUrl(`${base()}?scene=intro${introStage ? `&stage=${introStage}` : ""}`, channel),
       copied: "已复制开场对阵链接",
     },
-    { key: "ingame", title: "2. 游戏内 HUD (右上角选手+滚动比分)", url: channelUrl(`${base()}?scene=ingame`, channel), copied: "已复制游戏内 HUD 链接" },
-    { key: "intermission", title: "3. 场间 Coming Up (可打比赛)", url: channelUrl(`${base()}?scene=intermission`, channel), copied: "已复制场间 Coming Up 链接" },
+    { key: "hybrid", title: "2. 对阵图 (树状对阵图 + 侧栏)", url: channelUrl(`${base()}?scene=hybrid`, channel), copied: "已复制对阵图链接" },
+    { key: "ingame", title: "3. 游戏内 HUD (右上角选手+滚动比分)", url: channelUrl(`${base()}?scene=ingame`, channel), copied: "已复制游戏内 HUD 链接" },
+    { key: "intermission", title: "4. 场间 Coming Up (可打比赛)", url: channelUrl(`${base()}?scene=intermission`, channel), copied: "已复制场间 Coming Up 链接" },
   ]);
 
   function copy(url, message) {
