@@ -6,14 +6,20 @@
   let { tabs = [], active = "", onselect, onshare } = $props();
 </script>
 
-<div class="flex gap-1 overflow-x-auto border-b border-border/60" role="tablist" aria-label="赛事页">
+<!-- Scrolls sideways on narrow screens without showing a scrollbar; the
+     baseline is an inset shadow so the tabs' underline needs no overflow. -->
+<div
+  class="flex gap-1 overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden shadow-[inset_0_-1px_0_var(--border)]"
+  role="tablist"
+  aria-label="赛事页"
+>
   {#each tabs as tb (tb.id)}
     <button
       type="button"
       role="tab"
       aria-selected={active === tb.id}
       onclick={() => onselect(tb.id)}
-      class="shrink-0 -mb-px border-b-2 px-3 py-2 text-sm font-semibold cursor-pointer transition-colors
+      class="shrink-0 border-b-2 px-3 py-2 text-sm font-semibold cursor-pointer transition-colors
         {active === tb.id ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}"
     >
       {tb.label}{#if tb.count != null}<span class="ml-1 text-[11px] font-normal opacity-70">{tb.count}</span>{/if}
