@@ -48,7 +48,8 @@ test('an admin reports a score from the bracket', async () => {
     await page.waitForFunction(
       async ({ base, id, mid }) => {
         const r = await fetch(`${base}/api/tournaments/${id}`).then((x) => x.json());
-        return r.matches.find((m) => m.id === mid)?.status === 'completed';
+        const m = r.matches.find((x) => x.id === mid);
+        return m?.status === 'completed' && Boolean(m.winner_id); // winner is set right after the score
       },
       { base: BASE, id, mid: match.id },
       { timeout: T, polling: 500 },
