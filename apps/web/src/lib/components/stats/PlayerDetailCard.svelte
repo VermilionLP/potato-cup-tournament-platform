@@ -4,7 +4,7 @@
   import Flag from "$lib/components/Flag.svelte";
   import { Badge } from "$lib/components/ui/badge/index.js";
   import { GAME_MODES, TIER_TAG, VEHICLE_POOLS, tierBreakdown } from "$lib/tournament.js";
-  import { POOL_COLORS, getGradient, getModeName, modeColors, placeClass, placeText } from "$lib/stats-view.js";
+  import { POOL_COLORS, getGradient, getModeCode, getModeName, modeColors, placeClass, placeText } from "$lib/stats-view.js";
   import UsersIcon from "@lucide/svelte/icons/users";
   import TrendingUpIcon from "@lucide/svelte/icons/trending-up";
   import TrophyIcon from "@lucide/svelte/icons/trophy";
@@ -27,8 +27,8 @@
         <div class="flex items-center gap-2">
           <h3 class="text-base font-extrabold text-foreground"><a href="/player/{encodeURIComponent(player.id)}" class="hover:text-primary hover:underline">{player.display_name}</a></h3>
           <Flag code={player.flag} size={18} />
-          <Badge variant="outline" class="text-[9px] px-1.5 py-0 tracking-wider {modeColors(player.main_mode).badge}" title="最常参加的游戏模式">
-            {getModeName(player.main_mode)}
+          <Badge variant="outline" class="text-[9px] px-1.5 py-0 tracking-wider {modeColors(player.main_mode).badge}" title={player.main_mode ? `最常参加的游戏模式：${getModeName(player.main_mode)}` : "最常参加的游戏模式"}>
+            {player.main_mode ? getModeCode(player.main_mode) : getModeName(player.main_mode)}
           </Badge>
         </div>
         <p class="text-[10px] text-muted-foreground mt-0.5 font-mono">
@@ -66,8 +66,7 @@
             <div class="flex justify-between gap-2 text-[10px]">
               <span class="font-bold flex items-center gap-1 min-w-0">
                 <span class="w-1.5 h-1.5 rounded-full shrink-0 {modeColors(mode.id).dot}"></span>
-                {mode.code}
-                <span class="font-normal text-muted-foreground truncate">{mode.name}</span>
+                <span title={mode.name}>{mode.code}</span>
               </span>
               <span class="font-mono text-muted-foreground shrink-0">
                 {#if rec && rec.matches_won + rec.matches_lost > 0}

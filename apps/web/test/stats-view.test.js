@@ -11,7 +11,7 @@ test("statistics page helpers", () => {
   assert.match(placeClass({ from: 9, to: 12 }), /muted/);
   assert.equal(getModeCode("ab"), "AB");
   assert.equal(getModeCode(""), "—");
-  assert.equal(getModeName("sb"), "SB 全真模式");
+  assert.equal(getModeName("sb"), "全真模式");
   assert.equal(getModeName(""), "暂无对局");
   assert.match(modeColors("x").dot, /zinc/);
   for (const pool of VEHICLE_POOLS) assert.ok(POOL_COLORS[pool.id], `colour for ${pool.id}`);

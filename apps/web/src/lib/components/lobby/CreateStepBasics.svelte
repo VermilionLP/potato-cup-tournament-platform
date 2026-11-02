@@ -22,7 +22,7 @@
     <div class="space-y-1.5">
       <span class="text-xs font-semibold text-foreground/80">比赛模式</span>
       <Segmented
-        options={GAME_MODES.map((m) => ({ id: m.id, label: m.code, sub: m.name.replace("模式", ""), title: m.full }))}
+        options={GAME_MODES.map((m) => ({ id: m.id, label: m.code, title: `${m.name} · ${m.full}` }))}
         value={form.gameMode}
         onpick={(id) => (form.gameMode = id)}
       />

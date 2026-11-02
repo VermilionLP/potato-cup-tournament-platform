@@ -50,7 +50,7 @@
     try {
       const res = await API.updateTournament(tid, { game_mode: mode });
       tournament = { ...tournament, game_mode: res.game_mode };
-      toast.success(`比赛模式已改为 ${gameModeInfo(res.game_mode).code} ${gameModeInfo(res.game_mode).name}`);
+      toast.success(`比赛模式已改为 ${gameModeInfo(res.game_mode).code}`);
     } catch (e) {
       toast.error(e.message);
     } finally {
@@ -134,7 +134,7 @@
     class="h-6 rounded-md border border-border bg-background px-1.5 text-xs font-mono font-bold text-foreground cursor-pointer disabled:opacity-60"
   >
     {#each GAME_MODES as mode (mode.id)}
-      <option value={mode.id}>{mode.code} {mode.name}</option>
+      <option value={mode.id} title={mode.name}>{mode.code}</option>
     {/each}
   </select>
 {:else}

@@ -31,7 +31,7 @@ test("the announcement", () => {
   const text = shareMessage(t, { siteUrl: "https://cup.example/" });
   assert.match(text, /^## 🥔 Potato Cup Weekly #41\n/);
   assert.ok(text.includes(`🗓️ 比赛时间：<t:${unix}:F>（<t:${unix}:R>）`));
-  assert.ok(text.includes("🎮 RB 历史模式 · 螺旋桨"));
+  assert.ok(text.includes("🎮 RB · 螺旋桨"));
   assert.ok(text.includes("👥 报名：2 / 32 人"));
   assert.ok(text.includes(`✅ 需要签到：<t:${unix - 1800}:t> 开放（开赛前 30 分钟）`));
   assert.ok(text.includes("💰 奖金：冠军 2500 金鹰币"));
@@ -55,7 +55,7 @@ test("English posts use the site's dictionary for labels", () => {
   const text = shareMessage(t, { siteUrl: "https://cup.example", lang: "en" });
   const unix = scheduledUnix(t.scheduled_time);
   assert.ok(text.includes(`🗓️ Starts <t:${unix}:F> (<t:${unix}:R>)`));
-  assert.ok(text.includes("🎮 RB Realistic · Prop"), text);
+  assert.ok(text.includes("🎮 RB · Prop"), text);
   assert.ok(text.includes("groups of 4, top 2 advance"));
   assert.ok(text.includes("💰 Prizes: 1st 2500 GE"));
   assert.ok(text.includes("🔗 Sign up: https://cup.example/tournament/potatocupweekly41"));

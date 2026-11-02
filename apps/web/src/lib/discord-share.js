@@ -26,7 +26,7 @@ const TEXT = {
     checkinNoTime: "✅ 需要在网站上签到",
     points: (season, monthly, invite) => `📊 计入 ${season} 赛季积分榜（${monthly ? "月赛" : "周赛"}）${invite ? "，冠军直邀总决赛" : ""}`,
     link: { registration: "🔗 报名：", voting: "🔗 投票：", other: "🔗 对阵：" },
-    mode: (m) => `${m.code} ${m.name}`,
+    mode: (m) => m.code,
     label: (x) => x,
   },
   en: {
@@ -47,7 +47,7 @@ const TEXT = {
     checkinNoTime: "✅ Check in on the site before the start",
     points: (season, monthly, invite) => `📊 Counts for the ${season} points season (${monthly ? "monthly" : "weekly"})${invite ? ", the champion is invited to the finals" : ""}`,
     link: { registration: "🔗 Sign up: ", voting: "🔗 Vote: ", other: "🔗 Bracket: " },
-    mode: (m) => `${m.code} ${m.full}`,
+    mode: (m) => m.code,
     label: (x) => labelTranslate(x),
   },
 };
