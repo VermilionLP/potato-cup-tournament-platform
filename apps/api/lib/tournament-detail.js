@@ -4,6 +4,7 @@
 
 import { pointsFor } from './points.js';
 import { liveChannelsView } from './live-channels.js';
+import { checkinState } from './checkin.js';
 import { eventPlacements } from './placements.js';
 import { groupStageOf } from './group-stage-view.js';
 import { computeStandings, effectiveSwissRounds, isAutoRounds, SWISS_BRACKET } from './swiss.js';
@@ -59,6 +60,7 @@ export function tournamentDetail(t, { players, matches: ms, votes, customVotes, 
     overlay_round: main.overlay_round,
     overlay_stage: main.overlay_stage,
     live_channels: liveChannels,
+    checkin: checkinState(t),
     points_awarded: pointsAwarded,
     players: playersWithLadder(players, ladder),
     matches: ms,

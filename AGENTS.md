@@ -55,6 +55,10 @@ Ban / Pick 的载具池是 `axsuck.vehicle_pools` 里的模板（迁移 027）�
 
 直播状态按「频道」分（`axsuck.live_channels`，迁移 029）：每场赛事最多 9 个频道，每个频道有自己的当前直播对局（`active_match_id`）和大屏场景 / 阶段（`overlay_*`），同一对局同时只能在一个频道直播（唯一索引，冲突返回 409）。控制台在赛事页选频道（按赛事记在浏览器里，`$lib/live-channels.js`），OBS 遮罩用 `/tournament/<id>/overlay?channel=N`，不带参数就是频道 1。`GET /tournaments/:id` 返回 `live_channels`，顶层的 `active_match_id` / `overlay_*` 是频道 1 的值；`tournaments` 表上的同名旧列已在迁移 032 删除；对局被删除时，频道里的直播对局由外键自动清空。前端用 `withChannel(t, n)` 把某个频道的状态放回顶层字段，遮罩和控制台组件因此不用改。
 
+## Check-in, reported results, personal push
+
+迁移 034。**签到**：赛事可开启 `tournaments.checkin_enabled`，开赛前 30 分钟开放（`lib/checkin.js`，北京时间；没有时间就整个报名阶段开放），选手 `POST /tournaments/:id/checkin`，管理员任何时候可代签；开赛走 `POST /tournaments/:id/start {remove, forfeit}`：`remove` 的人移出并重排种子、重新生成对阵，`forfeit` 的人留下但标 `tournament_players.forfeited`，他们碰到的每场比赛自动判对手弃权胜（`lib/match-flow.js` 的 `settleForfeits`，每次出结果后都会跑）。**比分确认**：管理员提交的结果立即生效；选手提交的比分存进 `matches.pending_report`（JSONB），对手确认（或提交相同比分）才生效，提交不同比分或点「有异议」就标为争议，由管理员选一方生效或驳回；没人异议的比分 10 分钟后由 `lib/report-scheduler.js` 自动生效；选手申报对手弃权一律要管理员确认。规则在 `lib/match-reports.js`（纯函数，有测试）。**个人推送**：`push_subscriptions.player_id` 记录订阅者（带设备密钥校验），`lib/push-sender.js` 只推给指定选手；对阵双方确定时推「轮到你了」，对手提交比分时推「请确认比分」，每条只发一次（`push_match_notices`）。
+
 ## Auto scene switching
 
 `tools/wt-autoscene/` 是在直播电脑上运行的独立小程序（Node 22，无依赖）：读取战争雷霆本地接口 `localhost:8111` 的 `map_info.json` / `mission.json`，判断机库 / 战斗中，把"从战斗回到机库"当作比赛结束（观战时 `mission.json` 一直是 running），然后调用 `POST /tournaments/:id/overlay-state` 切换某个直播频道的大屏场景（保留当前轮次），也可以通过 obs-websocket v5 切 OBS 场景。判断规则在 `detect.mjs`（有测试）；`--record` 记录原始数据用于校准。

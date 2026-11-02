@@ -203,7 +203,9 @@ export function TournamentRepo(db) {
         COALESCE(NULLIF(tp.link, ''), p.link, '') AS link, 
         tp.seed, 
         tp.swiss_group,
-        tp.registered_at
+        tp.registered_at,
+        tp.checked_in_at,
+        tp.forfeited
       FROM axsuck.tournament_players tp
       JOIN axsuck.players p ON p.id = tp.player_id
       WHERE tp.tournament_id = $1

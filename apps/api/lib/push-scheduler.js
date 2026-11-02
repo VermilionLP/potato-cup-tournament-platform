@@ -1,5 +1,6 @@
 import webpush from 'web-push';
 import { reminderPayload, reminderWindow, REMINDER_KIND } from './push.js';
+import { setPushTransport } from './push-sender.js';
 
 export function startPushScheduler(fastify) {
   const publicKey = process.env.VAPID_PUBLIC_KEY;
@@ -10,6 +11,8 @@ export function startPushScheduler(fastify) {
     return;
   }
   webpush.setVapidDetails(subject, publicKey, privateKey);
+  // Personal notices (lib/push-sender.js) go through the same keys.
+  setPushTransport((subscription, payload) => webpush.sendNotification(subscription, payload));
 
   let running = false;
   const tick = async () => {

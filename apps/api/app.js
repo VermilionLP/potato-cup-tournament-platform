@@ -28,6 +28,7 @@ import adminRoutes from './routes/admin.js';
 import vehiclePoolRoutes from './routes/vehicle-pools.js';
 import pointsRoutes from './routes/points.js';
 import { startPushScheduler } from './lib/push-scheduler.js';
+import { startReportScheduler } from './lib/report-scheduler.js';
 import { createEsLogger, registerRequestLogging } from './lib/es-logger.js';
 import { registerRateLimit } from './lib/rate-limit.js';
 import { registerLadderCacheInvalidation } from './lib/ladder-cache.js';
@@ -80,6 +81,7 @@ await fastify.register(adminRoutes, { prefix: '/api' });
 await fastify.register(vehiclePoolRoutes, { prefix: '/api' });
 await fastify.register(pointsRoutes, { prefix: '/api' });
 startPushScheduler(fastify);
+startReportScheduler(fastify);
 
 fastify.get('/api/ping', async () => ({ pong: true }));
 

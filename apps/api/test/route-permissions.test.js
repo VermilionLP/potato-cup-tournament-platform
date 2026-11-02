@@ -25,6 +25,9 @@ const SELF_WRITES = new Set([
   'POST /tournaments/:id/vote', 'DELETE /tournaments/:id/vote',
   'POST /tournaments/:id/custom-vote', 'DELETE /tournaments/:id/custom-vote',
   'POST /tournaments/:id/matches/:matchId/result', 'POST /tournaments/:id/matches/:matchId/walkover',
+  'POST /tournaments/:id/checkin', 'DELETE /tournaments/:id/checkin',
+  'POST /tournaments/:id/matches/:matchId/report/confirm', 'POST /tournaments/:id/matches/:matchId/report/dispute',
+  'DELETE /tournaments/:id/matches/:matchId/report',
 ]);
 // Reads only admins may make.
 const ADMIN_READS = ['GET /players/:id/key', 'GET /tournaments/:id/wiki'];
@@ -113,4 +116,35 @@ test('only the two players (or an admin) report a match result', async () => {
   }
   const walkover = await inject({ method: 'POST', url: '/tournaments/t1/matches/1/walkover', headers: player('p3'), body: { winner_id: 'p3' } });
   assert.equal(walkover.statusCode, 403);
+});
+
+test("a player's score waits for the opponent; only the opponent confirms it", async () => {
+  const pending = { kind: 'score', by: 'p1', score1: 2, score2: 0, at: new Date().toISOString(), disputed: false, counter: null };
+  const db = fakeDb({ row: { player1_id: 'p1', player2_id: 'p2', status: 'pending', pending_report: pending } });
+  const { inject } = await buildRoutes(modules, db);
+  const confirm = (headers) => inject({ method: 'POST', url: '/tournaments/t1/matches/1/report/confirm', headers, body: {} });
+  for (const headers of [{}, player('p3'), player('p1')]) {
+    const before = db.writes.length;
+    assert.equal((await confirm(headers)).statusCode, 403, `confirm as ${JSON.stringify(headers)}`);
+    assert.equal(db.writes.length, before);
+  }
+  const before = db.writes.length;
+  const byOpponent = await confirm(player('p2'));
+  assert.ok(![401, 403].includes(byOpponent.statusCode), `opponent: ${byOpponent.statusCode} ${byOpponent.error?.message}`);
+  assert.ok(db.writes.length > before, 'the confirmed score was written');
+
+  const dispute = await inject({ method: 'POST', url: '/tournaments/t1/matches/1/report/dispute', headers: player('p1'), body: {} });
+  assert.equal(dispute.statusCode, 403, 'the reporter cannot dispute their own report');
+  const withdraw = await inject({ method: 'DELETE', url: '/tournaments/t1/matches/1/report', headers: player('p2'), body: {} });
+  assert.equal(withdraw.statusCode, 403, "the opponent cannot withdraw someone else's report");
+});
+
+test('a walkover claim by a player is never confirmed by the opponent', async () => {
+  const pending = { kind: 'walkover', by: 'p1', winner_id: 'p1', at: new Date().toISOString(), disputed: false, counter: null };
+  const db = fakeDb({ row: { player1_id: 'p1', player2_id: 'p2', status: 'pending', pending_report: pending } });
+  const { inject } = await buildRoutes(modules, db);
+  const res = await inject({ method: 'POST', url: '/tournaments/t1/matches/1/report/confirm', headers: player('p2'), body: {} });
+  assert.equal(res.statusCode, 403);
+  const admin = await inject({ method: 'POST', url: '/tournaments/t1/matches/1/report/confirm', headers: ADMIN, body: {} });
+  assert.ok(![401, 403].includes(admin.statusCode), `admin: ${admin.statusCode} ${admin.error?.message}`);
 });

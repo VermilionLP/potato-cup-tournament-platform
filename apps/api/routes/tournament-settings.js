@@ -7,6 +7,7 @@ import { MatchRepo } from '../repositories/match-repo.js';
 import { LadderRepo } from '../repositories/ladder-repo.js';
 import { requireAdmin } from '../lib/admin.js';
 import { inTransaction } from '../lib/transaction.js';
+import { afterResult } from '../lib/match-flow.js';
 import { normalizePointsKind, normalizePointsTable, normalizeSeason } from '../lib/points.js';
 import { endedSeason } from '../lib/points-seasons.js';
 import { groupStageOf } from '../lib/group-stage-view.js';
@@ -40,8 +41,9 @@ export default async function tournamentSettingsRoutes(fastify) {
     const hasInvite = body.points_invite !== undefined;
     const hasTier = body.tier !== undefined || body.event_kind !== undefined;
     const hasMode = body.game_mode !== undefined;
-    if (!hasName && !hasTime && !hasPool && !hasTemplate && !hasPoints && !hasInvite && !hasTier && !hasMode) {
-      throw fastify.httpErrors.badRequest('name, scheduled_time, game_mode, vehicle_pool, vehicle_template, points_table, points_invite, tier or event_kind is required');
+    const hasCheckin = body.checkin_enabled !== undefined;
+    if (!hasName && !hasTime && !hasPool && !hasTemplate && !hasPoints && !hasInvite && !hasTier && !hasMode && !hasCheckin) {
+      throw fastify.httpErrors.badRequest('name, scheduled_time, game_mode, vehicle_pool, vehicle_template, points_table, points_invite, tier, event_kind or checkin_enabled is required');
     }
     if (hasMode && !GAME_MODES.includes(String(body.game_mode))) {
       throw fastify.httpErrors.badRequest(`game_mode must be one of: ${GAME_MODES.join(', ')}`);
@@ -120,6 +122,18 @@ export default async function tournamentSettingsRoutes(fastify) {
       updated = await repo.setVehicleTemplate(req.params.id, template);
       fastify.tournamentEvents.emit(`update:${req.params.id}`, { type: 'vehicle_template_changed', vehicle_template: template });
     }
+    // Check-in (lib/checkin.js) can be switched on or off until the start.
+    if (hasCheckin) {
+      if (t.status === 'in_progress' || t.status === 'completed') {
+        throw fastify.httpErrors.badRequest('赛事已开始，不能再修改签到设置');
+      }
+      const res = await fastify.db.query(
+        'UPDATE axsuck.tournaments SET checkin_enabled = $2 WHERE id = $1 RETURNING *',
+        [req.params.id, Boolean(body.checkin_enabled)],
+      );
+      updated = res.rows[0];
+      fastify.tournamentEvents.emit(`update:${req.params.id}`, { type: 'checkin_changed', checkin_enabled: updated.checkin_enabled });
+    }
     if (hasTime) {
       const time = String(body.scheduled_time || '').trim();
       if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(time)) {
@@ -155,6 +169,7 @@ export default async function tournamentSettingsRoutes(fastify) {
       if (status === 'registration' || status === 'voting') {
         await client.query(`UPDATE axsuck.tournaments SET current_stage = 'group' WHERE id = $1`, [req.params.id]);
         await client.query('DELETE FROM axsuck.matches WHERE tournament_id = $1', [req.params.id]);
+        await client.query('UPDATE axsuck.tournament_players SET forfeited = FALSE WHERE tournament_id = $1', [req.params.id]);
       }
     });
 
@@ -184,6 +199,41 @@ export default async function tournamentSettingsRoutes(fastify) {
     }
     
     return { ...updated, auto_registered: autoRegistered };
+  });
+
+  // Start an event that asks for check-in: the players listed in `remove`
+  // leave it (seeds and bracket are rebuilt without them), those in
+  // `forfeit` stay but lose every match by walkover (lib/match-flow.js).
+  fastify.post('/tournaments/:id/start', async (req) => {
+    requireAdmin(fastify, req);
+    const t = await repo.getById(req.params.id);
+    if (!t) throw fastify.httpErrors.notFound('Tournament not found');
+    if (t.status !== 'registration') throw fastify.httpErrors.badRequest('只能在报名阶段开始比赛');
+    const registered = new Set((await repo.getPlayers(req.params.id)).map((p) => p.id));
+    const list = (v) => [...new Set((Array.isArray(v) ? v : []).map(String))].filter((id) => registered.has(id));
+    const remove = list(req.body?.remove);
+    const forfeit = list(req.body?.forfeit).filter((id) => !remove.includes(id));
+
+    const remaining = registered.size - remove.length;
+    const reason = startBlockedReason(t.format, remaining, t.swiss_rounds, t.playoff_format ? {
+      groupSize: t.swiss_group_size,
+      perGroup: t.advance_per_group,
+      playoffFormat: t.playoff_format,
+    } : null);
+    if (reason) throw fastify.httpErrors.badRequest(`移出 ${remove.length} 人后还剩 ${remaining} 人：${reason}`);
+
+    for (const id of remove) await repo.removePlayer(req.params.id, id);
+    if (remove.length && t.seed_mode !== 'manual') await ladderRepo.autoSeeds(req.params.id);
+    await fastify.db.query(
+      'UPDATE axsuck.tournament_players SET forfeited = (player_id = ANY($2::text[])) WHERE tournament_id = $1',
+      [req.params.id, forfeit],
+    );
+    await matches.generateBracket(req.params.id);
+    await repo.updateStatus(req.params.id, 'in_progress');
+    await afterResult(fastify, req.params.id);
+
+    fastify.tournamentEvents.emit(`update:${req.params.id}`, { type: 'status_changed', status: 'in_progress', removed: remove, forfeited: forfeit });
+    return { ...(await repo.getById(req.params.id)), removed: remove, forfeited: forfeit };
   });
 
   // Change the number of Swiss rounds. It cannot drop below the round already

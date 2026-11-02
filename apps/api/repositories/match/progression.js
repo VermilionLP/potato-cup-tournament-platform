@@ -31,7 +31,7 @@ export function matchProgression(db, { getById, getNextPosition, create }, { adv
     }
 
     const updateRes = await db.query(`
-      UPDATE axsuck.matches SET score1 = $1, score2 = $2, winner_id = $3, status = 'completed'
+      UPDATE axsuck.matches SET score1 = $1, score2 = $2, winner_id = $3, status = 'completed', pending_report = NULL
       WHERE id = $4
       RETURNING *
     `, [score1, score2, winnerId, id]);
