@@ -18,10 +18,7 @@
 </script>
 
 <div class="rounded-lg border border-border/70 bg-muted/20 px-3 py-2.5 text-xs space-y-2">
-  <div class="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-    <span class="font-bold">天梯分预估<span class="ml-1.5 font-normal text-muted-foreground">{division} 分榜</span></span>
-    <span class="text-[10px] text-muted-foreground">预期胜率 {playerName(match.player1_id, match)} {Math.round(sim.winChanceA * 100)}%</span>
-  </div>
+  <div class="font-bold">天梯分预估<span class="ml-1.5 font-normal text-muted-foreground">{division} 分榜</span></div>
   <div class="grid grid-cols-[minmax(0,1fr)_auto_auto_auto] items-center gap-x-3 gap-y-1">
     <span></span>
     <span class="text-[10px] text-muted-foreground text-right">当前</span>

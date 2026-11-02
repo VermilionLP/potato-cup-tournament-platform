@@ -1624,7 +1624,6 @@ export default {
   "编辑模板 →": "Edit template →",
   "天梯分预估": "Ladder MMR estimate",
   "{0} 分榜": "{0} ladder",
-  "预期胜率 {0} {1}%": "Expected win chance: {0} {1}%",
   "{0} 胜": "{0} wins",
   "前 10 场分数变化更大": "MMR moves more in the first 10 games",
   "按胜负计算，与小比分无关；同时提交的其他比赛可能让结果略有不同。": "Based on who wins, not the map score; other results reported meanwhile can shift it a little.",
