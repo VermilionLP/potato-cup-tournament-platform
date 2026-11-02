@@ -534,7 +534,6 @@ export default {
   "确定删除赛事「{0}」？报名、对阵和比分会一并删除，且无法恢复。": "Delete event \"{0}\"? Registrations, brackets and scores are deleted too and can't be restored.",
   "已删除": "Deleted",
   "删除失败:": "Delete failed:",
-  "管理并投票单淘汰赛事的首选工具": "The tool of choice for running and voting on knockout events",
   "创建赛事": "Create event",
   "正在加载赛事数据...": "Loading events...",
   "暂无活跃赛事": "No active events",

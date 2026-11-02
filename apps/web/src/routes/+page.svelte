@@ -114,9 +114,6 @@
       >
         赛事大厅
       </h1>
-      <p class="text-xs text-muted-foreground mt-1">
-        管理并投票单淘汰赛事的首选工具
-      </p>
     </div>
     <div class="flex items-center gap-2 shrink-0">
       {#if isAdmin}
