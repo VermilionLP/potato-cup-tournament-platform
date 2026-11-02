@@ -28,6 +28,7 @@ const ALLOWED = new Set([
   "每组人数必须在 2 至 64 之间1",
   "，留空表示不分组",
   "切换到中文",
+  "中文",
   "中",
   "1 赛季1",
   "（现在是 1）",
@@ -48,7 +49,8 @@ try {
 
 test("all Chinese UI text has English", { skip: !parse && "svelte/compiler not installed" }, () => {
   const files = [
-    ...sourceFiles(join(root, "web/src"), [".svelte", ".js"]).filter((f) => !f.includes("/i18n/") && !f.includes("/components/ui/")),
+    // discord-share.js writes its own English posts.
+    ...sourceFiles(join(root, "web/src"), [".svelte", ".js"]).filter((f) => !f.includes("/i18n/") && !f.includes("/components/ui/") && !f.endsWith("discord-share.js")),
     ...sourceFiles(join(root, "api/routes"), [".js"]),
     ...sourceFiles(join(root, "api/lib"), [".js"]).filter((f) => !/liquipedia\/(countries|de-templates)/.test(f)),
   ];

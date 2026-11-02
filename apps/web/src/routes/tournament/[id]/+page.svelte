@@ -51,6 +51,8 @@
   import MyMatchCard from "$lib/components/tournament/MyMatchCard.svelte";
   import StartCheckinDialog from "$lib/components/tournament/StartCheckinDialog.svelte";
   import LiveNow from "$lib/components/tournament/LiveNow.svelte";
+  import ShareDialog from "$lib/components/tournament/ShareDialog.svelte";
+  import Share2Icon from "@lucide/svelte/icons/share-2";
   import { registrationActions } from "$lib/event-registration.js";
   import { stageActions } from "$lib/event-stage.js";
   import { channelOptions, liveElsewhere, savedChannel, savedStreamMode, saveChannel, withChannel } from "$lib/live-channels.js";
@@ -129,6 +131,13 @@
   let finalTimeDialog = $state(null);
   let timeEditDialog = $state(null);
   let startDialog = $state(null);
+  let shareDialog = $state(null);
+  // Podium for the results post: champion, runner-up, third place(s).
+  let sharePodium = $derived.by(() => {
+    if (!podium) return [];
+    const thirds = standings.filter((r) => String(r.rank).startsWith("第 3")).map((r) => r.display_name || r.id);
+    return [[playerName(podium.champion)], podium.runnerUp ? [playerName(podium.runnerUp)] : [], thirds];
+  });
   let wikiDialog = $state(null);
   let matchReport = $state(null);
   let playerEditor = $state(null);
@@ -453,6 +462,15 @@
           {tb.label}{#if tb.count != null}<span class="ml-1 text-[11px] font-normal opacity-70">{tb.count}</span>{/if}
         </button>
       {/each}
+      <button
+        type="button"
+        onclick={() => shareDialog?.start()}
+        class="ml-auto shrink-0 inline-flex items-center gap-1 px-3 py-2 text-xs font-semibold text-muted-foreground hover:text-primary cursor-pointer"
+        title="生成可以发到 Discord 的赛事公告或结果"
+      >
+        <Share2Icon class="w-3.5 h-3.5" />
+        分享到 Discord
+      </button>
     </div>
 
     {#if activeTab === "overview"}
@@ -548,6 +566,11 @@
 
 <!-- Starting with check-in: what happens to the players who did not check in -->
 <StartCheckinDialog bind:this={startDialog} {tid} {tournament} onstarted={() => load()} />
+
+<!-- Ready-to-paste Discord post -->
+{#if tournament}
+  <ShareDialog bind:this={shareDialog} {tournament} template={bpTemplate} podium={sharePodium} />
+{/if}
 
 <!-- Liquipedia Wiki Export Dialog -->
 <WikiExportDialog bind:this={wikiDialog} {tid} />
