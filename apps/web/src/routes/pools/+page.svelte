@@ -3,14 +3,17 @@
   // event type, can be limited to game modes and carries its own Ban / Pick
   // rules. Events use the best-matching template unless an admin picks one.
   // Everyone can view and export them; admins create, copy, edit and delete.
+  // Draft and save helpers are in $lib/pool-editor.js.
   import { onMount } from "svelte";
   import { page } from "$app/state";
   import { toast } from "svelte-sonner";
   import { API } from "$lib/api.js";
   import { userState } from "$lib/user.svelte.js";
-  import { DEFAULT_BP_RULES, groupVehicles, normalizeRules, rulesSummary } from "$lib/banpick.js";
+  import { groupVehicles, rulesSummary } from "$lib/banpick.js";
   import { VEHICLE_POOLS } from "$lib/tournament.js";
-  import { parsePoolFile, poolToCsv, poolToJson, vehicleListProblem } from "$lib/vehicle-pools.js";
+  import { parsePoolFile, poolToCsv, poolToJson } from "$lib/vehicle-pools.js";
+  import { NEW_ID, draftOf, draftProblem, emptyVehicle, newDraft, saveBody, templatesByType, toggleMode as toggled } from "$lib/pool-editor.js";
+  import { downloadText } from "$lib/download.js";
   import TemplatePicker from "$lib/components/pools/TemplatePicker.svelte";
   import TemplateSettings from "$lib/components/pools/TemplateSettings.svelte";
   import VehicleTable from "$lib/components/pools/VehicleTable.svelte";
@@ -27,8 +30,6 @@
   import TableIcon from "@lucide/svelte/icons/table";
   import EyeIcon from "@lucide/svelte/icons/eye";
 
-  const NEW_ID = "__new";
-
   let isAdmin = $derived(!!userState.adminToken);
   let templates = $state([]);
   let loading = $state(true);
@@ -42,32 +43,16 @@
   // "table" = the vehicle list, "preview" = Ban / Pick as a match would show it.
   let view = $state("table");
 
-  const copyOf = (t) => ({
-    name: t.name,
-    event_type: t.event_type,
-    game_modes: [...(t.game_modes || [])],
-    rules: { ...normalizeRules(t.rules) },
-    sort_order: t.sort_order ?? 100,
-    vehicles: (t.vehicles || []).map((v) => ({ ...v })),
-  });
-
   let saved = $derived(templates.find((t) => t.id === activeId) || null);
   let current = $derived(drafts[activeId] ?? saved);
   let dirty = $derived(Boolean(drafts[activeId]));
   let isNew = $derived(activeId === NEW_ID);
   let rows = $derived(current?.vehicles || []);
-  let problem = $derived(dirty ? (!String(current.name || "").trim() ? "请填写模板名称" : vehicleListProblem(rows)) : "");
+  let problem = $derived(dirty ? draftProblem(current) : "");
   let groupCount = $derived(groupVehicles(rows.filter((v) => String(v.name ?? "").trim())).length);
 
   // Templates by event type, in the order events choose them.
-  let byType = $derived(
-    VEHICLE_POOLS.map((type) => ({
-      ...type,
-      templates: templates
-        .filter((t) => t.event_type === type.id)
-        .sort((a, b) => (a.sort_order ?? 100) - (b.sort_order ?? 100) || String(a.id).localeCompare(String(b.id))),
-    })),
-  );
+  let byType = $derived(templatesByType(templates, VEHICLE_POOLS));
 
   async function load(selectId) {
     try {
@@ -104,7 +89,7 @@
 
   // Start editing the active template (copied once, then changed in place).
   function draft() {
-    if (!drafts[activeId]) drafts[activeId] = copyOf(saved);
+    if (!drafts[activeId]) drafts[activeId] = draftOf(saved);
     return drafts[activeId];
   }
 
@@ -118,7 +103,7 @@
 
   function toggleMode(mode) {
     const d = draft();
-    d.game_modes = d.game_modes.includes(mode) ? d.game_modes.filter((m) => m !== mode) : [...d.game_modes, mode];
+    d.game_modes = toggled(d.game_modes, mode);
   }
 
   function editCell(index, field, value) {
@@ -126,7 +111,7 @@
   }
 
   function addRow() {
-    draft().vehicles.push({ name: "", nation: "", br: "", type: "", group: "" });
+    draft().vehicles.push(emptyVehicle());
     query = "";
   }
 
@@ -142,16 +127,7 @@
   }
 
   function startNew(source) {
-    drafts[NEW_ID] = source
-      ? { ...copyOf(source), name: `${source.name} 副本`.slice(0, 40) }
-      : {
-          name: "",
-          event_type: saved?.event_type || VEHICLE_POOLS[0].id,
-          game_modes: [],
-          rules: { ...DEFAULT_BP_RULES },
-          sort_order: 100,
-          vehicles: [{ name: "", nation: "", br: "", type: "", group: "" }],
-        };
+    drafts[NEW_ID] = newDraft(source, saved?.event_type || VEHICLE_POOLS[0].id);
     pick(NEW_ID);
   }
 
@@ -159,15 +135,7 @@
     if (problem) return toast.error(problem);
     saving = true;
     try {
-      const body = {
-        ...current,
-        name: current.name.trim(),
-        sort_order: Number(current.sort_order) || 0,
-        vehicles: rows.map((v) => ({
-          ...v,
-          br: v.br === "" || v.br === null || v.br === undefined ? null : Number(v.br),
-        })),
-      };
+      const body = saveBody(current);
       const res = isNew ? await API.createVehiclePool(body) : await API.updateVehiclePool(activeId, body);
       delete drafts[activeId];
       drafts = { ...drafts };
@@ -199,18 +167,9 @@
   }
 
   function download(kind) {
-    const body = kind === "csv" ? poolToCsv(rows) : poolToJson(rows);
-    const blob = new Blob([kind === "csv" ? "﻿" + body : body], {
-      type: kind === "csv" ? "text/csv;charset=utf-8" : "application/json",
-    });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `vehicle-pool-${isNew ? "new" : activeId}.${kind}`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
+    const name = `vehicle-pool-${isNew ? "new" : activeId}.${kind}`;
+    if (kind === "csv") downloadText(name, poolToCsv(rows), "text/csv;charset=utf-8");
+    else downloadText(name, poolToJson(rows));
   }
 
   async function importFile(event) {

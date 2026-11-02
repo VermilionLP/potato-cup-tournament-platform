@@ -4,6 +4,7 @@
   import { onMount } from "svelte";
   import { toast } from "svelte-sonner";
   import { API } from "$lib/api.js";
+  import { downloadText } from "$lib/download.js";
   import { userState } from "$lib/user.svelte.js";
   import { EVENT_TIERS, VEHICLE_POOLS } from "$lib/tournament.js";
   import { eventDate, relativeDay } from "$lib/lobby.js";
@@ -85,15 +86,7 @@
   async function exportTournament(t) {
     try {
       const details = await API.getTournament(t.id);
-      const blob = new Blob([JSON.stringify(details, null, 2)], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `potato-cup-${t.id}.json`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      downloadText(`potato-cup-${t.id}.json`, JSON.stringify(details, null, 2));
       toast.success(`${t.name} 数据导出成功`);
     } catch (e) {
       toast.error("导出失败: " + e.message);

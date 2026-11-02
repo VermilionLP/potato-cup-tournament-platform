@@ -7,6 +7,7 @@
 
 import { toast } from "svelte-sonner";
 import { API } from "$lib/api.js";
+import { downloadText } from "$lib/download.js";
 import { isValidSwissRounds, MAX_SWISS_ROUNDS, MIN_SWISS_ROUNDS } from "$lib/tournament.js";
 import { eventStatusLabel } from "$lib/event-view.js";
 
@@ -127,15 +128,7 @@ export function stageActions(ctx) {
   function downloadJson() {
     const t = ctx.tournament();
     if (!t || !ctx.isAdmin()) return;
-    const blob = new Blob([JSON.stringify(t, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `potato-cup-${t.id}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    downloadText(`potato-cup-${t.id}.json`, JSON.stringify(t, null, 2));
     toast.success("赛事 JSON 导出成功");
   }
 
