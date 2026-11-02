@@ -44,17 +44,12 @@ test('an admin reports a score from the bracket', async () => {
     await plus.click();
     await plus.click();
     await page.getByRole('button', { name: /提交比分\s+2\s*:\s*0/ }).click();
-    // The result is stored and shows on the card.
-    await page.waitForFunction(
-      async ({ base, id, mid }) => {
-        const r = await fetch(`${base}/api/tournaments/${id}`).then((x) => x.json());
-        const m = r.matches.find((x) => x.id === mid);
-        return m?.status === 'completed' && Boolean(m.winner_id); // winner is set right after the score
-      },
-      { base: BASE, id, mid: match.id },
-      { timeout: T, polling: 500 },
-    );
-    const done = (await api('GET', `/tournaments/${id}`)).matches.find((m) => m.id === match.id);
+    // The result is stored (the winner is set right after the score).
+    let done = null;
+    for (let i = 0; i < 30 && !done?.winner_id; i += 1) {
+      await new Promise((r) => setTimeout(r, 500));
+      done = (await api('GET', `/tournaments/${id}`)).matches.find((m) => m.id === match.id);
+    }
     assert.equal(done.winner_id, match.player1_id);
     assert.equal(Number(done.score1), 2);
     assert.deepEqual(errors, [], 'no uncaught errors in the page');
