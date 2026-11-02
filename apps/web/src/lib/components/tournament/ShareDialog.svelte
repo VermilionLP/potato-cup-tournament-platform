@@ -6,9 +6,9 @@
   import { toast } from "svelte-sonner";
   import * as Dialog from "$lib/components/ui/dialog/index.js";
   import { Button } from "$lib/components/ui/button/index.js";
-  import { DISCORD_LIMIT, shareMessage, splitForDiscord } from "$lib/discord-share.js";
+  import { DISCORD_LIMIT, shareMessage, splitForDiscord, useTranslator } from "$lib/discord-share.js";
   import { formatInZone } from "$lib/datetime.js";
-  import { i18n } from "$lib/i18n/locale.svelte.js";
+  import { i18n, loadTranslator } from "$lib/i18n/locale.svelte.js";
   import CopyIcon from "@lucide/svelte/icons/copy";
 
   let { tournament, podium = [] } = $props();
@@ -18,7 +18,14 @@
   let text = $state("");
   let lang = $state("zh");
 
-  function build() {
+  async function build() {
+    if (lang === "en") {
+      try {
+        useTranslator(await loadTranslator());
+      } catch {
+        toast.error("英文词典加载失败，部分标签保持中文");
+      }
+    }
     text = shareMessage(tournament, {
       kind,
       podium,
@@ -30,8 +37,8 @@
   export function start() {
     kind = tournament?.status === "completed" ? "results" : "announce";
     lang = i18n.locale === "en" ? "en" : "zh";
-    build();
     open = true;
+    build();
   }
 
   function choose(k, l = lang) {

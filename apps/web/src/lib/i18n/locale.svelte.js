@@ -2,8 +2,8 @@
 // mode a MutationObserver translates text, placeholders, tooltips and the
 // page title as Svelte renders them, and confirm/alert/prompt messages go
 // through the same dictionary. Switching back restores the original text.
-
-import { translate } from './translate.js';
+// The dictionary (translate.js + en.js, ~120 KB) is loaded only when English
+// is chosen, so Chinese readers never download it.
 
 const STORAGE_KEY = 'potato-lang';
 const HAN = /[一-鿿]/;
@@ -20,6 +20,22 @@ const attrOriginal = new WeakMap(); // element -> { attr: { orig, written } }
 
 let observer = null;
 let dialogsPatched = false;
+
+// The translator once loaded (null before).
+let translate = null;
+let loading = null;
+
+/** Loads the English dictionary once; resolves to translate(text). */
+export function loadTranslator() {
+  loading ??= import('./translate.js').then(
+    (m) => (translate = m.translate),
+    (e) => {
+      loading = null; // try again next time
+      throw e;
+    },
+  );
+  return loading;
+}
 
 function skipped(node) {
   const el = node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement;
@@ -89,7 +105,7 @@ function restore(root) {
 }
 
 function start() {
-  if (observer) return;
+  if (observer || !translate) return;
   walk(document.documentElement);
   observer = new MutationObserver((records) => {
     for (const r of records) {
@@ -119,7 +135,7 @@ function patchDialogs() {
   for (const name of ['alert', 'confirm', 'prompt']) {
     const original = window[name].bind(window);
     window[name] = (message, ...rest) =>
-      original(i18n.locale === 'en' ? translate(String(message ?? '')) : message, ...rest);
+      original(i18n.locale === 'en' && translate ? translate(String(message ?? '')) : message, ...rest);
   }
 }
 
@@ -133,8 +149,11 @@ export function setLocale(locale) {
   }
   if (typeof document === 'undefined') return;
   document.documentElement.lang = next === 'en' ? 'en' : 'zh-CN';
-  if (next === 'en') start();
-  else stop();
+  if (next === 'en') {
+    loadTranslator()
+      .then(() => i18n.locale === 'en' && start())
+      .catch((e) => console.warn('English dictionary failed to load:', e));
+  } else stop();
 }
 
 /** Saved choice, else the browser language (Chinese browsers get Chinese). */

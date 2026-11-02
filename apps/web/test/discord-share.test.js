@@ -1,6 +1,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { formatLine, prizeLine, scheduledUnix, shareMessage, splitForDiscord, stamp } from "../src/lib/discord-share.js";
+import { formatLine, prizeLine, scheduledUnix, shareMessage, splitForDiscord, stamp, useTranslator } from "../src/lib/discord-share.js";
+import { translate } from "../src/lib/i18n/translate.js";
+
+useTranslator(translate);
 
 const t = {
   id: "potatocupweekly41", name: "Potato Cup Weekly #41", status: "registration", scheduled_time: "2026-11-08T20:00",

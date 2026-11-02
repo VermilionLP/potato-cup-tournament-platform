@@ -5,7 +5,6 @@
 
 import { GAME_MODES, eventFormatLabel, vehiclePoolLabel } from "./tournament.js";
 import { placeName, prizeRows } from "./points.js";
-import { translate } from "./i18n/translate.js";
 
 // The post's own wording; site labels go through the site's dictionary.
 const TEXT = {
@@ -49,10 +48,18 @@ const TEXT = {
     points: (season, monthly, invite) => `📊 Counts for the ${season} points season (${monthly ? "monthly" : "weekly"})${invite ? ", the champion is invited to the finals" : ""}`,
     link: { registration: "🔗 Sign up: ", voting: "🔗 Vote: ", other: "🔗 Bracket: " },
     mode: (m) => `${m.code} ${m.full}`,
-    label: (x) => translate(x),
+    label: (x) => labelTranslate(x),
   },
 };
 const textOf = (lang) => TEXT[lang] || TEXT.zh;
+
+// Site labels in English posts go through the site's dictionary, which the
+// page loads only on demand ($lib/i18n/locale.svelte.js loadTranslator):
+// set it here before building an English post. Untranslated until then.
+let labelTranslate = (x) => x;
+export function useTranslator(fn) {
+  labelTranslate = typeof fn === "function" ? fn : (x) => x;
+}
 
 export const DISCORD_LIMIT = 2000;
 const CHECKIN_LEAD_S = 30 * 60;

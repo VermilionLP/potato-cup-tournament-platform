@@ -1612,4 +1612,8 @@ export default {
   "第 {0} 行的金鹰币不正确": "Row {0}: the Golden Eagles prize is not valid",
   "季军": "3rd place",
   "积分表第 {0} 行的金鹰币不正确": "Points table row {0}: the Golden Eagles prize is not valid",
+  "英文词典加载失败，部分标签保持中文": "The English dictionary failed to load; some labels stay in Chinese",
+  "加载失败:": "Failed to load:",
+  "正在加载载具池...": "Loading the vehicle pool...",
+  "载具池加载失败：{0}": "The vehicle pool failed to load: {0}",
 };

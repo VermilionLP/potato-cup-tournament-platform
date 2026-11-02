@@ -3,8 +3,12 @@
   // ($lib/event-registration.js, $lib/event-stage.js; reporting is
   // MatchReport, the time dialogs carry their own flows). What it shows is
   // derived in $lib/event-view.js; sections and dialogs live in
-  // $lib/components/tournament.
-  import { onMount } from "svelte";
+  // $lib/components/tournament. Admin-only parts (seeding, time / player
+  // dialogs, wiki export, going live) load only for admins, and the vote
+  // proposals (calendar), vehicle pool view and share dialog only when shown
+  // ($lib/lazy.js), so visitors download less.
+  import { onMount, tick, untrack } from "svelte";
+  import { lazy } from "$lib/lazy.js";
   import { toast } from "svelte-sonner";
   import { API } from "$lib/api.js";
   import { page } from "$app/state";
@@ -32,9 +36,7 @@
   } from "$lib/event-view.js";
   import { Button } from "$lib/components/ui/button/index.js";
   import VoteBoard from "$lib/components/tournament/VoteBoard.svelte";
-  import VoteProposals from "$lib/components/tournament/VoteProposals.svelte";
   import RegistrationCard from "$lib/components/tournament/RegistrationCard.svelte";
-  import SeedingCard from "$lib/components/tournament/SeedingCard.svelte";
   import EventHeader from "$lib/components/tournament/EventHeader.svelte";
   import StatusControls from "$lib/components/tournament/StatusControls.svelte";
   import PhaseStepper from "$lib/components/tournament/PhaseStepper.svelte";
@@ -42,17 +44,9 @@
   import ResultsPanel from "$lib/components/tournament/ResultsPanel.svelte";
   import RosterCard from "$lib/components/tournament/RosterCard.svelte";
   import ObsControlCard from "$lib/components/tournament/ObsControlCard.svelte";
-  import WikiExportDialog from "$lib/components/tournament/WikiExportDialog.svelte";
-  import TimeEditDialog from "$lib/components/tournament/TimeEditDialog.svelte";
-  import FinalTimeDialog from "$lib/components/tournament/FinalTimeDialog.svelte";
-  import PlayerEditDialog from "$lib/components/tournament/PlayerEditDialog.svelte";
   import EventBracketCard from "$lib/components/tournament/EventBracketCard.svelte";
-  import LiveHandoff from "$lib/components/tournament/LiveHandoff.svelte";
   import MyMatchCard from "$lib/components/tournament/MyMatchCard.svelte";
-  import StartCheckinDialog from "$lib/components/tournament/StartCheckinDialog.svelte";
   import LiveNow from "$lib/components/tournament/LiveNow.svelte";
-  import ShareDialog from "$lib/components/tournament/ShareDialog.svelte";
-  import VehiclePoolView from "$lib/components/tournament/VehiclePoolView.svelte";
   import PrizeCard from "$lib/components/tournament/PrizeCard.svelte";
   import Share2Icon from "@lucide/svelte/icons/share-2";
   import { registrationActions } from "$lib/event-registration.js";
@@ -61,6 +55,30 @@
   import { coalescedRefresh } from "$lib/coalesced-refresh.js";
   import TrophyIcon from "@lucide/svelte/icons/trophy";
   import ArrowLeftIcon from "@lucide/svelte/icons/arrow-left";
+
+  const loadAdminParts = lazy(async () => {
+    const [seeding, wiki, time, finalTime, playerEdit, handoffPart, startCheckin] = await Promise.all([
+      import("$lib/components/tournament/SeedingCard.svelte"),
+      import("$lib/components/tournament/WikiExportDialog.svelte"),
+      import("$lib/components/tournament/TimeEditDialog.svelte"),
+      import("$lib/components/tournament/FinalTimeDialog.svelte"),
+      import("$lib/components/tournament/PlayerEditDialog.svelte"),
+      import("$lib/components/tournament/LiveHandoff.svelte"),
+      import("$lib/components/tournament/StartCheckinDialog.svelte"),
+    ]);
+    return {
+      SeedingCard: seeding.default,
+      WikiExportDialog: wiki.default,
+      TimeEditDialog: time.default,
+      FinalTimeDialog: finalTime.default,
+      PlayerEditDialog: playerEdit.default,
+      LiveHandoff: handoffPart.default,
+      StartCheckinDialog: startCheckin.default,
+    };
+  });
+  const loadVoteProposals = lazy(() => import("$lib/components/tournament/VoteProposals.svelte"));
+  const loadPoolView = lazy(() => import("$lib/components/tournament/VehiclePoolView.svelte"));
+  const loadShareDialog = lazy(() => import("$lib/components/tournament/ShareDialog.svelte"));
 
   let tid = $derived(page.params.id);
   let tournament = $state(null);
@@ -118,7 +136,10 @@
     ),
   );
 
+  // Every player, for the admins' batch registration only (fetched for
+  // admins, alongside the event, while it takes sign-ups).
   let allPlayers = $state([]);
+  let rosterFor = null; // event whose player list was requested
   let unregisteredPlayers = $derived(allPlayers.filter((ap) => !(tournament?.players || []).some((tp) => tp.id === ap.id)));
   let isRegistered = $derived(tournament?.players?.some((p) => p.id === userState.id));
   let seedOrder = $state([]);
@@ -223,12 +244,25 @@
 
   let loadedTournamentId = null;
 
+  function loadRoster() {
+    rosterFor = tid;
+    API.listPlayers()
+      .then((list) => (allPlayers = list))
+      .catch((e) => console.warn("load players failed:", e));
+  }
+  // An admin who signs in on the page still gets the list.
+  $effect(() => {
+    if (isAdmin && tournament?.status === "registration" && rosterFor !== tid) untrack(loadRoster);
+  });
+
   async function load() {
     // Only show the full-page loading state on the first load (or when the
     // route switches to another tournament). Refreshes after a vote,
     // registration or SSE event must keep the page mounted.
     const isInitial = !tournament || loadedTournamentId !== tid;
     if (isInitial) loading = true;
+    // Admins: the player list loads in parallel with the event.
+    if (isAdmin && (isInitial || tournament?.status === "registration")) loadRoster();
     try {
       tournament = await API.getTournament(tid);
       loadedTournamentId = tid;
@@ -237,7 +271,6 @@
           .then((times) => (playTimes = times))
           .catch((e) => console.warn("load play times failed:", e));
       }
-      allPlayers = await API.listPlayers();
       seedOrder = seedOrderOf(tournament?.players);
       // Registration: refresh the bracket preview.
       if (isAdmin && tournament.status === "registration") await refreshPreview();
@@ -314,6 +347,19 @@
       return;
     }
     changeStatus(status);
+  }
+
+  // The share dialog loads on first use.
+  let ShareDialog = $state(null);
+  async function openShare() {
+    try {
+      ShareDialog ??= (await loadShareDialog()).default;
+    } catch (e) {
+      toast.error("加载失败: " + e.message);
+      return;
+    }
+    await tick();
+    shareDialog?.start();
   }
 
   // After a time dialog saved: show its result, then reload.
@@ -468,7 +514,7 @@
       {/each}
       <button
         type="button"
-        onclick={() => shareDialog?.start()}
+        onclick={openShare}
         class="ml-auto shrink-0 inline-flex items-center gap-1 px-3 py-2 text-xs font-semibold text-muted-foreground hover:text-primary cursor-pointer"
         title="生成可以发到 Discord 的赛事公告或结果"
       >
@@ -491,7 +537,9 @@
               onbatch={doBatchRegister}
             />
             {#if isAdmin && (tournament.players?.length || 0) >= 2}
-              <SeedingCard {tournament} {seedOrder} {playerName} onauto={autoSeed} onrandom={randomizeSeed} onmove={moveSeed} />
+              {#await loadAdminParts() then A}
+                <A.SeedingCard {tournament} {seedOrder} {playerName} onauto={autoSeed} onrandom={randomizeSeed} onmove={moveSeed} />
+              {/await}
             {/if}
           </div>
           <div class="space-y-6">
@@ -509,7 +557,9 @@
             <VoteBoard {tournament} {tid} {isAdmin} {voteOptions} bind:weekOffset={voteWeekOffset} {playerName} onchanged={load} />
           </div>
           <div class="space-y-6">
-            <VoteProposals {tid} onchanged={load} />
+            {#await loadVoteProposals() then m}
+              <m.default {tid} onchanged={load} />
+            {/await}
             <PrizeCard {tournament} />
           </div>
         </div>
@@ -539,7 +589,13 @@
         {@render bracketView()}
       {/if}
     {:else if activeTab === "pool"}
-      <VehiclePoolView template={bpTemplate} {banpickEnabled} />
+      {#await loadPoolView()}
+        <p class="py-12 text-center text-xs text-muted-foreground">正在加载载具池...</p>
+      {:then m}
+        <m.default template={bpTemplate} {banpickEnabled} />
+      {:catch e}
+        <p class="py-12 text-center text-xs text-destructive">载具池加载失败：{e.message}</p>
+      {/await}
     {:else if activeTab === "players"}
       {@render rosterSidebar()}
     {:else if activeTab === "live"}
@@ -571,39 +627,43 @@
   onreload={load}
 />
 
-<!-- Admin: adjust the match time -->
-<TimeEditDialog bind:this={timeEditDialog} {tid} current={tournament?.scheduled_time} {ensureAdmin} onsaved={savedEvent} />
+{#if isAdmin}
+  {#await loadAdminParts() then A}
+    <!-- Admin: adjust the match time -->
+    <A.TimeEditDialog bind:this={timeEditDialog} {tid} current={tournament?.scheduled_time} {ensureAdmin} onsaved={savedEvent} />
 
-<!-- Ending the vote: pick the final time -->
-<FinalTimeDialog bind:this={finalTimeDialog} {tid} options={voteOptions} {ensureAdmin} {needsIdentity} onsaved={savedEvent} />
+    <!-- Ending the vote: pick the final time -->
+    <A.FinalTimeDialog bind:this={finalTimeDialog} {tid} options={voteOptions} {ensureAdmin} {needsIdentity} onsaved={savedEvent} />
 
-<!-- Starting with check-in: what happens to the players who did not check in -->
-<StartCheckinDialog bind:this={startDialog} {tid} {tournament} onstarted={() => load()} />
+    <!-- Starting with check-in: what happens to the players who did not check in -->
+    <A.StartCheckinDialog bind:this={startDialog} {tid} {tournament} onstarted={() => load()} />
 
-<!-- Ready-to-paste Discord post -->
-{#if tournament}
-  <ShareDialog bind:this={shareDialog} {tournament} podium={sharePodium} />
+    <!-- Liquipedia Wiki Export Dialog -->
+    <A.WikiExportDialog bind:this={wikiDialog} {tid} />
+
+    <!-- Participant Profile Edit Dialog -->
+    <A.PlayerEditDialog bind:this={playerEditor} {tid} {ensureAdmin} onsaved={load} />
+
+    <!-- Going live: next-match hand-off, HUD countdown, pre-flight checklist -->
+    <A.LiveHandoff
+      bind:this={handoff}
+      bind:streamMode
+      tournament={live}
+      {tid}
+      channel={liveChannel}
+      {isAdmin}
+      candidates={nextMatchCandidates}
+      {overlayMatches}
+      {matchOrder}
+      roundLabel={matchRoundLabel}
+      {playerName}
+      {ensureAdmin}
+      onreload={load}
+    />
+  {/await}
 {/if}
 
-<!-- Liquipedia Wiki Export Dialog -->
-<WikiExportDialog bind:this={wikiDialog} {tid} />
-
-<!-- Participant Profile Edit Dialog -->
-<PlayerEditDialog bind:this={playerEditor} {tid} {ensureAdmin} onsaved={load} />
-
-<!-- Going live: next-match hand-off, HUD countdown, pre-flight checklist -->
-<LiveHandoff
-  bind:this={handoff}
-  bind:streamMode
-  tournament={live}
-  {tid}
-  channel={liveChannel}
-  {isAdmin}
-  candidates={nextMatchCandidates}
-  {overlayMatches}
-  {matchOrder}
-  roundLabel={matchRoundLabel}
-  {playerName}
-  {ensureAdmin}
-  onreload={load}
-/>
+<!-- Ready-to-paste Discord post (loaded on first use) -->
+{#if tournament && ShareDialog}
+  <ShareDialog bind:this={shareDialog} {tournament} podium={sharePodium} />
+{/if}
