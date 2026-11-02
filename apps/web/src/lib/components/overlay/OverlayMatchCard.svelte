@@ -30,10 +30,12 @@
     {@const lost = done && m.winner_id && pid && m.winner_id !== pid}
     {@const dim = lost || (!done && pid && isAlive && !isAlive(pid))}
     {#if slot === 1}
+      <!-- 2px and a lighter slate: the trees are scaled down to fit the
+           screen, which made a 1px slate-800 line vanish. -->
       <div class="w-full flex items-center gap-2 shrink-0">
-        <div class="h-px flex-1 bg-slate-800"></div>
-        <span class="{s.vs} font-black tracking-[0.2em] text-slate-600 font-orbitron">VS</span>
-        <div class="h-px flex-1 bg-slate-800"></div>
+        <div class="h-[2px] flex-1 rounded-full bg-slate-600/70"></div>
+        <span class="{s.vs} font-black tracking-[0.2em] text-slate-500 font-orbitron">VS</span>
+        <div class="h-[2px] flex-1 rounded-full bg-slate-600/70"></div>
       </div>
     {/if}
     <div class="flex-1 min-h-0 flex items-center justify-between {s.row}">
