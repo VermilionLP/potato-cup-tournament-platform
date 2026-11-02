@@ -12,8 +12,9 @@
     zoneOffsetMinutes,
   } from "$lib/datetime.js";
 
-  // value: stored match time (Beijing time); status: tournament status.
-  let { value = "", status = "", actions = undefined } = $props();
+  // value: stored match time (Beijing time); status: tournament status;
+  // checkinAt: when check-in opens (ISO), shown in the viewer's time zone.
+  let { value = "", status = "", checkinAt = "", actions = undefined } = $props();
 
   const instant = $derived(toInstant(value));
   const zone = viewerTimeZone();
@@ -24,12 +25,15 @@
   const showCountdown = $derived(Boolean(instant) && status !== "completed");
   const clock = $derived(instant ? countdown(instant, now) : null);
 
-  // Tick once a second while a countdown is shown.
+  // While a countdown is shown: tick every second in the last hour,
+  // otherwise every half minute (the text shows minutes at most).
+  let soon = $derived(Boolean(clock?.soon));
   $effect(() => {
     if (!showCountdown) return;
-    const timer = setInterval(() => (now = new Date()), 1000);
+    const timer = setInterval(() => (now = new Date()), soon ? 1000 : 30_000);
     return () => clearInterval(timer);
   });
+  let checkinInstant = $derived(checkinAt ? new Date(checkinAt) : null);
 </script>
 
 <div
@@ -49,12 +53,17 @@
           {SOURCE_LABEL} {formatInZone(instant, SOURCE_TIME_ZONE)}
         </div>
       {/if}
+      {#if checkinInstant && !Number.isNaN(checkinInstant.getTime())}
+        <div class="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 tabular-nums">
+          签到 {formatInZone(checkinInstant, zone).split(" ").pop()} 开放（开赛前 30 分钟）
+        </div>
+      {/if}
     </div>
     {#if showCountdown && clock}
       {#if clock.phase === "before"}
         <div class="flex items-baseline gap-1 rounded-lg bg-background/60 px-2 py-1">
           <span class="text-[10px] text-muted-foreground">距开赛</span>
-          <span class="font-mono text-sm font-black tabular-nums text-foreground">{clock.text}</span>
+          <span class="{soon ? 'font-mono' : ''} text-sm font-black tabular-nums text-foreground">{clock.text}</span>
         </div>
       {:else if status === "in_progress"}
         <span class="rounded-lg bg-emerald-500/15 px-2 py-1 text-[11px] font-bold text-emerald-600 dark:text-emerald-400">

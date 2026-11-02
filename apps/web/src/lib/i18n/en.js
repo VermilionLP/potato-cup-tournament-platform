@@ -1637,4 +1637,13 @@ export default {
   "最近 {0}": "Last {0}",
   "首次 {0}": "First {0}",
   "（没有堆栈）": "(no stack)",
+  "签到 {0} 开放（开赛前 30 分钟）": "Check-in opens {0} (30 minutes before the start)",
+  "已报名 ✓": "Signed up ✓",
+  "立即报名": "Sign up",
+  "（月赛）": " (monthly)",
+  "（周赛）": " (weekly)",
+  "计入 {0} 积分榜": "Counts for the {0} points",
+  "{0:n} 天 {1:n} 小时": "{0} d {1} h",
+  "{0:n} 小时 {1:n} 分": "{0} h {1} min",
+  "· 冠军直邀": "· Champion invited",
 };

@@ -104,7 +104,7 @@
     {/each}
   </select>
 {:else if tierTagText(tournament)}
-  <span class="rounded-md border px-2 py-0.5 font-bold {TIER_TAG[tournament.tier] || 'border-border bg-muted/60 text-muted-foreground'}" title="赛事等级">{tierTagText(tournament)}</span>
+  <span class="rounded-md border border-border bg-muted/60 px-2 py-0.5 font-bold text-muted-foreground" title="赛事等级">{tierTagText(tournament)}</span>
 {/if}
 {#if isAdmin}
   <select
@@ -139,5 +139,5 @@
     {/each}
   </select>
 {:else if vehiclePoolLabel(tournament.vehicle_pool)}
-  <span class="rounded-md border px-2 py-0.5 font-semibold {POOL_TAG[tournament.vehicle_pool] || 'border-border bg-muted/60 text-muted-foreground'}">{vehiclePoolLabel(tournament.vehicle_pool)}</span>
+  <span class="rounded-md border border-border bg-muted/60 px-2 py-0.5 font-semibold text-muted-foreground">{vehiclePoolLabel(tournament.vehicle_pool)}</span>
 {/if}

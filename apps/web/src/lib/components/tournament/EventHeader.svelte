@@ -1,7 +1,8 @@
 <script>
-  // Event page header: title (editable by admins), status, the tag row
-  // (EventTagControls, then format and points), facts, match time and
-  // points settings.
+  // Event page header: title (editable by admins), status and the sign-up
+  // button, the tag row in two groups (settings: EventTagControls and the
+  // format; rewards: points and prizes), facts, match time (with check-in)
+  // and points settings.
   import { goto } from "$app/navigation";
   import { toast } from "svelte-sonner";
   import { API } from "$lib/api.js";
@@ -28,9 +29,13 @@
     isTwoStage = false,
     hasGroupBrackets = false,
     swissRoundsLabel = "",
+    isRegistered = false,
+    onregister,
+    onunregister,
     onreload,
     onedittime,
   } = $props();
+  let canSignUp = $derived(tournament?.status === "registration" && !tournament?.source_url);
 
   let hasPoints = $derived(Boolean(tournament?.points_table?.length));
   let prizePool = $derived(prizeTotal(tournament?.points_table));
@@ -157,16 +162,29 @@
     <Badge variant="outline" class="text-[10px] px-2 py-0.5 font-bold uppercase tracking-wider bg-primary/10 text-primary border-primary/20">
       {statusText}
     </Badge>
+    {#if canSignUp}
+      {#if isRegistered}
+        <span class="inline-flex items-center gap-2 text-xs">
+          <span class="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 font-bold text-emerald-600 dark:text-emerald-400">已报名 ✓</span>
+          <button type="button" onclick={() => onunregister?.()} class="text-muted-foreground hover:text-destructive cursor-pointer">取消报名</button>
+        </span>
+      {:else}
+        <Button size="sm" onclick={() => onregister?.()} class="h-8 font-bold">立即报名</Button>
+      {/if}
+    {/if}
   </div>
 
-  <!-- Event tags: tier, mode · type · format · detail, then points. -->
-  <div class="flex flex-wrap items-center gap-1.5 pt-1 text-xs">
+  <!-- Event tags: settings (tier, mode, type, format, detail), then rewards (points, prizes). -->
+  <div class="flex flex-wrap items-center gap-x-1.5 gap-y-1.5 pt-1 text-xs">
     <EventTagControls bind:tournament {tid} {isAdmin} />
     <span class="rounded-md border border-border bg-muted/60 px-2 py-0.5 font-semibold text-muted-foreground">{isSwiss && !isTwoStage ? `瑞士轮 · ${swissRoundsLabel}` : eventFormatLabel(tournament)}</span>
     {#if isTwoStage}
       <span class="text-muted-foreground">{tournament.swiss_group_size ? `每组 ${tournament.swiss_group_size} 人` : "不分组"}{hasGroupBrackets ? "" : ` · ${swissRoundsLabel}`} · 每组前 {tournament.advance_per_group} 名晋级</span>
     {:else if !isSwiss && tournament.loser_advances}
       <span class="text-muted-foreground">败者晋级</span>
+    {/if}
+    {#if hasPoints || prizePool || isAdmin}
+      <span class="hidden sm:inline-block h-4 w-px bg-border mx-1" aria-hidden="true"></span>
     {/if}
     {#if hasPoints}
       <a
@@ -175,7 +193,7 @@
         title="年度积分榜"
       >
         <TrophyIcon class="w-3 h-3" />
-        {tournament.points_season} 赛季{tournament.points_kind === "monthly" ? "月赛" : "周赛"}{tournament.points_invite ? " · 冠军直邀" : ""}
+        <span>计入 {tournament.points_season} 积分榜</span>{#if !tournament.event_kind}<span>{tournament.points_kind === "monthly" ? "（月赛）" : "（周赛）"}</span>{/if}{#if tournament.points_invite}<span>· 冠军直邀</span>{/if}
       </a>
     {/if}
     {#if prizePool}
@@ -234,7 +252,11 @@
       <span class="truncate">数据来源：Liquipedia · {tournament.source_title || tournament.name}</span>
     </a>
   {:else if tournament.scheduled_time}
-    <MatchTime value={tournament.scheduled_time} status={tournament.status}>
+    <MatchTime
+      value={tournament.scheduled_time}
+      status={tournament.status}
+      checkinAt={tournament.status === "registration" && tournament.checkin?.enabled ? tournament.checkin.opens_at : ""}
+    >
       {#snippet actions()}
         {#if isAdmin && ["registration", "in_progress"].includes(tournament.status)}
           <button

@@ -327,6 +327,9 @@
         {isTwoStage}
         {hasGroupBrackets}
         {swissRoundsLabel}
+        {isRegistered}
+        onregister={() => doRegister("")}
+        onunregister={() => doUnregister(userState.id)}
         onreload={load}
         onedittime={() => timeEditDialog?.start()}
       />

@@ -50,8 +50,10 @@ test("stored Beijing times convert to the viewer's time zone", async () => {
 test("countdown before and after the start", async () => {
   const { countdown } = await import("../src/lib/datetime.js");
   const start = new Date("2026-11-01T12:30:00Z");
-  assert.deepEqual(countdown(start, new Date("2026-10-28T08:18:51Z")), { phase: "before", text: "4 天 04:11:09" });
-  assert.deepEqual(countdown(start, new Date("2026-11-01T12:29:59Z")), { phase: "before", text: "00:00:01" });
+  assert.deepEqual(countdown(start, new Date("2026-10-28T08:18:51Z")), { phase: "before", soon: false, text: "4 天 4 小时" });
+  assert.deepEqual(countdown(start, new Date("2026-11-01T09:15:00Z")), { phase: "before", soon: false, text: "3 小时 15 分" });
+  assert.deepEqual(countdown(start, new Date("2026-11-01T11:50:30Z")), { phase: "before", soon: true, text: "39:30" });
+  assert.deepEqual(countdown(start, new Date("2026-11-01T12:29:59Z")), { phase: "before", soon: true, text: "00:01" });
   assert.deepEqual(countdown(start, new Date("2026-11-01T12:45:00Z")), { phase: "after", text: "已开赛 15 分钟" });
   assert.deepEqual(countdown(start, new Date("2026-11-01T14:35:00Z")), { phase: "after", text: "已开赛 2 小时 5 分" });
 });

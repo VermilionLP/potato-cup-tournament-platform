@@ -145,10 +145,14 @@ export function offsetLabel(minutes) {
 export function countdown(target, now = new Date()) {
   const diff = target.getTime() - now.getTime();
   if (diff > 0) {
+    // Far off: days and hours, or hours and minutes; the last hour ticks
+    // in minutes and seconds (`soon`).
     const total = Math.floor(diff / 1000);
     const days = Math.floor(total / 86400);
-    const clock = `${pad(Math.floor((total % 86400) / 3600))}:${pad(Math.floor((total % 3600) / 60))}:${pad(total % 60)}`;
-    return { phase: "before", text: days > 0 ? `${days} 天 ${clock}` : clock };
+    const hours = Math.floor((total % 86400) / 3600);
+    const minutes = Math.floor((total % 3600) / 60);
+    if (total < 3600) return { phase: "before", soon: true, text: `${pad(minutes)}:${pad(total % 60)}` };
+    return { phase: "before", soon: false, text: days > 0 ? `${days} 天 ${hours} 小时` : `${hours} 小时 ${minutes} 分` };
   }
   const mins = Math.floor(-diff / 60000);
   const text = mins < 60 ? `已开赛 ${mins} 分钟` : `已开赛 ${Math.floor(mins / 60)} 小时 ${mins % 60} 分`;
