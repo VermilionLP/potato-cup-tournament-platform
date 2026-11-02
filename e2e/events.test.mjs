@@ -33,7 +33,9 @@ test('an admin reports a score from the bracket', async () => {
   const event = await api('GET', `/tournaments/${id}`);
   const match = event.matches.find((m) => m.player1_id && m.player2_id && m.status === 'pending');
   assert.ok(match, 'a playable first-round match');
-  const { browser, page, errors } = await openPage({ admin: true });
+  // Reporting needs a player identity too (the site asks for one first).
+  const me = await makePlayer('op');
+  const { browser, page, errors } = await openPage({ admin: true, player: me });
   try {
     await page.goto(`${BASE}/tournament/${id}#bracket`);
     const card = page.getByRole('button').filter({ hasText: match.player1_id }).filter({ hasText: match.player2_id }).first();
