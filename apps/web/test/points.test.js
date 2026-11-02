@@ -29,3 +29,15 @@ test("placing colours follow Liquipedia", () => {
   assert.equal(placeColor({ from: 9, to: 12 }), placeColor({ from: 13, to: 16 }));
   assert.equal(placeColor(null), "");
 });
+
+test("prizes in Golden Eagles sit in the points table", async () => {
+  const { POINTS_PRESETS, cleanTable, placeName, pointsTableProblem, prizeRows, prizeTotal } = await import("../src/lib/points.js");
+  const weekly = POINTS_PRESETS[0].table;
+  assert.deepEqual(weekly.map((r) => [r.points, r.prize ?? 0]), [[100, 2500], [60, 1000], [35, 150], [10, 0]]);
+  assert.equal(prizeTotal(weekly), 2500 + 1000 + 150 * 2);
+  assert.deepEqual(prizeRows(weekly).map(placeName), ["冠军", "亚军", "第 3-4 名"]);
+  assert.deepEqual(cleanTable([{ from: "1", to: "1", points: "100", prize: "2500" }, { from: 2, to: "", points: 60, prize: "" }]), [{ from: 1, to: 1, points: 100, prize: 2500 }, { from: 2, to: 2, points: 60 }]);
+  assert.equal(pointsTableProblem([{ from: 1, to: 1, points: 10, prize: "abc" }], "2026"), "第 1 行的金鹰币不正确");
+  assert.equal(pointsTableProblem([{ from: 1, to: 1, points: 10, prize: 2.5 }], "2026"), "第 1 行的金鹰币不正确");
+  assert.equal(pointsTableProblem([{ from: 1, to: 1, points: 10, prize: "" }], "2026"), "");
+});

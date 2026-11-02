@@ -16,10 +16,14 @@ export function normalizePointsTable(input) {
     const from = Number(raw?.from);
     const to = raw?.to === undefined || raw?.to === null || raw?.to === '' ? from : Number(raw.to);
     const points = Number(raw?.points);
+    // Prize in Golden Eagles (金鹰币), optional.
+    const prizeRaw = raw?.prize;
+    const prize = prizeRaw === undefined || prizeRaw === null || prizeRaw === '' ? 0 : Number(prizeRaw);
     if (!Number.isInteger(from) || from < 1 || from > 512) return { error: `积分表第 ${i + 1} 行的名次不正确` };
     if (!Number.isInteger(to) || to < from || to > 512) return { error: `积分表第 ${i + 1} 行的名次范围不正确` };
     if (!Number.isFinite(points) || points < 0 || points > 100000) return { error: `积分表第 ${i + 1} 行的积分不正确` };
-    rows.push({ from, to, points: Math.round(points * 100) / 100 });
+    if (!Number.isInteger(prize) || prize < 0 || prize > 10_000_000) return { error: `积分表第 ${i + 1} 行的金鹰币不正确` };
+    rows.push({ from, to, points: Math.round(points * 100) / 100, ...(prize ? { prize } : {}) });
   }
   rows.sort((a, b) => a.from - b.from);
   for (let i = 1; i < rows.length; i += 1) {

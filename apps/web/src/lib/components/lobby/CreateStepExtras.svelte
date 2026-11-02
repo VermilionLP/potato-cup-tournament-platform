@@ -40,7 +40,7 @@
 </section>
 
 <section class="space-y-2 rounded-xl border border-border/60 bg-background/30 p-3">
-  <div class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">年度积分榜</div>
+  <div class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">奖金与积分</div>
   <label class="flex items-center gap-2 text-xs text-foreground/80 cursor-pointer">
     <input type="checkbox" bind:checked={form.pointsEnabled} class="accent-primary" />
     计入土豆杯积分榜

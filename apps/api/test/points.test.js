@@ -54,3 +54,10 @@ test('Winter Finals: invited champions first, then the points ranking', () => {
   // Players without points never qualify by points.
   assert.equal(finalsQualifiers([{ player_id: 'z', total: 0 }], [], { spots: 2 }).size, 0);
 });
+
+test('prizes (金鹰币) are kept with the points', () => {
+  assert.deepEqual(normalizePointsTable([{ from: 1, to: 1, points: 100, prize: '2500' }, { from: 2, points: 60, prize: '' }]).table,
+    [{ from: 1, to: 1, points: 100, prize: 2500 }, { from: 2, to: 2, points: 60 }]);
+  assert.match(normalizePointsTable([{ from: 1, points: 1, prize: -5 }]).error, /金鹰币/);
+  assert.match(normalizePointsTable([{ from: 1, points: 1, prize: 1.5 }]).error, /金鹰币/);
+});

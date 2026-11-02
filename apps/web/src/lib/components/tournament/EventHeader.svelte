@@ -5,7 +5,7 @@
   import { goto } from "$app/navigation";
   import { toast } from "svelte-sonner";
   import { API } from "$lib/api.js";
-  import { POINTS_PRESETS, cleanTable, copyTable, currentSeason, pointsTableProblem } from "$lib/points.js";
+  import { POINTS_PRESETS, cleanTable, copyTable, currentSeason, placeName, pointsTableProblem, prizeRows, prizeTotal } from "$lib/points.js";
   import { eventFormatLabel } from "$lib/tournament.js";
   import { Button } from "$lib/components/ui/button/index.js";
   import { Input } from "$lib/components/ui/input/index.js";
@@ -35,6 +35,8 @@
   } = $props();
 
   let hasPoints = $derived(Boolean(tournament?.points_table?.length));
+  let prizePool = $derived(prizeTotal(tournament?.points_table));
+  let prizeTitle = $derived(prizeRows(tournament?.points_table).map((r) => `${placeName(r)} ${r.prize} 金鹰币`).join(" · "));
 
   function adminOnly() {
     if (isAdmin) return true;
@@ -178,13 +180,18 @@
         {tournament.points_season} 赛季{tournament.points_kind === "monthly" ? "月赛" : "周赛"}{tournament.points_invite ? " · 冠军直邀" : ""}
       </a>
     {/if}
+    {#if prizePool}
+      <span class="rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 font-semibold text-amber-600 dark:text-amber-400" title={prizeTitle}>
+        奖金 {prizePool} 金鹰币
+      </span>
+    {/if}
     {#if isAdmin}
       <button
         type="button"
         onclick={() => (editingPoints ? (editingPoints = false) : openPointsEdit())}
         class="text-[11px] font-semibold text-primary hover:underline cursor-pointer"
       >
-        {editingPoints ? "收起积分设置" : hasPoints ? "编辑积分" : "设置积分"}
+        {editingPoints ? "收起奖金与积分" : hasPoints ? "编辑奖金与积分" : "设置奖金与积分"}
       </button>
     {/if}
   </div>
@@ -205,10 +212,10 @@
 
   {#if isAdmin && editingPoints}
     <div class="mt-3 max-w-xl space-y-2 rounded-xl border border-border bg-card/60 p-3">
-      <div class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">年度积分榜设置</div>
+      <div class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">奖金与积分设置</div>
       <PointsEditor bind:table={pointsDraft} bind:season={pointsSeasonDraft} bind:kind={pointsKindDraft} bind:invite={pointsInviteDraft} compact />
       <div class="flex flex-wrap items-center gap-2">
-        <Button size="sm" class="h-8 text-xs cursor-pointer" disabled={savingPoints} onclick={() => savePoints(false)}>保存积分</Button>
+        <Button size="sm" class="h-8 text-xs cursor-pointer" disabled={savingPoints} onclick={() => savePoints(false)}>保存</Button>
         {#if hasPoints}
           <Button variant="outline" size="sm" class="h-8 text-xs cursor-pointer" disabled={savingPoints} onclick={() => savePoints(true)}>不计入积分榜</Button>
         {/if}

@@ -52,6 +52,8 @@
   import StartCheckinDialog from "$lib/components/tournament/StartCheckinDialog.svelte";
   import LiveNow from "$lib/components/tournament/LiveNow.svelte";
   import ShareDialog from "$lib/components/tournament/ShareDialog.svelte";
+  import VehiclePoolView from "$lib/components/tournament/VehiclePoolView.svelte";
+  import PrizeCard from "$lib/components/tournament/PrizeCard.svelte";
   import Share2Icon from "@lucide/svelte/icons/share-2";
   import { registrationActions } from "$lib/event-registration.js";
   import { stageActions } from "$lib/event-stage.js";
@@ -283,13 +285,15 @@
     ensureAdmin: () => ensureAdmin(),
   });
 
-  // Tabs (remembered in the address as #overview / #bracket / #players /
-  // #live). A running event opens on its bracket, the others on the overview.
-  const TAB_IDS = ["overview", "bracket", "players", "live"];
+  // Tabs (remembered in the address as #overview / #bracket / #pool /
+  // #players / #live). A running event opens on its bracket, the others on
+  // the overview. The vehicle pool tab shows when the event has a template.
+  const TAB_IDS = ["overview", "bracket", "pool", "players", "live"];
   let chosenTab = $state("");
   let tabs = $derived([
     { id: "overview", label: "概览" },
     { id: "bracket", label: tournament?.status === "registration" ? "对阵预览" : "对阵" },
+    ...(bpTemplate ? [{ id: "pool", label: "载具池" }] : []),
     { id: "players", label: "选手", count: tournament?.players?.length ?? 0 },
     { id: "live", label: "直播" },
   ]);
@@ -491,6 +495,7 @@
             {/if}
           </div>
           <div class="space-y-6">
+            <PrizeCard {tournament} />
             {@render rosterSidebar()}
           </div>
         </div>
@@ -505,6 +510,7 @@
           </div>
           <div class="space-y-6">
             <VoteProposals {tid} onchanged={load} />
+            <PrizeCard {tournament} />
           </div>
         </div>
       {:else if tournament.status === "completed"}
@@ -519,7 +525,12 @@
           onexportwiki={() => wikiDialog?.start()}
         />
       {:else}
-        <LiveNow tournament={live} order={matchOrder} roundLabel={matchRoundLabel} {playerName} onopen={(m) => matchReport?.openDetails(m)} />
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div class="lg:col-span-2">
+            <LiveNow tournament={live} order={matchOrder} roundLabel={matchRoundLabel} {playerName} onopen={(m) => matchReport?.openDetails(m)} />
+          </div>
+          <PrizeCard {tournament} />
+        </div>
       {/if}
     {:else if activeTab === "bracket"}
       {#if tournament.status === "registration" && (tournament.players?.length || 0) < (isDoubleElim ? 4 : 2)}
@@ -527,6 +538,8 @@
       {:else}
         {@render bracketView()}
       {/if}
+    {:else if activeTab === "pool"}
+      <VehiclePoolView template={bpTemplate} {banpickEnabled} />
     {:else if activeTab === "players"}
       {@render rosterSidebar()}
     {:else if activeTab === "live"}
@@ -569,7 +582,7 @@
 
 <!-- Ready-to-paste Discord post -->
 {#if tournament}
-  <ShareDialog bind:this={shareDialog} {tournament} template={bpTemplate} podium={sharePodium} />
+  <ShareDialog bind:this={shareDialog} {tournament} podium={sharePodium} />
 {/if}
 
 <!-- Liquipedia Wiki Export Dialog -->

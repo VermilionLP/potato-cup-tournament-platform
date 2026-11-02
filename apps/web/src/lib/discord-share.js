@@ -4,8 +4,7 @@
 // dictionary). Pure; the dialog is ShareDialog.svelte.
 
 import { GAME_MODES, eventFormatLabel, vehiclePoolLabel } from "./tournament.js";
-import { groupSummary } from "./vehicle-pools.js";
-import { rulesSummary } from "./banpick.js";
+import { placeName, prizeRows } from "./points.js";
 import { translate } from "./i18n/translate.js";
 
 // The post's own wording; site labels go through the site's dictionary.
@@ -15,9 +14,9 @@ const TEXT = {
     roundRobin: "瑞士轮单循环",
     rounds: (n) => `瑞士轮 ${n} 轮`,
     reset: "总决赛可重置",
-    pool: (name, rules) => `🚗 载具池：**${name}**${rules ? ` · Ban / Pick：${rules}` : ""}`,
-    groupLine: (g, n, br) => `- **${g}**：${n} 辆${br ? `，BR ${br}` : ""}`,
-    list: (names) => names.join("、"),
+    prizes: (list) => `💰 奖金：${list}`,
+    prizeOf: (r) => `${placeName(r)}${r.to > r.from ? "各" : ""} ${r.prize} 金鹰币`,
+    coins: (n) => ` · ${n} 金鹰币`,
     format: (f, n) => `🏆 赛制：${f}${n == null ? "" : ` · ${n} 名选手`}`,
     resultsLink: (u) => `🔗 对阵与名次：${u}`,
     time: (f, r) => `🗓️ 比赛时间：${f}（${r}）`,
@@ -36,9 +35,9 @@ const TEXT = {
     roundRobin: "Swiss round robin",
     rounds: (n) => `${n} Swiss rounds`,
     reset: "grand final reset",
-    pool: (name, rules) => `🚗 Vehicle pool: **${name}**${rules ? ` · Ban / Pick: ${rules}` : ""}`,
-    groupLine: (g, n, br) => `- **${g}**: ${n} vehicle${n === 1 ? "" : "s"}${br ? `, BR ${br}` : ""}`,
-    list: (names) => names.join(", "),
+    prizes: (list) => `💰 Prizes: ${list}`,
+    prizeOf: (r) => `${r.from === r.to ? ordinal(r.from) : `${ordinal(r.from)}–${ordinal(r.to)}`} ${r.prize} GE${r.to > r.from ? " each" : ""}`,
+    coins: (n) => ` · ${n} GE`,
     format: (f, n) => `🏆 Format: ${f}${n == null ? "" : ` · ${n} players`}`,
     resultsLink: (u) => `🔗 Bracket and placings: ${u}`,
     time: (f, r) => `🗓️ Starts ${f} (${r})`,
@@ -82,35 +81,28 @@ export function formatLine(t, lang = "zh") {
   return parts.join(" · ");
 }
 
-/** Vehicle pool lines: "none", "summary" (groups) or "full" (every vehicle). */
-export function poolLines(template, detail = "summary", banpickEnabled = true, lang = "zh") {
-  if (!template || detail === "none") return [];
+const ordinal = (n) => `${n}${[11, 12, 13].includes(n % 100) ? "th" : ["th", "st", "nd", "rd"][n % 10] || "th"}`;
+
+/** "💰 奖金：冠军 2500 金鹰币 · …" from the points table's prizes, or "". */
+export function prizeLine(table, lang = "zh") {
+  const rows = prizeRows(table);
+  if (!rows.length) return "";
   const T = textOf(lang);
-  const lines = [T.pool(template.name, banpickEnabled ? T.label(rulesSummary(template.rules)) : "")];
-  const vehicles = template.vehicles || [];
-  if (detail === "summary") {
-    for (const g of groupSummary(vehicles)) {
-      const fmt = (x) => Number(x).toFixed(1); // battle ratings: 4.0, 4.3
-      const br = g.brMin == null ? "" : g.brMin === g.brMax ? fmt(g.brMin) : `${fmt(g.brMin)}–${fmt(g.brMax)}`;
-      lines.push(T.groupLine(g.group, g.count, br));
-    }
-  } else if (detail === "full") {
-    const byGroup = new Map();
-    for (const v of vehicles) {
-      if (!byGroup.has(v.group)) byGroup.set(v.group, []);
-      const list = byGroup.get(v.group);
-      if (!list.includes(v.name)) list.push(v.name);
-    }
-    for (const [group, names] of byGroup) lines.push(`- **${group}**${lang === "en" ? ": " : "："}${T.list(names)}`);
-  }
-  return lines;
+  return T.prizes(rows.map((r) => T.prizeOf(r)).join(" · "));
+}
+
+/** The prize for a finishing place (1, 2, 3 …), or 0. */
+function prizeFor(table, place) {
+  return prizeRows(table).find((r) => place >= r.from && place <= r.to)?.prize || 0;
 }
 
 /**
- * The post. `kind`: "announce" (time, format, pool, sign-up) or "results"
- * (podium). opts: { siteUrl, template, pool, podium: [names per place] }.
+ * The post. `kind`: "announce" (time, mode and vehicle type, format,
+ * sign-up, prizes) or "results" (podium with prizes). The vehicle type
+ * (历史模式 · 螺旋桨) stands for the pool; the site has the full list.
+ * opts: { siteUrl, podium: [names per place], lang }.
  */
-export function shareMessage(t, { kind = "announce", siteUrl = "", template = null, pool = "summary", podium = [], lang = "zh" } = {}) {
+export function shareMessage(t, { kind = "announce", siteUrl = "", podium = [], lang = "zh" } = {}) {
   const T = textOf(lang);
   const url = siteUrl ? `${siteUrl.replace(/\/+$/, "")}/tournament/${encodeURIComponent(t.id)}` : "";
   const mode = GAME_MODES.find((m) => m.id === t.game_mode);
@@ -119,7 +111,10 @@ export function shareMessage(t, { kind = "announce", siteUrl = "", template = nu
 
   if (kind === "results") {
     const medals = ["🥇", "🥈", "🥉"];
-    podium.slice(0, 3).forEach((names, i) => names.length && lines.push(`${medals[i]} **${names.join(" / ")}**`));
+    podium.slice(0, 3).forEach((names, i) => {
+      const coins = prizeFor(t.points_table, i + 1);
+      if (names.length) lines.push(`${medals[i]} **${names.join(" / ")}**${coins ? T.coins(coins) : ""}`);
+    });
     lines.push(T.format(formatLine(t, lang), players));
     if (url) lines.push(T.resultsLink(url));
     return lines.join("\n");
@@ -136,8 +131,9 @@ export function shareMessage(t, { kind = "announce", siteUrl = "", template = nu
   if (t.checkin?.enabled && t.status === "registration") {
     lines.push(unix != null ? T.checkin(stamp(unix - CHECKIN_LEAD_S, "t")) : T.checkinNoTime);
   }
+  const prizes = prizeLine(t.points_table, lang);
+  if (prizes) lines.push(prizes);
   if (t.points_table?.length) lines.push(T.points(t.points_season, t.points_kind === "monthly", t.points_invite));
-  lines.push(...poolLines(template, pool, t.banpick_enabled !== false, lang));
   if (url) lines.push(`${T.link[t.status] || T.link.other}${url}`);
   return lines.join("\n");
 }

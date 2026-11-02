@@ -1,7 +1,7 @@
 <script>
   // "分享到 Discord": a ready-to-paste post about the event (time as Discord
-  // dynamic timestamps, format, mode and type, check-in, points, vehicle
-  // pool; or the podium once finished), editable, split into messages under
+  // dynamic timestamps, mode and vehicle type, format, check-in, prizes and
+  // points; or the podium once finished), editable, split into messages under
   // Discord's 2000-character limit ($lib/discord-share.js). start() opens it.
   import { toast } from "svelte-sonner";
   import * as Dialog from "$lib/components/ui/dialog/index.js";
@@ -11,19 +11,16 @@
   import { i18n } from "$lib/i18n/locale.svelte.js";
   import CopyIcon from "@lucide/svelte/icons/copy";
 
-  let { tournament, template = null, podium = [] } = $props();
+  let { tournament, podium = [] } = $props();
 
   let open = $state(false);
   let kind = $state("announce");
-  let pool = $state("summary");
   let text = $state("");
   let lang = $state("zh");
 
   function build() {
     text = shareMessage(tournament, {
       kind,
-      pool,
-      template,
       podium,
       siteUrl: typeof window !== "undefined" ? window.location.origin : "",
       lang,
@@ -37,9 +34,8 @@
     open = true;
   }
 
-  function choose(k, p, l = lang) {
+  function choose(k, l = lang) {
     kind = k;
-    pool = p;
     lang = l;
     build();
   }
@@ -90,7 +86,7 @@
             <button
               type="button"
               disabled={value === "results" && tournament?.status !== "completed"}
-              onclick={() => choose(value, pool)}
+              onclick={() => choose(value)}
               class="rounded-md px-2 py-0.5 font-semibold cursor-pointer disabled:cursor-not-allowed disabled:opacity-40 {kind === value ? 'bg-primary text-primary-foreground' : 'border border-border'}"
             >
               {label}
@@ -102,28 +98,13 @@
           {#each [["zh", "中文"], ["en", "English"]] as [value, label] (value)}
             <button
               type="button"
-              onclick={() => choose(kind, pool, value)}
+              onclick={() => choose(kind, value)}
               class="rounded-md px-2 py-0.5 font-semibold cursor-pointer {lang === value ? 'bg-primary text-primary-foreground' : 'border border-border'}"
             >
               {label}
             </button>
           {/each}
         </div>
-        {#if kind === "announce"}
-          <div class="flex items-center gap-1">
-            <span class="text-muted-foreground">载具池</span>
-            {#each [["none", "不写"], ["summary", "分组概要"], ["full", "全部载具"]] as [value, label] (value)}
-              <button
-                type="button"
-                disabled={!template && value !== "none"}
-                onclick={() => choose(kind, value)}
-                class="rounded-md px-2 py-0.5 font-semibold cursor-pointer disabled:cursor-not-allowed disabled:opacity-40 {pool === value ? 'bg-primary text-primary-foreground' : 'border border-border'}"
-              >
-                {label}
-              </button>
-            {/each}
-          </div>
-        {/if}
       </div>
 
       <div class="space-y-1">

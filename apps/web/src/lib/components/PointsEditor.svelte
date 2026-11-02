@@ -1,7 +1,7 @@
 <script>
-  // Points per placing for the Potato Cup leaderboard (积分榜): the kind of
-  // event (周赛 / 月赛, which also loads its default table), the rows, the
-  // season (year) and whether the champion gets a direct Winter Finals invite.
+  // Points and prizes per placing (积分榜 and 金鹰币): the kind of event
+  // (周赛 / 月赛, which also loads its default table), the rows, the season
+  // (year) and whether the champion gets a direct Winter Finals invite.
   import { POINTS_PRESETS, copyTable, pointsTableProblem } from "$lib/points.js";
 
   let { table = $bindable([]), season = $bindable(""), kind = $bindable("weekly"), invite = $bindable(false), compact = false } = $props();
@@ -15,7 +15,7 @@
   }
 
   function presetTitle(preset) {
-    return preset.table.map((r) => `${r.from === r.to ? r.from : `${r.from}-${r.to}`}: ${r.points}`).join(" · ");
+    return preset.table.map((r) => `${r.from === r.to ? r.from : `${r.from}-${r.to}`}: ${r.points}${r.prize ? ` + ${r.prize} 金鹰币` : ""}`).join(" · ");
   }
 
   function setRow(i, field, value) {
@@ -24,7 +24,7 @@
   function addRow() {
     const last = table[table.length - 1];
     const from = last ? Number(last.to || last.from) + 1 : 1;
-    table = [...table, { from, to: from, points: 0 }];
+    table = [...table, { from, to: from, points: 0, prize: "" }];
   }
   function removeRow(i) {
     table = table.filter((_, j) => j !== i);
@@ -60,14 +60,15 @@
   </div>
 
   <div class="rounded-lg border border-border/60 {compact ? '' : 'bg-background/30'}">
-    <div class="grid grid-cols-[1fr_1fr_1fr_1.75rem] gap-1.5 border-b border-border/50 px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-      <span>名次从</span><span>到</span><span>积分</span><span></span>
+    <div class="grid grid-cols-[1fr_1fr_1fr_1.2fr_1.75rem] gap-1.5 border-b border-border/50 px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+      <span>名次从</span><span>到</span><span>积分</span><span>金鹰币</span><span></span>
     </div>
     {#each table as row, i (i)}
-      <div class="grid grid-cols-[1fr_1fr_1fr_1.75rem] items-center gap-1.5 px-2 py-1">
+      <div class="grid grid-cols-[1fr_1fr_1fr_1.2fr_1.75rem] items-center gap-1.5 px-2 py-1">
         <input aria-label="名次从" inputmode="numeric" class={cell} value={row.from} oninput={(e) => setRow(i, "from", e.currentTarget.value)} />
         <input aria-label="名次到" inputmode="numeric" class={cell} value={row.to} oninput={(e) => setRow(i, "to", e.currentTarget.value)} />
         <input aria-label="积分" inputmode="decimal" class="{cell} font-mono" value={row.points} oninput={(e) => setRow(i, "points", e.currentTarget.value)} />
+        <input aria-label="金鹰币奖金" inputmode="numeric" placeholder="无" class="{cell} font-mono" value={row.prize ?? ""} oninput={(e) => setRow(i, "prize", e.currentTarget.value)} />
         <button type="button" onclick={() => removeRow(i)} class="h-7 rounded text-muted-foreground hover:bg-red-500/10 hover:text-red-500 cursor-pointer" title="删除这一行" aria-label="删除这一行">×</button>
       </div>
     {/each}
