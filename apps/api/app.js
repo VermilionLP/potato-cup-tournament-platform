@@ -34,6 +34,7 @@ import { createEsLogger, registerRequestLogging } from './lib/es-logger.js';
 import { registerRateLimit } from './lib/rate-limit.js';
 import { registerLadderCacheInvalidation } from './lib/ladder-cache.js';
 import { staticCacheHeaders } from './lib/static-cache.js';
+import { registerCompression } from './lib/compression.js';
 import fastifySse from '@fastify/sse';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -56,6 +57,8 @@ fastify.decorate('tournamentEvents', tournamentEvents);
 const esLogger = createEsLogger();
 fastify.decorate('esLogger', esLogger);
 registerRequestLogging(fastify, esLogger);
+// gzip / Brotli for /api JSON (lib/compression.js); static files come pre-compressed.
+registerCompression(fastify);
 
 await fastify.register(cors, { origin: true, credentials: true });
 await fastify.register(sensible);
