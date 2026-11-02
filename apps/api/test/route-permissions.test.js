@@ -148,3 +148,22 @@ test('a walkover claim by a player is never confirmed by the opponent', async ()
   const admin = await inject({ method: 'POST', url: '/tournaments/t1/matches/1/report/confirm', headers: ADMIN, body: {} });
   assert.ok(![401, 403].includes(admin.statusCode), `admin: ${admin.statusCode} ${admin.error?.message}`);
 });
+
+test('player IP addresses are shown to admins only', async () => {
+  const { inject } = await buildRoutes(modules, fakeDb({ row: { last_ip: '1.2.3.4', display_name: 'P1', battle_tags: {} } }));
+  for (const url of ['/players', '/players/p1']) {
+    const guest = await inject({ method: 'GET', url });
+    const admin = await inject({ method: 'GET', url, headers: ADMIN });
+    const one = (r) => (Array.isArray(r.payload) ? r.payload[0] : r.payload);
+    assert.equal(guest.statusCode, 200, url);
+    assert.equal(one(guest).last_ip, undefined, `${url}: no IP for guests`);
+    assert.equal(one(admin).last_ip, '1.2.3.4', `${url}: admins see it`);
+  }
+});
+
+test('an event page reads its own vehicle pool', async () => {
+  const { inject } = await buildRoutes(modules, fakeDb({ row: { event_type: 'prop', vehicles: [{ name: 'P-47D-28', group: 'USA' }], game_modes: [] } }));
+  const res = await inject({ method: 'GET', url: '/tournaments/t1/vehicle-pool' });
+  assert.equal(res.statusCode, 200);
+  assert.match(String(res.payload.template.vehicles[0].unit), /^p-47d/, 'unit filled in from the bundled index');
+});

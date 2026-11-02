@@ -35,6 +35,7 @@ import { registerRateLimit } from './lib/rate-limit.js';
 import { registerLadderCacheInvalidation } from './lib/ladder-cache.js';
 import { staticCacheHeaders } from './lib/static-cache.js';
 import { registerCompression } from './lib/compression.js';
+import { corsOrigin } from './lib/cors.js';
 import fastifySse from '@fastify/sse';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -60,7 +61,8 @@ registerRequestLogging(fastify, esLogger);
 // gzip / Brotli for /api JSON (lib/compression.js); static files come pre-compressed.
 registerCompression(fastify);
 
-await fastify.register(cors, { origin: true, credentials: true });
+// Other sites' browsers may call the API only when listed in CORS_ORIGINS (lib/cors.js).
+await fastify.register(cors, { origin: corsOrigin(), credentials: true });
 await fastify.register(sensible);
 registerRateLimit(fastify);
 registerLadderCacheInvalidation(fastify);

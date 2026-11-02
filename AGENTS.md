@@ -61,7 +61,7 @@ Ban / Pick 的载具池是 `axsuck.vehicle_pools` 里的模板（迁移 027）�
 
 ## Admin tools
 
-**复制上一场**：大厅的「复制上一场」和创建弹窗的「复制已有赛事」用 `$lib/create-event.js` 的 `formFromEvent` 把旧赛事的设置（赛制、模式、类型、积分表、签到、等级、载具池模板）填进表单，名称里的数字 +1（`nextEventName`），时间按同一星期几顺延到下一周之后（`nextWeekTime`，北京时间）；直邀名额不复制。**比赛日控制台** `/tournament/<id>/console`（管理员）：直播频道、需要管理员处理的争议和弃权申报、等待确认的比分（含自动生效倒计时）、可开打和等待中的比赛、未签到选手，分类在 `$lib/match-day.js`。 `site_settings`（迁移 035）是通用的网站设置表，目前没有使用（原来给 Discord 播报，已移除）。
+**复制上一场**：大厅的「复制上一场」和创建弹窗的「复制已有赛事」用 `$lib/create-event.js` 的 `formFromEvent` 把旧赛事的设置（赛制、模式、类型、积分表、签到、等级、载具池模板）填进表单，名称里的数字 +1（`nextEventName`），时间按同一星期几顺延到下一周之后（`nextWeekTime`，北京时间）；直邀名额不复制。**比赛日控制台** `/tournament/<id>/console`（管理员）：直播频道、需要管理员处理的争议和弃权申报、等待确认的比分（含自动生效倒计时）、可开打和等待中的比赛、未签到选手，分类在 `$lib/match-day.js`。 `site_settings`（迁移 035，原来给 Discord 播报）已在迁移 036 删除。
 
 ## Auto scene switching
 

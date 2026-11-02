@@ -218,8 +218,8 @@ export default async function tournamentsRoutes(fastify) {
     const { id } = req.params;
     const t = await repo.getById(id);
     if (!t) throw fastify.httpErrors.notFound('Tournament not found');
-    await fastify.db.query('DELETE FROM axsuck.matches WHERE tournament_id = $1', [id]);
-    await fastify.db.query('DELETE FROM axsuck.tournament_players WHERE tournament_id = $1', [id]);
+    // Matches, registrations, votes, live channels and reminders go with it
+    // (ON DELETE CASCADE), in the same statement.
     await fastify.db.query('DELETE FROM axsuck.tournaments WHERE id = $1', [id]);
     return { success: true };
   });
