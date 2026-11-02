@@ -43,16 +43,22 @@ test('an admin reports a score from the bracket', async () => {
     await plus.waitFor({ timeout: T });
     await plus.click();
     await plus.click();
+    const submitted = page.waitForResponse((r) => r.url().includes(`/matches/${match.id}/`) && r.request().method() === 'POST', { timeout: T });
     await page.getByRole('button', { name: /提交比分\s+2\s*:\s*0/ }).click();
+    const res = await submitted;
+    assert.equal(res.status(), 200, `result request ${res.url()}: ${await res.text()}`);
     // The result is stored (the winner is set right after the score).
     let done = null;
     for (let i = 0; i < 30 && !done?.winner_id; i += 1) {
       await new Promise((r) => setTimeout(r, 500));
       done = (await api('GET', `/tournaments/${id}`)).matches.find((m) => m.id === match.id);
     }
-    assert.equal(done.winner_id, match.player1_id);
+    assert.equal(done.winner_id, match.player1_id, JSON.stringify(done));
     assert.equal(Number(done.score1), 2);
     assert.deepEqual(errors, [], 'no uncaught errors in the page');
+  } catch (e) {
+    await page.screenshot({ path: 'e2e-admin-report.png', fullPage: true }).catch(() => {});
+    throw e;
   } finally {
     await browser.close();
   }
