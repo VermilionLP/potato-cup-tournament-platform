@@ -4,6 +4,7 @@
 import { isDueForAutoConfirm } from './match-reports.js';
 import { afterResult, applyReport } from './match-flow.js';
 import { invalidateLadder } from './ladder-cache.js';
+import { announceResult } from './discord.js';
 
 export async function confirmDueReports(fastify, now = Date.now()) {
   const { rows } = await fastify.db.query(`
@@ -17,6 +18,7 @@ export async function confirmDueReports(fastify, now = Date.now()) {
       invalidateLadder(fastify.db);
       fastify.tournamentEvents.emit(`update:${m.tournament_id}`, { type: 'match_result_auto_confirmed', matchId: m.id });
       await afterResult(fastify, m.tournament_id);
+      announceResult(fastify, m.tournament_id, m.id);
     } catch (err) {
       fastify.log.error({ err, matchId: m.id }, 'auto-confirming a report failed');
     }

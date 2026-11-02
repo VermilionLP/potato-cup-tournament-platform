@@ -1,6 +1,7 @@
 <script>
   // Admin sign-in: the ADMIN_TOKEN is kept in this tab only
-  // (userState.adminToken, sessionStorage).
+  // (userState.adminToken, sessionStorage). Signed in: site settings
+  // (Discord announcements).
   import { toast } from "svelte-sonner";
   import { API } from "$lib/api.js";
   import { userState } from "$lib/user.svelte.js";
@@ -8,6 +9,7 @@
   import { Button } from "$lib/components/ui/button/index.js";
   import { Input } from "$lib/components/ui/input/index.js";
   import ShieldCheckIcon from "@lucide/svelte/icons/shield-check";
+  import DiscordSettings from "./DiscordSettings.svelte";
 
   let { open = $bindable(false) } = $props();
 
@@ -86,6 +88,10 @@
           令牌由部署者在 <code>apps/api/.env</code> 的 ADMIN_TOKEN 中设置。
         </p>
       </div>
+    {/if}
+
+    {#if userState.adminToken && open}
+      <DiscordSettings />
     {/if}
 
     <Dialog.Footer class="flex flex-col sm:flex-row gap-2 mt-2">
