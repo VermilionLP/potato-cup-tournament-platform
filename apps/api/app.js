@@ -48,6 +48,8 @@ const trustProxy = process.env.TRUST_PROXY
   : '127.0.0.1,::1';
 const fastify = Fastify({ logger: true, trustProxy, bodyLimit: 5 * 1024 * 1024 });
 const tournamentEvents = new EventEmitter();
+// One listener per open event page (SSE); a busy event has more than 10.
+tournamentEvents.setMaxListeners(0);
 fastify.decorate('tournamentEvents', tournamentEvents);
 
 const esLogger = createEsLogger();

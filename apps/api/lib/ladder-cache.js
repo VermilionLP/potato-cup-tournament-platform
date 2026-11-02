@@ -12,6 +12,11 @@
 export const LADDER_CACHE_TTL_MS = 5 * 60 * 1000;
 
 const caches = new WeakMap();
+// Loaders seen per database handle, to refill the cache after a write.
+const loaders = new WeakMap();
+export const WARM_DELAY_MS = 2000;
+const WARM_RECENT_MS = 15 * 60 * 1000;
+const WARM_MAX_KEYS = 12;
 
 function freshStore(now) {
   return { createdAt: now, entries: new Map() };
@@ -32,6 +37,8 @@ function storeFor(db, now) {
  * dropped lands in the old store, so it can't bring stale data back.
  */
 export function cached(db, key, load, now = Date.now()) {
+  if (!loaders.has(db)) loaders.set(db, new Map());
+  loaders.get(db).set(key, { load, usedAt: now });
   const store = storeFor(db, now);
   if (store.entries.has(key)) return store.entries.get(key);
   const pending = Promise.resolve().then(load);
@@ -44,6 +51,23 @@ export function cached(db, key, load, now = Date.now()) {
 
 export function invalidateLadder(db) {
   caches.delete(db);
+}
+
+/**
+ * Refills the cache for the keys used in the last 15 minutes (ladder
+ * divisions, statistics scopes), in the background, so the next visitor
+ * does not wait for every rating to be recomputed. Returns the keys.
+ */
+export async function warmLadder(db, now = Date.now()) {
+  const recent = [...(loaders.get(db) || new Map())]
+    .filter(([, v]) => now - v.usedAt <= WARM_RECENT_MS)
+    .sort((a, b) => b[1].usedAt - a[1].usedAt)
+    .slice(0, WARM_MAX_KEYS);
+  for (const [key, { load, usedAt }] of recent) {
+    await cached(db, key, load, now).catch(() => {});
+    loaders.get(db).set(key, { load, usedAt }); // warming is not a use
+  }
+  return recent.map(([key]) => key);
 }
 
 const READ_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
@@ -82,7 +106,16 @@ export function dropsCache(method, routeUrl, statusCode) {
 // Results, players, merges, event dates / modes: anything else written
 // through the API can move ratings, so it drops the cache.
 export function registerLadderCacheInvalidation(fastify) {
+  let timer = null;
   fastify.addHook('onResponse', async (req, reply) => {
-    if (dropsCache(req.method, req.routeOptions?.url, reply.statusCode)) invalidateLadder(fastify.db);
+    if (!dropsCache(req.method, req.routeOptions?.url, reply.statusCode)) return;
+    invalidateLadder(fastify.db);
+    // A burst of writes (a round of results) refills once, shortly after.
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      warmLadder(fastify.db).catch((err) => fastify.log.error({ err }, 'warming the ladder cache failed'));
+    }, WARM_DELAY_MS);
+    timer.unref?.();
   });
+  fastify.addHook('onClose', async () => clearTimeout(timer));
 }

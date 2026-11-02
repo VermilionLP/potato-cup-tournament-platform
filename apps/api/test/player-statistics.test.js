@@ -109,3 +109,18 @@ test('page-load writes (touch, push, votes, check-in, live) keep the cache; resu
   const known = new Set(routes.map((r) => `${r.method} ${r.path}`));
   for (const r of CACHE_NEUTRAL_ROUTES) assert.ok(known.has(r), `${r} is not a route`);
 });
+
+test('after a write the recently used cache entries are refilled in the background', async () => {
+  const { cached, invalidateLadder, warmLadder } = await import('../lib/ladder-cache.js');
+  const db = {};
+  let loads = 0;
+  const load = async () => ++loads;
+  const t0 = 1_000_000;
+  assert.equal(await cached(db, 'stats', load, t0), 1);
+  assert.equal(await cached(db, 'old', load, t0 - 60 * 60 * 1000), 2);
+  invalidateLadder(db);
+  assert.deepEqual(await warmLadder(db, t0 + 1000), ['stats'], 'only keys used recently');
+  assert.equal(loads, 3);
+  assert.equal(await cached(db, 'stats', load, t0 + 2000), 3, 'the next visitor gets the warm value');
+  assert.equal(loads, 3);
+});

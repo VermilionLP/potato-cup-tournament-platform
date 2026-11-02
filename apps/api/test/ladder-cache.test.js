@@ -97,9 +97,10 @@ test('a load that finishes after a write does not bring old data back', async ()
 });
 
 test('successful and failed-midway writes drop the cache; reads and rejected writes keep it', async () => {
-  let hook;
-  const fastify = { db: {}, addHook: (name, fn) => { assert.equal(name, 'onResponse'); hook = fn; } };
+  const hooks = {};
+  const fastify = { db: {}, log: { error() {} }, addHook: (name, fn) => { hooks[name] = fn; } };
   registerLadderCacheInvalidation(fastify);
+  const hook = hooks.onResponse;
   const kept = async () => (await cached(fastify.db, 'k', async () => Symbol('v')));
 
   const v = await kept();
@@ -112,4 +113,5 @@ test('successful and failed-midway writes drop the cache; reads and rejected wri
     await hook({ method }, { statusCode });
     assert.notEqual(await kept(), before, `${method} ${statusCode}`);
   }
+  await hooks.onClose(); // stops the pending refill
 });
