@@ -19,18 +19,17 @@
       {live ? 'border-amber-500 bg-amber-950/30' : done ? 'border-slate-800 bg-slate-950/70' : 'border-slate-700/60 bg-slate-900/70'}"
   >
     {#each [m.player1_id, m.player2_id] as pid, slot (slot)}
-      {@const won = done && m.winner_id && m.winner_id === pid}
       {@const lost = done && m.winner_id && pid && m.winner_id !== pid}
       {#if slot === 1}
         <span class="font-orbitron font-black text-sm text-center text-slate-400 whitespace-nowrap">
           {#if m.status === "walkover"}{m.winner_id === m.player1_id ? "W : FF" : "FF : W"}{:else if done || live}<span
-              class={m.winner_id === m.player1_id ? "text-amber-400" : ""}>{m.score1 ?? 0}</span
-            > : <span class={m.winner_id === m.player2_id ? "text-amber-400" : ""}>{m.score2 ?? 0}</span>{:else}VS{/if}
+              class={done && m.winner_id && m.winner_id !== m.player1_id ? "text-slate-600 opacity-40" : "text-cyan-400"}>{m.score1 ?? 0}</span
+            > : <span class={done && m.winner_id && m.winner_id !== m.player2_id ? "text-slate-600 opacity-40" : "text-cyan-400"}>{m.score2 ?? 0}</span>{:else}VS{/if}
         </span>
       {/if}
-      <span class="flex min-w-0 items-center gap-1.5 {slot === 1 ? 'justify-end' : ''} {lost ? 'opacity-45' : ''}">
+      <span class="flex min-w-0 items-center gap-1.5 {slot === 1 ? 'justify-end' : ''}">
         {#if slot === 0 && pid}<Flag code={who.flag(pid)} size={20} />{/if}
-        <span class="truncate font-bold text-base {!pid ? 'text-slate-600 italic' : won ? 'text-amber-300' : lost ? 'text-slate-400' : 'text-white'}"
+        <span class="truncate text-base {!pid ? 'text-slate-600 italic font-bold' : lost ? 'text-slate-500 font-normal opacity-50' : 'text-slate-100 font-black'}"
           >{pid ? who.name(pid) : "BYE"}</span
         >
         {#if slot === 1 && pid}<Flag code={who.flag(pid)} size={20} />{/if}
