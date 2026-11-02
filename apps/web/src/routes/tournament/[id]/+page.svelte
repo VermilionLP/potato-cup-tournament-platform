@@ -48,6 +48,8 @@
   import PlayerEditDialog from "$lib/components/tournament/PlayerEditDialog.svelte";
   import EventBracketCard from "$lib/components/tournament/EventBracketCard.svelte";
   import LiveHandoff from "$lib/components/tournament/LiveHandoff.svelte";
+  import MyMatchCard from "$lib/components/tournament/MyMatchCard.svelte";
+  import StartCheckinDialog from "$lib/components/tournament/StartCheckinDialog.svelte";
   import { registrationActions } from "$lib/event-registration.js";
   import { stageActions } from "$lib/event-stage.js";
   import { channelOptions, liveElsewhere, savedChannel, savedStreamMode, saveChannel, withChannel } from "$lib/live-channels.js";
@@ -125,6 +127,7 @@
   // Dialogs
   let finalTimeDialog = $state(null);
   let timeEditDialog = $state(null);
+  let startDialog = $state(null);
   let wikiDialog = $state(null);
   let matchReport = $state(null);
   let playerEditor = $state(null);
@@ -256,7 +259,7 @@
   });
 
   // Status, playoffs, Swiss rounds, live match, JSON ($lib/event-stage.js).
-  const { changeStatus, toggleActiveMatch, startPlayoffs, withdrawPlayoffs, editSwissRounds, downloadJson } = stageActions({
+  const { changeStatus, setCheckin, checkInFor, toggleActiveMatch, startPlayoffs, withdrawPlayoffs, editSwissRounds, downloadJson } = stageActions({
     tid: () => tid,
     tournament: () => tournament,
     setTournament: (t) => (tournament = t),
@@ -269,6 +272,15 @@
     load: () => load(),
     ensureAdmin: () => ensureAdmin(),
   });
+
+  // Starting an event with check-in goes through the absentees dialog.
+  function onStatus(status) {
+    if (status === "in_progress" && tournament?.status === "registration" && tournament?.checkin?.enabled) {
+      if (ensureAdmin()) startDialog?.start();
+      return;
+    }
+    changeStatus(status);
+  }
 
   // After a time dialog saved: show its result, then reload.
   async function savedEvent(t) {
@@ -303,7 +315,7 @@
   </div>
 {:else}
   {#snippet rosterSidebar()}
-    <RosterCard {tournament} {isAdmin} onedit={(p) => playerEditor?.edit(p)} onunregister={doUnregister} />
+    <RosterCard {tournament} {isAdmin} onedit={(p) => playerEditor?.edit(p)} onunregister={doUnregister} oncheckin={checkInFor} />
   {/snippet}
 
   {#snippet obsControl()}
@@ -378,13 +390,31 @@
           status={tournament.status}
           {startBlocked}
           canStart={!startBlocked}
+          checkinEnabled={Boolean(tournament.checkin?.enabled)}
           onendvoting={() => finalTimeDialog?.start()}
-          onstatus={changeStatus}
+          onstatus={onStatus}
+          oncheckinchange={setCheckin}
         />
       {/if}
     </div>
 
     <PhaseStepper {tournament} />
+
+    <!-- The signed-in player's next step: check-in, next match, reports -->
+    <MyMatchCard
+      {tournament}
+      {tid}
+      playerId={userState.id}
+      {matchOrder}
+      roundLabel={matchRoundLabel}
+      {playerName}
+      {needsIdentity}
+      onreport={(m) => matchReport?.report(m)}
+      onconfirm={(m) => matchReport?.confirmReport(m)}
+      ondispute={(m) => matchReport?.disputeReport(m)}
+      onwithdraw={(m) => matchReport?.withdrawReport(m)}
+      onreload={load}
+    />
 
     <!-- Active Panel based on current stage -->
     {#if tournament.status === "registration"}
@@ -482,6 +512,9 @@
 
 <!-- Ending the vote: pick the final time -->
 <FinalTimeDialog bind:this={finalTimeDialog} {tid} options={voteOptions} {ensureAdmin} {needsIdentity} onsaved={savedEvent} />
+
+<!-- Starting with check-in: what happens to the players who did not check in -->
+<StartCheckinDialog bind:this={startDialog} {tid} {tournament} onstarted={() => load()} />
 
 <!-- Liquipedia Wiki Export Dialog -->
 <WikiExportDialog bind:this={wikiDialog} {tid} />

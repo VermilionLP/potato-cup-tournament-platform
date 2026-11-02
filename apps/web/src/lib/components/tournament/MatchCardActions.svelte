@@ -1,7 +1,10 @@
 <script>
   // Right side of a match card's header bar, the same in Swiss, single and
   // double elimination views: the live-channel badge or the admin's "go
-  // live" toggle, Ban / Pick, "my match" and the correction marker.
+  // live" toggle, Ban / Pick, a pending report ("待确认" / "有争议"), "my
+  // match" and the correction marker.
+  import { reportBadge } from "$lib/match-card.js";
+
   let {
     match,
     playable = false, // both players known, not decided
@@ -15,6 +18,8 @@
     ontoggleactive = () => {},
     onbanpick = () => {},
   } = $props();
+
+  let badge = $derived(reportBadge(match));
 </script>
 
 <div class="flex items-center {gap}">
@@ -45,6 +50,12 @@
     >
       BP
     </button>
+  {/if}
+  {#if badge}
+    <span
+      class="rounded px-1 py-0.5 text-[7px] font-bold {badge.tone === 'danger' ? 'bg-destructive/15 text-destructive' : 'bg-sky-500/15 text-sky-600 dark:text-sky-300'}"
+      title="选手提交的结果{badge.tone === 'danger' ? '有争议，等待管理员处理' : '等待确认'}">{badge.label}</span
+    >
   {/if}
   {#if mine}
     <span class="animate-pulse font-bold text-primary">我的比赛</span>

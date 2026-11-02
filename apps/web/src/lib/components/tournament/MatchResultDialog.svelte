@@ -6,6 +6,7 @@
   import BanPickPanel from "$lib/components/BanPickPanel.svelte";
   import ScoreForm from "$lib/components/ScoreForm.svelte";
   import { canConfirm, confirmResult, resultLabel } from "$lib/banpick.js";
+  import PendingReportPanel from "./PendingReportPanel.svelte";
 
   let {
     open = $bindable(false),
@@ -24,6 +25,11 @@
     roundLabel,
     recordedLabel,
     playerName,
+    isAdmin = false,
+    viewerId = "",
+    onconfirmreport,
+    ondisputereport,
+    onwithdrawreport,
     onwalkover,
     onrollback,
     onsubmit,
@@ -85,6 +91,19 @@
         </div>
       {:else}
         <div class="py-3 space-y-4">
+          <PendingReportPanel
+            {match}
+            {viewerId}
+            {isAdmin}
+            {playerName}
+            busy={submitting}
+            onconfirm={onconfirmreport}
+            ondispute={ondisputereport}
+            onwithdraw={onwithdrawreport}
+          />
+          {#if !isAdmin && !correcting}
+            <div class="text-[11px] text-muted-foreground">提交后需要对手确认：对手确认或 10 分钟内没有异议即生效；申报对手弃权需要管理员确认。</div>
+          {/if}
           {#if correcting}
             <div class="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs space-y-1">
               <div><span class="font-bold text-amber-500">当前记录：</span>{recordedLabel(match)}</div>

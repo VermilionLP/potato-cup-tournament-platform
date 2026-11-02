@@ -147,6 +147,21 @@ export const API = {
     request(`/tournaments/${enc(tournamentId)}/matches/${matchId}/result`, { method: 'POST', body: JSON.stringify({ score1, score2 }) }),
   submitWalkover: (tournamentId, matchId, winner_id) =>
     request(`/tournaments/${enc(tournamentId)}/matches/${matchId}/walkover`, { method: 'POST', body: JSON.stringify({ winner_id }) }),
+  // Reports by players (migration 034): the opponent confirms or disputes;
+  // admins confirm any report (which: 'report' or 'counter').
+  confirmReport: (tournamentId, matchId, which = 'report') =>
+    request(`/tournaments/${enc(tournamentId)}/matches/${matchId}/report/confirm`, { method: 'POST', body: JSON.stringify({ which }) }),
+  disputeReport: (tournamentId, matchId) =>
+    request(`/tournaments/${enc(tournamentId)}/matches/${matchId}/report/dispute`, { method: 'POST', body: JSON.stringify({}) }),
+  withdrawReport: (tournamentId, matchId) =>
+    request(`/tournaments/${enc(tournamentId)}/matches/${matchId}/report`, { method: 'DELETE', body: JSON.stringify({}) }),
+  checkIn: (tournamentId, player_id) =>
+    request(`/tournaments/${enc(tournamentId)}/checkin`, { method: 'POST', body: JSON.stringify({ player_id }) }),
+  undoCheckIn: (tournamentId, player_id) =>
+    request(`/tournaments/${enc(tournamentId)}/checkin`, { method: 'DELETE', body: JSON.stringify({ player_id }) }),
+  // Start with check-in: players in `remove` leave, those in `forfeit` lose by walkover.
+  startEvent: (tournamentId, { remove = [], forfeit = [] } = {}) =>
+    request(`/tournaments/${enc(tournamentId)}/start`, { method: 'POST', body: JSON.stringify({ remove, forfeit }) }),
   rollbackResult: (tournamentId, matchId) =>
     request(`/tournaments/${enc(tournamentId)}/matches/${matchId}/rollback`, { method: 'POST' }),
 

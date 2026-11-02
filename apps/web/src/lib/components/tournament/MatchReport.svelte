@@ -1,14 +1,17 @@
 <script>
   // Reporting a match: Ban / Pick, the score or a walkover, an admin's
-  // correction or rollback, in MatchResultDialog. Methods: report(match),
-  // openBanPick(match), openDetails(match) (report when pending, correct
-  // when an admin can).
+  // correction or rollback, in MatchResultDialog. Players' scores wait for
+  // the opponent (PendingReportPanel: confirm, dispute, withdraw); admins'
+  // take effect at once. Methods: report(match), openBanPick(match),
+  // openDetails(match) (report when pending, correct when an admin can),
+  // confirmReport(match), disputeReport(match), withdrawReport(match).
   import { toast } from "svelte-sonner";
   import { API } from "$lib/api.js";
   import { initialBanPick } from "$lib/banpick.js";
   import { canCorrectResult } from "$lib/tournament.js";
   import { correctionWarning, hasDependentMatchPlayed, recordedResultLabel, resultMessage } from "$lib/event-view.js";
   import MatchResultDialog from "./MatchResultDialog.svelte";
+  import { userState } from "$lib/user.svelte.js";
 
   let {
     tournament,
@@ -117,8 +120,11 @@
     if (!ok) return;
     submittingResult = true;
     try {
-      await API.submitResult(tid, selectedMatch.id, Number(score1Input) || 0, Number(score2Input) || 0);
-      toast.success(resultMessage(tournament, selectedMatch, winnerId, playerName));
+      const res = await API.submitResult(tid, selectedMatch.id, Number(score1Input) || 0, Number(score2Input) || 0);
+      if (res?.report === "pending") toast.success("比分已提交，等待对手确认（10 分钟内对方不确认也不提出异议将自动生效）");
+      else if (res?.report === "disputed") toast.warning("和对手提交的比分不一致，已交给管理员处理");
+      else if (res?.report === "confirmed") toast.success("和对手提交的比分一致，结果已生效");
+      else toast.success(resultMessage(tournament, selectedMatch, winnerId, playerName));
       await finishResult();
     } catch (e) {
       toast.error(e.message);
@@ -136,8 +142,10 @@
     if (!ok) return;
     submittingResult = true;
     try {
-      await API.submitWalkover(tid, selectedMatch.id, winnerId);
-      toast.success("已记录弃权并晋级胜者");
+      const res = await API.submitWalkover(tid, selectedMatch.id, winnerId);
+      if (res?.report === "pending") toast.success("已申报对手弃权，等待管理员确认");
+      else if (res?.report === "disputed") toast.warning("和对手提交的结果不一致，已交给管理员处理");
+      else toast.success("已记录弃权并晋级胜者");
       await finishResult();
     } catch (e) {
       toast.error(e.message);
@@ -166,6 +174,37 @@
     }
   }
 
+  // Pending reports: the opponent confirms or disputes, the reporter
+  // withdraws; an admin applies one side (`which`) or rejects it.
+  async function reportAction(match, run, done) {
+    submittingResult = true;
+    try {
+      await run();
+      toast.success(done);
+      if (selectedMatch?.id === match.id) showMatchDialog = false;
+      await onreload?.();
+    } catch (e) {
+      toast.error(e.message);
+    } finally {
+      submittingResult = false;
+    }
+  }
+  export function confirmReport(match, which = "report") {
+    if (needsIdentity()) return;
+    return reportAction(match, () => API.confirmReport(tid, match.id, which), "结果已确认生效");
+  }
+  export function disputeReport(match) {
+    if (needsIdentity()) return;
+    if (!confirm("确定对这个结果提出异议吗？比赛结果将交给管理员处理。")) return;
+    return reportAction(match, () => API.disputeReport(tid, match.id), "已提出异议，请联系管理员处理");
+  }
+  export function withdrawReport(match) {
+    if (needsIdentity()) return;
+    const ask = isAdmin ? "驳回这个申报？比赛会回到未提交状态。" : "撤回你提交的结果？";
+    if (!confirm(ask)) return;
+    return reportAction(match, () => API.withdrawReport(tid, match.id), isAdmin ? "已驳回" : "已撤回");
+  }
+
   export function report(match) {
     openMatchReport(match);
   }
@@ -192,6 +231,11 @@
   roundLabel={matchRoundLabel}
   recordedLabel={(m) => recordedResultLabel(m, playerName)}
   {playerName}
+  {isAdmin}
+  viewerId={userState.id}
+  onconfirmreport={(which) => confirmReport(selectedMatch, which)}
+  ondisputereport={() => disputeReport(selectedMatch)}
+  onwithdrawreport={() => withdrawReport(selectedMatch)}
   onwalkover={recordWalkover}
   onrollback={doRollback}
   onsubmit={selectGameWinner}

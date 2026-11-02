@@ -1,8 +1,9 @@
 <script>
-  // Admin buttons that move the event between its stages.
+  // Admin buttons that move the event between its stages, and the check-in
+  // switch while registration is open.
   import { Button } from "$lib/components/ui/button/index.js";
 
-  let { status, startBlocked = "", canStart = false, onendvoting, onstatus } = $props();
+  let { status, startBlocked = "", canStart = false, checkinEnabled = false, onendvoting, onstatus, oncheckinchange } = $props();
 
   function backToVoting() {
     if (confirm("返回时间投票会清空已生成的对阵，确定继续吗？")) onstatus("voting");
@@ -21,6 +22,10 @@
     >
       改为时间投票
     </Button>
+    <label class="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer select-none" title="开赛前 30 分钟开放签到；开赛时由管理员处理没签到的选手">
+      <input type="checkbox" checked={checkinEnabled} onchange={(e) => oncheckinchange?.(e.currentTarget.checked)} class="accent-primary" />
+      需要签到
+    </label>
     {#if startBlocked}
       <span class="text-xs text-muted-foreground self-center">{startBlocked}</span>
     {/if}

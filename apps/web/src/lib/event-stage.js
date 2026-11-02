@@ -1,6 +1,6 @@
-// Stage actions of the event page: status changes, playoffs (start /
-// withdraw), Swiss round count, the console's live match and the JSON
-// download. `ctx` gives the page's state: tid(), tournament(),
+// Stage actions of the event page: status changes, the check-in switch and
+// checking a player in, playoffs (start / withdraw), Swiss round count, the
+// console's live match and the JSON download. `ctx` gives the page's state: tid(), tournament(),
 // setTournament(t), bracketMatches(), live(), liveChannel(),
 // setStageView(v), setPlayoffBusy(b), isAdmin(), load(), ensureAdmin().
 // The time dialogs (TimeEditDialog, FinalTimeDialog) carry their own flows.
@@ -16,6 +16,29 @@ export function stageActions(ctx) {
     try {
       ctx.setTournament(await API.updateStatus(ctx.tid(), status));
       toast.success(`赛事状态已切换至: ${eventStatusLabel(status)}`);
+      await ctx.load();
+    } catch (e) {
+      toast.error(e.message);
+    }
+  }
+
+  async function setCheckin(enabled) {
+    if (!ctx.ensureAdmin()) return;
+    try {
+      await API.updateTournament(ctx.tid(), { checkin_enabled: enabled });
+      toast.success(enabled ? "已开启签到：开赛前 30 分钟开放" : "已关闭签到");
+      await ctx.load();
+    } catch (e) {
+      toast.error(e.message);
+    }
+  }
+
+  // An admin checks a player in (any time during registration).
+  async function checkInFor(playerId) {
+    if (!ctx.ensureAdmin()) return;
+    try {
+      await API.checkIn(ctx.tid(), playerId);
+      toast.success(`已替 ${playerId} 签到`);
       await ctx.load();
     } catch (e) {
       toast.error(e.message);
@@ -116,5 +139,5 @@ export function stageActions(ctx) {
     toast.success("赛事 JSON 导出成功");
   }
 
-  return { changeStatus, toggleActiveMatch, startPlayoffs, withdrawPlayoffs, editSwissRounds, downloadJson };
+  return { changeStatus, setCheckin, checkInFor, toggleActiveMatch, startPlayoffs, withdrawPlayoffs, editSwissRounds, downloadJson };
 }

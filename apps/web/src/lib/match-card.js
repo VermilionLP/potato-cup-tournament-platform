@@ -25,3 +25,18 @@ export function isCompletedBye(match) {
 export function isMine(match, userId) {
   return Boolean(userId && match.status === "pending" && (match.player1_id === userId || match.player2_id === userId));
 }
+
+/** "A 2 : 1 B" or "A 弃权胜" for a reported result (pending_report or its counter). */
+export function formatReport(match, report, playerName = (id) => id) {
+  if (!report) return "";
+  if (report.kind === "walkover") return `${playerName(report.winner_id)} 对手弃权胜`;
+  return `${playerName(match.player1_id)} ${report.score1} : ${report.score2} ${playerName(match.player2_id)}`;
+}
+
+/** Card badge for a pending report: "待确认" / "有争议", or null. */
+export function reportBadge(match) {
+  const r = match?.pending_report;
+  if (!r || match.status !== "pending") return null;
+  if (r.disputed) return { label: "有争议", tone: "danger" };
+  return { label: r.kind === "walkover" ? "弃权待审" : "待确认", tone: "info" };
+}
