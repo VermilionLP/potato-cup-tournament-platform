@@ -37,6 +37,8 @@ export async function makeEvent({ players = [], start = false, format = 'single_
     player_capacity: 16,
     banpick_enabled: false,
   });
+  // New events start with the time vote; open sign-ups.
+  await api('POST', `/tournaments/${id}/status`, { status: 'registration' });
   for (const p of players) await api('POST', `/tournaments/${id}/register`, { player_id: p });
   if (start) await api('POST', `/tournaments/${id}/start`, { remove: [], forfeit: [] });
   return id;
