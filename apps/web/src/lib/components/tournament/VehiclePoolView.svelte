@@ -11,9 +11,11 @@
 
   let { template = null, banpickEnabled = true } = $props();
 
+  // Units come filled in from the server; the name index loads only for
+  // vehicles without one (e.g. a template being edited).
   let unitIndex = $state(null);
   onMount(() => {
-    loadUnitIndex().then((index) => (unitIndex = index));
+    if ((template?.vehicles || []).some((v) => !v.wiki && v.unit === undefined)) loadUnitIndex().then((index) => (unitIndex = index));
   });
 
   let groups = $derived(poolGroups(template?.vehicles || [], unitIndex));

@@ -159,7 +159,7 @@
 {:else if vehiclePoolLabel(tournament.vehicle_pool)}
   <span class="rounded-md border px-2 py-0.5 font-semibold {POOL_TAG[tournament.vehicle_pool] || 'border-border bg-muted/60 text-muted-foreground'}">{vehiclePoolLabel(tournament.vehicle_pool)}</span>
 {/if}
-{#if tournament.banpick_enabled !== false && vehicleTemplates.length}
+{#if tournament.banpick_enabled !== false && (isAdmin ? vehicleTemplates.length : bpTemplate)}
   {#if isAdmin}
     <select
       aria-label="载具池模板"

@@ -66,6 +66,7 @@ export const API = {
 
   // Vehicle pools (one per event type)
   getVehiclePools: () => request('/vehicle-pools'),
+  getEventVehiclePool: (id) => request(`/tournaments/${encodeURIComponent(id)}/vehicle-pool`),
   createVehiclePool: (template) => request('/vehicle-pools', { method: 'POST', body: JSON.stringify(template) }),
   updateVehiclePool: (id, changes) => request(`/vehicle-pools/${enc(id)}`, { method: 'PUT', body: JSON.stringify(changes) }),
   deleteVehiclePool: (id) => request(`/vehicle-pools/${enc(id)}`, { method: 'DELETE' }),

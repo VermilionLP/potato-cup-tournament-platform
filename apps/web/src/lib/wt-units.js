@@ -48,9 +48,13 @@ export function pickUnit(candidates, nation = "", ground = false) {
 
 const GROUND_TYPES = /tank|spaa|destroyer|ground|坦克|防空/i;
 
-/** Unit id of a pool vehicle: its own `wiki`, else a lookup by name. */
+/**
+ * Unit id of a pool vehicle: its own `wiki`, else the `unit` the server
+ * filled in, else a lookup by name.
+ */
 export function unitIdOf(vehicle, index) {
   if (vehicle?.wiki) return vehicle.wiki;
+  if (vehicle?.unit !== undefined) return vehicle.unit;
   const found = index?.names?.[looseName(vehicle?.name)];
   return pickUnit(found, vehicle?.nation, GROUND_TYPES.test(vehicle?.type || ""));
 }

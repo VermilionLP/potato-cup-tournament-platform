@@ -1,10 +1,13 @@
 // Vehicle pool templates used by Ban / Pick (lib/vehicle-pools.js). Everyone
-// can read them; admins create, edit, copy and delete them.
+// can read them; admins create, edit, copy and delete them. An event page
+// reads only its own template (GET /tournaments/:id/vehicle-pool), with the
+// wiki unit of each vehicle filled in (lib/wt-unit-index.js).
 
 import { randomBytes } from 'crypto';
 import { requireAdmin } from '../lib/admin.js';
 import { GAME_MODES, VEHICLE_POOLS } from '../lib/tournament-config.js';
-import { normalizeRules, normalizeTemplate } from '../lib/vehicle-pools.js';
+import { normalizeRules, normalizeTemplate, resolveTemplate } from '../lib/vehicle-pools.js';
+import { withUnits } from '../lib/wt-unit-index.js';
 
 const COLUMNS = 'id, name, event_type, game_modes, rules, sort_order, vehicles, created_at, updated_at';
 const FIELDS = ['name', 'event_type', 'game_modes', 'rules', 'sort_order', 'vehicles'];
@@ -21,6 +24,16 @@ export default async function vehiclePoolRoutes(fastify) {
   }
 
   fastify.get('/vehicle-pools', async () => ({ templates: await listTemplates() }));
+
+  // The template an event uses (or null), as resolveTemplate picks it.
+  fastify.get('/tournaments/:id/vehicle-pool', async (req) => {
+    const t = (await db.query(
+      'SELECT vehicle_pool, game_mode, vehicle_template FROM axsuck.tournaments WHERE id = $1',
+      [req.params.id],
+    )).rows[0];
+    if (!t) throw fastify.httpErrors.notFound('Tournament not found');
+    return { template: withUnits(resolveTemplate(await listTemplates(), t)) };
+  });
 
   fastify.post('/vehicle-pools', async (req) => {
     requireAdmin(fastify, req);

@@ -15,7 +15,6 @@
   import { goto } from "$app/navigation";
   import { userState } from "$lib/user.svelte.js";
   import { buildMatchOrder } from "$lib/bracket.js";
-  import { resolveTemplate } from "$lib/vehicle-pools.js";
   import { overlayStages, pickStage } from "$lib/overlay.js";
   import { suggestedVoteTimes, voteOptionsFrom } from "$lib/votes.js";
   import { GROUP_FORMATS, startBlockedMessage } from "$lib/tournament.js";
@@ -115,10 +114,33 @@
   let standings = $derived(tournament ? eventStandings(tournament, bracketMatches) : []);
 
   let banpickEnabled = $derived(tournament?.banpick_enabled !== false);
-  // Vehicle pool templates (loaded on mount); Ban / Pick uses the one picked
-  // for the event, else the best match for its type and game mode.
+  // The event's vehicle pool template, as the server resolves it (the one
+  // picked for the event, else the best match for its type and game mode),
+  // with wiki units filled in; reloaded when those settings change. Admins
+  // also get every template, for the template picker.
+  let bpTemplate = $state(null);
+  let poolKey = $derived(tournament ? [tid, tournament.vehicle_pool, tournament.game_mode, tournament.vehicle_template ?? ""].join("|") : "");
+  $effect(() => {
+    const key = poolKey;
+    if (!key) return;
+    untrack(() =>
+      API.getEventVehiclePool(tid)
+        .then((res) => key === poolKey && (bpTemplate = res.template || null))
+        .catch((e) => console.warn("vehicle pool failed to load:", e)),
+    );
+  });
   let vehicleTemplates = $state([]);
-  let bpTemplate = $derived(resolveTemplate(vehicleTemplates, tournament || {}));
+  let templatesLoaded = false;
+  $effect(() => {
+    if (!isAdmin || templatesLoaded) return;
+    templatesLoaded = true;
+    API.getVehiclePools()
+      .then((res) => (vehicleTemplates = res.templates || []))
+      .catch((e) => {
+        templatesLoaded = false;
+        console.warn("vehicle pools failed to load:", e);
+      });
+  });
 
   let swissRoundsLabel = $derived(
     tournament?.swiss_rounds_auto
@@ -208,9 +230,6 @@
 
   onMount(() => {
     load();
-    API.getVehiclePools()
-      .then((res) => (vehicleTemplates = res.templates || []))
-      .catch((e) => console.warn("vehicle pools failed to load:", e));
   });
 
   // Live updates: a burst of event messages becomes one reload.
