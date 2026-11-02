@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, 'ci/**']
   pull_request:
 
 jobs:
@@ -18,3 +18,42 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm build:web
       - run: pnpm test
+
+  # Runs the real server against a fresh PostgreSQL: every migration from
+  # scratch, then the deploy's smoke test (scripts/smoke.sh) on the built
+  # web app, the API and the docs.
+  smoke:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
+      ADMIN_TOKEN: ci-admin-token
+      ES_ENABLED: 'false'
+      BACKGROUND_JOBS: 'off'
+      PORT: '3100'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build:web
+      - run: pnpm migrate
+      - name: Start the server
+        run: |
+          node apps/api/app.js > server.log 2>&1 &
+          for i in $(seq 1 60); do curl -sf localhost:3100/api/ping >/dev/null && exit 0; sleep 1; done
+          cat server.log; exit 1
+      - run: bash scripts/smoke.sh http://localhost:3100
+      - name: Server log
+        if: always()
+        run: tail -n 100 server.log || true

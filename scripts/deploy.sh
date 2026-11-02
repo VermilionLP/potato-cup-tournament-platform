@@ -6,8 +6,11 @@
 #   bash scripts/deploy.sh path/to/code.tar.gz
 #
 # Steps: backup (code + database) -> stage -> drift check -> dry run -> apply -> preflight
-# migrations -> install/migrate/build -> restart -> smoke tests.
-# Any failure stops the script before the running service is restarted.
+# migrations -> install/migrate/build -> try the new version on a spare port ->
+# restart -> smoke tests. A migration preflight failure stops before anything
+# is built or restarted. Once the code is applied, a failed build, a failed
+# try on the spare port or failed smoke tests after the restart roll the code
+# back automatically (the database is not rolled back; see the message).
 #
 # History: v2 added the migration preflight after migration 008 failed on
 # Postgrator because the file started with a UTF-8 BOM (psql skips the BOM,
@@ -65,7 +68,7 @@ changed_files() {
   rsync "${RSYNC_OPTS[@]}" -n -c -i "$1"/ "$2"/ | grep -Ev '^\.(d|f)' || true
 }
 
-echo "==> 1/9 backup current code and database"
+echo "==> 1/10 backup current code and database"
 mkdir -p "$BACKUP_DIR"
 STAMP=$(date +%Y%m%d-%H%M%S)
 tar -czf "$BACKUP_DIR/suck-code-${STAMP}.tar.gz" \
@@ -89,7 +92,7 @@ else
   }
 fi
 
-echo "==> 2/9 stage new code"
+echo "==> 2/10 stage new code"
 rm -rf "$STAGING"
 mkdir -p "$STAGING"
 NEW_COMMIT=""
@@ -104,7 +107,7 @@ else
 fi
 [ -f "$STAGING/package.json" ] || { echo "staged code has no package.json at its root"; exit 1; }
 
-echo "==> 3/9 check for edits made directly on the server"
+echo "==> 3/10 check for edits made directly on the server"
 if [ -f "$DEPLOYED_MARKER" ] && [ -d "$STAGING/.git" ]; then
   LAST_COMMIT=$(cat "$DEPLOYED_MARKER")
   if git -C "$STAGING" cat-file -e "${LAST_COMMIT}^{commit}" 2>/dev/null; then
@@ -126,7 +129,7 @@ else
   echo "skipped (needs --git mode and a previous --git deploy)"
 fi
 
-echo "==> 4/9 dry run (nothing is written yet)"
+echo "==> 4/10 dry run (nothing is written yet)"
 CHANGES=$(changed_files "$STAGING" "$TARGET")
 if [ -z "$CHANGES" ]; then
   echo "no file content changes"
@@ -141,11 +144,42 @@ if [ "$ans" != "y" ]; then
   exit 1
 fi
 
-echo "==> 5/9 apply"
+echo "==> 5/10 apply"
+LAST_DEPLOYED=$(cat "$DEPLOYED_MARKER" 2>/dev/null || true)
 rsync "${RSYNC_OPTS[@]}" -c "$STAGING"/ "$TARGET"/
 echo "applied $(printf '%s\n' "$CHANGES" | grep -c . || true) file(s)"
 
-echo "==> 6/9 preflight migrations (real pg driver, every statement rolled back)"
+# The smoke test of the new code, kept outside the tree so a rollback can use it.
+SMOKE=$(mktemp)
+cp "$STAGING/scripts/smoke.sh" "$SMOKE" 2>/dev/null || SMOKE=""
+smoke() { if [ -z "$SMOKE" ]; then echo "(no scripts/smoke.sh, skipped)"; return 0; fi; bash "$SMOKE" "$1"; }
+
+# Puts the previous code back (from this deploy's backup), reinstalls,
+# rebuilds and restarts. The database stays as migrated.
+ROLLING_BACK=0
+rollback() {
+  [ "$ROLLING_BACK" = 1 ] && return
+  ROLLING_BACK=1
+  set +e
+  echo
+  echo "==> ROLLING BACK to the code before this deploy"
+  tar -xzf "$BACKUP_DIR/suck-code-${STAMP}.tar.gz" -C /home/admin
+  cd "$TARGET" || return
+  pnpm install --frozen-lockfile
+  NODE_OPTIONS=--max-old-space-size=1024 pnpm build:web
+  pm2 restart "$PM2_APP" --update-env
+  if [ -n "$LAST_DEPLOYED" ]; then echo "$LAST_DEPLOYED" > "$DEPLOYED_MARKER"; else rm -f "$DEPLOYED_MARKER"; fi
+  sleep 3
+  if smoke http://localhost:3100; then
+    echo "ROLLED BACK: the site runs the previous version again."
+  else
+    echo "ROLLBACK DONE BUT SMOKE TESTS STILL FAIL: check 'pm2 logs $PM2_APP'."
+  fi
+  echo "Migrations applied by this deploy were not undone. If one changed data, restore"
+  echo "the newest $BACKUP_DIR/db/suck-db-*-pre-deploy.dump (see scripts/backup-db.sh)."
+}
+
+echo "==> 6/10 preflight migrations (real pg driver, every statement rolled back)"
 cat > "$PREFLIGHT" <<'PREFLIGHT_JS'
 import fs from 'node:fs';
 import pg from 'pg';
@@ -265,13 +299,41 @@ node "$PREFLIGHT" run-pending migrations/*.do.*.sql || {
   exit 1
 }
 
-echo "==> 7/9 install, migrate, build"
+echo "==> 7/10 install, migrate, build"
 cd "$TARGET"
-pnpm install --frozen-lockfile
-pnpm migrate
-NODE_OPTIONS=--max-old-space-size=1024 pnpm build:web
+if ! { pnpm install --frozen-lockfile && pnpm migrate && NODE_OPTIONS=--max-old-space-size=1024 pnpm build:web; }; then
+  echo "install / migrate / build failed"
+  rollback
+  exit 1
+fi
 
-echo "==> 8/9 restart"
+echo "==> 8/10 try the new version on port 3101 (background jobs off)"
+PRE_LOG=$(mktemp)
+(cd "$TARGET/apps/api" && PORT=3101 BACKGROUND_JOBS=off ES_ENABLED=false exec node app.js) > "$PRE_LOG" 2>&1 &
+PRE_PID=$!
+PRE_OK=0
+for _ in $(seq 1 40); do
+  if curl -sf localhost:3101/api/ping > /dev/null; then PRE_OK=1; break; fi
+  kill -0 "$PRE_PID" 2>/dev/null || break
+  sleep 1
+done
+if [ "$PRE_OK" = 1 ] && smoke http://localhost:3101; then
+  PRE_OK=1
+else
+  PRE_OK=0
+fi
+kill "$PRE_PID" 2>/dev/null || true
+wait "$PRE_PID" 2>/dev/null || true
+if [ "$PRE_OK" != 1 ]; then
+  echo "the new version failed on port 3101; its log:"
+  tail -n 40 "$PRE_LOG"
+  rm -f "$PRE_LOG"
+  rollback
+  exit 1
+fi
+rm -f "$PRE_LOG"
+
+echo "==> 9/10 restart"
 pm2 restart "$PM2_APP" --update-env
 if [ -n "$NEW_COMMIT" ]; then
   echo "$NEW_COMMIT" > "$DEPLOYED_MARKER"
@@ -280,33 +342,11 @@ sleep 3
 pm2 logs "$PM2_APP" --lines 15 --nostream
 
 echo
-echo "==> 9/9 smoke tests"
-FAILED=0
-check() {
-  local label="$1" url="$2" expect="$3" code
-  code=$(curl -s -o /dev/null -w '%{http_code}' "$url" || echo 000)
-  if [ "$code" = "$expect" ]; then
-    printf '%-20s %s ok\n' "$label" "$code"
-  else
-    printf '%-20s %s (expected %s)\n' "$label" "$code" "$expect"
-    FAILED=1
-  fi
-}
-check ping               localhost:3100/api/ping               200
-check players            localhost:3100/api/players            200
-check players/statistics localhost:3100/api/players/statistics 200
-check tournaments        localhost:3100/api/tournaments        200
-check "flag cn.svg"      localhost:3100/flags/cn.svg           200
-# Compression and caching of the web app (informational).
-ENC=$(curl -s -o /dev/null -D - -H 'Accept-Encoding: br, gzip' localhost:3100/ | tr -d '\r' | grep -i '^content-encoding:' | cut -d' ' -f2 || true)
-printf '%-20s %s\n' "compression" "${ENC:-none (rebuild with precompress?)}"
-
-echo
-if [ "$FAILED" -ne 0 ]; then
-  echo "SMOKE TESTS FAILED. Roll back with:"
-  echo "  tar -xzf $BACKUP_DIR/suck-code-${STAMP}.tar.gz -C /home/admin && cd $TARGET && pnpm build:web && pm2 restart $PM2_APP"
-  echo "If a migration changed data, restore the database too (see scripts/backup-db.sh):"
-  echo "  the newest $BACKUP_DIR/db/suck-db-*-pre-deploy.dump"
+echo "==> 10/10 smoke tests"
+if ! smoke http://localhost:3100; then
+  echo "SMOKE TESTS FAILED after the restart"
+  rollback
   exit 1
 fi
+rm -f "$SMOKE"
 echo "deploy finished${NEW_COMMIT:+ at ${NEW_COMMIT:0:7}}"

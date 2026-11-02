@@ -89,8 +89,13 @@ await fastify.register(vehicleImageRoutes, { prefix: '/api' });
 await fastify.register(adminRoutes, { prefix: '/api' });
 await fastify.register(vehiclePoolRoutes, { prefix: '/api' });
 await fastify.register(pointsRoutes, { prefix: '/api' });
-startPushScheduler(fastify);
-startReportScheduler(fastify);
+// Background jobs (push reminders, auto-confirming reports). BACKGROUND_JOBS=off
+// for a second copy that only answers requests: the deploy preflight on a
+// spare port and the CI smoke test.
+if (process.env.BACKGROUND_JOBS !== 'off') {
+  startPushScheduler(fastify);
+  startReportScheduler(fastify);
+}
 
 fastify.get('/api/ping', async () => ({ pong: true }));
 
