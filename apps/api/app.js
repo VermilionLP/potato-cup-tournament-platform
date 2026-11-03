@@ -37,6 +37,9 @@ import { staticCacheHeaders } from './lib/static-cache.js';
 import { registerCompression } from './lib/compression.js';
 import clientErrorRoutes from './routes/client-errors.js';
 import { corsOrigin } from './lib/cors.js';
+import { readFile } from 'node:fs/promises';
+import { TournamentRepo } from './repositories/tournament-repo.js';
+import { eventIdOfPath, eventMeta, injectMeta } from './lib/page-meta.js';
 import fastifySse from '@fastify/sse';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -121,8 +124,29 @@ if (staticRoot) {
     setHeaders: staticCacheHeaders
   });
 
-  fastify.setNotFoundHandler((req, reply) => {
+  // Every page route gets the web app; an event page also carries its title
+  // and description for link previews (Discord, QQ...; lib/page-meta.js).
+  const tournamentsForMeta = TournamentRepo(fastify.db);
+  fastify.setNotFoundHandler(async (req, reply) => {
     if (!req.url.startsWith('/api')) {
+      const eventId = req.method === 'GET' ? eventIdOfPath(req.url) : null;
+      if (eventId) {
+        try {
+          const t = await tournamentsForMeta.getById(eventId);
+          if (t) {
+            const origin = `${req.protocol}://${req.host}`;
+            const html = await readFile(join(staticRoot, 'index.html'), 'utf8');
+            reply.type('text/html; charset=utf-8').header('Cache-Control', 'no-cache');
+            return injectMeta(html, {
+              ...eventMeta(t),
+              url: `${origin}/tournament/${encodeURIComponent(eventId)}`,
+              image: `${origin}/web-app-manifest-512x512.png`,
+            });
+          }
+        } catch (err) {
+          req.log.warn({ err }, 'event link preview failed; serving the plain page');
+        }
+      }
       return reply.sendFile('index.html');
     }
     reply.code(404).send({ error: 'Not found' });

@@ -128,3 +128,15 @@ test('phones: no sideways scrolling, navigation at the bottom', async () => {
     await browser.close();
   }
 });
+
+test('event links carry a preview (title and description) for Discord / QQ', async () => {
+  const id = await makeEvent();
+  const event = await api('GET', `/tournaments/${id}`);
+  const html = await (await fetch(`${BASE}/tournament/${id}`)).text();
+  assert.ok(html.includes(`<title>${event.name} · Potato Cup</title>`), 'page title');
+  assert.match(html, new RegExp(`<meta property="og:title" content="${event.name} · Potato Cup"`));
+  assert.match(html, /<meta property="og:description" content="[^"]*单败淘汰/);
+  // Other pages stay plain, and the app still loads.
+  const lobby = await (await fetch(`${BASE}/`)).text();
+  assert.ok(!lobby.includes('og:title'));
+});
