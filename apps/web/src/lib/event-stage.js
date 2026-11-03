@@ -7,6 +7,7 @@
 
 import { toast } from "svelte-sonner";
 import { API } from "$lib/api.js";
+import { askConfirm, askText } from "$lib/confirm.svelte.js";
 import { downloadText } from "$lib/download.js";
 import { isValidSwissRounds, MAX_SWISS_ROUNDS, MIN_SWISS_ROUNDS } from "$lib/tournament.js";
 import { eventStatusLabel } from "$lib/event-view.js";
@@ -59,7 +60,7 @@ export function stageActions(ctx) {
   }
 
   async function playoffStep(question, call, done) {
-    if (!confirm(question)) return;
+    if (!(await askConfirm(question, { danger: /警告|撤回/.test(question) }))) return;
     ctx.setPlayoffBusy(true);
     try {
       await call(ctx.tid());
@@ -104,7 +105,7 @@ export function stageActions(ctx) {
   async function editSwissRounds() {
     if (!ctx.ensureAdmin()) return;
     const current = ctx.tournament()?.swiss_rounds ?? "";
-    const input = prompt(
+    const input = await askText(
       `瑞士轮总轮数（${MIN_SWISS_ROUNDS}-${MAX_SWISS_ROUNDS}）。留空 = 自动（单循环，每人与同组所有人各打一场）。比赛进行中修改时，不能少于当前轮次。`,
       String(current),
     );

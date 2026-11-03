@@ -4,6 +4,7 @@
   // the device key for signed-in players. Open it with openDialog().
   import { toast } from "svelte-sonner";
   import { API } from "$lib/api.js";
+  import { askConfirm } from "$lib/confirm.svelte.js";
   import { userState } from "$lib/user.svelte.js";
   import { ensurePlayerKey } from "$lib/player-session.js";
   import { buildContact, contactInputProblem, parseContact, requiredContactProblem, splitContactInput } from "$lib/contact.js";
@@ -147,7 +148,7 @@
         toast.error("修改选手 ID 需要管理员权限，请先点击右上角盾牌图标登录");
         return;
       }
-      const confirmed = confirm(
+      const confirmed = await askConfirm(
         `确定要将选手 ID 从 "${oldId}" 修改为 "${trimmedId}" 吗？\n此操作将同步更新所有历史赛事对阵、报名和投票数据。`,
       );
       if (!confirmed) return;

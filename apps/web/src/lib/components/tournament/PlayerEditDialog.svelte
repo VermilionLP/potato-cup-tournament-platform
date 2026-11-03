@@ -3,6 +3,7 @@
   // from the event page. Open with edit(player).
   import { toast } from "svelte-sonner";
   import { API } from "$lib/api.js";
+  import { askConfirm } from "$lib/confirm.svelte.js";
   import { userState } from "$lib/user.svelte.js";
   import { buildContact, parseContact } from "$lib/contact.js";
   import * as Dialog from "$lib/components/ui/dialog/index.js";
@@ -47,7 +48,7 @@
       }
       if (cleanNewId !== editingId) {
         const isMe = editingId === userState.id;
-        if (isMe && !confirm(`修改您的选手 ID 将会同时更新您的登录凭证，确定要修改吗？`)) return;
+        if (isMe && !(await askConfirm(`修改您的选手 ID 将会同时更新您的登录凭证，确定要修改吗？`))) return;
         toast.loading("正在修改选手唯一 ID 并同步所有关联数据...", { id: "player-save" });
         await API.renamePlayer(editingId, cleanNewId);
         if (isMe) userState.setId(cleanNewId);

@@ -5,6 +5,7 @@
 
 import { toast } from "svelte-sonner";
 import { API } from "$lib/api.js";
+import { askConfirm } from "$lib/confirm.svelte.js";
 import { userState } from "$lib/user.svelte.js";
 
 export function registrationActions(ctx) {
@@ -80,7 +81,7 @@ export function registrationActions(ctx) {
 
   async function randomizeSeed() {
     if (!ctx.ensureAdmin()) return;
-    if (!confirm("随机微调会打乱 MMR 相近的选手（保留前 2 和后 2 名），继续？")) return;
+    if (!(await askConfirm("随机微调会打乱 MMR 相近的选手（保留前 2 和后 2 名），继续？"))) return;
     try {
       await API.randomizeSeeds(ctx.tid(), { band: 80, keep_top: 2, keep_bottom: 2 });
       await ctx.load();

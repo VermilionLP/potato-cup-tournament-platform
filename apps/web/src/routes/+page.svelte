@@ -4,6 +4,7 @@
   import { onMount } from "svelte";
   import { toast } from "svelte-sonner";
   import { API } from "$lib/api.js";
+  import { askConfirm } from "$lib/confirm.svelte.js";
   import { downloadText } from "$lib/download.js";
   import { userState } from "$lib/user.svelte.js";
   import { EVENT_TIERS, VEHICLE_POOLS } from "$lib/tournament.js";
@@ -94,7 +95,7 @@
   }
 
   async function deleteTournament(t) {
-    if (!confirm(`确定删除赛事「${t.name || t.id}」？报名、对阵和比分会一并删除，且无法恢复。`)) return;
+    if (!(await askConfirm(`确定删除赛事「${t.name || t.id}」？报名、对阵和比分会一并删除，且无法恢复。`, { danger: true, confirmText: "删除" }))) return;
     try {
       await API.deleteTournament(t.id);
       toast.success("已删除");

@@ -2,11 +2,12 @@
   // Admin buttons that move the event between its stages, the check-in
   // switch while registration is open, and the match-day console link.
   import { Button } from "$lib/components/ui/button/index.js";
+  import { askConfirm } from "$lib/confirm.svelte.js";
 
   let { status, startBlocked = "", canStart = false, checkinEnabled = false, consoleHref = "", onendvoting, onstatus, oncheckinchange } = $props();
 
-  function backToVoting() {
-    if (confirm("返回时间投票会清空已生成的对阵，确定继续吗？")) onstatus("voting");
+  async function backToVoting() {
+    if (await askConfirm("返回时间投票会清空已生成的对阵，确定继续吗？", { danger: true })) onstatus("voting");
   }
 </script>
 

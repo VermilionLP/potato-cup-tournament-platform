@@ -7,6 +7,7 @@
   // confirmReport(match), disputeReport(match), withdrawReport(match).
   import { toast } from "svelte-sonner";
   import { API } from "$lib/api.js";
+  import { askConfirm } from "$lib/confirm.svelte.js";
   import { initialBanPick } from "$lib/banpick.js";
   import { canCorrectResult } from "$lib/tournament.js";
   import { correctionWarning, hasDependentMatchPlayed, recordedResultLabel, resultMessage } from "$lib/event-view.js";
@@ -81,7 +82,7 @@
   async function prepareResult(correctionLabel, overwriteWarning) {
     if (correctingMatch) {
       if (!ensureAdmin()) return false;
-      if (!confirm(correctionWarning(selectedMatch, tournament.matches || [], correctionLabel))) return false;
+      if (!(await askConfirm(correctionWarning(selectedMatch, tournament.matches || [], correctionLabel), { danger: true }))) return false;
       try {
         await API.rollbackResult(tid, selectedMatch.id);
       } catch (err) {
@@ -89,7 +90,7 @@
         return false;
       }
     } else if (hasDependentMatchPlayed(selectedMatch, tournament?.matches || [])) {
-      if (!confirm(overwriteWarning)) return false;
+      if (!(await askConfirm(overwriteWarning, { danger: true }))) return false;
       try {
         await API.rollbackResult(tid, selectedMatch.id);
       } catch (err) {
@@ -159,7 +160,7 @@
     const confirmMsg = hasDependentMatchPlayed(selectedMatch, tournament.matches || [])
       ? "【警告】该场比赛的晋级选手已在后续轮次进行了比赛！\n如果确认回滚，后续所有相关的比赛比分与晋级状态都将被清空重置。\n\n确定要继续回滚并重置后续比赛吗？"
       : "确定要回滚这场比赛的比分并将其重设为未开始状态吗？";
-    if (!confirm(confirmMsg)) return;
+    if (!(await askConfirm(confirmMsg, { danger: true }))) return;
     submittingResult = true;
     try {
       await API.rollbackResult(tid, selectedMatch.id);
@@ -193,15 +194,15 @@
     if (needsIdentity()) return;
     return reportAction(match, () => API.confirmReport(tid, match.id, which), "结果已确认生效");
   }
-  export function disputeReport(match) {
+  export async function disputeReport(match) {
     if (needsIdentity()) return;
-    if (!confirm("确定对这个结果提出异议吗？比赛结果将交给管理员处理。")) return;
+    if (!(await askConfirm("确定对这个结果提出异议吗？比赛结果将交给管理员处理。", { confirmText: "提出异议" }))) return;
     return reportAction(match, () => API.disputeReport(tid, match.id), "已提出异议，请联系管理员处理");
   }
-  export function withdrawReport(match) {
+  export async function withdrawReport(match) {
     if (needsIdentity()) return;
     const ask = isAdmin ? "驳回这个申报？比赛会回到未提交状态。" : "撤回你提交的结果？";
-    if (!confirm(ask)) return;
+    if (!(await askConfirm(ask))) return;
     return reportAction(match, () => API.withdrawReport(tid, match.id), isAdmin ? "已驳回" : "已撤回");
   }
 
