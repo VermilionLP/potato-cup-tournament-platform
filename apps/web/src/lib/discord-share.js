@@ -20,11 +20,9 @@ const TEXT = {
     resultsLink: (u) => `🔗 对阵与名次：${u}`,
     time: (f, r) => `🗓️ 比赛时间：${f}（${r}）`,
     voting: "🗓️ 比赛时间：投票中，欢迎来投票选时间",
-    signups: (n, cap) => `👥 报名：${n} / ${cap} 人`,
     running: (n) => `🔴 比赛进行中 · ${n} 名选手`,
     checkin: (t) => `✅ 需要签到：${t} 开放（开赛前 30 分钟）`,
     checkinNoTime: "✅ 需要在网站上签到",
-    points: (season, monthly, invite) => `📊 计入 ${season} 赛季积分榜（${monthly ? "月赛" : "周赛"}）${invite ? "，冠军直邀总决赛" : ""}`,
     link: { registration: "🔗 报名：", voting: "🔗 投票：", other: "🔗 对阵：" },
     mode: (m) => m.code,
     label: (x) => x,
@@ -41,11 +39,9 @@ const TEXT = {
     resultsLink: (u) => `🔗 Bracket and placings: ${u}`,
     time: (f, r) => `🗓️ Starts ${f} (${r})`,
     voting: "🗓️ Time: being voted on, come and pick one",
-    signups: (n, cap) => `👥 Signed up: ${n} / ${cap}`,
     running: (n) => `🔴 Live now · ${n} players`,
     checkin: (t) => `✅ Check-in opens at ${t} (30 minutes before the start)`,
     checkinNoTime: "✅ Check in on the site before the start",
-    points: (season, monthly, invite) => `📊 Counts for the ${season} points season (${monthly ? "monthly" : "weekly"})${invite ? ", the champion is invited to the finals" : ""}`,
     link: { registration: "🔗 Sign up: ", voting: "🔗 Vote: ", other: "🔗 Bracket: " },
     mode: (m) => m.code,
     label: (x) => labelTranslate(x),
@@ -114,7 +110,7 @@ export function shareMessage(t, { kind = "announce", siteUrl = "", podium = [], 
   const url = siteUrl ? `${siteUrl.replace(/\/+$/, "")}/tournament/${encodeURIComponent(t.id)}` : "";
   const mode = GAME_MODES.find((m) => m.id === t.game_mode);
   const players = t.players?.length ?? t.player_count ?? 0;
-  const lines = [`## 🥔 ${t.name}`];
+  const lines = [`## ${t.name}`];
 
   if (kind === "results") {
     const medals = ["🥇", "🥈", "🥉"];
@@ -133,14 +129,12 @@ export function shareMessage(t, { kind = "announce", siteUrl = "", podium = [], 
   const type = t.vehicle_pool ? T.label(vehiclePoolLabel(t.vehicle_pool)) : "";
   lines.push(`🎮 ${[mode ? T.mode(mode) : "", type].filter(Boolean).join(" · ")}`);
   lines.push(T.format(formatLine(t, lang), null));
-  if (t.status === "registration") lines.push(T.signups(players, t.player_capacity));
-  else if (t.status === "in_progress") lines.push(T.running(players));
+  if (t.status === "in_progress") lines.push(T.running(players));
   if (t.checkin?.enabled && t.status === "registration") {
     lines.push(unix != null ? T.checkin(stamp(unix - CHECKIN_LEAD_S, "t")) : T.checkinNoTime);
   }
   const prizes = prizeLine(t.points_table, lang);
   if (prizes) lines.push(prizes);
-  if (t.points_table?.length) lines.push(T.points(t.points_season, t.points_kind === "monthly", t.points_invite));
   if (url) lines.push(`${T.link[t.status] || T.link.other}${url}`);
   return lines.join("\n");
 }

@@ -29,13 +29,13 @@ test("format line and prizes", () => {
 test("the announcement", () => {
   const unix = scheduledUnix(t.scheduled_time);
   const text = shareMessage(t, { siteUrl: "https://cup.example/" });
-  assert.match(text, /^## 🥔 Potato Cup Weekly #41\n/);
+  assert.match(text, /^## Potato Cup Weekly #41\n/);
   assert.ok(text.includes(`🗓️ 比赛时间：<t:${unix}:F>（<t:${unix}:R>）`));
   assert.ok(text.includes("🎮 RB · 螺旋桨"));
-  assert.ok(text.includes("👥 报名：2 / 32 人"));
+  assert.ok(!text.includes("报名：2"), "no sign-up count");
   assert.ok(text.includes(`✅ 需要签到：<t:${unix - 1800}:t> 开放（开赛前 30 分钟）`));
   assert.ok(text.includes("💰 奖金：冠军 2500 金鹰币"));
-  assert.ok(text.includes("📊 计入 2026 赛季积分榜（周赛）"));
+  assert.ok(!text.includes("积分榜"), "no points line");
   assert.ok(!text.includes("载具池"), "the type line stands for the pool");
   assert.ok(text.endsWith("🔗 报名：https://cup.example/tournament/potatocupweekly41"));
   const voting = shareMessage({ ...t, status: "voting", scheduled_time: "" }, {});
