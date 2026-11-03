@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
-  VOTE_TIME_SLOTS, customVoteTopics, formatVoteTime, groupVoteDates, nextVoteOccurrence,
+  VOTE_TIME_SLOTS, formatVoteTime, groupVoteDates, nextVoteOccurrence,
   pastVotes, suggestedVoteTimes, voteIso, voteOptionsFrom,
 } from "../src/lib/votes.js";
 
@@ -43,14 +43,8 @@ test("vote options merge votes with suggestions and group by date", () => {
   assert.equal(days[0].options[0].timeOnly, "20:30");
 });
 
-test("formatting, past votes and custom topics", () => {
+test("formatting and past votes", () => {
   assert.equal(formatVoteTime("2026-10-31T20:30:00"), "2026-10-31 (周六) 20:30");
   assert.equal(formatVoteTime("本周六晚8点"), "本周六晚8点");
   assert.equal(pastVotes([{ proposed_time: "2020-01-01T00:00:00" }, { proposed_time: "2999-01-01T00:00:00" }]).length, 1);
-  const topics = customVoteTopics([
-    { topic: "服务器", value: "亚服", player_id: "a" },
-    { topic: "服务器", value: "欧服", player_id: "b" },
-    { topic: "服务器", value: "欧服", player_id: "c" },
-  ]);
-  assert.deepEqual(topics[0].options.map((o) => [o.value, o.count]), [["欧服", 2], ["亚服", 1]]);
 });

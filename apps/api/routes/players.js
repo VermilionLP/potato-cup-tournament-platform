@@ -85,7 +85,6 @@ export default async function playersRoutes(fastify) {
     await inTransaction(fastify.db, async (client) => {
       await client.query('DELETE FROM axsuck.tournament_players WHERE player_id = $1', [id]);
       await client.query('DELETE FROM axsuck.time_votes WHERE player_id = $1', [id]);
-      await client.query('DELETE FROM axsuck.custom_votes WHERE player_id = $1', [id]);
       await client.query('DELETE FROM axsuck.players WHERE id = $1', [id]);
     });
 

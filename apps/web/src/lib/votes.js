@@ -1,4 +1,4 @@
-// Time and custom votes of an event in the voting stage. Pure helpers (no
+// Time votes of an event in the voting stage. Pure helpers (no
 // Svelte, no DOM) so they can be tested with node --test.
 
 // Half-hour slots offered when proposing a new time.
@@ -109,18 +109,4 @@ export function pastVotes(votes = [], now = Date.now()) {
     const time = new Date(vote.proposed_time).getTime();
     return Number.isFinite(time) && time < now;
   });
-}
-
-/** Custom votes by topic: [{ topic, options: [{ value, count, voters }] }], most votes first. */
-export function customVoteTopics(customVotes = []) {
-  const topics = {};
-  for (const cv of customVotes) {
-    const options = (topics[cv.topic] ||= {});
-    const option = (options[cv.value] ||= { value: cv.value, count: 0, voters: [] });
-    option.count++;
-    option.voters.push(cv);
-  }
-  return Object.entries(topics)
-    .map(([topic, options]) => ({ topic, options: Object.values(options).sort((a, b) => b.count - a.count) }))
-    .sort((a, b) => a.topic.localeCompare(b.topic));
 }

@@ -375,20 +375,5 @@ export function TournamentRepo(db) {
     }));
   }
 
-  async function getCustomVotes(tournamentId) {
-    const res = await db.query(`
-      SELECT cv.*, p.battle_tags, p.id AS player_id
-      FROM axsuck.custom_votes cv
-      JOIN axsuck.players p ON p.id = cv.player_id
-      WHERE cv.tournament_id = $1
-      ORDER BY cv.topic ASC, cv.value ASC, cv.created_at ASC
-    `, [tournamentId]);
-
-    return res.rows.map(r => ({
-      ...r,
-      display_name: getPlayerDisplayName({ id: r.player_id, battle_tags: r.battle_tags })
-    }));
-  }
-
-  return { list, getById, create, rename, setVehiclePool, setVehicleTemplate, setPoints, setPointsInvite, setScheduledTime, setSwissRounds, updateStatus, setTier, setLadderLimit, setGameMode, getPlayers, addPlayer, autoRegisterVoters, removePlayer, setSeeds, getMatches, getVotes, getCustomVotes };
+  return { list, getById, create, rename, setVehiclePool, setVehicleTemplate, setPoints, setPointsInvite, setScheduledTime, setSwissRounds, updateStatus, setTier, setLadderLimit, setGameMode, getPlayers, addPlayer, autoRegisterVoters, removePlayer, setSeeds, getMatches, getVotes };
 }

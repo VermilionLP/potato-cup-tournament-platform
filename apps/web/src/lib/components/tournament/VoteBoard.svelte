@@ -1,11 +1,11 @@
 <script>
   // Voting stage, main column: the time options grouped by day (click to
-  // vote / unvote) and one card per custom vote topic.
+  // vote / unvote).
   import { toast } from "svelte-sonner";
   import { API } from "$lib/api.js";
   import { userState } from "$lib/user.svelte.js";
   import { needsProfile } from "$lib/profile-prompt.js";
-  import { customVoteTopics, groupVoteDates, pastVotes } from "$lib/votes.js";
+  import { groupVoteDates, pastVotes } from "$lib/votes.js";
   import * as Card from "$lib/components/ui/card/index.js";
   import { Button } from "$lib/components/ui/button/index.js";
   import { Badge } from "$lib/components/ui/badge/index.js";
@@ -15,12 +15,9 @@
 
   let days = $derived(groupVoteDates(voteOptions));
   let pastCount = $derived(pastVotes(tournament?.votes || []).length);
-  let topics = $derived(customVoteTopics(tournament?.custom_votes || []));
 
   const votedTime = (time) =>
     (tournament.votes || []).some((v) => v.player_id === userState.id && v.proposed_time === time);
-  const votedCustom = (topic, value) =>
-    (tournament.custom_votes || []).some((cv) => cv.player_id === userState.id && cv.topic === topic && cv.value === value);
 
   async function postponeWeek() {
     if (!isAdmin) return toast.error("此操作需要管理员权限，请先点击右上角盾牌图标登录");
@@ -43,22 +40,6 @@
       } else {
         await API.submitVote(tid, userState.id, time);
         toast.success("已投票；若该时间最终当选，会自动为你报名");
-      }
-      await onchanged?.();
-    } catch (e) {
-      toast.error(e.message);
-    }
-  }
-
-  async function toggleCustom(topic, value, voted) {
-    if (needsProfile()) return;
-    try {
-      if (voted) {
-        await API.removeCustomVote(tid, userState.id, topic, value);
-        toast.success("已取消该选项的投票");
-      } else {
-        await API.submitCustomVote(tid, userState.id, topic, value);
-        toast.success("已投赞成票");
       }
       await onchanged?.();
     } catch (e) {
@@ -141,42 +122,3 @@
   </Card.Content>
 </Card.Root>
 
-{#each topics as topicData (topicData.topic)}
-  <Card.Root class="border-border bg-card/40">
-    <Card.Header class="p-6">
-      <Card.Title class="text-base font-bold flex items-center gap-2">
-        <span class="w-2.5 h-2.5 rounded-full bg-purple-500 shadow shadow-purple-500/50"></span>
-        {topicData.topic} 投票偏好
-      </Card.Title>
-      <Card.Description class="text-xs">点击对应选项投出赞成票。该投票是多选。</Card.Description>
-    </Card.Header>
-    <Card.Content class="p-6 pt-0 space-y-4">
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        {#each topicData.options as opt (opt.value)}
-          {@const voted = votedCustom(topicData.topic, opt.value)}
-          <button
-            onclick={() => toggleCustom(topicData.topic, opt.value, voted)}
-            class="flex flex-col text-left p-4 rounded-xl border transition-all text-xs cursor-pointer group/opt {voted
-              ? 'bg-purple-950/20 border-purple-500 shadow-md shadow-purple-500/5'
-              : 'bg-background/40 border-border hover:border-purple-500/40 hover:bg-background/80'}"
-          >
-            <div class="flex items-center justify-between w-full">
-              <span class="font-bold text-foreground group-hover/opt:text-purple-400 transition-colors">{opt.value}</span>
-              <div class="flex items-center gap-1.5">
-                {#if voted}
-                  <Badge class="bg-purple-500 text-white font-bold hover:bg-purple-500 text-[9px] px-1 py-0 shadow">已投票</Badge>
-                {/if}
-                <span class="bg-primary text-primary-foreground text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center shadow">{opt.count}</span>
-              </div>
-            </div>
-            <div class="flex flex-wrap gap-1 mt-3 border-t border-border/50 pt-2 w-full">
-              {#each opt.voters as voter}
-                <span class="text-[9px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border/40 font-medium">{playerName(voter.player_id)}</span>
-              {/each}
-            </div>
-          </button>
-        {/each}
-      </div>
-    </Card.Content>
-  </Card.Root>
-{/each}

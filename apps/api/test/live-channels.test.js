@@ -19,14 +19,14 @@ test('the detail lists every channel; the old fields mirror channel 1', () => {
   const channels = [
     { channel: 2, active_match_id: 7, overlay_scene: 'ingame', overlay_round: 2, overlay_stage: 'main:2' },
   ];
-  const detail = tournamentDetail(t, { players: [], matches: [], votes: [], customVotes: [], ladder: noLadder, channels });
+  const detail = tournamentDetail(t, { players: [], matches: [], votes: [], ladder: noLadder, channels });
   // Channel 1 has no row: an empty one, not the old tournaments columns.
   assert.deepEqual(detail.live_channels.map((c) => [c.channel, c.active_match_id, c.overlay_scene]), [[1, null, 'auto'], [2, 7, 'ingame']]);
   assert.equal(detail.active_match_id, null);
   assert.equal(detail.overlay_scene, 'auto');
 
   const withMain = tournamentDetail(t, {
-    players: [], matches: [], votes: [], customVotes: [], ladder: noLadder,
+    players: [], matches: [], votes: [], ladder: noLadder,
     channels: [{ channel: 1, active_match_id: 5, overlay_scene: 'hybrid', overlay_round: 3, overlay_stage: 'wb:3' }, ...channels],
   });
   assert.deepEqual([withMain.active_match_id, withMain.overlay_scene, withMain.overlay_round, withMain.overlay_stage], [5, 'hybrid', 3, 'wb:3']);

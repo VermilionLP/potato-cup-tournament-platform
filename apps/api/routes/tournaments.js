@@ -30,15 +30,14 @@ export default async function tournamentsRoutes(fastify) {
   fastify.get('/tournaments/:id', async (req) => {
     const t = await repo.getById(req.params.id);
     if (!t) throw fastify.httpErrors.notFound('Tournament not found');
-    const [players, ms, votes, customVotes, ladder, channels] = await Promise.all([
+    const [players, ms, votes, ladder, channels] = await Promise.all([
       repo.getPlayers(req.params.id),
       repo.getMatches(req.params.id),
       repo.getVotes(req.params.id),
-      repo.getCustomVotes(req.params.id),
       ladderRepo.eventRatings(t),
       liveChannels.list(req.params.id),
     ]);
-    return tournamentDetail(t, { players, matches: ms, votes, customVotes, ladder, channels });
+    return tournamentDetail(t, { players, matches: ms, votes, ladder, channels });
   });
 
   fastify.get('/tournaments/:id/stream', { sse: 'only' }, async (req, reply) => {

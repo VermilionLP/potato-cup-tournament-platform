@@ -182,10 +182,6 @@ export const API = {
     request(`/tournaments/${enc(tournamentId)}/vote`, { method: 'DELETE', body: JSON.stringify({ player_id, proposed_time }) }),
   deletePastVotes: (tournamentId) =>
     request(`/tournaments/${enc(tournamentId)}/votes/past`, { method: 'DELETE', body: JSON.stringify({}) }),
-  submitCustomVote: (tournamentId, player_id, topic, value) =>
-    request(`/tournaments/${enc(tournamentId)}/custom-vote`, { method: 'POST', body: JSON.stringify({ player_id, topic, value }) }),
-  removeCustomVote: (tournamentId, player_id, topic, value) =>
-    request(`/tournaments/${enc(tournamentId)}/custom-vote`, { method: 'DELETE', body: JSON.stringify({ player_id, topic, value }) }),
 
   // Liquipedia export: { wikiScript, warnings, meta, saved }
   getWikiScript: (tournamentId) => request(`/tournaments/${enc(tournamentId)}/wiki`),

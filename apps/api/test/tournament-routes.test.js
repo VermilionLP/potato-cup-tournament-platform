@@ -35,12 +35,12 @@ test('Swiss detail: standings and the automatic round count', () => {
   const t = { id: 't', format: 'swiss', swiss_rounds: null, status: 'in_progress' };
   const players = [{ id: 'a', seed: 1 }, { id: 'b', seed: 2 }, { id: 'c', seed: 3 }, { id: 'd', seed: 4 }];
   const matches = [{ id: 1, bracket: 'sw', round: 1, player1_id: 'a', player2_id: 'c', winner_id: 'a', status: 'completed', score1: 1, score2: 0 }];
-  const detail = tournamentDetail(t, { players, matches, votes: [], customVotes: [], ladder: noLadder });
+  const detail = tournamentDetail(t, { players, matches, votes: [], ladder: noLadder });
   assert.equal(detail.swiss_rounds_auto, true);
   assert.equal(detail.swiss_rounds_effective, 3); // round robin of 4
   assert.equal(detail.standings[0].player_id, 'a');
   assert.equal(detail.group_stage, undefined);
-  assert.deepEqual(detail.custom_votes, []);
+  assert.equal(detail.custom_votes, undefined);
   assert.equal(detail.points_awarded, undefined);
 });
 
@@ -48,7 +48,7 @@ test('finished events with a points table list the points awarded', () => {
   const t = { id: 't', format: 'single_elim', status: 'completed', points_table: [{ from: 1, to: 1, points: 10 }, { from: 2, to: 2, points: 6 }] };
   const players = [{ id: 'a', seed: 1 }, { id: 'b', seed: 2 }];
   const matches = [{ id: 1, bracket: 'main', round: 1, position: 1, player1_id: 'a', player2_id: 'b', winner_id: 'b', status: 'completed', score1: 0, score2: 2 }];
-  const detail = tournamentDetail(t, { players, matches, votes: [], customVotes: [], ladder: noLadder });
+  const detail = tournamentDetail(t, { players, matches, votes: [], ladder: noLadder });
   assert.equal(detail.swiss_rounds_effective, undefined);
   assert.deepEqual(detail.points_awarded, { b: 10, a: 6 });
 });

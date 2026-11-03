@@ -42,14 +42,6 @@ export async function mergePlayerInto(client, oldId, targetId) {
                   WHERE t.tournament_id = o.tournament_id AND t.player_id = $2 AND t.proposed_time = o.proposed_time)
   `, [oldId, targetId]);
   await client.query('UPDATE axsuck.time_votes SET player_id = $2 WHERE player_id = $1', [oldId, targetId]);
-  await client.query(`
-    DELETE FROM axsuck.custom_votes o
-    WHERE o.player_id = $1
-      AND EXISTS (SELECT 1 FROM axsuck.custom_votes t
-                  WHERE t.tournament_id = o.tournament_id AND t.player_id = $2
-                    AND t.topic = o.topic AND t.value = o.value)
-  `, [oldId, targetId]);
-  await client.query('UPDATE axsuck.custom_votes SET player_id = $2 WHERE player_id = $1', [oldId, targetId]);
 
   // 5. Matches.
   await client.query('UPDATE axsuck.matches SET player1_id = $2 WHERE player1_id = $1', [oldId, targetId]);

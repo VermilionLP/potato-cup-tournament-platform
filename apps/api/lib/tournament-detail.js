@@ -28,7 +28,7 @@ export function playersWithLadder(players, ladder) {
   });
 }
 
-export function tournamentDetail(t, { players, matches: ms, votes, customVotes, ladder, channels = [] }) {
+export function tournamentDetail(t, { players, matches: ms, votes, ladder, channels = [] }) {
   // Live channels; the old top-level fields mirror channel 1.
   const liveChannels = liveChannelsView(channels);
   const main = liveChannels[0];
@@ -69,6 +69,5 @@ export function tournamentDetail(t, { players, matches: ms, votes, customVotes, 
     swiss_rounds_auto: t.format === 'swiss' ? isAutoRounds(t.swiss_rounds) : undefined,
     swiss_rounds_effective: swissRoundsEffective,
     votes,
-    custom_votes: customVotes,
   };
 }

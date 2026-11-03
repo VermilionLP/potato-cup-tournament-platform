@@ -36,7 +36,7 @@ Self-service endpoints use `requireSelfOrAdmin` and accept either an admin token
 
 - `POST /players`, `POST /players/:id/touch`
 - `POST|DELETE /tournaments/:id/register`
-- `POST|DELETE /tournaments/:id/vote`, `POST|DELETE /tournaments/:id/custom-vote`
+- `POST|DELETE /tournaments/:id/vote`
 
 Match result reporting (`POST /tournaments/:id/matches/:matchId/result` and `/walkover`) uses `requireMatchPlayerOrAdmin`: only the two players in that match or an admin may submit it.
 

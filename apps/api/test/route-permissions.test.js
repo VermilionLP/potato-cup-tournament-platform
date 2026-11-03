@@ -23,7 +23,6 @@ const SELF_WRITES = new Set([
   'POST /players', 'POST /players/:id/touch', 'POST /players/:id/key',
   'POST /tournaments/:id/register', 'DELETE /tournaments/:id/register',
   'POST /tournaments/:id/vote', 'DELETE /tournaments/:id/vote',
-  'POST /tournaments/:id/custom-vote', 'DELETE /tournaments/:id/custom-vote',
   'POST /tournaments/:id/matches/:matchId/result', 'POST /tournaments/:id/matches/:matchId/walkover',
   'POST /tournaments/:id/checkin', 'DELETE /tournaments/:id/checkin',
   'POST /tournaments/:id/matches/:matchId/report/confirm', 'POST /tournaments/:id/matches/:matchId/report/dispute',
