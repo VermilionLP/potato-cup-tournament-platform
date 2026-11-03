@@ -6,9 +6,17 @@
 import { MatchRepo } from '../repositories/match-repo.js';
 import { getPlayerDisplayName } from '../repositories/player-repo.js';
 import { claimNotice, pushEnabled, sendToPlayers } from './push-sender.js';
+import { inTransaction } from './transaction.js';
 
-/** Records a walkover (winner_id) and moves the bracket on. */
-export async function recordWalkover(db, tournamentId, matchId, winnerId) {
+/**
+ * Records a walkover (winner_id) and moves the bracket on, in one
+ * transaction: a match is never left done without its winner advanced.
+ */
+export function recordWalkover(db, tournamentId, matchId, winnerId) {
+  return inTransaction(db, (client) => walkoverIn(client, tournamentId, matchId, winnerId));
+}
+
+async function walkoverIn(db, tournamentId, matchId, winnerId) {
   const repo = MatchRepo(db);
   await db.query(`
     UPDATE axsuck.matches SET status = 'walkover', winner_id = $1, score1 = 0, score2 = 0, pending_report = NULL
@@ -19,13 +27,20 @@ export async function recordWalkover(db, tournamentId, matchId, winnerId) {
   return { match, advanced };
 }
 
+/** Records a score and moves the bracket on, in one transaction. */
+export function recordScore(db, tournamentId, matchId, score1, score2) {
+  return inTransaction(db, async (client) => {
+    const repo = MatchRepo(client);
+    const match = await repo.submitResult(matchId, score1, score2);
+    const advanced = await repo.advanceWinner(tournamentId, matchId);
+    return { match, advanced };
+  });
+}
+
 /** Applies a reported result ({ kind, score1, score2 } or { kind: 'walkover', winner_id }). */
 export async function applyReport(db, tournamentId, matchId, report) {
   if (report.kind === 'walkover') return recordWalkover(db, tournamentId, matchId, report.winner_id);
-  const repo = MatchRepo(db);
-  const match = await repo.submitResult(matchId, report.score1, report.score2);
-  const advanced = await repo.advanceWinner(tournamentId, matchId);
-  return { match, advanced };
+  return recordScore(db, tournamentId, matchId, report.score1, report.score2);
 }
 
 /**

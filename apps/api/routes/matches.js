@@ -2,7 +2,7 @@ import { MatchRepo } from '../repositories/match-repo.js';
 import { getRequesterId, isAdminRequest, requireAdmin, requireMatchPlayerOrAdmin } from '../lib/admin.js';
 import { inTransaction } from '../lib/transaction.js';
 import { canConfirm, canDispute, playerReport, reportToApply, scoreProblem } from '../lib/match-reports.js';
-import { afterResult, applyReport, notifyReportToConfirm, recordWalkover } from '../lib/match-flow.js';
+import { afterResult, applyReport, notifyReportToConfirm, recordScore, recordWalkover } from '../lib/match-flow.js';
 
 export default async function matchesRoutes(fastify) {
   const repo = MatchRepo(fastify.db);
@@ -75,8 +75,8 @@ export default async function matchesRoutes(fastify) {
       return playerReports(req, match, { kind: 'score', score1, score2 });
     }
 
-    const updated = await repo.submitResult(match.id, score1, score2);
-    const advanced = await repo.advanceWinner(req.params.id, match.id);
+    // Score and advancement in one transaction (lib/match-flow.js).
+    const { match: updated, advanced } = await recordScore(fastify.db, req.params.id, match.id, score1, score2);
 
     // Trigger real-time broadcast
     fastify.tournamentEvents.emit(`update:${req.params.id}`, { type: 'match_result_submitted', matchId: match.id });
