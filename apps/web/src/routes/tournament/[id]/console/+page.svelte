@@ -107,6 +107,8 @@
   }
 </script>
 
+<svelte:head><title>比赛日控制台{tournament?.name ? ` · ${tournament.name}` : ""} · Potato Cup</title></svelte:head>
+
 {#snippet versus(m)}
   <span class="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 min-w-0">
     {#each [m.player1_id, m.player2_id] as pid, i (i)}

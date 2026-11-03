@@ -53,6 +53,8 @@
   const openEdit = (p) => dialog?.openEdit(p);
 </script>
 
+<svelte:head><title>选手列表 · Potato Cup</title></svelte:head>
+
 {#snippet listFooter()}
   <span>显示 {shownPlayers.length} / {players.length} 名选手</span>
   {#if inactivePlayers.length && !searching}

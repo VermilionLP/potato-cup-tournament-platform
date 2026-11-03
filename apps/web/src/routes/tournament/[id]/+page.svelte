@@ -265,6 +265,8 @@
   const openMatch = (m) => matchReport?.openDetails(m);
 </script>
 
+<svelte:head><title>{tournament?.name || "赛事"} · Potato Cup</title></svelte:head>
+
 {#if data.loading}
   <div class="flex flex-col items-center justify-center py-20 gap-3 text-muted-foreground">
     <div class="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin"></div>

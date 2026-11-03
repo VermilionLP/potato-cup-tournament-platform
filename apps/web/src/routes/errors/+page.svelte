@@ -46,6 +46,8 @@
   });
 </script>
 
+<svelte:head><title>前端报错 · Potato Cup</title></svelte:head>
+
 <div class="space-y-4">
   <div class="flex flex-wrap items-end justify-between gap-3">
     <div class="space-y-1">

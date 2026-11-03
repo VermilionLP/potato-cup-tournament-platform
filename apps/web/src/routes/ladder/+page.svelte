@@ -115,6 +115,8 @@
   }
 </script>
 
+<svelte:head><title>天梯 · Potato Cup</title></svelte:head>
+
 <div class="space-y-6">
   <div class="flex flex-col gap-2">
     <div class="flex items-center gap-2">

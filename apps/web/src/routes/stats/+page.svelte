@@ -52,6 +52,8 @@
   onMount(loadStats);
 </script>
 
+<svelte:head><title>数据统计 · Potato Cup</title></svelte:head>
+
 <div class="space-y-6">
   <!-- Page header -->
   <div class="flex items-center justify-between border-b border-border/60 pb-5">

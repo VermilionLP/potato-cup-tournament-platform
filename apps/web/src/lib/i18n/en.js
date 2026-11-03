@@ -1660,4 +1660,7 @@ export default {
   "填写选手 ID 和 QQ / Discord 联系方式后就能报名": "Set your player ID and a QQ / Discord contact to sign up",
   "设置选手 ID": "Set player ID",
   "确定": "OK",
+  "比赛日控制台{0} · Potato Cup": "Match-day console{0} · Potato Cup",
+  "时间投票中": "Time vote open",
+  "{0:n} 名选手": "{0} players",
 };

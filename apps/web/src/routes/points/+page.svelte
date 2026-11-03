@@ -89,6 +89,8 @@
   }
 </script>
 
+<svelte:head><title>年度积分榜 · Potato Cup</title></svelte:head>
+
 <div class="space-y-5">
   <div class="space-y-1">
     <h1 class="flex items-center gap-2 text-2xl font-extrabold tracking-tight">

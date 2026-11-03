@@ -106,6 +106,8 @@
   }
 </script>
 
+<svelte:head><title>赛事大厅 · Potato Cup</title></svelte:head>
+
 <div class="space-y-6">
   <!-- Top Headline and Create trigger -->
   <div class="flex items-center justify-between border-b border-border/60 pb-5">

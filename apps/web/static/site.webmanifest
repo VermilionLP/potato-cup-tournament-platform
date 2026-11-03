@@ -1,6 +1,6 @@
 {
-  "name": "AlphaX SUCK",
-  "short_name": "AX SUCK",
+  "name": "Potato Cup",
+  "short_name": "Potato Cup",
   "icons": [
     {
       "src": "/web-app-manifest-192x192.png",
@@ -15,7 +15,8 @@
       "purpose": "maskable"
     }
   ],
-  "theme_color": "#ffffff",
+  "theme_color": "#f59e0b",
   "background_color": "#ffffff",
-  "display": "standalone"
+  "display": "standalone",
+  "start_url": "/"
 }

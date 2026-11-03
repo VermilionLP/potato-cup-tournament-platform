@@ -187,6 +187,8 @@
   }
 </script>
 
+<svelte:head><title>载具池 · Potato Cup</title></svelte:head>
+
 <!-- w-full min-w-0: with auto margins in the layout's flex column the page
      would otherwise grow to the vehicle table's width on phones. -->
 <div class="mx-auto w-full min-w-0 max-w-5xl space-y-4 px-1 sm:px-4 py-2 sm:py-6">
