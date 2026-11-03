@@ -187,7 +187,9 @@
   }
 </script>
 
-<div class="mx-auto max-w-5xl space-y-4 px-4 py-6">
+<!-- w-full min-w-0: with auto margins in the layout's flex column the page
+     would otherwise grow to the vehicle table's width on phones. -->
+<div class="mx-auto w-full min-w-0 max-w-5xl space-y-4 px-1 sm:px-4 py-2 sm:py-6">
   <div class="space-y-1">
     <h1 class="flex items-center gap-2 text-xl font-bold text-foreground">
       <PlaneIcon class="h-5 w-5 text-primary" />
