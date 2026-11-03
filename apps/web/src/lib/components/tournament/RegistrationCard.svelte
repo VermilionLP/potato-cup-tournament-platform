@@ -5,6 +5,8 @@
   import { openProfile } from "$lib/profile-prompt.js";
   import { isRecentlySeen } from "$lib/players.js";
   import { eventFormatLabel } from "$lib/tournament.js";
+  import { API } from "$lib/api.js";
+  import { ladderLimitLabel } from "$lib/ladder-limit.js";
   import * as Card from "$lib/components/ui/card/index.js";
   import { Button } from "$lib/components/ui/button/index.js";
   import { Input } from "$lib/components/ui/input/index.js";
@@ -14,6 +16,23 @@
 
   // onregister(id): "" registers the visitor; onbatch(ids) registers several.
   let { tournament, isAdmin = false, isRegistered = false, unregisteredPlayers = [], onregister, onunregister, onbatch } = $props();
+
+  // Ladder limit: whether the visitor may sign up, asked before they try
+  // (the server checks again). Admins are not limited.
+  let limitLabel = $derived(ladderLimitLabel(tournament));
+  let eligibility = $state(null);
+  $effect(() => {
+    const id = userState.id;
+    const key = `${tournament?.id}|${limitLabel}|${id}`;
+    eligibility = null;
+    if (!limitLabel || !id || isAdmin || isRegistered) return;
+    API.ladderEligibility(tournament.id, id)
+      .then((res) => {
+        if (`${tournament?.id}|${limitLabel}|${userState.id}` === key) eligibility = res;
+      })
+      .catch(() => {});
+  });
+  let blocked = $derived(Boolean(eligibility?.problem));
 
   let regInput = $state("");
   let selected = $state([]);
@@ -94,7 +113,7 @@
             </Button>
           </div>
         {:else}
-          <Button onclick={() => onregister("")} size="sm" class="font-bold text-xs h-8 cursor-pointer">一键快速报名</Button>
+          <Button onclick={() => onregister("")} size="sm" disabled={blocked} class="font-bold text-xs h-8 cursor-pointer">一键快速报名</Button>
         {/if}
       {:else}
         <div class="flex items-center gap-3">
@@ -109,6 +128,16 @@
         </Button>
       {/if}
     </div>
+
+    {#if limitLabel}
+      <p class="rounded-lg border px-3 py-2 text-xs {blocked ? 'border-destructive/30 bg-destructive/10 text-destructive' : 'border-sky-500/30 bg-sky-500/10 text-sky-700 dark:text-sky-300'}">
+        {#if blocked}
+          {eligibility.problem}
+        {:else}
+          <span>本场比赛限{limitLabel}的选手报名（按本场比赛的天梯计算，需要已完成定级）。</span>{#if isAdmin}<span>管理员代报不受限制。</span>{:else if eligibility?.mmr != null}<span>你的天梯分 {eligibility.mmr}{eligibility.tier ? ` · ${eligibility.tier}` : ""}。</span>{/if}
+        {/if}
+      </p>
+    {/if}
 
     {#if isAdmin}
       <div class="space-y-2.5">

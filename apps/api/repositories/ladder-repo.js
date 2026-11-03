@@ -210,6 +210,16 @@ export function LadderRepo(db) {
     return { ratingOf, cutoff: division.cutoff };
   }
 
+  // A player's row (MMR, games, league) in event t's division, as the ladder
+  // page shows it (active players); players inactive for a year get their
+  // league among everyone. null without games there. For lib/ladder-limit.js.
+  async function limitStanding(t, playerId) {
+    const division = { mode: t?.game_mode || '', pool: t?.vehicle_pool || '' };
+    let player = (await getRatings(division)).players.find((p) => p.id === playerId);
+    if (!player) player = (await getRatings({ ...division, includeInactive: true })).players.find((p) => p.id === playerId);
+    return player && player.games > 0 ? player : null;
+  }
+
   // Seeds follow eventRatings: the event's division MMR; unrated players last.
   async function suggestSeeds(tournamentId) {
     const [registrations, event] = await Promise.all([
@@ -285,6 +295,7 @@ export function LadderRepo(db) {
     loadGames,
     getRatings,
     eventRatings,
+    limitStanding,
     leaderboard,
     playerDetail,
     suggestSeeds,

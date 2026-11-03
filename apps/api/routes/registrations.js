@@ -8,6 +8,7 @@ import { LadderRepo } from '../repositories/ladder-repo.js';
 import { isAdminRequest, requireSelfOrAdmin } from '../lib/admin.js';
 import { requireContact } from '../lib/contact.js';
 import { checkinState } from '../lib/checkin.js';
+import { hasLadderLimit, ladderLimitProblem } from '../lib/ladder-limit.js';
 
 export default async function registrationRoutes(fastify) {
   const repo = PlayerRepo(fastify.db);
@@ -25,6 +26,11 @@ export default async function registrationRoutes(fastify) {
 
     const existingPlayer = await repo.getById(player_id);
     requireContact(fastify, req, existingPlayer);
+    // Ladder limit: players signing up themselves; admins can add anyone.
+    if (hasLadderLimit(t) && !isAdminRequest(req)) {
+      const problem = ladderLimitProblem(t, await ladderRepo.limitStanding(t, player_id));
+      if (problem) throw fastify.httpErrors.forbidden(problem);
+    }
     const requesterIdRaw = req.headers['x-player-id'];
     const requesterId = requesterIdRaw ? decodeURIComponent(requesterIdRaw) : undefined;
     const lastIp = (requesterId === player_id) ? req.ip : null;
@@ -49,6 +55,24 @@ export default async function registrationRoutes(fastify) {
     fastify.tournamentEvents.emit(`update:${req.params.id}`, { type: 'player_registered', player_id });
 
     return await tourneyRepo.getPlayers(req.params.id);
+  });
+
+  // Whether a player may sign up under the event's ladder limit, with their
+  // standing in its division, so the page can say so before they try.
+  fastify.get('/tournaments/:id/ladder-eligibility', async (req) => {
+    const playerId = String(req.query?.player_id || '');
+    if (!playerId) throw fastify.httpErrors.badRequest('player_id is required');
+    const t = await tourneyRepo.getById(req.params.id);
+    if (!t) throw fastify.httpErrors.notFound('Tournament not found');
+    if (!hasLadderLimit(t)) return { limited: false, problem: null };
+    const standing = await ladderRepo.limitStanding(t, playerId);
+    return {
+      limited: true,
+      problem: ladderLimitProblem(t, standing),
+      mmr: standing?.mmr ?? null,
+      games: standing?.games ?? 0,
+      tier: standing?.tier?.name ?? null,
+    };
   });
 
   fastify.delete('/tournaments/:id/register', async (req) => {

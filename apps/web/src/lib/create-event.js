@@ -2,6 +2,7 @@
 // the request body. Pure functions over a plain form object so they can be
 // tested with node --test (the dialog keeps the form in $state).
 
+import { DEFAULT_LIMIT_MMR, limitChoice, limitFields, limitProblem } from "./ladder-limit.js";
 import { MAX_SWISS_ROUNDS, MIN_SWISS_ROUNDS, groupBracketProblem, isValidSwissRounds } from "./tournament.js";
 import { POINTS_PRESETS, cleanTable, copyTable, currentSeason, pointsTableProblem } from "./points.js";
 
@@ -36,6 +37,9 @@ export function newEventForm(season = "") {
     pointsInvite: false,
     // Check-in 30 minutes before the start (migration 034).
     checkinEnabled: false,
+    // Ladder limit ($lib/ladder-limit.js): "" | "mmr" | a league group.
+    ladderLimit: "",
+    ladderMaxMmr: DEFAULT_LIMIT_MMR,
     // Copied from another event: its tier / kind and vehicle pool template.
     tier: "",
     eventKind: "",
@@ -102,6 +106,8 @@ export function formFromEvent(t, season = "", now = new Date()) {
     pointsKind: t.points_kind || form.pointsKind,
     pointsInvite: false,
     checkinEnabled: Boolean(t.checkin_enabled),
+    ladderLimit: limitChoice(t),
+    ladderMaxMmr: t.ladder_max_mmr ?? form.ladderMaxMmr,
     tier: t.tier || "",
     eventKind: t.event_kind || "",
     vehicleTemplate: t.vehicle_template || "",
@@ -213,6 +219,8 @@ export function createEventBody(form) {
   const id = eventIdFromName(name);
   if (!id) return { error: "无法根据赛事名称生成合法的赛事 ID，请确保包含英文或数字" };
   if (form.capacity < 2 || form.capacity > 128) return { error: "选手容量必须在 2 至 128 人之间" };
+  const limitError = limitProblem(form.ladderLimit, form.ladderMaxMmr);
+  if (limitError) return { error: limitError };
   const manualRounds = usesSwissRounds(form) && form.swissRoundsMode === "manual";
   if (manualRounds && !isValidSwissRounds(form.swissRounds)) {
     return { error: `瑞士轮轮数必须在 ${MIN_SWISS_ROUNDS} 至 ${MAX_SWISS_ROUNDS} 之间` };
@@ -248,6 +256,7 @@ export function createEventBody(form) {
       swiss_group_size: twoStage ? groupSizeValue(form) : null,
       advance_per_group: twoStage ? Number(form.advancePerGroup) : null,
       checkin_enabled: Boolean(form.checkinEnabled),
+      ...limitFields(form.ladderLimit, form.ladderMaxMmr),
       // Copied events keep their tier / kind and template; new ones get defaults.
       ...(form.tier ? { tier: form.tier } : {}),
       ...(form.eventKind ? { event_kind: form.eventKind } : {}),

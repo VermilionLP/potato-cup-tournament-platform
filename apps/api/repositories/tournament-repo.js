@@ -43,7 +43,7 @@ export function TournamentRepo(db) {
     return res.rows[0] || null;
   }
 
-  async function create({ id, name, description, player_capacity, hold_third_place, loser_advances, scheduled_time, game_mode, vehicle_pool, format, grand_final_reset, swiss_rounds, banpick_enabled, playoff_format, swiss_group_size, advance_per_group, points_table = null, points_season = '', points_kind = 'weekly', points_invite = false, tier = null, kind = null, checkin_enabled = false, vehicle_template = null }) {
+  async function create({ id, name, description, player_capacity, hold_third_place, loser_advances, scheduled_time, game_mode, vehicle_pool, format, grand_final_reset, swiss_rounds, banpick_enabled, playoff_format, swiss_group_size, advance_per_group, points_table = null, points_season = '', points_kind = 'weekly', points_invite = false, tier = null, kind = null, checkin_enabled = false, vehicle_template = null, ladder_max_mmr = null, ladder_max_tier = null }) {
     const scheduledTime = String(scheduled_time || '').trim();
     const bracketFormat = SUPPORTED_FORMATS.includes(format) ? format : SUPPORTED_FORMATS[0];
     // Two-stage events: `format` is the group stage, `playoff_format` the playoff.
@@ -52,8 +52,8 @@ export function TournamentRepo(db) {
       INSERT INTO axsuck.tournaments
         (id, name, description, status, player_capacity, hold_third_place, loser_advances, scheduled_time, game_mode, vehicle_pool, format, grand_final_reset, swiss_rounds, banpick_enabled,
          playoff_format, swiss_group_size, advance_per_group, points_table, points_season, points_kind, points_invite, tier, event_kind,
-         checkin_enabled, vehicle_template)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18::jsonb, $19, $20, $21, $22, $23, $24, $25)
+         checkin_enabled, vehicle_template, ladder_max_mmr, ladder_max_tier)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18::jsonb, $19, $20, $21, $22, $23, $24, $25, $26, $27)
     `, [
       id,
       name,
@@ -81,7 +81,18 @@ export function TournamentRepo(db) {
       kind,
       Boolean(checkin_enabled),
       vehicle_template || null,
+      ladder_max_mmr,
+      ladder_max_tier,
     ]);
+    return getById(id);
+  }
+
+  // Ladder limit (lib/ladder-limit.js); nulls clear it.
+  async function setLadderLimit(id, maxMmr, maxTier) {
+    await db.query(
+      'UPDATE axsuck.tournaments SET ladder_max_mmr = $2, ladder_max_tier = $3, updated_at = NOW() WHERE id = $1',
+      [id, maxMmr, maxTier],
+    );
     return getById(id);
   }
 
@@ -379,5 +390,5 @@ export function TournamentRepo(db) {
     }));
   }
 
-  return { list, getById, create, rename, setVehiclePool, setVehicleTemplate, setPoints, setPointsInvite, setScheduledTime, setSwissRounds, updateStatus, setTier, setGameMode, getPlayers, addPlayer, autoRegisterVoters, removePlayer, setSeeds, getMatches, getVotes, getCustomVotes };
+  return { list, getById, create, rename, setVehiclePool, setVehicleTemplate, setPoints, setPointsInvite, setScheduledTime, setSwissRounds, updateStatus, setTier, setLadderLimit, setGameMode, getPlayers, addPlayer, autoRegisterVoters, removePlayer, setSeeds, getMatches, getVotes, getCustomVotes };
 }

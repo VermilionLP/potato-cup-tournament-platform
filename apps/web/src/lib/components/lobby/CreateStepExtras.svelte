@@ -1,9 +1,12 @@
 <script>
-  // Create-event wizard, last step: Ban / Pick, check-in, points and a summary.
+  // Create-event wizard, last step: Ban / Pick, check-in, ladder limit, points
+  // and a summary.
   import { GROUP_FORMATS, gameModeLabel, vehiclePoolLabel } from "$lib/tournament.js";
   import { cleanTable } from "$lib/points.js";
   import { isTwoStage } from "$lib/create-event.js";
   import PointsEditor from "$lib/components/PointsEditor.svelte";
+  import LadderLimitPicker from "$lib/components/tournament/LadderLimitPicker.svelte";
+  import { ladderLimitLabel, limitFields } from "$lib/ladder-limit.js";
 
   let { form = $bindable() } = $props();
 
@@ -37,6 +40,14 @@
     需要赛前签到
   </label>
   <p class="text-[10px] text-muted-foreground">开赛前 30 分钟开放签到；开赛时由管理员决定没签到的选手移出还是判弃权。</p>
+</section>
+
+<section class="space-y-2 rounded-xl border border-border/60 bg-background/30 p-3">
+  <div class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">天梯限制</div>
+  <LadderLimitPicker bind:choice={form.ladderLimit} bind:mmr={form.ladderMaxMmr} />
+  <p class="text-[10px] text-muted-foreground">
+    按本场比赛的天梯（{gameModeLabel(form.gameMode)} · {vehiclePoolLabel(form.eventPool)}）计算。设置后，超过上限、未定级或定级中（不足 10 场）的选手不能自行报名，管理员仍可代报。
+  </p>
 </section>
 
 <section class="space-y-2 rounded-xl border border-border/60 bg-background/30 p-3">
@@ -78,6 +89,8 @@
     <dd class="text-foreground">{vehiclePoolLabel(form.eventPool)}</dd>
     <dt class="text-muted-foreground">年度积分榜</dt>
     <dd class="text-foreground">{pointsSummary}</dd>
+    <dt class="text-muted-foreground">天梯限制</dt>
+    <dd class="text-foreground">{ladderLimitLabel(limitFields(form.ladderLimit, form.ladderMaxMmr)) || "不限"}</dd>
     <dt class="text-muted-foreground">Ban / Pick</dt>
     <dd class="text-foreground">{form.banpickEnabled ? "启用" : "不启用"}</dd>
   </dl>

@@ -2,6 +2,7 @@
 // Settings and stages are in tournament-settings.js, seeds / bracket /
 // overlay in tournament-bracket.js, imports in tournament-import.js.
 
+import { normalizeLadderLimit } from '../lib/ladder-limit.js';
 import { TournamentRepo } from '../repositories/tournament-repo.js';
 import { LadderRepo } from '../repositories/ladder-repo.js';
 import { LiveChannelRepo } from '../repositories/live-channel-repo.js';
@@ -95,6 +96,8 @@ export default async function tournamentsRoutes(fastify) {
       checkin_enabled,
       vehicle_template,
     } = req.body;
+    const ladderLimit = normalizeLadderLimit(req.body);
+    if (ladderLimit.error) throw fastify.httpErrors.badRequest(ladderLimit.error);
     const points = normalizePointsTable(points_table);
     if (points.error) throw fastify.httpErrors.badRequest(points.error);
     if (points.table && !normalizeSeason(points_season)) {
@@ -161,6 +164,8 @@ export default async function tournamentsRoutes(fastify) {
       name,
       checkin_enabled: Boolean(checkin_enabled),
       vehicle_template: template,
+      ladder_max_mmr: ladderLimit.max_mmr,
+      ladder_max_tier: ladderLimit.max_tier,
       description,
       player_capacity,
       hold_third_place,

@@ -5,6 +5,15 @@
 
 import { GAME_MODES, eventFormatLabel, vehiclePoolLabel } from "./tournament.js";
 import { placeName, prizeRows } from "./points.js";
+import { LIMIT_TIERS, ladderLimitLabel } from "./ladder-limit.js";
+
+const TIER_EN = { bronze: "Bronze", silver: "Silver", gold: "Gold", platinum: "Platinum", diamond: "Diamond", master: "Master" };
+const englishLimit = (t) =>
+  t?.ladder_max_mmr != null
+    ? `MMR ≤ ${t.ladder_max_mmr}`
+    : t?.ladder_max_tier && LIMIT_TIERS.some((x) => x.group === t.ladder_max_tier)
+      ? `${TIER_EN[t.ladder_max_tier]} and below`
+      : "";
 
 // The post's own wording; site labels go through the site's dictionary.
 const TEXT = {
@@ -23,6 +32,7 @@ const TEXT = {
     running: (n) => `🔴 比赛进行中 · ${n} 名选手`,
     checkin: (t) => `✅ 需要签到：${t} 开放（开赛前 30 分钟）`,
     checkinNoTime: "✅ 需要在网站上签到",
+    limit: (t) => `🎯 报名限制：${t}（按本场天梯，需已定级）`,
     link: { registration: "🔗 报名：", voting: "🔗 投票：", other: "🔗 对阵：" },
     mode: (m) => m.code,
     label: (x) => x,
@@ -42,6 +52,7 @@ const TEXT = {
     running: (n) => `🔴 Live now · ${n} players`,
     checkin: (t) => `✅ Check-in opens at ${t} (30 minutes before the start)`,
     checkinNoTime: "✅ Check in on the site before the start",
+    limit: (t) => `🎯 Sign-up limit: ${t} (this event's ladder, placement games done)`,
     link: { registration: "🔗 Sign up: ", voting: "🔗 Vote: ", other: "🔗 Bracket: " },
     mode: (m) => m.code,
     label: (x) => labelTranslate(x),
@@ -133,6 +144,8 @@ export function shareMessage(t, { kind = "announce", siteUrl = "", podium = [], 
   if (t.checkin?.enabled && t.status === "registration") {
     lines.push(unix != null ? T.checkin(stamp(unix - CHECKIN_LEAD_S, "t")) : T.checkinNoTime);
   }
+  const limit = lang === "en" ? englishLimit(t) : ladderLimitLabel(t);
+  if (limit && ["voting", "registration"].includes(t.status)) lines.push(T.limit(limit));
   const prizes = prizeLine(t.points_table, lang);
   if (prizes) lines.push(prizes);
   if (url) lines.push(`${T.link[t.status] || T.link.other}${url}`);

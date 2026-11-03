@@ -1,7 +1,7 @@
 <script>
   // Event page header: title (editable by admins), status and the sign-up
-  // button, the tag row in two groups (settings: EventTagControls and the
-  // format; rewards: points and prizes), facts, match time (with check-in)
+  // button, the tag row in two groups (settings: EventTagControls, the
+  // format and the ladder limit; rewards: points and prizes), facts, match time (with check-in)
   // and points settings.
   import { goto } from "$app/navigation";
   import { toast } from "svelte-sonner";
@@ -13,6 +13,7 @@
   import { Badge } from "$lib/components/ui/badge/index.js";
   import MatchTime from "$lib/components/MatchTime.svelte";
   import EventTagControls from "./EventTagControls.svelte";
+  import LadderLimitTag from "./LadderLimitTag.svelte";
   import PointsEditor from "$lib/components/PointsEditor.svelte";
   import ArrowLeftIcon from "@lucide/svelte/icons/arrow-left";
   import PencilIcon from "@lucide/svelte/icons/pencil";
@@ -182,6 +183,9 @@
       <span class="text-muted-foreground">{tournament.swiss_group_size ? `每组 ${tournament.swiss_group_size} 人` : "不分组"}{hasGroupBrackets ? "" : ` · ${swissRoundsLabel}`} · 每组前 {tournament.advance_per_group} 名晋级</span>
     {:else if !isSwiss && tournament.loser_advances}
       <span class="text-muted-foreground">败者晋级</span>
+    {/if}
+    {#if !tournament.source_url}
+      <LadderLimitTag bind:tournament {tid} {isAdmin} />
     {/if}
     {#if hasPoints || prizePool || isAdmin}
       <span class="hidden sm:inline-block h-4 w-px bg-border mx-1" aria-hidden="true"></span>

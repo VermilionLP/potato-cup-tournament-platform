@@ -82,6 +82,39 @@ test('a player signs up for an event', async () => {
   }
 });
 
+test('a ladder limit stops unrated players signing up; admins can still add them', async () => {
+  const player = await makePlayer('lim');
+  const id = await makeEvent();
+  await api('PATCH', `/tournaments/${id}`, { ladder_max_mmr: 3300, ladder_max_tier: null });
+  // The server refuses the player's own sign-up.
+  const self = await fetch(`${BASE}/api/tournaments/${id}/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-player-id': player },
+    body: JSON.stringify({ player_id: player }),
+  });
+  assert.equal(self.status, 403);
+  assert.match(await self.text(), /还没有成绩/);
+  const { browser, page, errors } = await openPage({ player });
+  try {
+    await page.goto(`${BASE}/tournament/${id}`);
+    await page.getByText('还没有成绩').waitFor({ timeout: T });
+    assert.ok(await page.getByRole('button', { name: '一键快速报名' }).isDisabled(), 'sign-up button disabled');
+    const check = await api('GET', `/tournaments/${id}/ladder-eligibility?player_id=${player}`);
+    assert.equal(check.limited, true);
+    assert.match(check.problem, /还没有成绩/);
+    // Admins are not limited.
+    await api('POST', `/tournaments/${id}/register`, { player_id: player });
+    const event = await api('GET', `/tournaments/${id}`);
+    assert.ok(event.players.some((p) => p.id === player), 'added by the admin');
+    assert.deepEqual(errors, [], 'no uncaught errors in the page');
+  } catch (e) {
+    await page.screenshot({ path: 'e2e-ladder-limit.png', fullPage: true }).catch(() => {});
+    throw e;
+  } finally {
+    await browser.close();
+  }
+});
+
 test('an admin deletes an event after confirming in the page (no browser dialog)', async () => {
   const id = await makeEvent();
   const event = await api('GET', `/tournaments/${id}`);

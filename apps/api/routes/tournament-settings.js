@@ -6,6 +6,7 @@ import { TournamentRepo } from '../repositories/tournament-repo.js';
 import { MatchRepo } from '../repositories/match-repo.js';
 import { LadderRepo } from '../repositories/ladder-repo.js';
 import { requireAdmin } from '../lib/admin.js';
+import { normalizeLadderLimit } from '../lib/ladder-limit.js';
 import { inTransaction } from '../lib/transaction.js';
 import { afterResult } from '../lib/match-flow.js';
 import { normalizePointsKind, normalizePointsTable, normalizeSeason } from '../lib/points.js';
@@ -42,8 +43,9 @@ export default async function tournamentSettingsRoutes(fastify) {
     const hasTier = body.tier !== undefined || body.event_kind !== undefined;
     const hasMode = body.game_mode !== undefined;
     const hasCheckin = body.checkin_enabled !== undefined;
-    if (!hasName && !hasTime && !hasPool && !hasTemplate && !hasPoints && !hasInvite && !hasTier && !hasMode && !hasCheckin) {
-      throw fastify.httpErrors.badRequest('name, scheduled_time, game_mode, vehicle_pool, vehicle_template, points_table, points_invite, tier, event_kind or checkin_enabled is required');
+    const hasLimit = body.ladder_max_mmr !== undefined || body.ladder_max_tier !== undefined;
+    if (!hasName && !hasTime && !hasPool && !hasTemplate && !hasPoints && !hasInvite && !hasTier && !hasMode && !hasCheckin && !hasLimit) {
+      throw fastify.httpErrors.badRequest('name, scheduled_time, game_mode, vehicle_pool, vehicle_template, points_table, points_invite, tier, event_kind, checkin_enabled or ladder_max_mmr / ladder_max_tier is required');
     }
     if (hasMode && !GAME_MODES.includes(String(body.game_mode))) {
       throw fastify.httpErrors.badRequest(`game_mode must be one of: ${GAME_MODES.join(', ')}`);
@@ -62,6 +64,8 @@ export default async function tournamentSettingsRoutes(fastify) {
     if (hasPool && !VEHICLE_POOLS.includes(String(body.vehicle_pool))) {
       throw fastify.httpErrors.badRequest(`vehicle_pool must be one of: ${VEHICLE_POOLS.join(', ')}`);
     }
+    const ladderLimit = hasLimit ? normalizeLadderLimit(body) : null;
+    if (ladderLimit?.error) throw fastify.httpErrors.badRequest(ladderLimit.error);
     const t = await repo.getById(req.params.id);
     if (!t) throw fastify.httpErrors.notFound('Tournament not found');
     if (hasInvite && !hasPoints && !t.points_table?.length) {
@@ -121,6 +125,12 @@ export default async function tournamentSettingsRoutes(fastify) {
       }
       updated = await repo.setVehicleTemplate(req.params.id, template);
       fastify.tournamentEvents.emit(`update:${req.params.id}`, { type: 'vehicle_template_changed', vehicle_template: template });
+    }
+    // Ladder limit: set both fields together (one of them empty); applies to
+    // sign-ups from then on, players already registered stay.
+    if (hasLimit) {
+      updated = await repo.setLadderLimit(req.params.id, ladderLimit.max_mmr, ladderLimit.max_tier);
+      fastify.tournamentEvents.emit(`update:${req.params.id}`, { type: 'ladder_limit_changed' });
     }
     // Check-in (lib/checkin.js) can be switched on or off until the start.
     if (hasCheckin) {
