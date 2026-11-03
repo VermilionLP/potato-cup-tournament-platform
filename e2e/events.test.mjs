@@ -93,12 +93,12 @@ test('an admin deletes an event after confirming in the page (no browser dialog)
   });
   try {
     await page.goto(`${BASE}/`);
-    await page.getByRole('button', { name: `删除赛事 ${event.name}` }).click({ timeout: T });
+    await page.getByRole('button', { name: `删除赛事 ${event.name}`, exact: true }).click({ timeout: T });
     // Cancel first: nothing happens.
     await page.getByRole('dialog').getByRole('button', { name: '取消' }).click({ timeout: T });
-    await page.getByRole('button', { name: `删除赛事 ${event.name}` }).click({ timeout: T });
+    await page.getByRole('button', { name: `删除赛事 ${event.name}`, exact: true }).click({ timeout: T });
     await page.getByRole('dialog').getByRole('button', { name: '删除', exact: true }).click({ timeout: T });
-    await page.getByRole('button', { name: `删除赛事 ${event.name}` }).waitFor({ state: 'detached', timeout: T });
+    await page.getByRole('button', { name: `删除赛事 ${event.name}`, exact: true }).waitFor({ state: 'detached', timeout: T });
     const list = await api('GET', '/tournaments');
     assert.ok(!JSON.stringify(list).includes(`"${id}"`), 'deleted on the server');
     assert.deepEqual(nativeDialogs, [], 'no native confirm()');
@@ -115,7 +115,9 @@ test('phones: no sideways scrolling, navigation at the bottom', async () => {
     await page.setViewportSize({ width: 390, height: 800 });
     for (const path of ['/', `/tournament/${id}`, '/players', '/stats', '/ladder', '/points', '/pools']) {
       await page.goto(`${BASE}${path}`);
-      await page.waitForLoadState('networkidle');
+      // Event pages keep a live connection open, so wait for the content instead of network idle.
+      await page.locator('main').waitFor({ timeout: T });
+      await page.waitForTimeout(1500);
       const width = await page.evaluate(() => document.documentElement.scrollWidth);
       assert.ok(width <= 390, `${path} is ${width}px wide on a 390px phone`);
     }
