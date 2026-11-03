@@ -42,6 +42,7 @@ Read this guide before editing files under `apps/web`.
 - Lint/typecheck: none defined; the build below is the closest check.
 - Tests: `pnpm --filter suck-tournament-web test` (`node --test`; pure helpers such as bracket/round labels).
 - Build: `pnpm --filter suck-tournament-web build`
+- Older phone browsers (Huawei Browser on HarmonyOS 2–4 and similar Chromium < 111 kernels): `build` runs `scripts/legacy-css.mjs` after `vite build`, which rewrites the built CSS (and its .br / .gz copies): `oklch()` colours become hex, opaque theme variables get an `--name-rgb` twin so opacity utilities (`bg-primary/10`) fall back to `rgb(var(--primary-rgb) / 0.1)` instead of full colour where `color-mix()` is missing, and `translate` / `scale` / `rotate` get `transform` fallbacks under `@supports not`. Tested by `test/legacy-css.test.js`. `app.html` sets `<meta name="color-scheme" content="dark light">` so forced night modes leave the site's own themes alone. Avoid JS APIs newer than Chromium ~92 (e.g. `structuredClone`) or guard them.
 - Compile check without npm (sandboxes that only reach GitHub): `bash scripts/svelte-check-offline.sh [file...]` compiles every `.svelte` / `.svelte.js` file with the locked Svelte version; it reports compile errors and identifiers that are used but never defined (e.g. after moving code into a component); no a11y warnings, no type check.
 - Dev server: `pnpm dev:suck` (port 5175; proxies `/api` to `http://127.0.0.1:3100`)
 - UI flow: verify routes with the Playwright CLI and skill when UI behavior changes.

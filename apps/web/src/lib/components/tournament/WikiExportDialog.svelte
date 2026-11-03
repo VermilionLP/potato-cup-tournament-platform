@@ -32,7 +32,7 @@
   // Talent people are edited as "name, flag" lines.
   function toDraft(meta) {
     return {
-      ...structuredClone(meta),
+      ...JSON.parse(JSON.stringify(meta)), // plain data; structuredClone needs Chromium 98+
       talents: meta.talents.map((g) => ({
         position: g.position,
         lang: g.lang,
