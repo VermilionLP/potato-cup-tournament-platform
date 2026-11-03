@@ -214,14 +214,14 @@
 
   <!-- Facts: ID, players, date. -->
   <p class="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground">
-    <span class="font-mono">ID: {tournament.id}</span>
+    {#if isAdmin}<span class="font-mono">ID: {tournament.id}</span>{/if}
     <span>选手 <span class="font-semibold text-foreground tabular-nums">{tournament.player_count || 0} / {tournament.player_capacity}</span></span>
     {#if tournament.status === "voting"}
       <span>投票 <span class="font-semibold text-foreground tabular-nums">{tournament.voter_count || 0}</span> 人</span>
     {/if}
     {#if tournament.source_url}
       <span>比赛日期 {tournament.scheduled_time || "未知"}</span>
-    {:else}
+    {:else if isAdmin}
       <span>创建于 {new Date(tournament.created_at).toLocaleDateString("zh-CN")}</span>
     {/if}
   </p>

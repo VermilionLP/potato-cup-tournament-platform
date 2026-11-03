@@ -28,10 +28,12 @@
   <button
     type="button"
     onclick={onshare}
-    class="ml-auto shrink-0 inline-flex items-center gap-1 px-3 py-2 text-xs font-semibold text-muted-foreground hover:text-primary cursor-pointer"
+    class="ml-auto shrink-0 inline-flex items-center gap-1 px-2 sm:px-3 py-2 text-xs font-semibold text-muted-foreground hover:text-primary cursor-pointer"
     title="生成可以发到 Discord 的赛事公告或结果"
+    aria-label="分享到 Discord"
   >
-    <Share2Icon class="w-3.5 h-3.5" />
-    分享到 Discord
+    <Share2Icon class="w-4 h-4 sm:w-3.5 sm:h-3.5" />
+    <!-- Phones: the icon only, so it stays on screen. -->
+    <span class="hidden sm:inline">分享到 Discord</span>
   </button>
 </div>

@@ -81,3 +81,48 @@ test('a player signs up for an event', async () => {
     await browser.close();
   }
 });
+
+test('an admin deletes an event after confirming in the page (no browser dialog)', async () => {
+  const id = await makeEvent();
+  const event = await api('GET', `/tournaments/${id}`);
+  const { browser, page, errors } = await openPage({ admin: true });
+  const nativeDialogs = [];
+  page.on('dialog', (d) => {
+    nativeDialogs.push(d.message());
+    d.dismiss();
+  });
+  try {
+    await page.goto(`${BASE}/`);
+    await page.getByRole('button', { name: `删除赛事 ${event.name}` }).click({ timeout: T });
+    // Cancel first: nothing happens.
+    await page.getByRole('dialog').getByRole('button', { name: '取消' }).click({ timeout: T });
+    await page.getByRole('button', { name: `删除赛事 ${event.name}` }).click({ timeout: T });
+    await page.getByRole('dialog').getByRole('button', { name: '删除', exact: true }).click({ timeout: T });
+    await page.getByRole('button', { name: `删除赛事 ${event.name}` }).waitFor({ state: 'detached', timeout: T });
+    const list = await api('GET', '/tournaments');
+    assert.ok(!JSON.stringify(list).includes(`"${id}"`), 'deleted on the server');
+    assert.deepEqual(nativeDialogs, [], 'no native confirm()');
+    assert.deepEqual(errors, [], 'no uncaught errors in the page');
+  } finally {
+    await browser.close();
+  }
+});
+
+test('phones: no sideways scrolling, navigation at the bottom', async () => {
+  const id = await makeEvent();
+  const { browser, page } = await openPage();
+  try {
+    await page.setViewportSize({ width: 390, height: 800 });
+    for (const path of ['/', `/tournament/${id}`, '/players', '/stats', '/ladder', '/points', '/pools']) {
+      await page.goto(`${BASE}${path}`);
+      await page.waitForLoadState('networkidle');
+      const width = await page.evaluate(() => document.documentElement.scrollWidth);
+      assert.ok(width <= 390, `${path} is ${width}px wide on a 390px phone`);
+    }
+    const nav = page.getByRole('navigation', { name: '主导航' }).last();
+    const box = await nav.boundingBox();
+    assert.ok(box && box.y + box.height >= 790, 'the tab bar sits at the bottom of the screen');
+  } finally {
+    await browser.close();
+  }
+});

@@ -15,6 +15,7 @@
   import SiteNav from "$lib/components/layout/SiteNav.svelte";
   import PushToggle from "$lib/components/layout/PushToggle.svelte";
   import AdminDialog from "$lib/components/layout/AdminDialog.svelte";
+  import ConfirmHost from "$lib/components/layout/ConfirmHost.svelte";
   import { installErrorReporting } from "$lib/error-report.js";
   import ProfileDialog from "$lib/components/layout/ProfileDialog.svelte";
   import SunIcon from "@lucide/svelte/icons/sun";
@@ -204,7 +205,8 @@
     </header>
 
     <!-- Main Content -->
-    <main class="flex-1 p-3 sm:p-6 max-w-7xl mx-auto w-full flex flex-col min-w-0">
+    <!-- pb on phones: room for the bottom tab bar (SiteNav). -->
+    <main class="flex-1 p-3 pb-24 sm:p-6 sm:pb-24 md:pb-6 max-w-7xl mx-auto w-full flex flex-col min-w-0">
       {#if children}
         {@render children()}
       {/if}
@@ -213,7 +215,9 @@
 {/if}
 
 <!-- Global Toaster -->
-<Toaster position="bottom-right" />
+{#if !page.url.pathname.includes("/overlay")}<SiteNav placement="bottom" />{/if}
+<Toaster position="bottom-right" mobileOffset={{ bottom: "76px" }} />
+<ConfirmHost />
 
 <ProfileDialog bind:this={profileDialog} />
 <AdminDialog bind:open={adminOpen} />

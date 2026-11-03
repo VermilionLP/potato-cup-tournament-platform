@@ -60,7 +60,11 @@
       选手报名管理
     </Card.Title>
     <Card.Description class="text-xs">
-      当报名人数达到设定或充足时，组织者可进行种子排序并生成{eventFormatLabel(tournament)} Bracket。
+      {#if isAdmin}
+        人数足够后，可以排好种子并开赛，生成{eventFormatLabel(tournament)}对阵。
+      {:else}
+        <span>报名后请留意开赛时间。</span>{#if tournament.checkin?.enabled}<span>开赛前 30 分钟记得签到。</span>{/if}<span>对阵由管理员在开赛时生成。</span>
+      {/if}
     </Card.Description>
   </Card.Header>
   <Card.Content class="p-6 pt-0 space-y-4">
@@ -71,7 +75,7 @@
             {userState.id.slice(0, 2)}
           </div>
           <div>
-            <p class="text-xs text-muted-foreground">当前浏览器 Gamer ID</p>
+            <p class="text-xs text-muted-foreground">你的选手 ID</p>
             <h4 class="font-bold text-foreground text-sm">{userState.id}</h4>
           </div>
         </div>
@@ -96,12 +100,12 @@
         <div class="flex items-center gap-3">
           <div class="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-xs font-bold text-muted-foreground">?</div>
           <div>
-            <p class="text-xs text-muted-foreground">未关联 Gamer ID</p>
-            <p class="text-[10px] text-muted-foreground/80 mt-0.5">请先关联或在右侧输入框注册</p>
+            <p class="text-xs text-muted-foreground">还没有设置选手 ID</p>
+            <p class="text-[10px] text-muted-foreground/80 mt-0.5">填写选手 ID 和 QQ / Discord 联系方式后就能报名</p>
           </div>
         </div>
         <Button variant="outline" size="sm" onclick={openProfile} class="text-xs h-8 cursor-pointer border-primary/30 text-primary animate-pulse">
-          去关联游戏ID
+          设置选手 ID
         </Button>
       {/if}
     </div>
