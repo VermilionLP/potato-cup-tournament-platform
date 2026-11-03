@@ -1,7 +1,7 @@
 <script>
   // The 概览 tab: the stage's main panel. Registration (sign-up, seeding for
   // admins, prizes, roster, and the bracket preview for admins), voting (the
-  // vote board and proposals), the results, or what is being played now.
+  // vote board and the time proposal), the results, or what is being played now.
   // The seeding card (admins) and the vote proposals (calendar) load on
   // first use. `bracket` and `roster` are the page's snippets.
   import { lazy } from "$lib/lazy.js";
