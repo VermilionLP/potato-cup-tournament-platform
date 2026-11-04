@@ -1,6 +1,9 @@
 <script>
-  // Ban / Pick after the bans: the drawn group and vehicle with a short
-  // slot-machine roll, and the draw / remove / back buttons the rules allow.
+  // Ban / Pick after the bans: the drawn group (with its nation's flag) and
+  // vehicle with a short slot-machine roll, and the draw / remove / back
+  // buttons the rules allow. Once a group is drawn its vehicles show as
+  // garage slots with wiki pictures (the roll highlights them); the drawn
+  // vehicle shows as a big slot.
   import {
     availableGroups,
     availableVehicles,
@@ -12,6 +15,8 @@
     removeVehicle,
     rerollsLeft,
   } from "#lib/banpick.js";
+  import { nationFlag } from "#lib/wt-units.js";
+  import VehicleSlot from "./VehicleSlot.svelte";
 
   let { bp = $bindable(), grouped = [], rolling = $bindable(false) } = $props();
   let rollingLabel = $state("");
@@ -39,6 +44,25 @@
   }
 
   const removalsLabel = (n) => (n === null ? "" : `（剩 ${n} 次）`);
+
+  // The drawn (or rolling) group and its vehicles, for the pictures.
+  let shownGroup = $derived(rolling && bp.phase === "drawGroup" ? rollingLabel : bp.group);
+  let groupVehiclesShown = $derived(grouped.find((g) => g.group === bp.group)?.vehicles || []);
+  let flagOf = (group) => {
+    const nations = [...new Set((grouped.find((g) => g.group === group)?.vehicles || []).flatMap((v) => String(v.nation || "").split(" / ")).filter(Boolean))];
+    return nations.length === 1 ? nationFlag(nations[0]) : null;
+  };
+  let shownVehicle = $derived(
+    rolling && bp.phase === "drawVehicle" ? groupVehiclesShown.find((v) => v.name === rollingLabel) : groupVehiclesShown.find((v) => v.name === bp.vehicle),
+  );
+  const slotState = (v) =>
+    rolling && bp.phase === "drawVehicle" && v.name === rollingLabel
+      ? "rolling"
+      : v.name === bp.vehicle
+        ? "chosen"
+        : bp.removedVehicles.includes(v.name)
+          ? "out"
+          : "";
 </script>
 
 <div
@@ -47,8 +71,11 @@
   <div class="grid flex-1 grid-cols-2 gap-3">
     <div class="min-w-0">
       <div class="text-[10px] text-muted-foreground">大组</div>
-      <div class="truncate text-base font-black text-foreground {rolling && bp.phase === 'drawGroup' ? 'opacity-60' : ''}">
-        {rolling && bp.phase === "drawGroup" ? rollingLabel : bp.group || "待抽取"}
+      <div class="flex min-w-0 items-center gap-1.5 text-base font-black text-foreground {rolling && bp.phase === 'drawGroup' ? 'opacity-60' : ''}">
+        {#if shownGroup && flagOf(shownGroup)}
+          <img src={flagOf(shownGroup).cached} alt="" class="h-4 w-auto shrink-0 rounded-sm" onerror={(e) => (e.currentTarget.style.display = "none")} />
+        {/if}
+        <span class="truncate">{shownGroup || "待抽取"}</span>
       </div>
     </div>
     <div class="min-w-0">
@@ -57,10 +84,8 @@
         class="truncate text-base font-black {bp.vehicle ? 'text-primary' : 'text-foreground'}
           {rolling && bp.phase === 'drawVehicle' ? 'opacity-60' : ''}"
       >
-        {#if rolling && bp.phase === "drawVehicle"}
-          {rollingLabel}
-        {:else if bp.vehicle}
-          {bp.vehicle}
+        {#if shownVehicle}
+          <div class="mt-0.5 w-full max-w-[13rem]"><VehicleSlot vehicle={shownVehicle} size="lg" state={rolling ? "rolling" : "chosen"} /></div>
         {:else if !rules.drawVehicle}
           {bp.group ? "组内任选" : "—"}
         {:else}
@@ -137,6 +162,18 @@
     {/if}
   </div>
 </div>
+{#if bp.group && groupVehiclesShown.length && (bp.phase === "drawVehicle" || !rules.drawVehicle)}
+  <div class="space-y-1">
+    <div class="text-[10px] text-muted-foreground">
+      {rules.drawVehicle ? `${bp.group} 组的载具` : `${bp.group} 组内任选一辆`}
+    </div>
+    <div class="grid grid-cols-2 gap-1.5 sm:grid-cols-3 md:grid-cols-4">
+      {#each groupVehiclesShown as v (v.name)}
+        <VehicleSlot vehicle={v} size="sm" state={slotState(v)} />
+      {/each}
+    </div>
+  </div>
+{/if}
 {#if bp.phase === "drawGroup" && !groupsLeft.length}
   <p class="text-center text-[11px] text-destructive">没有可抽的大组了，可以点"重置"重新开始。</p>
 {:else if bp.phase === "drawVehicle" && !vehiclesLeft.length}

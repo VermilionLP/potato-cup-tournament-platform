@@ -1,15 +1,38 @@
 <script>
-  // Ban / Pick vehicle groups: while banning, a group (or one of its
-  // vehicles) is clicked to ban it; bans, removals and the drawn result
-  // are marked.
+  // Ban / Pick vehicle groups, kept compact as text: while banning, a group
+  // (or one of its vehicles) is clicked to ban it; bans, removals and the
+  // drawn result are marked. Each group shows its nation's flag; pointing at
+  // (or tapping) a vehicle shows its wiki slot picture in the preview bar
+  // above, so the grid stays the same size.
   import { ban, bannedBy, isGroupBanned } from "#lib/banpick.js";
+  import { nationFlag } from "#lib/wt-units.js";
+  import VehicleSlot from "./VehicleSlot.svelte";
 
   let { bp = $bindable(), grouped = [], banning = false } = $props();
+
+  let preview = $state(null);
+  const groupFlag = (g) => {
+    const nations = [...new Set(g.vehicles.flatMap((v) => String(v.nation || "").split(" / ")).filter(Boolean))];
+    return nations.length === 1 ? nationFlag(nations[0]) : null;
+  };
 
   function vehicleInfo(v) {
     return [v.nation, v.br != null ? `BR ${v.br}` : null, v.type].filter(Boolean).join(" · ");
   }
 </script>
+
+<!-- Preview of the vehicle pointed at -->
+<div class="flex h-12 items-center gap-2.5 rounded-lg border border-dashed border-border bg-muted/20 px-2">
+  {#if preview}
+    <div class="w-44 shrink-0"><VehicleSlot vehicle={preview} size="sm" /></div>
+    <div class="min-w-0 text-[11px] leading-tight">
+      <div class="truncate font-bold text-foreground">{preview.name}</div>
+      <div class="truncate text-muted-foreground">{vehicleInfo(preview)}</div>
+    </div>
+  {:else}
+    <span class="text-[11px] text-muted-foreground">把鼠标移到（或点按）载具名上查看图片</span>
+  {/if}
+</div>
 
 <div class="grid grid-cols-2 gap-1.5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
   {#each grouped as g (g.group)}
@@ -36,7 +59,12 @@
         onclick={() => (bp = ban(bp, g.group))}
         class="flex w-full items-center justify-between gap-1 text-left {pickable ? 'cursor-pointer' : 'cursor-default'}"
       >
-        <span class="truncate text-[11px] font-bold text-foreground {removed ? 'line-through' : ''}">{g.group}</span>
+        <span class="flex min-w-0 items-center gap-1">
+          {#if groupFlag(g)}
+            <img src={groupFlag(g).cached} alt="" class="h-3 w-auto shrink-0 rounded-[2px]" loading="lazy" onerror={(e) => (e.currentTarget.style.display = "none")} />
+          {/if}
+          <span class="truncate text-[11px] font-bold text-foreground {removed ? 'line-through' : ''}">{g.group}</span>
+        </span>
         {#if banner}
           <span
             class="shrink-0 rounded px-1 text-[9px] font-black text-white {banner === 'A' ? 'bg-rose-500' : 'bg-sky-500'}"
@@ -50,10 +78,16 @@
         {#each g.vehicles as v (v.name)}
           {@const out = bp.removedVehicles.includes(v.name)}
           {@const chosen = bp.vehicle === v.name}
+          <!-- Not `disabled`: disabled buttons get no pointer events, and the preview needs them. -->
           <button
             type="button"
-            disabled={!pickable}
-            onclick={() => (bp = ban(bp, g.group, v.name))}
+            aria-disabled={!pickable}
+            onpointerenter={() => (preview = v)}
+            onfocus={() => (preview = v)}
+            onclick={() => {
+              preview = v;
+              if (pickable) bp = ban(bp, g.group, v.name);
+            }}
             title={vehicleInfo(v)}
             class="rounded px-1 py-px text-[9.5px] leading-tight
               {chosen

@@ -1756,4 +1756,7 @@ export default {
   "实时比分必须是 0-99 的整数": "A live score must be a whole number from 0 to 99",
   "（大型赛事）": " (major)",
   "大型赛事": "Major event",
+  "{0} 组的载具": "Vehicles in group {0}",
+  "{0} 组内任选一辆": "Pick any vehicle in group {0}",
+  "把鼠标移到（或点按）载具名上查看图片": "Hover (or tap) a vehicle name to see its picture",
 };
