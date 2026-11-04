@@ -15,27 +15,27 @@ test('tiers: S-D, also from Liquipedia 1-5', () => {
 });
 
 test('new events: tier and kind as given, else from the points table', () => {
-  assert.deepEqual(defaultTier({ pointsKind: 'monthly' }), { tier: 'B', kind: 'monthly' });
+  assert.deepEqual(defaultTier({ pointsKind: 'monthly' }), { tier: 'B', kind: 'major' });
   assert.deepEqual(defaultTier({ pointsKind: 'weekly' }), { tier: 'C', kind: 'weekly' });
   assert.deepEqual(defaultTier({ name: 'Potato Cup Weekly #40' }), { tier: 'C', kind: 'weekly' });
   assert.deepEqual(defaultTier({ name: 'Fun cup' }), { tier: null, kind: null });
-  assert.deepEqual(defaultTier({ tier: 'A', kind: 'season', pointsKind: 'weekly' }), { tier: 'A', kind: 'season' });
+  assert.deepEqual(defaultTier({ tier: 'A', kind: 'season', pointsKind: 'weekly' }), { tier: 'A', kind: 'major' });
 });
 
 test('statistics scope by tier and kind', () => {
-  const events = [{ id: 1, tier: 'A', event_kind: 'season' }, { id: 2, tier: 'C', event_kind: 'weekly' }, { id: 3, tier: null, event_kind: null }];
+  const events = [{ id: 1, tier: 'A', event_kind: 'major' }, { id: 2, tier: 'C', event_kind: 'weekly' }, { id: 3, tier: null, event_kind: null }];
   const ids = (q) => events.filter(statsScope(q)).map((e) => e.id);
   assert.deepEqual(ids({}), [1, 2, 3]);
   assert.deepEqual(ids({ tier: 'a' }), [1]);
   assert.deepEqual(ids({ tier: 'none' }), [3]);
   assert.deepEqual(ids({ kind: 'weekly' }), [2]);
-  assert.deepEqual(ids({ tier: 'C', kind: 'season' }), []);
+  assert.deepEqual(ids({ tier: 'C', kind: 'major' }), []);
   assert.deepEqual(ids({ tier: 'bogus' }), [1, 2, 3], 'unknown values are ignored');
   assert.equal(statsScope({ tier: '3' }).tier, 'B');
 });
 
 test('qualifiers: by kind when set, else by name', () => {
   assert.equal(isQualifierEvent({ event_kind: 'qualifier', name: 'X' }), true);
-  assert.equal(isQualifierEvent({ event_kind: 'season', name: 'Spring Qualifier' }), false);
+  assert.equal(isQualifierEvent({ event_kind: 'major', name: 'Spring Qualifier' }), false);
   assert.equal(isQualifierEvent({ name: 'Spring 预选赛' }), true);
 });

@@ -53,12 +53,11 @@ export const EVENT_TIERS = [
   { id: "C", name: "C 级" },
   { id: "D", name: "D 级" },
 ];
+// Event kinds (migration 043): 大型赛事 / 周赛 / 预选赛.
 export const EVENT_KINDS = [
-  { id: "season", name: "季度赛" },
-  { id: "monthly", name: "月赛" },
+  { id: "major", name: "大型赛事" },
   { id: "weekly", name: "周赛" },
   { id: "qualifier", name: "预选赛" },
-  { id: "misc", name: "其他" },
 ];
 export const TIER_TAG = {
   S: "border-fuchsia-500/40 bg-fuchsia-500/10 text-fuchsia-700 dark:text-fuchsia-300",
@@ -88,7 +87,7 @@ export function tierBreakdown(byTier = {}) {
     .filter((t) => t.count > 0);
 }
 
-/** Tag text of an event's tier and kind: "A 级 · 季度赛", "周赛"; '' for none. */
+/** Tag text of an event's tier and kind: "B 级 · 大型赛事", "周赛"; '' for none. */
 export function tierTagText(t) {
   return [tierLabel(t?.tier), kindLabel(t?.event_kind)].filter(Boolean).join(" · ");
 }

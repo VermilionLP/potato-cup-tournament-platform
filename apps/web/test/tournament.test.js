@@ -136,7 +136,7 @@ test("event summary: mode code, type, format and one detail", async () => {
 
 test("event tiers: tag text and titles per tier", async () => {
   const { tierTagText, tierBreakdown, tierLabel, kindLabel } = await import("../src/lib/tournament.js");
-  assert.equal(tierTagText({ tier: "A", event_kind: "season" }), "A 级 · 季度赛");
+  assert.equal(tierTagText({ tier: "A", event_kind: "major" }), "A 级 · 大型赛事");
   assert.equal(tierTagText({ tier: null, event_kind: "weekly" }), "周赛");
   assert.equal(tierTagText({ tier: "B" }), "B 级");
   assert.equal(tierTagText({}), "");

@@ -22,7 +22,7 @@ export default async function playerStatsRoutes(fastify) {
     top_slots: []
   }));
 
-  // ?tier=S..D|none and ?kind=season|monthly|weekly|qualifier|misc|none
+  // ?tier=S..D|none and ?kind=major|weekly|qualifier|none
   // limit everything to the events of that tier / kind
   // (lib/player-statistics.js).
   fastify.get('/players/statistics', async (req) => {

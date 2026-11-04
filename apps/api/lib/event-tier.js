@@ -1,11 +1,11 @@
 // Event tiers (migration 031): a tier like Liquipedia's (S / A / B / C / D,
-// liquipediatier 1-5) and a kind (season / monthly / weekly / qualifier /
-// misc). Past imported events got Liquipedia's tier (migration 031); new
-// events default from their points table (monthly cup B, weekly C); admins
-// can change both.
+// liquipediatier 1-5) and a kind: major (大型赛事) / weekly (周赛) /
+// qualifier (预选赛) since migration 043. Past imported events got
+// Liquipedia's tier (migration 031); new events default from their points
+// table (大型赛事 B, weekly C); admins can change both.
 
 export const EVENT_TIERS = ['S', 'A', 'B', 'C', 'D'];
-export const EVENT_KINDS = ['season', 'monthly', 'weekly', 'qualifier', 'misc'];
+export const EVENT_KINDS = ['major', 'weekly', 'qualifier'];
 
 /** "S".."D", or null. Also takes Liquipedia's 1-5. */
 export function normalizeTier(value) {
@@ -17,6 +17,8 @@ export function normalizeTier(value) {
 
 export function normalizeKind(value) {
   const v = String(value ?? '').trim().toLowerCase();
+  // Old names (before migration 043) still understood.
+  if (v === 'season' || v === 'monthly') return 'major';
   return EVENT_KINDS.includes(v) ? v : null;
 }
 
@@ -28,8 +30,8 @@ export function liquipediaTierOf(tier) {
 
 /** Tier and kind of a new event created on the site. */
 export function defaultTier({ tier, kind, pointsKind, name = '' } = {}) {
-  const k = normalizeKind(kind) || (pointsKind ? (pointsKind === 'monthly' ? 'monthly' : 'weekly') : /weekly|周赛/i.test(name) ? 'weekly' : null);
-  const t = normalizeTier(tier) || (k === 'monthly' ? 'B' : k === 'weekly' || k === 'qualifier' ? 'C' : null);
+  const k = normalizeKind(kind) || (pointsKind ? (pointsKind === 'monthly' ? 'major' : 'weekly') : /weekly|周赛/i.test(name) ? 'weekly' : null);
+  const t = normalizeTier(tier) || (k === 'major' ? 'B' : k === 'weekly' || k === 'qualifier' ? 'C' : null);
   return { tier: t, kind: k };
 }
 

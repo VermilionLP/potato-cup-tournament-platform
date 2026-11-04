@@ -7,7 +7,7 @@ const players = ['a', 'b', 'c'].map((id) => ({ id, display_name: id.toUpperCase(
 const final = (id, t, p1, p2, s1, s2) => ({ id, tournament_id: t, bracket: 'main', round: 1, position: 1, player1_id: p1, player2_id: p2, winner_id: s1 > s2 ? p1 : p2, score1: s1, score2: s2, status: 'completed' });
 const tournaments = [
   { id: 'w1', name: 'Weekly 1', status: 'completed', format: 'single_elim', game_mode: 'rb', vehicle_pool: 'prop', tier: 'C', event_kind: 'weekly' },
-  { id: 's1', name: 'Spring', status: 'completed', format: 'single_elim', game_mode: 'ab', vehicle_pool: 'top-jet', tier: 'A', event_kind: 'season' },
+  { id: 's1', name: 'Spring', status: 'completed', format: 'single_elim', game_mode: 'ab', vehicle_pool: 'top-jet', tier: 'A', event_kind: 'major' },
   { id: 'q1', name: 'Spring Qualifier', status: 'completed', format: 'single_elim', game_mode: 'rb', vehicle_pool: 'prop', tier: 'C', event_kind: 'qualifier' },
 ];
 const matches = [final(1, 'w1', 'a', 'b', 2, 0), final(2, 's1', 'b', 'a', 3, 1), final(3, 'q1', 'c', 'a', 2, 1)];
