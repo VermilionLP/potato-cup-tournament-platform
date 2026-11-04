@@ -4,3 +4,10 @@ packages:
 allowBuilds:
   '@tailwindcss/oxide': true
   esbuild: true
+
+# Security fixes for transitive dependencies (Dependabot): glob < 14.0.2
+# (AbortSignal bypass; via postgrator and @fastify/static) and minimatch
+# < 11.0.1 (globparts DoS; via glob). Drop once the parents depend on these.
+overrides:
+  glob: ^14.0.2
+  minimatch: ^11.0.1
