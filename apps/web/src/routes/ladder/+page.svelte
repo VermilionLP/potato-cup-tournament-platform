@@ -29,7 +29,7 @@
       .join(" "),
   );
   let selected = $state(null);
-  let detail = $state(null);
+  let ladderDetail = $state(null);
   let detailLoading = $state(false);
 
 
@@ -61,7 +61,7 @@
     }
     replaceState(url, {});
     selected = null;
-    detail = null;
+    ladderDetail = null;
     await load();
   }
 
@@ -72,10 +72,7 @@
       data = await API.getLadder({ includeInactive, window: ladderWindow, mode: ladderMode, pool: ladderPool });
       if (selected && !data?.players?.some((p) => p.id === selected.id)) {
         selected = null;
-        detail = null;
-      }
-      if (!selected && data?.players?.length) {
-        await selectPlayer(data.players[0]);
+        ladderDetail = null;
       }
     } catch (e) {
       errorMsg = e.message;
@@ -88,7 +85,7 @@
   async function toggleInactive(event) {
     includeInactive = event.target.checked;
     selected = null;
-    detail = null;
+    ladderDetail = null;
     await load();
   }
 
@@ -96,17 +93,23 @@
     if (ladderWindow === value) return;
     ladderWindow = value;
     selected = null;
-    detail = null;
+    ladderDetail = null;
     await load();
   }
 
+  // Opens a player's details under their row; null closes them.
   async function selectPlayer(player) {
+    if (!player) {
+      selected = null;
+      ladderDetail = null;
+      return;
+    }
     if (selected?.id === player.id) return;
     selected = player;
-    detail = null;
+    ladderDetail = null;
     detailLoading = true;
     try {
-      detail = await API.getLadderPlayer(player.id, { window: ladderWindow, mode: ladderMode, pool: ladderPool });
+      ladderDetail = await API.getLadderPlayer(player.id, { window: ladderWindow, mode: ladderMode, pool: ladderPool });
     } catch (e) {
       toast.error("加载选手天梯记录失败: " + e.message);
     } finally {
@@ -159,12 +162,11 @@
       onwindow={setWindow}
       oninactive={toggleInactive}
       onselect={selectPlayer}
-    />
-
-    <!-- Selected player detail -->
-    {#if selected}
-      <LadderPlayerDetail player={selected} {detail} {detailLoading} />
-    {/if}
+    >
+      {#snippet detail(p)}
+        <LadderPlayerDetail player={p} detail={ladderDetail} {detailLoading} />
+      {/snippet}
+    </LadderBoard>
 
     <p class="text-[10px] text-muted-foreground/70">
       Elo：初始 3000，前 10 场 K=200（同分对局 ±100），10–30 场 K=100，30 场以后 K=50；2-0 与 2-1 同权。

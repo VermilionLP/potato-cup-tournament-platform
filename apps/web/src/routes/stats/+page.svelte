@@ -1,7 +1,7 @@
 <script>
   // Statistics page: player records over the events of a tier / kind
-  // (GET /players/statistics, computed on the server). Parts are in
-  // $lib/components/stats.
+  // (GET /players/statistics, computed on the server). Clicking a player
+  // opens their details under the row. Parts are in $lib/components/stats.
   import { onMount } from "svelte";
   import { toast } from "svelte-sonner";
   import { API } from "$lib/api.js";
@@ -31,18 +31,8 @@
     try {
       statsData = await API.getPlayerStatistics({ tier: statsTier, kind: statsKind });
       const kept = keep && statsData?.players?.find((p) => p.id === keep);
-      if (kept) {
-        selectedStatPlayer = kept;
-      } else if (statsData?.players?.length > 0) {
-        const sorted = [...statsData.players].sort((a, b) => {
-          if (a.matches_played < 2 && b.matches_played >= 2) return 1;
-          if (b.matches_played < 2 && a.matches_played >= 2) return -1;
-          return b.match_win_rate - a.match_win_rate;
-        });
-        selectedStatPlayer = sorted[0];
-      } else {
-        selectedStatPlayer = null;
-      }
+      // The open player stays open; nothing opens by itself.
+      selectedStatPlayer = kept || null;
     } catch (e) {
       toast.error("加载统计数据失败: " + e.message);
     }
@@ -83,10 +73,11 @@
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <!-- Left + Mid: player table and the selected player -->
         <div class="lg:col-span-2 space-y-6">
-          <PlayerStatsTable players={statsData.players} bind:selected={selectedStatPlayer} />
-          {#if selectedStatPlayer}
-            <PlayerDetailCard player={selectedStatPlayer} />
-          {/if}
+          <PlayerStatsTable players={statsData.players} bind:selected={selectedStatPlayer}>
+            {#snippet detail(p)}
+              <PlayerDetailCard player={p} />
+            {/snippet}
+          </PlayerStatsTable>
         </div>
 
         <!-- Right: Rankings & Boards -->

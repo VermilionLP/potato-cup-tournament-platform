@@ -8,8 +8,26 @@
   import { getModeCode, getModeName, modeColors, placeText } from "$lib/stats-view.js";
   import SearchIcon from "@lucide/svelte/icons/search";
   import TrophyIcon from "@lucide/svelte/icons/trophy";
+  import ChevronDownIcon from "@lucide/svelte/icons/chevron-down";
+  import { userState } from "$lib/user.svelte.js";
+  import { scrollToRow } from "$lib/expand-row.js";
 
-  let { players = [], selected = $bindable(null) } = $props();
+  // `detail` (snippet, given the player) opens under the selected row;
+  // clicking the row again closes it.
+  let { players = [], selected = $bindable(null), detail } = $props();
+
+  const toggle = (p) => (selected = selected?.id === p.id ? null : p);
+  let me = $derived(userState.id ? players.find((p) => p.id === userState.id) : null);
+
+  // "我的数据": clear what hides the visitor's own row, open it, scroll to it.
+  function showMe() {
+    statsSearchQuery = "";
+    minMatchesFilter = 0;
+    if (me.active === false) showInactive = true;
+    if (me.rated === false) showUnrated = true;
+    selected = me;
+    scrollToRow(me.id);
+  }
 
   let statsSearchQuery = $state("");
   let minMatchesFilter = $state(0); // 0 = all, 2, 5, 10
@@ -64,9 +82,12 @@
   <div class="p-4 border-b border-border/60 flex flex-col sm:flex-row items-center justify-between gap-3 bg-muted/5">
     <div>
       <h3 class="text-sm font-bold text-foreground">选手表现总览</h3>
-      <p class="text-[11px] text-muted-foreground mt-0.5">点击下方选手可右侧查看深度对抗数据</p>
+      <p class="text-[11px] text-muted-foreground mt-0.5">点击选手，在下方展开详细数据</p>
     </div>
     <div class="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+      {#if me}
+        <button type="button" onclick={showMe} class="h-7 shrink-0 rounded-md border border-primary/40 bg-primary/10 px-2 text-xs font-semibold text-primary hover:bg-primary/20 cursor-pointer">我的数据</button>
+      {/if}
       <!-- Min matches filter -->
       <select
         bind:value={minMatchesFilter}
@@ -170,10 +191,12 @@
         </tr>
       </thead>
       <tbody class="divide-y divide-border/60">
-        {#each sortedStatsPlayers as p}
+        {#each sortedStatsPlayers as p (p.id)}
           <tr
-            onclick={() => (selected = p)}
-            class="hover:bg-muted/20 transition-colors cursor-pointer {selected?.id === p.id ? 'bg-primary/5 border-l-2 border-l-primary' : ''}"
+            data-row={p.id}
+            onclick={() => toggle(p)}
+            aria-expanded={selected?.id === p.id}
+            class="hover:bg-muted/20 transition-colors cursor-pointer scroll-mt-20 {selected?.id === p.id ? 'bg-primary/5 border-l-2 border-l-primary' : ''} {userState.id === p.id && selected?.id !== p.id ? 'bg-primary/5' : ''}"
           >
             <td class="py-2 px-3 font-semibold max-w-36">
               <div class="flex items-center gap-1 min-w-0">
@@ -224,6 +247,11 @@
               {/if}
             </td>
           </tr>
+          {#if selected?.id === p.id && detail}
+            <tr class="bg-muted/10">
+              <td colspan="8" class="p-3 cursor-default">{@render detail(p)}</td>
+            </tr>
+          {/if}
         {/each}
       </tbody>
     </table>
@@ -231,12 +259,14 @@
 
   <!-- Mobile player list -->
   <div class="sm:hidden divide-y divide-border/60">
-    {#each sortedStatsPlayers as p}
+    {#each sortedStatsPlayers as p (p.id)}
       <button
         type="button"
-        onclick={() => (selected = p)}
-        class="w-full text-left px-3 py-2.5 flex items-center gap-3 transition-colors cursor-pointer
-          {selected?.id === p.id ? 'bg-primary/5 border-l-2 border-l-primary' : 'hover:bg-muted/20'}"
+        data-row={p.id}
+        onclick={() => toggle(p)}
+        aria-expanded={selected?.id === p.id}
+        class="w-full text-left px-3 py-2.5 flex items-center gap-3 transition-colors cursor-pointer scroll-mt-20
+          {selected?.id === p.id ? 'bg-primary/5 border-l-2 border-l-primary' : userState.id === p.id ? 'bg-primary/5' : 'hover:bg-muted/20'}"
       >
         <div class="flex-1 min-w-0">
           <div class="flex items-center gap-1.5 min-w-0">
@@ -268,7 +298,11 @@
           </div>
           <div class="text-[9px] text-muted-foreground">胜率</div>
         </div>
+        <ChevronDownIcon class="w-4 h-4 shrink-0 text-muted-foreground transition-transform {selected?.id === p.id ? 'rotate-180' : ''}" />
       </button>
+      {#if selected?.id === p.id && detail}
+        <div class="bg-muted/10 p-2">{@render detail(p)}</div>
+      {/if}
     {/each}
     {#if sortedStatsPlayers.length === 0}
       <div class="py-10 text-center text-xs text-muted-foreground italic">没有匹配的选手。</div>

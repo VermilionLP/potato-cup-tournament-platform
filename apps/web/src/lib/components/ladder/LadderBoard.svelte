@@ -1,7 +1,8 @@
 <script>
   // The leaderboard: scoring window, inactive players, minimum games and
   // search; table on wide screens, cards on phones. Clicking a player
-  // selects them.
+  // opens `detail` (snippet, given the player) under their row; clicking
+  // again closes it (onselect(null)).
   import { Badge } from "$lib/components/ui/badge/index.js";
   import { Input } from "$lib/components/ui/input/index.js";
   import * as Card from "$lib/components/ui/card/index.js";
@@ -11,6 +12,8 @@
   import TierBadge from "$lib/components/TierBadge.svelte";
   import Flag from "$lib/components/Flag.svelte";
   import { userState } from "$lib/user.svelte.js";
+  import { scrollToRow } from "$lib/expand-row.js";
+  import ChevronDownIcon from "@lucide/svelte/icons/chevron-down";
 
   let {
     players = [],
@@ -20,7 +23,17 @@
     onwindow,
     oninactive,
     onselect,
+    detail,
   } = $props();
+
+  const toggle = (p) => onselect(selected?.id === p.id ? null : p);
+  let me = $derived(userState.id ? players.find((p) => p.id === userState.id) : null);
+  function showMe() {
+    query = "";
+    minGames = 0;
+    onselect(me);
+    scrollToRow(me.id);
+  }
 
   let query = $state("");
   // Minimum games, as on the statistics page (0 = all). Ranks stay those of
@@ -51,6 +64,9 @@
       </Card.Description>
     </div>
     <div class="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+      {#if me}
+        <button type="button" onclick={showMe} class="h-7 rounded-md border border-primary/40 bg-primary/10 px-2 text-[11px] font-semibold text-primary hover:bg-primary/20 cursor-pointer">我的天梯</button>
+      {/if}
       <div class="inline-flex rounded-lg border border-border bg-muted/30 p-0.5 text-[11px]" role="group" aria-label="计分范围">
         {#each [["all", "全部历史"], ["year", "最近一年"]] as [value, label] (value)}
           <button
@@ -108,8 +124,10 @@
         <tbody class="divide-y divide-border/60">
           {#each filteredPlayers as p (p.id)}
             <tr
-              onclick={() => onselect(p)}
-              class="hover:bg-muted/20 transition-colors cursor-pointer
+              data-row={p.id}
+              onclick={() => toggle(p)}
+              aria-expanded={selected?.id === p.id}
+              class="hover:bg-muted/20 transition-colors cursor-pointer scroll-mt-20
                 {selected?.id === p.id ? 'bg-primary/5 border-l-2 border-l-primary' : ''}
                 {userState.id === p.id ? 'bg-primary/5' : ''}"
             >
@@ -155,6 +173,11 @@
                 {daysAgo(p.last_game_at)}
               </td>
             </tr>
+            {#if selected?.id === p.id && detail}
+              <tr class="bg-muted/10">
+                <td colspan="8" class="p-3 cursor-default">{@render detail(p)}</td>
+              </tr>
+            {/if}
           {/each}
           {#if filteredPlayers.length === 0}
             <tr>
@@ -172,8 +195,10 @@
       {#each filteredPlayers as p (p.id)}
         <button
           type="button"
-          onclick={() => onselect(p)}
-          class="w-full text-left px-3 py-3 flex items-center gap-3 transition-colors cursor-pointer
+          data-row={p.id}
+          onclick={() => toggle(p)}
+          aria-expanded={selected?.id === p.id}
+          class="w-full text-left px-3 py-3 flex items-center gap-3 transition-colors cursor-pointer scroll-mt-20
             {selected?.id === p.id ? 'bg-primary/5 border-l-2 border-l-primary' : 'hover:bg-muted/20'}"
         >
           <span class="w-6 shrink-0 text-center font-mono font-bold
@@ -205,7 +230,11 @@
             <div class="font-mono font-black text-sm">{p.mmr}</div>
             <div class="text-[9px] text-muted-foreground">{daysAgo(p.last_game_at)}</div>
           </div>
+          <ChevronDownIcon class="w-4 h-4 shrink-0 text-muted-foreground transition-transform {selected?.id === p.id ? 'rotate-180' : ''}" />
         </button>
+        {#if selected?.id === p.id && detail}
+          <div class="bg-muted/10 p-2">{@render detail(p)}</div>
+        {/if}
       {/each}
       {#if filteredPlayers.length === 0}
         <div class="py-10 text-center text-xs text-muted-foreground italic">

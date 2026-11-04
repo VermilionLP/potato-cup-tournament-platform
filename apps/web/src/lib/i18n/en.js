@@ -641,7 +641,6 @@ export default {
   "完成对局": "Matches played",
   "场": "matches",
   "选手表现总览": "Player overview",
-  "点击下方选手可右侧查看深度对抗数据": "Click a player below to see their head-to-head details",
   "全部场次": "All",
   "≥ 2 场": "≥ 2 matches",
   "≥ 5 场": "≥ 5 matches",
@@ -1684,4 +1683,7 @@ export default {
   "没有找到这个 ID，保存后会创建新的选手资料。": "No player with this ID yet; saving creates a new player.",
   "已有相似的选手 ID：{0}。 用新 ID「{1}」会成为另一位选手，以前的战绩和天梯分数不会带过来。确定使用新 ID 吗？": "Similar player IDs exist: {0}. The new ID \"{1}\" will be a different player, without your past results or ladder rating. Use the new ID anyway?",
   "使用新 ID": "Use new ID",
+  "我的天梯": "My ladder",
+  "我的数据": "My stats",
+  "点击选手，在下方展开详细数据": "Click a player to open their details below",
 };

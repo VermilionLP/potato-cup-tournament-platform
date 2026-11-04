@@ -195,3 +195,29 @@ test('event links carry a preview (title and description) for Discord / QQ', asy
   const lobby = await (await fetch(`${BASE}/`)).text();
   assert.ok(!lobby.includes('og:title'));
 });
+
+test('statistics: details open under the player row and close again', async () => {
+  // Earlier tests completed a match, so someone has rated games.
+  const a = await makePlayer('stat');
+  const b = await makePlayer('stat');
+  const id = await makeEvent({ players: [a, b], start: true });
+  const event = await api('GET', `/tournaments/${id}`);
+  const match = event.matches.find((m) => m.player1_id && m.player2_id);
+  await api('POST', `/tournaments/${id}/matches/${match.id}/result`, { score1: 2, score2: 0 });
+  const { browser, page, errors } = await openPage({ player: a });
+  try {
+    await page.goto(`${BASE}/stats`);
+    await page.getByRole('button', { name: '我的数据' }).click({ timeout: T });
+    const row = page.locator(`tr[data-row="${a}"]`);
+    await page.getByText(`ID: ${a}`).waitFor({ timeout: T });
+    assert.equal(await row.getAttribute('aria-expanded'), 'true');
+    await row.click();
+    await page.getByText(`ID: ${a}`).waitFor({ state: 'detached', timeout: T });
+    assert.deepEqual(errors, [], 'no uncaught errors in the page');
+  } catch (e) {
+    await page.screenshot({ path: 'e2e-stats-expand.png', fullPage: true }).catch(() => {});
+    throw e;
+  } finally {
+    await browser.close();
+  }
+});
