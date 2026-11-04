@@ -3,7 +3,7 @@
   // double elimination views: the live-channel badge or the admin's "go
   // live" toggle, Ban / Pick, a pending report ("待确认" / "有争议"), "my
   // match" and the correction marker.
-  import { reportBadge } from "$lib/match-card.js";
+  import { reportBadge } from "#lib/match-card.js";
 
   let {
     match,

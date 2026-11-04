@@ -3,7 +3,7 @@
   // and kind, game mode and event type. The Ban / Pick template is chosen on
   // the 载具池 tab (PoolTemplatePicker).
   import { toast } from "svelte-sonner";
-  import { API } from "$lib/api.js";
+  import { API } from "#lib/api.js";
   import {
     POOL_TAG,
     VEHICLE_POOLS,
@@ -16,7 +16,7 @@
     gameModeLabel,
     gameModeTitle,
     vehiclePoolLabel,
-  } from "$lib/tournament.js";
+  } from "#lib/tournament.js";
 
   let { tournament = $bindable(), tid, isAdmin = false } = $props();
 

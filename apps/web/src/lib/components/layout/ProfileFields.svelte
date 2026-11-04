@@ -1,9 +1,9 @@
 <script>
   // Profile fields of the signed-in player: ID (admins only), contact,
   // flag, team and Liquipedia page.
-  import { userState } from "$lib/user.svelte.js";
-  import { Input } from "$lib/components/ui/input/index.js";
-  import Flag from "$lib/components/Flag.svelte";
+  import { userState } from "#lib/user.svelte.js";
+  import { Input } from "#lib/components/ui/input/index.js";
+  import Flag from "#lib/components/Flag.svelte";
 
   let {
     idInput = $bindable(""),

@@ -1,8 +1,8 @@
 <script>
   // Blocking hand-off while streaming: an event in progress with no live
   // match must pick the next one.
-  import * as Dialog from "$lib/components/ui/dialog/index.js";
-  import { Badge } from "$lib/components/ui/badge/index.js";
+  import * as Dialog from "#lib/components/ui/dialog/index.js";
+  import { Badge } from "#lib/components/ui/badge/index.js";
   import PlayIcon from "@lucide/svelte/icons/play";
 
   let { open = $bindable(false), candidates = [], matchOrder, roundLabel, playerName, onchoose } = $props();

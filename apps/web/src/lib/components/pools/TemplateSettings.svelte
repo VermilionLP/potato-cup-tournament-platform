@@ -1,9 +1,9 @@
 <script>
   // A template's settings: name, event type, order, game modes and Ban /
   // Pick rules (editable by admins), or a summary for everyone else.
-  import { rulesSummary } from "$lib/banpick.js";
-  import { GAME_MODES, POOL_TAG, VEHICLE_POOLS } from "$lib/tournament.js";
-  import { modesLabel } from "$lib/vehicle-pools.js";
+  import { rulesSummary } from "#lib/banpick.js";
+  import { GAME_MODES, POOL_TAG, VEHICLE_POOLS } from "#lib/tournament.js";
+  import { modesLabel } from "#lib/vehicle-pools.js";
 
   let { current, isAdmin = false, onfield, onrule, ontogglemode } = $props();
 

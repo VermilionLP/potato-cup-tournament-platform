@@ -3,22 +3,22 @@
   // event type, can be limited to game modes and carries its own Ban / Pick
   // rules. Events use the best-matching template unless an admin picks one.
   // Everyone can view and export them; admins create, copy, edit and delete.
-  // Draft and save helpers are in $lib/pool-editor.js.
+  // Draft and save helpers are in #lib/pool-editor.js.
   import { onMount } from "svelte";
   import { page } from "$app/state";
   import { toast } from "svelte-sonner";
-  import { API } from "$lib/api.js";
-  import { userState } from "$lib/user.svelte.js";
-  import { groupVehicles, rulesSummary } from "$lib/banpick.js";
-  import { VEHICLE_POOLS } from "$lib/tournament.js";
-  import { parsePoolFile, poolToCsv, poolToJson } from "$lib/vehicle-pools.js";
-  import { NEW_ID, draftOf, draftProblem, emptyVehicle, newDraft, saveBody, templatesByType, toggleMode as toggled } from "$lib/pool-editor.js";
-  import { downloadText } from "$lib/download.js";
-  import TemplatePicker from "$lib/components/pools/TemplatePicker.svelte";
-  import TemplateSettings from "$lib/components/pools/TemplateSettings.svelte";
-  import VehicleTable from "$lib/components/pools/VehicleTable.svelte";
-  import PoolPreview from "$lib/components/pools/PoolPreview.svelte";
-  import { Button } from "$lib/components/ui/button/index.js";
+  import { API } from "#lib/api.js";
+  import { userState } from "#lib/user.svelte.js";
+  import { groupVehicles, rulesSummary } from "#lib/banpick.js";
+  import { VEHICLE_POOLS } from "#lib/tournament.js";
+  import { parsePoolFile, poolToCsv, poolToJson } from "#lib/vehicle-pools.js";
+  import { NEW_ID, draftOf, draftProblem, emptyVehicle, newDraft, saveBody, templatesByType, toggleMode as toggled } from "#lib/pool-editor.js";
+  import { downloadText } from "#lib/download.js";
+  import TemplatePicker from "#lib/components/pools/TemplatePicker.svelte";
+  import TemplateSettings from "#lib/components/pools/TemplateSettings.svelte";
+  import VehicleTable from "#lib/components/pools/VehicleTable.svelte";
+  import PoolPreview from "#lib/components/pools/PoolPreview.svelte";
+  import { Button } from "#lib/components/ui/button/index.js";
   import PlaneIcon from "@lucide/svelte/icons/plane";
   import DownloadIcon from "@lucide/svelte/icons/download";
   import UploadIcon from "@lucide/svelte/icons/upload";

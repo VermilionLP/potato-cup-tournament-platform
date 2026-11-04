@@ -2,7 +2,7 @@
   // Points and prizes per placing (积分榜 and 金鹰币): the kind of event
   // (周赛 / 月赛, which also loads its default table), the rows, the season
   // (year) and whether the champion gets a direct Winter Finals invite.
-  import { POINTS_PRESETS, copyTable, pointsTableProblem } from "$lib/points.js";
+  import { POINTS_PRESETS, copyTable, pointsTableProblem } from "#lib/points.js";
 
   let { table = $bindable([]), season = $bindable(""), kind = $bindable("weekly"), invite = $bindable(false), compact = false } = $props();
 

@@ -1,15 +1,15 @@
 <script>
   // Statistics page: player records over the events of a tier / kind
   // (GET /players/statistics, computed on the server). Clicking a player
-  // opens their details under the row. Parts are in $lib/components/stats.
+  // opens their details under the row. Parts are in #lib/components/stats.
   import { onMount } from "svelte";
   import { toast } from "svelte-sonner";
-  import { API } from "$lib/api.js";
-  import StatsScopeFilter from "$lib/components/stats/StatsScopeFilter.svelte";
-  import StatsOverview from "$lib/components/stats/StatsOverview.svelte";
-  import PlayerStatsTable from "$lib/components/stats/PlayerStatsTable.svelte";
-  import PlayerDetailCard from "$lib/components/stats/PlayerDetailCard.svelte";
-  import RankingBoards from "$lib/components/stats/RankingBoards.svelte";
+  import { API } from "#lib/api.js";
+  import StatsScopeFilter from "#lib/components/stats/StatsScopeFilter.svelte";
+  import StatsOverview from "#lib/components/stats/StatsOverview.svelte";
+  import PlayerStatsTable from "#lib/components/stats/PlayerStatsTable.svelte";
+  import PlayerDetailCard from "#lib/components/stats/PlayerDetailCard.svelte";
+  import RankingBoards from "#lib/components/stats/RankingBoards.svelte";
 
   let statsData = $state(null);
   let statsLoading = $state(true);

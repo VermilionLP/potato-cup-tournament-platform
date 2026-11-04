@@ -2,16 +2,16 @@
   // Every player's record: search, minimum matches, inactive / unrated
   // toggles and sortable columns (desktop table, mobile list). Clicking a
   // player selects them for the detail card.
-  import Flag from "$lib/components/Flag.svelte";
-  import { Badge } from "$lib/components/ui/badge/index.js";
-  import { tierBreakdown } from "$lib/tournament.js";
-  import { getModeCode, getModeName, modeColors, placeText } from "$lib/stats-view.js";
+  import Flag from "#lib/components/Flag.svelte";
+  import { Badge } from "#lib/components/ui/badge/index.js";
+  import { tierBreakdown } from "#lib/tournament.js";
+  import { getModeCode, getModeName, modeColors, placeText } from "#lib/stats-view.js";
   import SearchIcon from "@lucide/svelte/icons/search";
   import TrophyIcon from "@lucide/svelte/icons/trophy";
   import ChevronDownIcon from "@lucide/svelte/icons/chevron-down";
-  import { userState } from "$lib/user.svelte.js";
-  import { PAGE_SIZE, scrollToRow, visibleRows } from "$lib/expand-row.js";
-  import ShowMoreRows from "$lib/components/ShowMoreRows.svelte";
+  import { userState } from "#lib/user.svelte.js";
+  import { PAGE_SIZE, scrollToRow, visibleRows } from "#lib/expand-row.js";
+  import ShowMoreRows from "#lib/components/ShowMoreRows.svelte";
 
   // `detail` (snippet, given the player) opens under the selected row;
   // clicking the row again closes it.

@@ -1,8 +1,8 @@
 <script>
   // Create-event wizard, step 1: name, capacity, mode, type and time.
-  import { GAME_MODES, VEHICLE_POOLS } from "$lib/tournament.js";
-  import { Input } from "$lib/components/ui/input/index.js";
-  import DateTimePicker from "$lib/components/DateTimePicker.svelte";
+  import { GAME_MODES, VEHICLE_POOLS } from "#lib/tournament.js";
+  import { Input } from "#lib/components/ui/input/index.js";
+  import DateTimePicker from "#lib/components/DateTimePicker.svelte";
   import Segmented from "./Segmented.svelte";
 
   let { form = $bindable() } = $props();

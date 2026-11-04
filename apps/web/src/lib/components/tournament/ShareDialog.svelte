@@ -2,13 +2,13 @@
   // "分享到 Discord": a ready-to-paste post about the event (time as Discord
   // dynamic timestamps, mode and vehicle type, format, check-in, prizes and
   // points; or the podium once finished), editable, split into messages under
-  // Discord's 2000-character limit ($lib/discord-share.js). start() opens it.
+  // Discord's 2000-character limit (#lib/discord-share.js). start() opens it.
   import { toast } from "svelte-sonner";
-  import * as Dialog from "$lib/components/ui/dialog/index.js";
-  import { Button } from "$lib/components/ui/button/index.js";
-  import { DISCORD_LIMIT, shareMessage, splitForDiscord, useTranslator } from "$lib/discord-share.js";
-  import { formatInZone } from "$lib/datetime.js";
-  import { i18n, loadTranslator } from "$lib/i18n/locale.svelte.js";
+  import * as Dialog from "#lib/components/ui/dialog/index.js";
+  import { Button } from "#lib/components/ui/button/index.js";
+  import { DISCORD_LIMIT, shareMessage, splitForDiscord, useTranslator } from "#lib/discord-share.js";
+  import { formatInZone } from "#lib/datetime.js";
+  import { i18n, loadTranslator } from "#lib/i18n/locale.svelte.js";
   import CopyIcon from "@lucide/svelte/icons/copy";
 
   let { tournament, podium = [] } = $props();

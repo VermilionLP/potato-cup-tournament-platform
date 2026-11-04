@@ -1,6 +1,6 @@
 <script>
   // Ladder summary: players shown, the leader and the viewer's rank.
-  import * as Card from "$lib/components/ui/card/index.js";
+  import * as Card from "#lib/components/ui/card/index.js";
   import TrendingUpIcon from "@lucide/svelte/icons/trending-up";
   import SwordsIcon from "@lucide/svelte/icons/swords";
   import CrownIcon from "@lucide/svelte/icons/crown";

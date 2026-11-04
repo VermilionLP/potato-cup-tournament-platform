@@ -2,14 +2,14 @@
   // Admin: edit a participant's profile (ID, contact, flag, team, wiki link)
   // from the event page. Open with edit(player).
   import { toast } from "svelte-sonner";
-  import { API } from "$lib/api.js";
-  import { askConfirm } from "$lib/confirm.svelte.js";
-  import { userState } from "$lib/user.svelte.js";
-  import { buildContact, parseContact } from "$lib/contact.js";
-  import * as Dialog from "$lib/components/ui/dialog/index.js";
-  import { Button } from "$lib/components/ui/button/index.js";
-  import { Input } from "$lib/components/ui/input/index.js";
-  import Flag from "$lib/components/Flag.svelte";
+  import { API } from "#lib/api.js";
+  import { askConfirm } from "#lib/confirm.svelte.js";
+  import { userState } from "#lib/user.svelte.js";
+  import { buildContact, parseContact } from "#lib/contact.js";
+  import * as Dialog from "#lib/components/ui/dialog/index.js";
+  import { Button } from "#lib/components/ui/button/index.js";
+  import { Input } from "#lib/components/ui/input/index.js";
+  import Flag from "#lib/components/Flag.svelte";
   import SettingsIcon from "@lucide/svelte/icons/settings";
 
   let { tid, ensureAdmin, onsaved } = $props();

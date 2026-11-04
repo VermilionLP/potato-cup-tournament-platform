@@ -1,9 +1,9 @@
 <script>
   // "天梯分预估" under the score form: each player's ladder MMR in the
-  // event's division now, and after a win or a loss ($lib/ladder-sim.js).
+  // event's division now, and after a win or a loss (#lib/ladder-sim.js).
   // The column of the score being entered is highlighted.
-  import { simulateMatch } from "$lib/ladder-sim.js";
-  import { gameModeLabel, vehiclePoolLabel } from "$lib/tournament.js";
+  import { simulateMatch } from "#lib/ladder-sim.js";
+  import { gameModeLabel, vehiclePoolLabel } from "#lib/tournament.js";
 
   let { match, tournament, playerName = (id) => id, score1 = 0, score2 = 0 } = $props();
 

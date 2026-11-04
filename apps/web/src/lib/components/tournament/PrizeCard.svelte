@@ -1,7 +1,7 @@
 <script>
   // "奖金与积分": Golden Eagles (金鹰币) and points per placing, from the
-  // event's points table ($lib/points.js).
-  import { placeName, prizeTotal } from "$lib/points.js";
+  // event's points table (#lib/points.js).
+  import { placeName, prizeTotal } from "#lib/points.js";
 
   let { tournament } = $props();
   let rows = $derived(tournament?.points_table || []);

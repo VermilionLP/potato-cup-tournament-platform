@@ -1,5 +1,5 @@
 // Display helpers of the statistics page: mode / event type colours,
-// placings and avatar colours. Kept free of $lib imports except the
+// placings and avatar colours. Kept free of #lib imports except the
 // constants so it can be tested with node --test.
 
 import { GAME_MODES } from "./tournament.js";

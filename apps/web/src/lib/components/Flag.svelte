@@ -1,5 +1,5 @@
 <script>
-  import { flagSrc, normalizeFlagCode } from "$lib/flags.js";
+  import { flagSrc, normalizeFlagCode } from "#lib/flags.js";
 
   let { code = "", class: className = "", size = 20 } = $props();
 

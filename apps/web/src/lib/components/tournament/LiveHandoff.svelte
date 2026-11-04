@@ -7,9 +7,9 @@
   // Methods: start() (asks the pre-flight checklist first), stop(),
   // clearHud(), matchFinished() (back to the bracket scene).
   import { toast } from "svelte-sonner";
-  import { API } from "$lib/api.js";
-  import { saveStreamMode } from "$lib/live-channels.js";
-  import { Button } from "$lib/components/ui/button/index.js";
+  import { API } from "#lib/api.js";
+  import { saveStreamMode } from "#lib/live-channels.js";
+  import { Button } from "#lib/components/ui/button/index.js";
   import NextMatchDialog from "./NextMatchDialog.svelte";
   import StreamChecklistDialog from "./StreamChecklistDialog.svelte";
   import ClockIcon from "@lucide/svelte/icons/clock";

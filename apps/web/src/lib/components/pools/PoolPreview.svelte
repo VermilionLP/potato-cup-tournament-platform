@@ -3,9 +3,9 @@
   // the match panel to try bans and draws (nothing is saved), and the groups
   // with their size, BR range and nations. Starts over when the template,
   // its rules or its vehicles change.
-  import { initialBanPick } from "$lib/banpick.js";
-  import { groupSummary, previewVehicles } from "$lib/vehicle-pools.js";
-  import BanPickPanel from "$lib/components/BanPickPanel.svelte";
+  import { initialBanPick } from "#lib/banpick.js";
+  import { groupSummary, previewVehicles } from "#lib/vehicle-pools.js";
+  import BanPickPanel from "#lib/components/BanPickPanel.svelte";
 
   let { templateId = "", current, rows = [], dirty = false } = $props();
 

@@ -1,20 +1,20 @@
 <script>
   // Player list: search, recently active players first (your own entry on
   // top), inactive ones folded away. Table, cards and the edit dialog live
-  // in $lib/components/players.
+  // in #lib/components/players.
   import { onMount } from "svelte";
   import { toast } from "svelte-sonner";
-  import { API } from "$lib/api.js";
-  import { userState } from "$lib/user.svelte.js";
-  import { filterPlayers, isRecentlySeen, mineFirst } from "$lib/players.js";
-  import { Button } from "$lib/components/ui/button/index.js";
-  import PlayerTable from "$lib/components/players/PlayerTable.svelte";
-  import PlayerCards from "$lib/components/players/PlayerCards.svelte";
-  import PlayerProfileDialog from "$lib/components/players/PlayerProfileDialog.svelte";
-  import { lazy } from "$lib/lazy.js";
+  import { API } from "#lib/api.js";
+  import { userState } from "#lib/user.svelte.js";
+  import { filterPlayers, isRecentlySeen, mineFirst } from "#lib/players.js";
+  import { Button } from "#lib/components/ui/button/index.js";
+  import PlayerTable from "#lib/components/players/PlayerTable.svelte";
+  import PlayerCards from "#lib/components/players/PlayerCards.svelte";
+  import PlayerProfileDialog from "#lib/components/players/PlayerProfileDialog.svelte";
+  import { lazy } from "#lib/lazy.js";
 
   // Admins: likely duplicate players to merge (loaded for admins only).
-  const loadDuplicates = lazy(() => import("$lib/components/players/DuplicatePlayers.svelte"));
+  const loadDuplicates = lazy(() => import("#lib/components/players/DuplicatePlayers.svelte"));
   import PlusIcon from "@lucide/svelte/icons/plus";
   import SearchIcon from "@lucide/svelte/icons/search";
   import ChevronDownIcon from "@lucide/svelte/icons/chevron-down";

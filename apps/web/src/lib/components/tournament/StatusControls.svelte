@@ -1,8 +1,8 @@
 <script>
   // Admin buttons that move the event between its stages, the check-in
   // switch while registration is open, and the match-day console link.
-  import { Button } from "$lib/components/ui/button/index.js";
-  import { askConfirm } from "$lib/confirm.svelte.js";
+  import { Button } from "#lib/components/ui/button/index.js";
+  import { askConfirm } from "#lib/confirm.svelte.js";
 
   let { status, startBlocked = "", canStart = false, checkinEnabled = false, consoleHref = "", onendvoting, onstatus, oncheckinchange } = $props();
 

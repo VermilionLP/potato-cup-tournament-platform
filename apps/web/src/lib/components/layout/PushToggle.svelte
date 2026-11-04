@@ -1,12 +1,12 @@
 <script>
-  // Header button for match reminders (browser push, $lib/push.js): the
+  // Header button for match reminders (browser push, #lib/push.js): the
   // start reminder for everyone, and personal notices ("your match is
   // ready", "confirm the score") for the player ID set in this browser.
   // The subscription follows that ID when it changes.
   import { onMount } from "svelte";
-  import { userState } from "$lib/user.svelte.js";
+  import { userState } from "#lib/user.svelte.js";
   import { toast } from "svelte-sonner";
-  import { disablePush, enablePush, pushIsEnabled, pushSupported } from "$lib/push.js";
+  import { disablePush, enablePush, pushIsEnabled, pushSupported } from "#lib/push.js";
   import BellIcon from "@lucide/svelte/icons/bell";
   import BellOffIcon from "@lucide/svelte/icons/bell-off";
 

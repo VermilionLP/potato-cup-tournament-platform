@@ -1,11 +1,11 @@
 <script>
   // Admin: which vehicle pool template the event's Ban / Pick uses, at the
   // top of the 载具池 tab: automatic (the best match for the event type and
-  // game mode, $lib/vehicle-pools.js resolveTemplate) or a chosen one.
+  // game mode, #lib/vehicle-pools.js resolveTemplate) or a chosen one.
   import { toast } from "svelte-sonner";
-  import { API } from "$lib/api.js";
-  import { resolveTemplate } from "$lib/vehicle-pools.js";
-  import { vehiclePoolLabel } from "$lib/tournament.js";
+  import { API } from "#lib/api.js";
+  import { resolveTemplate } from "#lib/vehicle-pools.js";
+  import { vehiclePoolLabel } from "#lib/tournament.js";
 
   let { tournament = $bindable(), tid, templates = [], bpTemplate = null } = $props();
 

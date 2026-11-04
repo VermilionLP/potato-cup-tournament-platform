@@ -1,8 +1,8 @@
 <script>
   // "正在进行": the matches live on a stream and the ones ready to play,
-  // for the event page's overview and live tabs ($lib/match-day.js).
-  import { matchDayBoard } from "$lib/match-day.js";
-  import Flag from "$lib/components/Flag.svelte";
+  // for the event page's overview and live tabs (#lib/match-day.js).
+  import { matchDayBoard } from "#lib/match-day.js";
+  import Flag from "#lib/components/Flag.svelte";
   import RadioIcon from "@lucide/svelte/icons/radio";
 
   let { tournament, order = new Map(), roundLabel = () => "", playerName = (id) => id, onopen = () => {}, limit = 8 } = $props();

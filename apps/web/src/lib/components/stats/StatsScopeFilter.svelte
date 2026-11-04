@@ -1,7 +1,7 @@
 <script>
   // Statistics filter: event tier and kind ("" = all, "none" = not set).
   // The page reloads the statistics for the choice.
-  import { EVENT_KINDS, EVENT_TIERS } from "$lib/tournament.js";
+  import { EVENT_KINDS, EVENT_TIERS } from "#lib/tournament.js";
 
   let { tier = "", kind = "", disabled = false, onchange } = $props();
   const tierChips = [{ id: "", name: "全部等级" }, ...EVENT_TIERS, { id: "none", name: "未分级" }];

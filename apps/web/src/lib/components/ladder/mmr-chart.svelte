@@ -1,5 +1,5 @@
 <script>
-  import { buildMmrSeries } from "$lib/ladder.js";
+  import { buildMmrSeries } from "#lib/ladder.js";
 
   let { history = [], mode = "time" } = $props();
 

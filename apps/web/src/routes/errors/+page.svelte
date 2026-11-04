@@ -1,11 +1,11 @@
 <script>
-  // Admins: errors visitors' browsers ran into ($lib/error-report.js sends
+  // Admins: errors visitors' browsers ran into (#lib/error-report.js sends
   // them; the API keeps the newest 500, the same error counted on one row).
   import { onMount } from "svelte";
   import { toast } from "svelte-sonner";
-  import { API } from "$lib/api.js";
-  import { userState } from "$lib/user.svelte.js";
-  import { formatInZone } from "$lib/datetime.js";
+  import { API } from "#lib/api.js";
+  import { userState } from "#lib/user.svelte.js";
+  import { formatInZone } from "#lib/datetime.js";
   import BugIcon from "@lucide/svelte/icons/bug";
 
   let isAdmin = $derived(!!userState.adminToken);

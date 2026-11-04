@@ -2,7 +2,7 @@
   // Ban / Pick vehicle groups: while banning, a group (or one of its
   // vehicles) is clicked to ban it; bans, removals and the drawn result
   // are marked.
-  import { ban, bannedBy, isGroupBanned } from "$lib/banpick.js";
+  import { ban, bannedBy, isGroupBanned } from "#lib/banpick.js";
 
   let { bp = $bindable(), grouped = [], banning = false } = $props();
 

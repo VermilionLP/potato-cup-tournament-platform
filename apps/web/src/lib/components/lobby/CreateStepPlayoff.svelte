@@ -1,7 +1,7 @@
 <script>
   // Create-event wizard, two-stage events: the playoff.
-  import { PLAYOFF_FORMATS } from "$lib/tournament.js";
-  import { groupPreview } from "$lib/create-event.js";
+  import { PLAYOFF_FORMATS } from "#lib/tournament.js";
+  import { groupPreview } from "#lib/create-event.js";
   import Segmented from "./Segmented.svelte";
 
   let { form = $bindable() } = $props();

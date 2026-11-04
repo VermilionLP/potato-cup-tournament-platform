@@ -1,8 +1,8 @@
 <script>
   // Top-five boards: titles and runner-ups (each with counts per tier), win
   // rate (5+ matches), matches played and walkovers.
-  import Flag from "$lib/components/Flag.svelte";
-  import { TIER_TAG, tierBreakdown } from "$lib/tournament.js";
+  import Flag from "#lib/components/Flag.svelte";
+  import { TIER_TAG, tierBreakdown } from "#lib/tournament.js";
   import TrendingUpIcon from "@lucide/svelte/icons/trending-up";
   import TrophyIcon from "@lucide/svelte/icons/trophy";
   import MedalIcon from "@lucide/svelte/icons/medal";

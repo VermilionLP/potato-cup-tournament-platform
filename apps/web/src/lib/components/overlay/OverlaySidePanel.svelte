@@ -2,7 +2,7 @@
   // Side panel of the overlay's bracket scene: next match, progress and
   // (Swiss) standings.
   import { fade } from "svelte/transition";
-  import Flag from "$lib/components/Flag.svelte";
+  import Flag from "#lib/components/Flag.svelte";
 
   let {
     nextMatch = null,

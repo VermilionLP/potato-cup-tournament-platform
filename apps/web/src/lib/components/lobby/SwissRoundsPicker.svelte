@@ -1,8 +1,8 @@
 <script>
   // Swiss round count of the create-event form: automatic (round robin) or
   // a set number.
-  import { MAX_SWISS_ROUNDS, MIN_SWISS_ROUNDS, autoSwissRounds } from "$lib/tournament.js";
-  import { autoRoundsBasis, isTwoStage } from "$lib/create-event.js";
+  import { MAX_SWISS_ROUNDS, MIN_SWISS_ROUNDS, autoSwissRounds } from "#lib/tournament.js";
+  import { autoRoundsBasis, isTwoStage } from "#lib/create-event.js";
   import Segmented from "./Segmented.svelte";
 
   let { form = $bindable() } = $props();

@@ -1,7 +1,7 @@
 <script>
-  // Overlay double-elimination tree (layout in $lib/overlay-layout.js).
+  // Overlay double-elimination tree (layout in #lib/overlay-layout.js).
   import OverlayMatchCard from "./OverlayMatchCard.svelte";
-  import { DT } from "$lib/overlay-layout.js";
+  import { DT } from "#lib/overlay-layout.js";
 
   let { tournament, tree, selectedKey = null, who } = $props();
 

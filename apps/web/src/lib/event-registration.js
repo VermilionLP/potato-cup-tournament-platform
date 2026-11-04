@@ -4,9 +4,9 @@
 // needsIdentity().
 
 import { toast } from "svelte-sonner";
-import { API } from "$lib/api.js";
-import { askConfirm } from "$lib/confirm.svelte.js";
-import { userState } from "$lib/user.svelte.js";
+import { API } from "#lib/api.js";
+import { askConfirm } from "#lib/confirm.svelte.js";
+import { userState } from "#lib/user.svelte.js";
 
 export function registrationActions(ctx) {
   // Registration. targetId: another player (admins); "" registers the

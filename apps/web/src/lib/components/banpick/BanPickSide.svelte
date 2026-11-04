@@ -1,8 +1,8 @@
 <script>
   // One player in Ban / Pick: slot (A / B), name and their bans; while it is
   // their turn to ban, a 空过 (skip) button.
-  import Flag from "$lib/components/Flag.svelte";
-  import { ban, bansOf } from "$lib/banpick.js";
+  import Flag from "#lib/components/Flag.svelte";
+  import { ban, bansOf } from "#lib/banpick.js";
 
   let { slot, player, active = false, bp = $bindable() } = $props();
   const rules = $derived(bp.rules);

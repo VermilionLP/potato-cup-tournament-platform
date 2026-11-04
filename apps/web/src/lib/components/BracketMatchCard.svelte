@@ -2,14 +2,14 @@
   // One match card of the event page's brackets and lists (single and double
   // elimination, Swiss, the phone round list), so every format looks and
   // acts alike: a header (title + MatchCardActions), two player rows with
-  // flag, name, crown for the winner and the score cell ($lib/match-card.js).
+  // flag, name, crown for the winner and the score cell (#lib/match-card.js).
   // The card opens the result dialog when the match can be played, or for
   // admins when its result can be corrected. The parent sets the size
   // (`class`, e.g. "h-full") and handles byes.
-  import { canCorrectResult } from "$lib/tournament.js";
-  import { isMine, isPlayableIn, slotScore } from "$lib/match-card.js";
-  import Flag from "$lib/components/Flag.svelte";
-  import MatchCardActions from "$lib/components/tournament/MatchCardActions.svelte";
+  import { canCorrectResult } from "#lib/tournament.js";
+  import { isMine, isPlayableIn, slotScore } from "#lib/match-card.js";
+  import Flag from "#lib/components/Flag.svelte";
+  import MatchCardActions from "#lib/components/tournament/MatchCardActions.svelte";
   import CrownIcon from "@lucide/svelte/icons/crown";
 
   let {

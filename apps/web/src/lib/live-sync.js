@@ -1,5 +1,5 @@
 // Live (SSE) updates of an event page, the console and the OBS overlay.
-// A burst of messages becomes one refresh ($lib/coalesced-refresh.js).
+// A burst of messages becomes one refresh (#lib/coalesced-refresh.js).
 // When every message in the burst is about matches or the live match
 // (results, reports, overlay state) and an earlier read gave a
 // `synced_at`, only the delta is fetched (GET /tournaments/:id/live: the

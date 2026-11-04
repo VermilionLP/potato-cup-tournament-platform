@@ -5,16 +5,16 @@
   // and points settings.
   import { goto } from "$app/navigation";
   import { toast } from "svelte-sonner";
-  import { API } from "$lib/api.js";
-  import { POINTS_PRESETS, cleanTable, copyTable, currentSeason, placeName, pointsTableProblem, prizeRows, prizeTotal } from "$lib/points.js";
-  import { eventFormatLabel } from "$lib/tournament.js";
-  import { Button } from "$lib/components/ui/button/index.js";
-  import { Input } from "$lib/components/ui/input/index.js";
-  import { Badge } from "$lib/components/ui/badge/index.js";
-  import MatchTime from "$lib/components/MatchTime.svelte";
+  import { API } from "#lib/api.js";
+  import { POINTS_PRESETS, cleanTable, copyTable, currentSeason, placeName, pointsTableProblem, prizeRows, prizeTotal } from "#lib/points.js";
+  import { eventFormatLabel } from "#lib/tournament.js";
+  import { Button } from "#lib/components/ui/button/index.js";
+  import { Input } from "#lib/components/ui/input/index.js";
+  import { Badge } from "#lib/components/ui/badge/index.js";
+  import MatchTime from "#lib/components/MatchTime.svelte";
   import EventTagControls from "./EventTagControls.svelte";
   import LadderLimitTag from "./LadderLimitTag.svelte";
-  import PointsEditor from "$lib/components/PointsEditor.svelte";
+  import PointsEditor from "#lib/components/PointsEditor.svelte";
   import ArrowLeftIcon from "@lucide/svelte/icons/arrow-left";
   import PencilIcon from "@lucide/svelte/icons/pencil";
   import TrophyIcon from "@lucide/svelte/icons/trophy";

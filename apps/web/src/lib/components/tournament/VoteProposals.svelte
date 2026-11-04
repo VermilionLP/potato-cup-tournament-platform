@@ -3,13 +3,13 @@
   // votes for what it adds.
   import { toast } from "svelte-sonner";
   import { CalendarDate } from "@internationalized/date";
-  import { API } from "$lib/api.js";
-  import { userState } from "$lib/user.svelte.js";
-  import { needsProfile, openProfile } from "$lib/profile-prompt.js";
-  import { VOTE_TIME_SLOTS } from "$lib/votes.js";
-  import * as Card from "$lib/components/ui/card/index.js";
-  import { Button } from "$lib/components/ui/button/index.js";
-  import { Calendar } from "$lib/components/ui/calendar/index.js";
+  import { API } from "#lib/api.js";
+  import { userState } from "#lib/user.svelte.js";
+  import { needsProfile, openProfile } from "#lib/profile-prompt.js";
+  import { VOTE_TIME_SLOTS } from "#lib/votes.js";
+  import * as Card from "#lib/components/ui/card/index.js";
+  import { Button } from "#lib/components/ui/button/index.js";
+  import { Calendar } from "#lib/components/ui/calendar/index.js";
   import CalendarIcon from "@lucide/svelte/icons/calendar";
 
   let { tid, onchanged } = $props();

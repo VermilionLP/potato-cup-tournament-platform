@@ -3,11 +3,11 @@
   // Ban / Pick group (with its nation's flag), each vehicle with its wiki
   // slot picture, name and BR, linking to its wiki page. Pictures come
   // through the server's cache, the wiki itself as a fallback
-  // ($lib/wt-units.js).
+  // (#lib/wt-units.js).
   import { onMount } from "svelte";
-  import { rulesSummary } from "$lib/banpick.js";
-  import { modesLabel } from "$lib/vehicle-pools.js";
-  import { loadUnitIndex, nationFlag, poolGroups, slotImage, slotImageDirect, wikiPage } from "$lib/wt-units.js";
+  import { rulesSummary } from "#lib/banpick.js";
+  import { modesLabel } from "#lib/vehicle-pools.js";
+  import { loadUnitIndex, nationFlag, poolGroups, slotImage, slotImageDirect, wikiPage } from "#lib/wt-units.js";
 
   let { template = null, banpickEnabled = true } = $props();
 

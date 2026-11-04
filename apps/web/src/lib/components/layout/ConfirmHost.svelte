@@ -1,10 +1,10 @@
 <script>
-  // Shows askConfirm / askText requests ($lib/confirm.svelte.js) as an
+  // Shows askConfirm / askText requests (#lib/confirm.svelte.js) as an
   // in-page dialog. Mounted once in the root layout.
   import { onMount } from "svelte";
-  import * as Dialog from "$lib/components/ui/dialog/index.js";
-  import { Button } from "$lib/components/ui/button/index.js";
-  import { confirmRequest as req, finishConfirm, setConfirmHost } from "$lib/confirm.svelte.js";
+  import * as Dialog from "#lib/components/ui/dialog/index.js";
+  import { Button } from "#lib/components/ui/button/index.js";
+  import { confirmRequest as req, finishConfirm, setConfirmHost } from "#lib/confirm.svelte.js";
 
   onMount(() => {
     setConfirmHost(true);

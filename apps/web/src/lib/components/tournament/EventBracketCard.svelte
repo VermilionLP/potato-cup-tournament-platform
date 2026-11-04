@@ -5,17 +5,17 @@
   // section on desktop, 16 on phones). On phones elimination brackets open
   // as a list per round (BracketRoundList), with a switch to the bracket.
   import { onMount } from "svelte";
-  import { userState } from "$lib/user.svelte.js";
-  import { maxRound } from "$lib/bracket.js";
-  import { eventFormatLabel } from "$lib/tournament.js";
-  import { bracketSections, eliminationRounds, groupStageMatchesOf } from "$lib/event-view.js";
-  import * as Card from "$lib/components/ui/card/index.js";
-  import { Button } from "$lib/components/ui/button/index.js";
-  import { Badge } from "$lib/components/ui/badge/index.js";
-  import DoubleElimBracket from "$lib/components/DoubleElimBracket.svelte";
-  import SwissView from "$lib/components/SwissView.svelte";
-  import PlayoffPanel from "$lib/components/PlayoffPanel.svelte";
-  import GroupBracketsView from "$lib/components/GroupBracketsView.svelte";
+  import { userState } from "#lib/user.svelte.js";
+  import { maxRound } from "#lib/bracket.js";
+  import { eventFormatLabel } from "#lib/tournament.js";
+  import { bracketSections, eliminationRounds, groupStageMatchesOf } from "#lib/event-view.js";
+  import * as Card from "#lib/components/ui/card/index.js";
+  import { Button } from "#lib/components/ui/button/index.js";
+  import { Badge } from "#lib/components/ui/badge/index.js";
+  import DoubleElimBracket from "#lib/components/DoubleElimBracket.svelte";
+  import SwissView from "#lib/components/SwissView.svelte";
+  import PlayoffPanel from "#lib/components/PlayoffPanel.svelte";
+  import GroupBracketsView from "#lib/components/GroupBracketsView.svelte";
   import SingleElimBracket from "./SingleElimBracket.svelte";
   import BracketRoundList from "./BracketRoundList.svelte";
   import ShieldCheckIcon from "@lucide/svelte/icons/shield-check";

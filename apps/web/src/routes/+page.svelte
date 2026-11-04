@@ -1,20 +1,20 @@
 <script>
   // Lobby: upcoming / running events, then finished ones filtered by event
-  // type. Rows and the create-event wizard live in $lib/components/lobby.
+  // type. Rows and the create-event wizard live in #lib/components/lobby.
   import { onMount } from "svelte";
   import { toast } from "svelte-sonner";
-  import { API } from "$lib/api.js";
-  import { askConfirm } from "$lib/confirm.svelte.js";
-  import { downloadText } from "$lib/download.js";
-  import { userState } from "$lib/user.svelte.js";
-  import { EVENT_TIERS, VEHICLE_POOLS } from "$lib/tournament.js";
-  import { eventDate, relativeDay } from "$lib/lobby.js";
-  import { Button } from "$lib/components/ui/button/index.js";
-  import ActiveEventRow from "$lib/components/lobby/ActiveEventRow.svelte";
-  import HistoryEventRow from "$lib/components/lobby/HistoryEventRow.svelte";
-  import { copyableEvents } from "$lib/create-event.js";
+  import { API } from "#lib/api.js";
+  import { askConfirm } from "#lib/confirm.svelte.js";
+  import { downloadText } from "#lib/download.js";
+  import { userState } from "#lib/user.svelte.js";
+  import { EVENT_TIERS, VEHICLE_POOLS } from "#lib/tournament.js";
+  import { eventDate, relativeDay } from "#lib/lobby.js";
+  import { Button } from "#lib/components/ui/button/index.js";
+  import ActiveEventRow from "#lib/components/lobby/ActiveEventRow.svelte";
+  import HistoryEventRow from "#lib/components/lobby/HistoryEventRow.svelte";
+  import { copyableEvents } from "#lib/create-event.js";
   import CopyIcon from "@lucide/svelte/icons/copy";
-  import CreateEventDialog from "$lib/components/lobby/CreateEventDialog.svelte";
+  import CreateEventDialog from "#lib/components/lobby/CreateEventDialog.svelte";
   import ClockIcon from "@lucide/svelte/icons/clock";
   import PlusIcon from "@lucide/svelte/icons/plus";
   import TrophyIcon from "@lucide/svelte/icons/trophy";

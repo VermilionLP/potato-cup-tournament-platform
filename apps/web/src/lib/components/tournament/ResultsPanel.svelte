@@ -1,8 +1,8 @@
 <script>
   // Finished event: champion podium (with admin exports) and final standings.
-  import * as Card from "$lib/components/ui/card/index.js";
-  import { Button } from "$lib/components/ui/button/index.js";
-  import Flag from "$lib/components/Flag.svelte";
+  import * as Card from "#lib/components/ui/card/index.js";
+  import { Button } from "#lib/components/ui/button/index.js";
+  import Flag from "#lib/components/Flag.svelte";
   import TrophyIcon from "@lucide/svelte/icons/trophy";
   import CrownIcon from "@lucide/svelte/icons/crown";
   import DownloadIcon from "@lucide/svelte/icons/download";

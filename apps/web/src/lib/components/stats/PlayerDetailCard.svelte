@@ -1,10 +1,10 @@
 <script>
   // One player's statistics: win rates, record per mode and event type,
   // rivals, walkovers, titles by event tier and the events they played.
-  import Flag from "$lib/components/Flag.svelte";
-  import { Badge } from "$lib/components/ui/badge/index.js";
-  import { GAME_MODES, TIER_TAG, VEHICLE_POOLS, tierBreakdown } from "$lib/tournament.js";
-  import { POOL_COLORS, getGradient, getModeCode, getModeName, modeColors, placeClass, placeText } from "$lib/stats-view.js";
+  import Flag from "#lib/components/Flag.svelte";
+  import { Badge } from "#lib/components/ui/badge/index.js";
+  import { GAME_MODES, TIER_TAG, VEHICLE_POOLS, tierBreakdown } from "#lib/tournament.js";
+  import { POOL_COLORS, getGradient, getModeCode, getModeName, modeColors, placeClass, placeText } from "#lib/stats-view.js";
   import UsersIcon from "@lucide/svelte/icons/users";
   import TrendingUpIcon from "@lucide/svelte/icons/trending-up";
   import TrophyIcon from "@lucide/svelte/icons/trophy";

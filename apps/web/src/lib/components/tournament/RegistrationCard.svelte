@@ -1,16 +1,16 @@
 <script>
   // Registration stage: the visitor's own sign-up, and for admins manual
   // and multi-select registration of other players.
-  import { userState } from "$lib/user.svelte.js";
-  import { openProfile } from "$lib/profile-prompt.js";
-  import { isRecentlySeen } from "$lib/players.js";
-  import { eventFormatLabel } from "$lib/tournament.js";
-  import { API } from "$lib/api.js";
-  import { ladderLimitLabel } from "$lib/ladder-limit.js";
-  import * as Card from "$lib/components/ui/card/index.js";
-  import { Button } from "$lib/components/ui/button/index.js";
-  import { Input } from "$lib/components/ui/input/index.js";
-  import { Badge } from "$lib/components/ui/badge/index.js";
+  import { userState } from "#lib/user.svelte.js";
+  import { openProfile } from "#lib/profile-prompt.js";
+  import { isRecentlySeen } from "#lib/players.js";
+  import { eventFormatLabel } from "#lib/tournament.js";
+  import { API } from "#lib/api.js";
+  import { ladderLimitLabel } from "#lib/ladder-limit.js";
+  import * as Card from "#lib/components/ui/card/index.js";
+  import { Button } from "#lib/components/ui/button/index.js";
+  import { Input } from "#lib/components/ui/input/index.js";
+  import { Badge } from "#lib/components/ui/badge/index.js";
   import UsersIcon from "@lucide/svelte/icons/users";
   import CheckIcon from "@lucide/svelte/icons/check";
 

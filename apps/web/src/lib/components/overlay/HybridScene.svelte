@@ -14,7 +14,7 @@
     swissGroupViews,
     treeRounds,
     treeSections,
-  } from "$lib/overlay-layout.js";
+  } from "#lib/overlay-layout.js";
   import SingleElimTree from "./SingleElimTree.svelte";
   import DoubleElimTree from "./DoubleElimTree.svelte";
   import GroupedSwissBoard from "./GroupedSwissBoard.svelte";

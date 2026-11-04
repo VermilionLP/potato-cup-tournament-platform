@@ -1,13 +1,13 @@
 <script>
   // Admin: move the match time after registration opened. start() opens it
   // with the current time; onsaved(tournament) gets the updated event.
-  import * as Dialog from "$lib/components/ui/dialog/index.js";
-  import { Button } from "$lib/components/ui/button/index.js";
-  import DateTimePicker from "$lib/components/DateTimePicker.svelte";
+  import * as Dialog from "#lib/components/ui/dialog/index.js";
+  import { Button } from "#lib/components/ui/button/index.js";
+  import DateTimePicker from "#lib/components/DateTimePicker.svelte";
   import ClockIcon from "@lucide/svelte/icons/clock";
   import { toast } from "svelte-sonner";
-  import { API } from "$lib/api.js";
-  import { formatScheduled, parseLocal } from "$lib/datetime.js";
+  import { API } from "#lib/api.js";
+  import { formatScheduled, parseLocal } from "#lib/datetime.js";
 
   let { tid, current = "", ensureAdmin, onsaved } = $props();
 

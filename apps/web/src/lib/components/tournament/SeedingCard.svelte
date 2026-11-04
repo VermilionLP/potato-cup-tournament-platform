@@ -1,10 +1,10 @@
 <script>
   // Admin: seed order before the bracket is drawn (ladder MMR by default).
-  import { gameModeInfo, vehiclePoolLabel } from "$lib/tournament.js";
-  import * as Card from "$lib/components/ui/card/index.js";
-  import { Button } from "$lib/components/ui/button/index.js";
-  import { Badge } from "$lib/components/ui/badge/index.js";
-  import TierBadge from "$lib/components/TierBadge.svelte";
+  import { gameModeInfo, vehiclePoolLabel } from "#lib/tournament.js";
+  import * as Card from "#lib/components/ui/card/index.js";
+  import { Button } from "#lib/components/ui/button/index.js";
+  import { Badge } from "#lib/components/ui/badge/index.js";
+  import TierBadge from "#lib/components/TierBadge.svelte";
   import CrownIcon from "@lucide/svelte/icons/crown";
   import RefreshCwIcon from "@lucide/svelte/icons/refresh-cw";
   import ShuffleIcon from "@lucide/svelte/icons/shuffle";

@@ -2,8 +2,8 @@
   // Ban / Pick for one match, following the rules of the event's vehicle pool
   // template (bans per player, removal limits, whether a vehicle is drawn).
   // Parts: banpick/BanPickSide (a player and their bans), BanPickDrawStrip
-  // (draws), BanPickGroupGrid (the groups); the state is $lib/banpick.js.
-  import { banTurn, groupVehicles, initialBanPick, rulesSummary } from "$lib/banpick.js";
+  // (draws), BanPickGroupGrid (the groups); the state is #lib/banpick.js.
+  import { banTurn, groupVehicles, initialBanPick, rulesSummary } from "#lib/banpick.js";
   import BanPickSide from "./banpick/BanPickSide.svelte";
   import BanPickDrawStrip from "./banpick/BanPickDrawStrip.svelte";
   import BanPickGroupGrid from "./banpick/BanPickGroupGrid.svelte";

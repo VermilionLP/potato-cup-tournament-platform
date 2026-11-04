@@ -9,7 +9,7 @@
   import AwardIcon from "@lucide/svelte/icons/award";
   import PlaneIcon from "@lucide/svelte/icons/plane";
   import BugIcon from "@lucide/svelte/icons/bug";
-  import { userState } from "$lib/user.svelte.js";
+  import { userState } from "#lib/user.svelte.js";
 
   // placement: "top" (in the header, wide screens) or "bottom" (phones).
   let { placement = "top" } = $props();

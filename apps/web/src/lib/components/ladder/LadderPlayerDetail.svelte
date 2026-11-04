@@ -1,12 +1,12 @@
 <script>
   // A ladder player: tier, rank and record, the MMR chart (by time or by
   // game) and their rated games, newest first.
-  import { Badge } from "$lib/components/ui/badge/index.js";
-  import * as Card from "$lib/components/ui/card/index.js";
-  import MmrChart from "$lib/components/ladder/mmr-chart.svelte";
-  import TierBadge from "$lib/components/TierBadge.svelte";
-  import Flag from "$lib/components/Flag.svelte";
-  import { formatWinRate, daysAgo } from "$lib/ladder.js";
+  import { Badge } from "#lib/components/ui/badge/index.js";
+  import * as Card from "#lib/components/ui/card/index.js";
+  import MmrChart from "#lib/components/ladder/mmr-chart.svelte";
+  import TierBadge from "#lib/components/TierBadge.svelte";
+  import Flag from "#lib/components/Flag.svelte";
+  import { formatWinRate, daysAgo } from "#lib/ladder.js";
 
   let { player, detail = null, detailLoading = false } = $props();
   let chartMode = $state("time");

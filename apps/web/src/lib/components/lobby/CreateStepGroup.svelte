@@ -1,7 +1,7 @@
 <script>
   // Create-event wizard, two-stage events: the group stage.
-  import { GROUP_FORMATS } from "$lib/tournament.js";
-  import { groupPreview, groupProblem } from "$lib/create-event.js";
+  import { GROUP_FORMATS } from "#lib/tournament.js";
+  import { groupPreview, groupProblem } from "#lib/create-event.js";
   import Segmented from "./Segmented.svelte";
   import SwissRoundsPicker from "./SwissRoundsPicker.svelte";
 

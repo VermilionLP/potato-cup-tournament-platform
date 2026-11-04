@@ -2,7 +2,7 @@
   // Overlay stage board (Swiss and group stages): one band per bracket, one
   // column per round, the shown stage highlighted.
   import OverlayMatchCard from "./OverlayMatchCard.svelte";
-  import { BOARD_CARD_H, BOARD_GAP, boardScale } from "$lib/overlay-layout.js";
+  import { BOARD_CARD_H, BOARD_GAP, boardScale } from "#lib/overlay-layout.js";
 
   let { tournament, bands = [], selectedKey = null, isAlive, who } = $props();
 

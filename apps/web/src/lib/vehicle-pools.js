@@ -1,9 +1,9 @@
 // Vehicle pool templates for Ban / Pick: { id, name, event_type,
 // game_modes, rules, sort_order, vehicles } from GET /api/vehicle-pools.
-// Kept free of $lib imports so it can be tested with node --test.
+// Kept free of #lib imports so it can be tested with node --test.
 
 // wiki: War Thunder unit id for the picture (optional; looked up by name
-// when empty, $lib/wt-units.js).
+// when empty, #lib/wt-units.js).
 export const POOL_FIELDS = ["name", "nation", "br", "type", "group", "wiki"];
 
 /**

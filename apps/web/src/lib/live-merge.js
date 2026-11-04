@@ -1,4 +1,4 @@
-// Pure part of $lib/live-sync.js (tested with node): which live messages a
+// Pure part of #lib/live-sync.js (tested with node): which live messages a
 // delta covers, and merging a delta into the event.
 
 export const DELTA_TYPES = new Set([

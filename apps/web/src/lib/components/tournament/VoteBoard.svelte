@@ -2,13 +2,13 @@
   // Voting stage, main column: the time options grouped by day (click to
   // vote / unvote).
   import { toast } from "svelte-sonner";
-  import { API } from "$lib/api.js";
-  import { userState } from "$lib/user.svelte.js";
-  import { needsProfile } from "$lib/profile-prompt.js";
-  import { groupVoteDates, pastVotes } from "$lib/votes.js";
-  import * as Card from "$lib/components/ui/card/index.js";
-  import { Button } from "$lib/components/ui/button/index.js";
-  import { Badge } from "$lib/components/ui/badge/index.js";
+  import { API } from "#lib/api.js";
+  import { userState } from "#lib/user.svelte.js";
+  import { needsProfile } from "#lib/profile-prompt.js";
+  import { groupVoteDates, pastVotes } from "#lib/votes.js";
+  import * as Card from "#lib/components/ui/card/index.js";
+  import { Button } from "#lib/components/ui/button/index.js";
+  import { Badge } from "#lib/components/ui/badge/index.js";
   import ClockIcon from "@lucide/svelte/icons/clock";
 
   let { tournament, tid, isAdmin = false, voteOptions = [], weekOffset = $bindable(0), playerName, onchanged } = $props();

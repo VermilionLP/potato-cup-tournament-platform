@@ -2,12 +2,12 @@
   // Single-elimination bracket (Liquipedia style): one column per round,
   // cards placed between their two feeder matches, connector lines, and the
   // third-place match under the final. Card placement is treePositions
-  // ($lib/bracket.js, shared with the overlay); card helpers in
-  // $lib/match-card.js.
-  import { userState } from "$lib/user.svelte.js";
-  import BracketMatchCard from "$lib/components/BracketMatchCard.svelte";
-  import { roundLabel, treePositions } from "$lib/bracket.js";
-  import { isCompletedBye } from "$lib/match-card.js";
+  // (#lib/bracket.js, shared with the overlay); card helpers in
+  // #lib/match-card.js.
+  import { userState } from "#lib/user.svelte.js";
+  import BracketMatchCard from "#lib/components/BracketMatchCard.svelte";
+  import { roundLabel, treePositions } from "#lib/bracket.js";
+  import { isCompletedBye } from "#lib/match-card.js";
 
   // rounds: the rounds shown (all, one section, or the final stage), first
   // round first; matches: every bracket match (for the third-place match).

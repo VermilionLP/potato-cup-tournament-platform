@@ -1,5 +1,5 @@
 <script>
-  import Flag from "$lib/components/Flag.svelte";
+  import Flag from "#lib/components/Flag.svelte";
 
   let {
     groupStage = null, // payload.group_stage

@@ -5,8 +5,8 @@
   // bigger one (or the other way), or is marked as two different people.
   import { onMount } from "svelte";
   import { toast } from "svelte-sonner";
-  import { API } from "$lib/api.js";
-  import { askConfirm } from "$lib/confirm.svelte.js";
+  import { API } from "#lib/api.js";
+  import { askConfirm } from "#lib/confirm.svelte.js";
   import UsersIcon from "@lucide/svelte/icons/users";
   import ChevronDownIcon from "@lucide/svelte/icons/chevron-down";
 

@@ -4,10 +4,10 @@
   // keep them as forfeited (all their matches are walkovers), or keep them.
   // start() opens it; onstarted() after the event started.
   import { toast } from "svelte-sonner";
-  import { API } from "$lib/api.js";
-  import * as Dialog from "$lib/components/ui/dialog/index.js";
-  import { Button } from "$lib/components/ui/button/index.js";
-  import Flag from "$lib/components/Flag.svelte";
+  import { API } from "#lib/api.js";
+  import * as Dialog from "#lib/components/ui/dialog/index.js";
+  import { Button } from "#lib/components/ui/button/index.js";
+  import Flag from "#lib/components/Flag.svelte";
 
   let { tid, tournament, onstarted } = $props();
 

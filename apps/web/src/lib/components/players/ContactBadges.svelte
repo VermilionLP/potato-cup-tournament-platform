@@ -1,7 +1,7 @@
 <script>
   // A player's QQ / Discord contact as badges.
-  import { parseContact } from "$lib/contact.js";
-  import { Badge } from "$lib/components/ui/badge/index.js";
+  import { parseContact } from "#lib/contact.js";
+  import { Badge } from "#lib/components/ui/badge/index.js";
 
   let { tags, compact = false, empty = "—" } = $props();
   let contact = $derived(parseContact(tags));

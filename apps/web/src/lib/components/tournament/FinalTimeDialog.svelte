@@ -2,14 +2,14 @@
   // Ending the time vote ("结束投票并开启报名"): pick or type the final match
   // time; start() preselects the most voted future time. onsaved(tournament)
   // gets the event, now open for registration.
-  import * as Dialog from "$lib/components/ui/dialog/index.js";
-  import { Button } from "$lib/components/ui/button/index.js";
-  import { Input } from "$lib/components/ui/input/index.js";
-  import { Badge } from "$lib/components/ui/badge/index.js";
+  import * as Dialog from "#lib/components/ui/dialog/index.js";
+  import { Button } from "#lib/components/ui/button/index.js";
+  import { Input } from "#lib/components/ui/input/index.js";
+  import { Badge } from "#lib/components/ui/badge/index.js";
   import ClockIcon from "@lucide/svelte/icons/clock";
   import { toast } from "svelte-sonner";
-  import { API } from "$lib/api.js";
-  import { formatVoteTime as formatTime } from "$lib/votes.js";
+  import { API } from "#lib/api.js";
+  import { formatVoteTime as formatTime } from "#lib/votes.js";
 
   let { tid, options = [], ensureAdmin, needsIdentity, onsaved } = $props();
 

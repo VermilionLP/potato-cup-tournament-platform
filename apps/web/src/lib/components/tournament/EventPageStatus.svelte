@@ -1,7 +1,7 @@
 <script>
   // The event page before there is an event to show: loading, or not found.
   import { goto } from "$app/navigation";
-  import { Button } from "$lib/components/ui/button/index.js";
+  import { Button } from "#lib/components/ui/button/index.js";
   import TrophyIcon from "@lucide/svelte/icons/trophy";
   import ArrowLeftIcon from "@lucide/svelte/icons/arrow-left";
 

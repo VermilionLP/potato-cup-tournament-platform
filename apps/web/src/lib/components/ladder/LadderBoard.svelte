@@ -3,17 +3,17 @@
   // search; table on wide screens, cards on phones. Clicking a player
   // opens `detail` (snippet, given the player) under their row; clicking
   // again closes it (onselect(null)).
-  import { Badge } from "$lib/components/ui/badge/index.js";
-  import { Input } from "$lib/components/ui/input/index.js";
-  import * as Card from "$lib/components/ui/card/index.js";
+  import { Badge } from "#lib/components/ui/badge/index.js";
+  import { Input } from "#lib/components/ui/input/index.js";
+  import * as Card from "#lib/components/ui/card/index.js";
   import SearchIcon from "@lucide/svelte/icons/search";
   import TrophyIcon from "@lucide/svelte/icons/trophy";
-  import { formatWinRate, daysAgo } from "$lib/ladder.js";
-  import TierBadge from "$lib/components/TierBadge.svelte";
-  import Flag from "$lib/components/Flag.svelte";
-  import { userState } from "$lib/user.svelte.js";
-  import { PAGE_SIZE, scrollToRow, visibleRows } from "$lib/expand-row.js";
-  import ShowMoreRows from "$lib/components/ShowMoreRows.svelte";
+  import { formatWinRate, daysAgo } from "#lib/ladder.js";
+  import TierBadge from "#lib/components/TierBadge.svelte";
+  import Flag from "#lib/components/Flag.svelte";
+  import { userState } from "#lib/user.svelte.js";
+  import { PAGE_SIZE, scrollToRow, visibleRows } from "#lib/expand-row.js";
+  import ShowMoreRows from "#lib/components/ShowMoreRows.svelte";
   import ChevronDownIcon from "@lucide/svelte/icons/chevron-down";
 
   let {

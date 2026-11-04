@@ -7,9 +7,9 @@
 
 import { untrack } from "svelte";
 import { toast } from "svelte-sonner";
-import { API } from "$lib/api.js";
-import { liveSync } from "$lib/live-sync.js";
-import { previewMinPlayers, seedOrderOf } from "$lib/event-view.js";
+import { API } from "#lib/api.js";
+import { liveSync } from "#lib/live-sync.js";
+import { previewMinPlayers, seedOrderOf } from "#lib/event-view.js";
 
 export class EventData {
   tournament = $state(null);
@@ -36,7 +36,7 @@ export class EventData {
     this.#tid = tid;
     this.#isAdmin = isAdmin;
 
-    // Live updates ($lib/live-sync.js): match changes merge a delta, the
+    // Live updates (#lib/live-sync.js): match changes merge a delta, the
     // rest reloads the event; a burst of messages is one refresh.
     $effect(() => {
       const id = this.#tid();

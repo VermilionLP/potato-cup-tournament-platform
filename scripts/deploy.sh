@@ -68,6 +68,15 @@ changed_files() {
   rsync "${RSYNC_OPTS[@]}" -n -c -i "$1"/ "$2"/ | grep -Ev '^\.(d|f)' || true
 }
 
+# The web build (SvelteKit 3 / Vite 8) needs Node 22.17 or newer: stop
+# before anything changes on an older Node.
+NODE_VERSION=$(node -v 2>/dev/null | sed 's/^v//')
+if ! node -e 'const [a,b]=process.versions.node.split(".").map(Number); process.exit(a>22||(a===22&&b>=17)?0:1)' 2>/dev/null; then
+  echo "FAILED: Node ${NODE_VERSION:-not found} is too old; the site needs Node 22.17 or newer."
+  echo "        Upgrade Node (e.g. nvm install 22 && nvm alias default 22), then run the deploy again."
+  exit 1
+fi
+
 echo "==> 1/10 backup current code and database"
 mkdir -p "$BACKUP_DIR"
 STAMP=$(date +%Y%m%d-%H%M%S)

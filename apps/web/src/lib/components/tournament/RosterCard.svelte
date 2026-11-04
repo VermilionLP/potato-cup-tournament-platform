@@ -2,9 +2,9 @@
   // Side card listing the registered players (names link to their pages);
   // admins can edit a profile or, while registration is open, remove a
   // player or check them in. With check-in on, each row shows its state.
-  import * as Card from "$lib/components/ui/card/index.js";
-  import { Badge } from "$lib/components/ui/badge/index.js";
-  import Flag from "$lib/components/Flag.svelte";
+  import * as Card from "#lib/components/ui/card/index.js";
+  import { Badge } from "#lib/components/ui/badge/index.js";
+  import Flag from "#lib/components/Flag.svelte";
   import SettingsIcon from "@lucide/svelte/icons/settings";
   import TrashIcon from "@lucide/svelte/icons/trash-2";
 

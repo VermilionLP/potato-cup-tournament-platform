@@ -1,9 +1,9 @@
 <script>
   // One finished event in the lobby's history list.
   import { goto } from "$app/navigation";
-  import { beijingTitle, eventDate, relativeDay, startTimeLabel } from "$lib/lobby.js";
-  import { Badge } from "$lib/components/ui/badge/index.js";
-  import { Button } from "$lib/components/ui/button/index.js";
+  import { beijingTitle, eventDate, relativeDay, startTimeLabel } from "#lib/lobby.js";
+  import { Badge } from "#lib/components/ui/badge/index.js";
+  import { Button } from "#lib/components/ui/button/index.js";
   import EventTags from "./EventTags.svelte";
   import ClockIcon from "@lucide/svelte/icons/clock";
   import UsersIcon from "@lucide/svelte/icons/users";

@@ -1,6 +1,6 @@
 <script>
   // Ladder division: game mode × event type ("" = all), e.g. AB 螺旋桨.
-  import { GAME_MODES, VEHICLE_POOLS } from "$lib/tournament.js";
+  import { GAME_MODES, VEHICLE_POOLS } from "#lib/tournament.js";
 
   let { mode = "", pool = "", onchange } = $props();
 </script>

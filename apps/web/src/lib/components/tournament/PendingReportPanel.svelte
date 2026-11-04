@@ -3,8 +3,8 @@
   // (migration 034), with what the viewer can do about it: the opponent
   // confirms or disputes, the reporter withdraws, an admin applies the
   // report or the counter-report.
-  import { Button } from "$lib/components/ui/button/index.js";
-  import { formatReport } from "$lib/match-card.js";
+  import { Button } from "#lib/components/ui/button/index.js";
+  import { formatReport } from "#lib/match-card.js";
 
   let { match, viewerId = "", isAdmin = false, playerName, busy = false, onconfirm, ondispute, onwithdraw } = $props();
 

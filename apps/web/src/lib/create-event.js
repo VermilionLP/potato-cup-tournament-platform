@@ -37,7 +37,7 @@ export function newEventForm(season = "") {
     pointsInvite: false,
     // Check-in 30 minutes before the start (migration 034).
     checkinEnabled: false,
-    // Ladder limit ($lib/ladder-limit.js): "" | "mmr" | a league group.
+    // Ladder limit (#lib/ladder-limit.js): "" | "mmr" | a league group.
     ladderLimit: "",
     ladderMaxMmr: DEFAULT_LIMIT_MMR,
     // Copied from another event: its tier / kind and vehicle pool template.

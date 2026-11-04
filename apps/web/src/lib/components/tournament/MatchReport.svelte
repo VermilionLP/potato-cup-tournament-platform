@@ -6,13 +6,13 @@
   // openDetails(match) (report when pending, correct when an admin can),
   // confirmReport(match), disputeReport(match), withdrawReport(match).
   import { toast } from "svelte-sonner";
-  import { API } from "$lib/api.js";
-  import { askConfirm } from "$lib/confirm.svelte.js";
-  import { initialBanPick } from "$lib/banpick.js";
-  import { canCorrectResult } from "$lib/tournament.js";
-  import { correctionWarning, hasDependentMatchPlayed, recordedResultLabel, resultMessage } from "$lib/event-view.js";
+  import { API } from "#lib/api.js";
+  import { askConfirm } from "#lib/confirm.svelte.js";
+  import { initialBanPick } from "#lib/banpick.js";
+  import { canCorrectResult } from "#lib/tournament.js";
+  import { correctionWarning, hasDependentMatchPlayed, recordedResultLabel, resultMessage } from "#lib/event-view.js";
   import MatchResultDialog from "./MatchResultDialog.svelte";
-  import { userState } from "$lib/user.svelte.js";
+  import { userState } from "#lib/user.svelte.js";
 
   let {
     tournament,

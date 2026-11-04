@@ -11,7 +11,7 @@
     removeGroup,
     removeVehicle,
     rerollsLeft,
-  } from "$lib/banpick.js";
+  } from "#lib/banpick.js";
 
   let { bp = $bindable(), grouped = [], rolling = $bindable(false) } = $props();
   let rollingLabel = $state("");

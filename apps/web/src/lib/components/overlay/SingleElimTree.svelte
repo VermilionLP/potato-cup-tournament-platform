@@ -2,7 +2,7 @@
   // Overlay single-elimination tree: one column per round, each match
   // between the two that feed it, with connectors to the next round.
   // Cards are OverlayMatchCard, as in the other formats.
-  import { isBye, treePositions, treeSpecs } from "$lib/overlay-layout.js";
+  import { isBye, treePositions, treeSpecs } from "#lib/overlay-layout.js";
   import OverlayMatchCard from "./OverlayMatchCard.svelte";
 
   let { tournament, rounds = [], stageLabel, isAlive, who } = $props();

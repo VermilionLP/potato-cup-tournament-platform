@@ -1,7 +1,7 @@
 <script>
-  import { Badge } from "$lib/components/ui/badge/index.js";
-  import { tierBadgeClass } from "$lib/ladder.js";
-  import { leagueIcon } from "$lib/sc2-icons.js";
+  import { Badge } from "#lib/components/ui/badge/index.js";
+  import { tierBadgeClass } from "#lib/ladder.js";
+  import { leagueIcon } from "#lib/sc2-icons.js";
 
   let { tier = null, className = "" } = $props();
 </script>

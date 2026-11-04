@@ -1,22 +1,22 @@
 <script>
-  // Event page: wires the event's data ($lib/event-data.svelte.js: loading,
+  // Event page: wires the event's data (#lib/event-data.svelte.js: loading,
   // live updates, templates, players) to its sections and actions
-  // ($lib/event-registration.js, $lib/event-stage.js; reporting is
-  // MatchReport). What it shows is derived in $lib/event-view.js; the tabs
+  // (#lib/event-registration.js, #lib/event-stage.js; reporting is
+  // MatchReport). What it shows is derived in #lib/event-view.js; the tabs
   // are EventOverviewTab / EventBracketCard / EventPoolTab / RosterCard /
-  // EventLiveTab in $lib/components/tournament. Admin-only dialogs load only
-  // for admins and the share dialog on first use ($lib/lazy.js).
+  // EventLiveTab in #lib/components/tournament. Admin-only dialogs load only
+  // for admins and the share dialog on first use (#lib/lazy.js).
   import { onMount, tick } from "svelte";
-  import { lazy } from "$lib/lazy.js";
+  import { lazy } from "#lib/lazy.js";
   import { toast } from "svelte-sonner";
   import { page } from "$app/state";
-  import { userState } from "$lib/user.svelte.js";
-  import { EventData } from "$lib/event-data.svelte.js";
-  import { buildMatchOrder } from "$lib/bracket.js";
-  import { overlayStages, pickStage } from "$lib/overlay.js";
-  import { suggestedVoteTimes, voteOptionsFrom } from "$lib/votes.js";
-  import { activeTabOf, eventTabs, tabFromHash } from "$lib/event-tabs.js";
-  import { GROUP_FORMATS, startBlockedMessage } from "$lib/tournament.js";
+  import { userState } from "#lib/user.svelte.js";
+  import { EventData } from "#lib/event-data.svelte.js";
+  import { buildMatchOrder } from "#lib/bracket.js";
+  import { overlayStages, pickStage } from "#lib/overlay.js";
+  import { suggestedVoteTimes, voteOptionsFrom } from "#lib/votes.js";
+  import { activeTabOf, eventTabs, tabFromHash } from "#lib/event-tabs.js";
+  import { GROUP_FORMATS, startBlockedMessage } from "#lib/tournament.js";
   import {
     bracketMatchesOf,
     eventStandings,
@@ -29,31 +29,31 @@
     playerNamer,
     podiumOf,
     roundLabeler,
-  } from "$lib/event-view.js";
-  import EventHeader from "$lib/components/tournament/EventHeader.svelte";
-  import StatusControls from "$lib/components/tournament/StatusControls.svelte";
-  import PhaseStepper from "$lib/components/tournament/PhaseStepper.svelte";
-  import MyMatchCard from "$lib/components/tournament/MyMatchCard.svelte";
-  import EventTabBar from "$lib/components/tournament/EventTabBar.svelte";
-  import EventOverviewTab from "$lib/components/tournament/EventOverviewTab.svelte";
-  import EventBracketCard from "$lib/components/tournament/EventBracketCard.svelte";
-  import EventPoolTab from "$lib/components/tournament/EventPoolTab.svelte";
-  import EventLiveTab from "$lib/components/tournament/EventLiveTab.svelte";
-  import RosterCard from "$lib/components/tournament/RosterCard.svelte";
-  import EventPageStatus from "$lib/components/tournament/EventPageStatus.svelte";
-  import MatchReport from "$lib/components/tournament/MatchReport.svelte";
-  import { registrationActions } from "$lib/event-registration.js";
-  import { stageActions } from "$lib/event-stage.js";
-  import { channelOptions, liveElsewhere, savedChannel, savedStreamMode, saveChannel, withChannel } from "$lib/live-channels.js";
+  } from "#lib/event-view.js";
+  import EventHeader from "#lib/components/tournament/EventHeader.svelte";
+  import StatusControls from "#lib/components/tournament/StatusControls.svelte";
+  import PhaseStepper from "#lib/components/tournament/PhaseStepper.svelte";
+  import MyMatchCard from "#lib/components/tournament/MyMatchCard.svelte";
+  import EventTabBar from "#lib/components/tournament/EventTabBar.svelte";
+  import EventOverviewTab from "#lib/components/tournament/EventOverviewTab.svelte";
+  import EventBracketCard from "#lib/components/tournament/EventBracketCard.svelte";
+  import EventPoolTab from "#lib/components/tournament/EventPoolTab.svelte";
+  import EventLiveTab from "#lib/components/tournament/EventLiveTab.svelte";
+  import RosterCard from "#lib/components/tournament/RosterCard.svelte";
+  import EventPageStatus from "#lib/components/tournament/EventPageStatus.svelte";
+  import MatchReport from "#lib/components/tournament/MatchReport.svelte";
+  import { registrationActions } from "#lib/event-registration.js";
+  import { stageActions } from "#lib/event-stage.js";
+  import { channelOptions, liveElsewhere, savedChannel, savedStreamMode, saveChannel, withChannel } from "#lib/live-channels.js";
 
   const loadAdminDialogs = lazy(async () => {
     const [wiki, time, finalTime, playerEdit, handoffPart, startCheckin] = await Promise.all([
-      import("$lib/components/tournament/WikiExportDialog.svelte"),
-      import("$lib/components/tournament/TimeEditDialog.svelte"),
-      import("$lib/components/tournament/FinalTimeDialog.svelte"),
-      import("$lib/components/tournament/PlayerEditDialog.svelte"),
-      import("$lib/components/tournament/LiveHandoff.svelte"),
-      import("$lib/components/tournament/StartCheckinDialog.svelte"),
+      import("#lib/components/tournament/WikiExportDialog.svelte"),
+      import("#lib/components/tournament/TimeEditDialog.svelte"),
+      import("#lib/components/tournament/FinalTimeDialog.svelte"),
+      import("#lib/components/tournament/PlayerEditDialog.svelte"),
+      import("#lib/components/tournament/LiveHandoff.svelte"),
+      import("#lib/components/tournament/StartCheckinDialog.svelte"),
     ]);
     return {
       WikiExportDialog: wiki.default,
@@ -64,7 +64,7 @@
       StartCheckinDialog: startCheckin.default,
     };
   });
-  const loadShareDialog = lazy(() => import("$lib/components/tournament/ShareDialog.svelte"));
+  const loadShareDialog = lazy(() => import("#lib/components/tournament/ShareDialog.svelte"));
 
   let tid = $derived(page.params.id);
   let isAdmin = $derived(!!userState.adminToken);
@@ -180,7 +180,7 @@
 
   onMount(load);
 
-  // Registration and seeds ($lib/event-registration.js).
+  // Registration and seeds (#lib/event-registration.js).
   const { doRegister, doBatchRegister, doUnregister, autoSeed, randomizeSeed, moveSeed } = registrationActions({
     tid: () => tid,
     tournament: () => data.tournament,
@@ -194,7 +194,7 @@
     needsIdentity,
   });
 
-  // Status, playoffs, Swiss rounds, live match, JSON ($lib/event-stage.js).
+  // Status, playoffs, Swiss rounds, live match, JSON (#lib/event-stage.js).
   const { changeStatus, setCheckin, checkInFor, toggleActiveMatch, startPlayoffs, withdrawPlayoffs, editSwissRounds, downloadJson } = stageActions({
     tid: () => tid,
     tournament: () => data.tournament,
@@ -209,7 +209,7 @@
     ensureAdmin,
   });
 
-  // Tabs ($lib/event-tabs.js), remembered in the address hash.
+  // Tabs (#lib/event-tabs.js), remembered in the address hash.
   let chosenTab = $state("");
   let tabs = $derived(eventTabs(tournament, { hasTemplate: Boolean(data.bpTemplate), isAdmin, banpickEnabled }));
   let activeTab = $derived(activeTabOf(tournament, chosenTab));

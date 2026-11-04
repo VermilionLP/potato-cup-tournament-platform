@@ -1,8 +1,8 @@
 <script>
   // One upcoming / running event in the lobby list.
   import { goto } from "$app/navigation";
-  import { actionLabel, beijingTitle, countdownLabel, displayCapacity, eventGradient, startTimeLabel, statusLabel, statusStyle } from "$lib/lobby.js";
-  import { Badge } from "$lib/components/ui/badge/index.js";
+  import { actionLabel, beijingTitle, countdownLabel, displayCapacity, eventGradient, startTimeLabel, statusLabel, statusStyle } from "#lib/lobby.js";
+  import { Badge } from "#lib/components/ui/badge/index.js";
   import EventTags from "./EventTags.svelte";
   import ClockIcon from "@lucide/svelte/icons/clock";
   import UsersIcon from "@lucide/svelte/icons/users";

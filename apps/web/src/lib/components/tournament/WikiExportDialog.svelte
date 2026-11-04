@@ -5,10 +5,10 @@
   // streams. Settings are saved per event; a new event starts from the last
   // one's talent and streams. Open with start().
   import { toast } from "svelte-sonner";
-  import { API } from "$lib/api.js";
-  import { copyText } from "$lib/clipboard.js";
-  import * as Dialog from "$lib/components/ui/dialog/index.js";
-  import { Button } from "$lib/components/ui/button/index.js";
+  import { API } from "#lib/api.js";
+  import { copyText } from "#lib/clipboard.js";
+  import * as Dialog from "#lib/components/ui/dialog/index.js";
+  import { Button } from "#lib/components/ui/button/index.js";
   import FileTextIcon from "@lucide/svelte/icons/file-text";
   import CopyIcon from "@lucide/svelte/icons/copy";
   import PlusIcon from "@lucide/svelte/icons/plus";

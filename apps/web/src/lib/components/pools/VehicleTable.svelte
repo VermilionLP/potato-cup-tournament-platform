@@ -2,10 +2,10 @@
   // A template's vehicles: search, and for admins inline editing and
   // removing rows; the import format below. The Wiki ID column shows the
   // War Thunder unit id the picture comes from: typed in, or matched by
-  // name ($lib/wt-units.js, shown greyed).
+  // name (#lib/wt-units.js, shown greyed).
   import { onMount } from "svelte";
-  import { Input } from "$lib/components/ui/input/index.js";
-  import { loadUnitIndex, unitIdOf, wikiPage } from "$lib/wt-units.js";
+  import { Input } from "#lib/components/ui/input/index.js";
+  import { loadUnitIndex, unitIdOf, wikiPage } from "#lib/wt-units.js";
   import SearchIcon from "@lucide/svelte/icons/search";
   import Trash2Icon from "@lucide/svelte/icons/trash-2";
 

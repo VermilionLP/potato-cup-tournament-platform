@@ -4,20 +4,20 @@
   // comes from ?scene=, else the dashboard's choice, else the live match.
   // ?channel=N follows one live channel (its live match and scene), so
   // several streams of one event can each have their own overlay.
-  // Scenes live in $lib/components/overlay, layout maths in
-  // $lib/overlay-layout.js.
+  // Scenes live in #lib/components/overlay, layout maths in
+  // #lib/overlay-layout.js.
   import { onMount, untrack } from "svelte";
   import { page } from "$app/state";
-  import { API } from "$lib/api.js";
-  import { buildMatchOrder } from "$lib/bracket.js";
-  import { GROUP_STAGE_BRACKETS, matchStageLabels, overlayStages, pickStage, playersStillIn } from "$lib/overlay.js";
-  import { isBye, isDecided, isPlayable, playerLookup } from "$lib/overlay-layout.js";
-  import { liveElsewhere, parseChannel, withChannel } from "$lib/live-channels.js";
-  import IntroScene from "$lib/components/overlay/IntroScene.svelte";
-  import IntermissionScene from "$lib/components/overlay/IntermissionScene.svelte";
-  import IngameScene from "$lib/components/overlay/IngameScene.svelte";
-  import HybridScene from "$lib/components/overlay/HybridScene.svelte";
-  import { liveSync } from "$lib/live-sync.js";
+  import { API } from "#lib/api.js";
+  import { buildMatchOrder } from "#lib/bracket.js";
+  import { GROUP_STAGE_BRACKETS, matchStageLabels, overlayStages, pickStage, playersStillIn } from "#lib/overlay.js";
+  import { isBye, isDecided, isPlayable, playerLookup } from "#lib/overlay-layout.js";
+  import { liveElsewhere, parseChannel, withChannel } from "#lib/live-channels.js";
+  import IntroScene from "#lib/components/overlay/IntroScene.svelte";
+  import IntermissionScene from "#lib/components/overlay/IntermissionScene.svelte";
+  import IngameScene from "#lib/components/overlay/IngameScene.svelte";
+  import HybridScene from "#lib/components/overlay/HybridScene.svelte";
+  import { liveSync } from "#lib/live-sync.js";
 
   let tid = $derived(page.params.id);
   let sceneParam = $derived(page.url.searchParams.get("scene") || "auto"); // auto, intro, ingame, intermission, hybrid
@@ -103,7 +103,7 @@
   $effect(() => {
     if (!tid) return;
     load();
-    // Short delays so the stream scene follows quickly ($lib/live-sync.js).
+    // Short delays so the stream scene follows quickly (#lib/live-sync.js).
     return liveSync(tid, {
       current: () => untrack(() => event),
       apply: (next) => (event = next),

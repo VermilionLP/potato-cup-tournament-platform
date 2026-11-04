@@ -1,7 +1,7 @@
 <script>
   // Event tags under an event's title: tier, mode · type · format, then the
   // detail and the event ID in muted text.
-  import { POOL_TAG, TIER_TAG, eventSummary, tierTagText } from "$lib/tournament.js";
+  import { POOL_TAG, TIER_TAG, eventSummary, tierTagText } from "#lib/tournament.js";
 
   let { t } = $props();
   let info = $derived(eventSummary(t));

@@ -1,8 +1,8 @@
 <script>
   // Double-elimination bracket (Challonge style): winners band with the
   // grand final as its last column, losers band below, SVG connectors.
-  // Layout maths in $lib/bracket.js, card helpers in $lib/match-card.js.
-  import BracketMatchCard from "$lib/components/BracketMatchCard.svelte";
+  // Layout maths in #lib/bracket.js, card helpers in #lib/match-card.js.
+  import BracketMatchCard from "#lib/components/BracketMatchCard.svelte";
   import {
     bracketRoundLabel,
     bracketRoundTotal,
@@ -11,8 +11,8 @@
     numberMatches,
     roundLabel,
     withGrandFinalColumn,
-  } from "$lib/bracket.js";
-  import { isCompletedBye } from "$lib/match-card.js";
+  } from "#lib/bracket.js";
+  import { isCompletedBye } from "#lib/match-card.js";
 
   let {
     matches = [],

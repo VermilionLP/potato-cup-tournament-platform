@@ -2,19 +2,19 @@
   // Player page: profile, titles and placings, MMR curve, records per event
   // type and game mode, this season's points and head-to-head records. All
   // from existing endpoints (/players/:id, /players/statistics,
-  // /ladder/players/:id, /points-leaderboard); maths in $lib/player-profile.js.
+  // /ladder/players/:id, /points-leaderboard); maths in #lib/player-profile.js.
   import { page } from "$app/state";
-  import { API } from "$lib/api.js";
-  import { TIER_TAG, tierBreakdown } from "$lib/tournament.js";
-  import { placeClass, placeText } from "$lib/stats-view.js";
-  import { formatWinRate, tierBadgeClass } from "$lib/ladder.js";
-  import { wikiUrl } from "$lib/players.js";
-  import { eventRows, headToHead, modeRows, opponentsOf, pointsRows, poolRows } from "$lib/player-profile.js";
-  import * as Card from "$lib/components/ui/card/index.js";
-  import Flag from "$lib/components/Flag.svelte";
-  import ContactBadges from "$lib/components/players/ContactBadges.svelte";
-  import DivisionPicker from "$lib/components/ladder/DivisionPicker.svelte";
-  import MmrChart from "$lib/components/ladder/mmr-chart.svelte";
+  import { API } from "#lib/api.js";
+  import { TIER_TAG, tierBreakdown } from "#lib/tournament.js";
+  import { placeClass, placeText } from "#lib/stats-view.js";
+  import { formatWinRate, tierBadgeClass } from "#lib/ladder.js";
+  import { wikiUrl } from "#lib/players.js";
+  import { eventRows, headToHead, modeRows, opponentsOf, pointsRows, poolRows } from "#lib/player-profile.js";
+  import * as Card from "#lib/components/ui/card/index.js";
+  import Flag from "#lib/components/Flag.svelte";
+  import ContactBadges from "#lib/components/players/ContactBadges.svelte";
+  import DivisionPicker from "#lib/components/ladder/DivisionPicker.svelte";
+  import MmrChart from "#lib/components/ladder/mmr-chart.svelte";
   import TrophyIcon from "@lucide/svelte/icons/trophy";
   import MedalIcon from "@lucide/svelte/icons/medal";
   import ArrowLeftIcon from "@lucide/svelte/icons/arrow-left";

@@ -21,7 +21,7 @@
     timeOf,
     toValue,
     WEEKDAY_HEADERS,
-  } from "$lib/datetime.js";
+  } from "#lib/datetime.js";
 
   // value: "YYYY-MM-DDTHH:mm" or "" (not set).
   let {

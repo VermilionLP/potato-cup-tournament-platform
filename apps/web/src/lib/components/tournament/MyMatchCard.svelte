@@ -1,17 +1,17 @@
 <script>
   // "我的比赛": the signed-in player's next step in this event, at the top of
-  // the event page ($lib/my-match.js): check-in before the start; during it
+  // the event page (#lib/my-match.js): check-in before the start; during it
   // the next match (round, opponent and their contact, whose turn) with
   // the report / confirm / dispute buttons.
   import { toast } from "svelte-sonner";
-  import { API } from "$lib/api.js";
-  import { myMatchInfo } from "$lib/my-match.js";
-  import { formatReport } from "$lib/match-card.js";
-  import { formatInZone } from "$lib/datetime.js";
-  import { parseContact } from "$lib/contact.js";
-  import { Button } from "$lib/components/ui/button/index.js";
-  import Flag from "$lib/components/Flag.svelte";
-  import ContactBadges from "$lib/components/players/ContactBadges.svelte";
+  import { API } from "#lib/api.js";
+  import { myMatchInfo } from "#lib/my-match.js";
+  import { formatReport } from "#lib/match-card.js";
+  import { formatInZone } from "#lib/datetime.js";
+  import { parseContact } from "#lib/contact.js";
+  import { Button } from "#lib/components/ui/button/index.js";
+  import Flag from "#lib/components/Flag.svelte";
+  import ContactBadges from "#lib/components/players/ContactBadges.svelte";
   import SwordsIcon from "@lucide/svelte/icons/swords";
   import CheckIcon from "@lucide/svelte/icons/check";
 

@@ -1,8 +1,8 @@
 <script>
-  import BracketMatchCard from "$lib/components/BracketMatchCard.svelte";
+  import BracketMatchCard from "#lib/components/BracketMatchCard.svelte";
   import CrownIcon from "@lucide/svelte/icons/crown";
-  import Flag from "$lib/components/Flag.svelte";
-  import { groupSwissRounds } from "$lib/bracket.js";
+  import Flag from "#lib/components/Flag.svelte";
+  import { groupSwissRounds } from "#lib/bracket.js";
 
   let {
     matches = [],

@@ -1,8 +1,8 @@
 <script>
   // Going-live pre-flight checklist: every item must be ticked before the
   // stream mode can be switched on. The ticks reset each time it opens.
-  import * as Dialog from "$lib/components/ui/dialog/index.js";
-  import { Button } from "$lib/components/ui/button/index.js";
+  import * as Dialog from "#lib/components/ui/dialog/index.js";
+  import { Button } from "#lib/components/ui/button/index.js";
   import RadioIcon from "@lucide/svelte/icons/radio";
   import MicIcon from "@lucide/svelte/icons/mic";
   import HeadphonesIcon from "@lucide/svelte/icons/headphones";

@@ -3,13 +3,13 @@
   // plus a required QQ / Discord contact) for visitors, profile editing and
   // the device key for signed-in players. Open it with openDialog().
   import { toast } from "svelte-sonner";
-  import { API } from "$lib/api.js";
-  import { askConfirm } from "$lib/confirm.svelte.js";
-  import { userState } from "$lib/user.svelte.js";
-  import { ensurePlayerKey } from "$lib/player-session.js";
-  import { buildContact, contactInputProblem, parseContact, requiredContactProblem, splitContactInput } from "$lib/contact.js";
-  import * as Dialog from "$lib/components/ui/dialog/index.js";
-  import { Button } from "$lib/components/ui/button/index.js";
+  import { API } from "#lib/api.js";
+  import { askConfirm } from "#lib/confirm.svelte.js";
+  import { userState } from "#lib/user.svelte.js";
+  import { ensurePlayerKey } from "#lib/player-session.js";
+  import { buildContact, contactInputProblem, parseContact, requiredContactProblem, splitContactInput } from "#lib/contact.js";
+  import * as Dialog from "#lib/components/ui/dialog/index.js";
+  import { Button } from "#lib/components/ui/button/index.js";
   import UserRoundIcon from "@lucide/svelte/icons/user-round";
   import GuestSignInFields from "./GuestSignInFields.svelte";
   import ProfileFields from "./ProfileFields.svelte";

@@ -1,17 +1,17 @@
 <script>
   import { onMount } from "svelte";
   import { toast } from "svelte-sonner";
-  import { API } from "$lib/api.js";
-  import { userState } from "$lib/user.svelte.js";
-  import { Badge } from "$lib/components/ui/badge/index.js";
+  import { API } from "#lib/api.js";
+  import { userState } from "#lib/user.svelte.js";
+  import { Badge } from "#lib/components/ui/badge/index.js";
   import TrendingUpIcon from "@lucide/svelte/icons/trending-up";
-  import DivisionPicker from "$lib/components/ladder/DivisionPicker.svelte";
-  import LadderSummary from "$lib/components/ladder/LadderSummary.svelte";
-  import LadderBoard from "$lib/components/ladder/LadderBoard.svelte";
-  import LadderPlayerDetail from "$lib/components/ladder/LadderPlayerDetail.svelte";
-  import { page } from "$app/stores";
+  import DivisionPicker from "#lib/components/ladder/DivisionPicker.svelte";
+  import LadderSummary from "#lib/components/ladder/LadderSummary.svelte";
+  import LadderBoard from "#lib/components/ladder/LadderBoard.svelte";
+  import LadderPlayerDetail from "#lib/components/ladder/LadderPlayerDetail.svelte";
+  import { page } from "$app/state";
   import { replaceState } from "$app/navigation";
-  import { GAME_MODES, VEHICLE_POOLS } from "$lib/tournament.js";
+  import { GAME_MODES, VEHICLE_POOLS } from "#lib/tournament.js";
 
   let data = $state(null);
   let loading = $state(true);
@@ -42,7 +42,7 @@
   let topPlayer = $derived(data?.players?.[0] || null);
 
   onMount(() => {
-    const params = $page.url.searchParams;
+    const params = page.url.searchParams;
     const mode = params.get("mode") || "";
     const pool = params.get("pool") || "";
     if (GAME_MODES.some((m) => m.id === mode)) ladderMode = mode;
@@ -54,7 +54,7 @@
     if (mode === ladderMode && pool === ladderPool) return;
     ladderMode = mode;
     ladderPool = pool;
-    const url = new URL($page.url);
+    const url = new URL(page.url.href);
     for (const [key, value] of [["mode", mode], ["pool", pool]]) {
       if (value) url.searchParams.set(key, value);
       else url.searchParams.delete(key);

@@ -3,10 +3,10 @@
   // (placing-coloured cells, Winter Finals places highlighted), the colour
   // legend, and the Winter Finals invites (admins tick the events whose
   // champion is invited while the season is open).
-  import { userState } from "$lib/user.svelte.js";
-  import { vehiclePoolLabel } from "$lib/tournament.js";
-  import { placeColor, placeRangeLabel } from "$lib/points.js";
-  import Flag from "$lib/components/Flag.svelte";
+  import { userState } from "#lib/user.svelte.js";
+  import { vehiclePoolLabel } from "#lib/tournament.js";
+  import { placeColor, placeRangeLabel } from "#lib/points.js";
+  import Flag from "#lib/components/Flag.svelte";
 
   let { board, season, players = [], isAdmin = false, isEnded = false, savingInvite = "", shortName = (n) => n, ontoggleinvite } = $props();
   const toggleInvite = (ev) => ontoggleinvite?.(ev);

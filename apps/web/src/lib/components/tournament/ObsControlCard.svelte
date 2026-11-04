@@ -5,11 +5,11 @@
   // (several streams / referees) are independent. `tournament` is the event
   // as the channel sees it (withChannel).
   import { toast } from "svelte-sonner";
-  import { API } from "$lib/api.js";
-  import { copyText } from "$lib/clipboard.js";
-  import { channelUrl } from "$lib/live-channels.js";
-  import * as Card from "$lib/components/ui/card/index.js";
-  import { Button } from "$lib/components/ui/button/index.js";
+  import { API } from "#lib/api.js";
+  import { copyText } from "#lib/clipboard.js";
+  import { channelUrl } from "#lib/live-channels.js";
+  import * as Card from "#lib/components/ui/card/index.js";
+  import { Button } from "#lib/components/ui/button/index.js";
   import SettingsIcon from "@lucide/svelte/icons/settings";
   import RadioIcon from "@lucide/svelte/icons/radio";
   import CopyIcon from "@lucide/svelte/icons/copy";

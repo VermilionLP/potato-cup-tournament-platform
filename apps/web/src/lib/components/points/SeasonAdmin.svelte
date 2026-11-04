@@ -6,7 +6,7 @@
   // reloads it.
   import { untrack } from "svelte";
   import { toast } from "svelte-sonner";
-  import { API } from "$lib/api.js";
+  import { API } from "#lib/api.js";
 
   let { data, onchanged } = $props();
 

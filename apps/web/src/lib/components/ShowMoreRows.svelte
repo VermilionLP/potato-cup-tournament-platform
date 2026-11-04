@@ -1,6 +1,6 @@
 <script>
-  // "显示更多" under a long board ($lib/expand-row.js visibleRows).
-  import { PAGE_SIZE } from "$lib/expand-row.js";
+  // "显示更多" under a long board (#lib/expand-row.js visibleRows).
+  import { PAGE_SIZE } from "#lib/expand-row.js";
 
   let { shown = 0, total = 0, onmore, onall } = $props();
   let left = $derived(total - shown);

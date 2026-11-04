@@ -4,18 +4,18 @@
   // board is PointsBoard; admins also get SeasonAdmin (loaded on demand).
   import { onMount } from "svelte";
   import { toast } from "svelte-sonner";
-  import { page } from "$app/stores";
+  import { page } from "$app/state";
   import { replaceState } from "$app/navigation";
-  import { API } from "$lib/api.js";
-  import { userState } from "$lib/user.svelte.js";
-  import { VEHICLE_POOLS } from "$lib/tournament.js";
-  import { lazy } from "$lib/lazy.js";
-  import PointsBoard from "$lib/components/points/PointsBoard.svelte";
-  import { Input } from "$lib/components/ui/input/index.js";
+  import { API } from "#lib/api.js";
+  import { userState } from "#lib/user.svelte.js";
+  import { VEHICLE_POOLS } from "#lib/tournament.js";
+  import { lazy } from "#lib/lazy.js";
+  import PointsBoard from "#lib/components/points/PointsBoard.svelte";
+  import { Input } from "#lib/components/ui/input/index.js";
   import AwardIcon from "@lucide/svelte/icons/award";
   import SearchIcon from "@lucide/svelte/icons/search";
 
-  const loadSeasonAdmin = lazy(() => import("$lib/components/points/SeasonAdmin.svelte"));
+  const loadSeasonAdmin = lazy(() => import("#lib/components/points/SeasonAdmin.svelte"));
 
   let isAdmin = $derived(!!userState.adminToken);
   let data = $state(null);
@@ -37,7 +37,7 @@
   const shortName = (name) => String(name || "").replace(/^(FamilyX\s+)?Potato Cup\s+/i, "");
 
   function syncUrl() {
-    const url = new URL($page.url);
+    const url = new URL(page.url.href);
     for (const [key, value] of [["season", data?.season || ""], ["pool", board?.pool || ""]]) {
       if (value) url.searchParams.set(key, value);
       else url.searchParams.delete(key);
@@ -58,7 +58,7 @@
   }
 
   onMount(async () => {
-    const params = $page.url.searchParams;
+    const params = page.url.searchParams;
     pool = params.get("pool") || "";
     await load(params.get("season") || "");
   });

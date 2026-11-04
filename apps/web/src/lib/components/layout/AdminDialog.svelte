@@ -2,11 +2,11 @@
   // Admin sign-in: the ADMIN_TOKEN is kept in this tab only
   // (userState.adminToken, sessionStorage).
   import { toast } from "svelte-sonner";
-  import { API } from "$lib/api.js";
-  import { userState } from "$lib/user.svelte.js";
-  import * as Dialog from "$lib/components/ui/dialog/index.js";
-  import { Button } from "$lib/components/ui/button/index.js";
-  import { Input } from "$lib/components/ui/input/index.js";
+  import { API } from "#lib/api.js";
+  import { userState } from "#lib/user.svelte.js";
+  import * as Dialog from "#lib/components/ui/dialog/index.js";
+  import { Button } from "#lib/components/ui/button/index.js";
+  import { Input } from "#lib/components/ui/input/index.js";
   import ShieldCheckIcon from "@lucide/svelte/icons/shield-check";
 
   let { open = $bindable(false) } = $props();

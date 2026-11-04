@@ -2,8 +2,8 @@
   // Overlay board for Swiss in several groups: one group at a time (chosen
   // by pickFocusGroup), its last rounds as columns.
   import { fade } from "svelte/transition";
-  import Flag from "$lib/components/Flag.svelte";
-  import { GROUP_COL_W, focusGroupRounds, groupBoardScale } from "$lib/overlay-layout.js";
+  import Flag from "#lib/components/Flag.svelte";
+  import { GROUP_COL_W, focusGroupRounds, groupBoardScale } from "#lib/overlay-layout.js";
 
   let { tournament, group, groupCount = 1, groupIndex = 0, shownKey = null, who } = $props();
 

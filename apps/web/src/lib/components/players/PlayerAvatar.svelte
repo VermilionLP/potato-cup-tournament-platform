@@ -1,6 +1,6 @@
 <script>
   // Round avatar with a player's initials.
-  import { playerGradient } from "$lib/players.js";
+  import { playerGradient } from "#lib/players.js";
 
   let { player, size = "w-8 h-8" } = $props();
 </script>

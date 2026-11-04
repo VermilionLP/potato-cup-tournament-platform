@@ -10,7 +10,7 @@
     toInstant,
     viewerTimeZone,
     zoneOffsetMinutes,
-  } from "$lib/datetime.js";
+  } from "#lib/datetime.js";
 
   // value: stored match time (Beijing time); status: tournament status;
   // checkinAt: when check-in opens (ISO), shown in the viewer's time zone.

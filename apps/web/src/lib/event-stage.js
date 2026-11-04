@@ -6,11 +6,11 @@
 // The time dialogs (TimeEditDialog, FinalTimeDialog) carry their own flows.
 
 import { toast } from "svelte-sonner";
-import { API } from "$lib/api.js";
-import { askConfirm, askText } from "$lib/confirm.svelte.js";
-import { downloadText } from "$lib/download.js";
-import { isValidSwissRounds, MAX_SWISS_ROUNDS, MIN_SWISS_ROUNDS } from "$lib/tournament.js";
-import { eventStatusLabel } from "$lib/event-view.js";
+import { API } from "#lib/api.js";
+import { askConfirm, askText } from "#lib/confirm.svelte.js";
+import { downloadText } from "#lib/download.js";
+import { isValidSwissRounds, MAX_SWISS_ROUNDS, MIN_SWISS_ROUNDS } from "#lib/tournament.js";
+import { eventStatusLabel } from "#lib/event-view.js";
 
 export function stageActions(ctx) {
   async function changeStatus(status) {

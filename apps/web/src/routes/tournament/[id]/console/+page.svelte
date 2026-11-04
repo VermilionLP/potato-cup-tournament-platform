@@ -2,23 +2,23 @@
   // Match-day console (admins): one screen with the live channels, results
   // to settle (disputes, walkover claims), scores waiting for confirmation,
   // matches ready to play and waiting ones, and check-in before the start.
-  // Board maths in $lib/match-day.js; reporting goes through MatchReport.
+  // Board maths in #lib/match-day.js; reporting goes through MatchReport.
   import { onMount, untrack } from "svelte";
   import { toast } from "svelte-sonner";
   import { page } from "$app/state";
-  import { API } from "$lib/api.js";
-  import { userState } from "$lib/user.svelte.js";
-  import { buildMatchOrder } from "$lib/bracket.js";
-  import { eventStatusLabel, playerNamer, roundLabeler, bracketMatchesOf } from "$lib/event-view.js";
-  import { matchDayBoard } from "$lib/match-day.js";
-  import { formatReport } from "$lib/match-card.js";
-  import { channelOptions, savedChannel, saveChannel, withChannel } from "$lib/live-channels.js";
-  import { liveSync } from "$lib/live-sync.js";
-  import { Button } from "$lib/components/ui/button/index.js";
-  import Flag from "$lib/components/Flag.svelte";
-  import ContactBadges from "$lib/components/players/ContactBadges.svelte";
-  import MatchReport from "$lib/components/tournament/MatchReport.svelte";
-  import StartCheckinDialog from "$lib/components/tournament/StartCheckinDialog.svelte";
+  import { API } from "#lib/api.js";
+  import { userState } from "#lib/user.svelte.js";
+  import { buildMatchOrder } from "#lib/bracket.js";
+  import { eventStatusLabel, playerNamer, roundLabeler, bracketMatchesOf } from "#lib/event-view.js";
+  import { matchDayBoard } from "#lib/match-day.js";
+  import { formatReport } from "#lib/match-card.js";
+  import { channelOptions, savedChannel, saveChannel, withChannel } from "#lib/live-channels.js";
+  import { liveSync } from "#lib/live-sync.js";
+  import { Button } from "#lib/components/ui/button/index.js";
+  import Flag from "#lib/components/Flag.svelte";
+  import ContactBadges from "#lib/components/players/ContactBadges.svelte";
+  import MatchReport from "#lib/components/tournament/MatchReport.svelte";
+  import StartCheckinDialog from "#lib/components/tournament/StartCheckinDialog.svelte";
   import ArrowLeftIcon from "@lucide/svelte/icons/arrow-left";
   import RadioIcon from "@lucide/svelte/icons/radio";
 

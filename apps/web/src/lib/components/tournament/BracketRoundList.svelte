@@ -1,9 +1,9 @@
 <script>
   // Phone view of an elimination bracket: round tabs (opening on the round
   // being played) and that round's matches as a list of the same cards as
-  // the bracket (BracketMatchCard; tabs from $lib/round-list.js).
-  import { roundTabs, currentTabKey } from "$lib/round-list.js";
-  import BracketMatchCard from "$lib/components/BracketMatchCard.svelte";
+  // the bracket (BracketMatchCard; tabs from #lib/round-list.js).
+  import { roundTabs, currentTabKey } from "#lib/round-list.js";
+  import BracketMatchCard from "#lib/components/BracketMatchCard.svelte";
 
   let {
     matches = [],

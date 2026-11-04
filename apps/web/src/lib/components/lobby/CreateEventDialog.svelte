@@ -1,14 +1,14 @@
 <script>
   // "Create event" wizard (admins): basics, format, one page per stage of a
   // two-stage event, then Ban / Pick, points and a summary. Form logic is in
-  // $lib/create-event.js. Call start() to open it with a fresh form; "复制"
+  // #lib/create-event.js. Call start() to open it with a fresh form; "复制"
   // fills it from an earlier event (next number, next week's time).
   import { toast } from "svelte-sonner";
-  import { API } from "$lib/api.js";
-  import { copyableEvents, createEventBody, createSteps, formFromEvent, newEventForm, stepError } from "$lib/create-event.js";
-  import { formatScheduled } from "$lib/datetime.js";
-  import * as Dialog from "$lib/components/ui/dialog/index.js";
-  import { Button } from "$lib/components/ui/button/index.js";
+  import { API } from "#lib/api.js";
+  import { copyableEvents, createEventBody, createSteps, formFromEvent, newEventForm, stepError } from "#lib/create-event.js";
+  import { formatScheduled } from "#lib/datetime.js";
+  import * as Dialog from "#lib/components/ui/dialog/index.js";
+  import { Button } from "#lib/components/ui/button/index.js";
   import CreateStepBasics from "./CreateStepBasics.svelte";
   import CreateStepFormat from "./CreateStepFormat.svelte";
   import CreateStepGroup from "./CreateStepGroup.svelte";

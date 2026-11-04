@@ -5,10 +5,10 @@
   // event count), an old ID of one, or close to one, so people find their
   // existing record instead of making a second player. `lookup` is bound so
   // the dialog can ask before a new ID is saved next to a similar one.
-  import { isRecentlySeen } from "$lib/players.js";
-  import { parseContact } from "$lib/contact.js";
-  import { API } from "$lib/api.js";
-  import { Input } from "$lib/components/ui/input/index.js";
+  import { isRecentlySeen } from "#lib/players.js";
+  import { parseContact } from "#lib/contact.js";
+  import { API } from "#lib/api.js";
+  import { Input } from "#lib/components/ui/input/index.js";
   import CircleCheckIcon from "@lucide/svelte/icons/circle-check";
   import InfoIcon from "@lucide/svelte/icons/info";
 

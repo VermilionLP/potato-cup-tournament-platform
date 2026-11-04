@@ -2,11 +2,11 @@
   // Device key of the signed-in player ID: copy it to use the ID on another
   // device, or import the key from the device the ID is bound to.
   import { toast } from "svelte-sonner";
-  import { API } from "$lib/api.js";
-  import { copyText } from "$lib/clipboard.js";
-  import { userState } from "$lib/user.svelte.js";
-  import { Button } from "$lib/components/ui/button/index.js";
-  import { Input } from "$lib/components/ui/input/index.js";
+  import { API } from "#lib/api.js";
+  import { copyText } from "#lib/clipboard.js";
+  import { userState } from "#lib/user.svelte.js";
+  import { Button } from "#lib/components/ui/button/index.js";
+  import { Input } from "#lib/components/ui/input/index.js";
   import KeyRoundIcon from "@lucide/svelte/icons/key-round";
 
   let keyImport = $state("");

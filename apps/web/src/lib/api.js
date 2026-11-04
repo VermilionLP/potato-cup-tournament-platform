@@ -58,7 +58,7 @@ export const API = {
   // Admin
   verifyAdmin: () => request('/admin/session'),
 
-  // Front-end error reports ($lib/error-report.js); admins read them on /errors
+  // Front-end error reports (#lib/error-report.js); admins read them on /errors
   reportClientError: (report) =>
     request('/client-errors', { method: 'POST', body: JSON.stringify(report), keepalive: true }),
   getClientErrors: () => request('/client-errors'),
@@ -81,7 +81,7 @@ export const API = {
   // Tournaments
   listTournaments: () => request('/tournaments'),
   getTournament: (id) => request(`/tournaments/${enc(id)}`),
-  // Live delta after match changes ($lib/live-sync.js): changed matches since `since` (a synced_at)
+  // Live delta after match changes (#lib/live-sync.js): changed matches since `since` (a synced_at)
   getTournamentLive: (id, since) => request(`/tournaments/${enc(id)}/live?since=${enc(since)}`),
   createTournament: (data) => request('/tournaments', { method: 'POST', body: JSON.stringify(data) }),
   deleteTournament: (id) => request(`/tournaments/${enc(id)}`, { method: 'DELETE' }),
@@ -95,7 +95,7 @@ export const API = {
   randomizeSeeds: (id, opts = {}) => request(`/tournaments/${enc(id)}/seeds/randomize`, { method: 'POST', body: JSON.stringify(opts) }),
   generateBracket: (id) => request(`/tournaments/${enc(id)}/bracket`, { method: 'POST' }),
   getBracket: (id) => request(`/tournaments/${enc(id)}/bracket`),
-  // Live state is per channel ($lib/live-channels.js); channel 1 by default.
+  // Live state is per channel (#lib/live-channels.js); channel 1 by default.
   setActiveMatch: (id, active_match_id, channel = 1) => request(`/tournaments/${enc(id)}/active-match`, { method: 'POST', body: JSON.stringify({ active_match_id, channel }) }),
   // overlay_stage ("wb:2", "sw:3"...) is left unchanged when omitted.
   setOverlayState: (id, overlay_scene, overlay_round, overlay_stage, channel = 1) => request(`/tournaments/${enc(id)}/overlay-state`, { method: 'POST', body: JSON.stringify({ overlay_scene, overlay_round, overlay_stage, channel }) }),

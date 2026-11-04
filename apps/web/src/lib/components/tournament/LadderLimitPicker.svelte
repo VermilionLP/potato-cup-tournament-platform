@@ -1,7 +1,7 @@
 <script>
   // The ladder limit choice (none / MMR cap / league cap) with the MMR field;
   // used by the create wizard and the event header (LadderLimitTag).
-  import { LIMIT_TIERS } from "$lib/ladder-limit.js";
+  import { LIMIT_TIERS } from "#lib/ladder-limit.js";
 
   let { choice = $bindable(""), mmr = $bindable(3300), disabled = false, compact = false, onchoice } = $props();
 </script>

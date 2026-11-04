@@ -1,10 +1,10 @@
 <script>
   // Player list as a table (wide screens).
-  import { isRecentlySeen, wikiUrl } from "$lib/players.js";
-  import { userState } from "$lib/user.svelte.js";
-  import { Button } from "$lib/components/ui/button/index.js";
-  import { Badge } from "$lib/components/ui/badge/index.js";
-  import Flag from "$lib/components/Flag.svelte";
+  import { isRecentlySeen, wikiUrl } from "#lib/players.js";
+  import { userState } from "#lib/user.svelte.js";
+  import { Button } from "#lib/components/ui/button/index.js";
+  import { Badge } from "#lib/components/ui/badge/index.js";
+  import Flag from "#lib/components/Flag.svelte";
   import ContactBadges from "./ContactBadges.svelte";
   import PlayerAvatar from "./PlayerAvatar.svelte";
   import Edit2Icon from "@lucide/svelte/icons/pencil";

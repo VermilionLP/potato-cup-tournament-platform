@@ -1,8 +1,8 @@
 <script>
   // Group stage played as single- or double-elimination brackets: one group
   // at a time, its placings (who qualified and how) and its bracket.
-  import Flag from "$lib/components/Flag.svelte";
-  import DoubleElimBracket from "$lib/components/DoubleElimBracket.svelte";
+  import Flag from "#lib/components/Flag.svelte";
+  import DoubleElimBracket from "#lib/components/DoubleElimBracket.svelte";
 
   let {
     groups = [], // group_stage.groups: [{ group, label, rows, complete }]

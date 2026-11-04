@@ -1,9 +1,9 @@
 <script>
   // Templates grouped by event type, in the order events choose them; the
   // dot marks unsaved edits. Admins can start a new template.
-  import { POOL_TAG } from "$lib/tournament.js";
-  import { modesLabel } from "$lib/vehicle-pools.js";
-  import { Button } from "$lib/components/ui/button/index.js";
+  import { POOL_TAG } from "#lib/tournament.js";
+  import { modesLabel } from "#lib/vehicle-pools.js";
+  import { Button } from "#lib/components/ui/button/index.js";
   import PlusIcon from "@lucide/svelte/icons/plus";
 
   let { byType = [], activeId = "", drafts = {}, isAdmin = false, newId, isNew = false, onpick, onnew } = $props();

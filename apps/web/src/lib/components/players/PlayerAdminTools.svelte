@@ -5,8 +5,8 @@
   // is the dialog's in-page confirmation, shared so one confirm shows at a
   // time ('reset-key' / 'merge' here).
   import { toast } from "svelte-sonner";
-  import { API } from "$lib/api.js";
-  import { Button } from "$lib/components/ui/button/index.js";
+  import { API } from "#lib/api.js";
+  import { Button } from "#lib/components/ui/button/index.js";
   import MergeIcon from "@lucide/svelte/icons/git-merge";
 
   let { playerId, players = [], pendingAction = $bindable(null), onmerged } = $props();

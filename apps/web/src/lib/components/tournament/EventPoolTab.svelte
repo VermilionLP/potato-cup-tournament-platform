@@ -1,7 +1,7 @@
 <script>
   // The 载具池 tab: for admins the template picker (PoolTemplatePicker), then
   // the pool as tech-tree cards (VehiclePoolView). Both load on first use.
-  import { lazy } from "$lib/lazy.js";
+  import { lazy } from "#lib/lazy.js";
 
   const loadPicker = lazy(() => import("./PoolTemplatePicker.svelte"));
   const loadView = lazy(() => import("./VehiclePoolView.svelte"));

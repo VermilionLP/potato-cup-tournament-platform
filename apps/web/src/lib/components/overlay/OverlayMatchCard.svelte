@@ -6,7 +6,7 @@
   // scores once the match is live or played, W / FF for walkovers; amber
   // border while live. `size`: sm (stage boards), md (trees), lg (8-player single
   // elimination, where the cards are big). The parent sets the box size.
-  import Flag from "$lib/components/Flag.svelte";
+  import Flag from "#lib/components/Flag.svelte";
 
   let { match: m, tournament, who, isAlive = null, size = "md", bye = false, class: extra = "", style = "" } = $props();
 

@@ -1,23 +1,23 @@
 <script>
   // Site shell: header (navigation, reminders, language, colour mode, admin
   // and profile buttons) around every page except the OBS overlay. The
-  // dialogs and header parts live in $lib/components/layout.
+  // dialogs and header parts live in #lib/components/layout.
   import "../app.css";
   import { onMount } from "svelte";
   import { Toaster, toast } from "svelte-sonner";
   import { page } from "$app/state";
   import { ModeWatcher, toggleMode } from "mode-watcher";
-  import { userState } from "$lib/user.svelte.js";
-  import { API } from "$lib/api.js";
-  import { i18n, initLocale, toggleLocale } from "$lib/i18n/locale.svelte.js";
-  import { contactIsEmpty, parseContact } from "$lib/contact.js";
-  import { ensurePlayerKey, notifyKeyConflict } from "$lib/player-session.js";
-  import SiteNav from "$lib/components/layout/SiteNav.svelte";
-  import PushToggle from "$lib/components/layout/PushToggle.svelte";
-  import AdminDialog from "$lib/components/layout/AdminDialog.svelte";
-  import ConfirmHost from "$lib/components/layout/ConfirmHost.svelte";
-  import { installErrorReporting } from "$lib/error-report.js";
-  import ProfileDialog from "$lib/components/layout/ProfileDialog.svelte";
+  import { userState } from "#lib/user.svelte.js";
+  import { API } from "#lib/api.js";
+  import { i18n, initLocale, toggleLocale } from "#lib/i18n/locale.svelte.js";
+  import { contactIsEmpty, parseContact } from "#lib/contact.js";
+  import { ensurePlayerKey, notifyKeyConflict } from "#lib/player-session.js";
+  import SiteNav from "#lib/components/layout/SiteNav.svelte";
+  import PushToggle from "#lib/components/layout/PushToggle.svelte";
+  import AdminDialog from "#lib/components/layout/AdminDialog.svelte";
+  import ConfirmHost from "#lib/components/layout/ConfirmHost.svelte";
+  import { installErrorReporting } from "#lib/error-report.js";
+  import ProfileDialog from "#lib/components/layout/ProfileDialog.svelte";
   import SunIcon from "@lucide/svelte/icons/sun";
   import MoonIcon from "@lucide/svelte/icons/moon";
   import ShieldCheckIcon from "@lucide/svelte/icons/shield-check";

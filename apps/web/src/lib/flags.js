@@ -1,7 +1,7 @@
 // Country flag helpers.
 //
 // Flags are shipped as SVGs in `static/flags/<iso>.svg` and rendered by
-// `$lib/components/Flag.svelte`. They are deliberately not emoji: Windows
+// `#lib/components/Flag.svelte`. They are deliberately not emoji: Windows
 // ships no flag emoji font, so `🇨🇳` degrades to the letters "CN" there.
 
 // Spellings that show up in player data but are not ISO 3166-1 codes.

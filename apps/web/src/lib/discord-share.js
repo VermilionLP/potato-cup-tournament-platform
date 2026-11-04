@@ -61,7 +61,7 @@ const TEXT = {
 const textOf = (lang) => TEXT[lang] || TEXT.zh;
 
 // Site labels in English posts go through the site's dictionary, which the
-// page loads only on demand ($lib/i18n/locale.svelte.js loadTranslator):
+// page loads only on demand (#lib/i18n/locale.svelte.js loadTranslator):
 // set it here before building an English post. Untranslated until then.
 let labelTranslate = (x) => x;
 export function useTranslator(fn) {

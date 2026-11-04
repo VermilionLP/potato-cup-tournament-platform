@@ -4,16 +4,16 @@
   // device key (PlayerAdminTools, loaded only for admins). Open with
   // openCreate() or openEdit(player).
   import { toast } from "svelte-sonner";
-  import { API } from "$lib/api.js";
-  import { userState } from "$lib/user.svelte.js";
-  import { buildContact, contactProblem, parseContact, requiredContactProblem } from "$lib/contact.js";
-  import * as Dialog from "$lib/components/ui/dialog/index.js";
-  import { Button } from "$lib/components/ui/button/index.js";
-  import { Input } from "$lib/components/ui/input/index.js";
-  import Flag from "$lib/components/Flag.svelte";
+  import { API } from "#lib/api.js";
+  import { userState } from "#lib/user.svelte.js";
+  import { buildContact, contactProblem, parseContact, requiredContactProblem } from "#lib/contact.js";
+  import * as Dialog from "#lib/components/ui/dialog/index.js";
+  import { Button } from "#lib/components/ui/button/index.js";
+  import { Input } from "#lib/components/ui/input/index.js";
+  import Flag from "#lib/components/Flag.svelte";
   import TrashIcon from "@lucide/svelte/icons/trash-2";
   import SettingsIcon from "@lucide/svelte/icons/settings";
-  import { lazy } from "$lib/lazy.js";
+  import { lazy } from "#lib/lazy.js";
 
   const loadAdminTools = lazy(() => import("./PlayerAdminTools.svelte"));
 

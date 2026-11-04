@@ -1,7 +1,7 @@
 <script>
   import CrownIcon from "@lucide/svelte/icons/crown";
-  import Flag from "$lib/components/Flag.svelte";
-  import { SCORE_PRESETS, scoreOutcome } from "$lib/tournament.js";
+  import Flag from "#lib/components/Flag.svelte";
+  import { SCORE_PRESETS, scoreOutcome } from "#lib/tournament.js";
 
   let {
     player1 = { id: "", name: "", flag: "", seed: null },

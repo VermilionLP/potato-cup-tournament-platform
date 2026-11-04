@@ -1,7 +1,7 @@
 <script>
 	import { Calendar as CalendarPrimitive } from "bits-ui";
 	import * as Calendar from "./index.js";
-	import { cn } from "$lib/utils.js";
+	import { cn } from "#lib/utils.js";
 	import { isEqualMonth } from "@internationalized/date";
 	let {
 		ref = $bindable(null),

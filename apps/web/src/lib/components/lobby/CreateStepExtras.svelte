@@ -1,12 +1,12 @@
 <script>
   // Create-event wizard, last step: Ban / Pick, check-in, ladder limit, points
   // and a summary.
-  import { GROUP_FORMATS, gameModeLabel, vehiclePoolLabel } from "$lib/tournament.js";
-  import { cleanTable } from "$lib/points.js";
-  import { isTwoStage } from "$lib/create-event.js";
-  import PointsEditor from "$lib/components/PointsEditor.svelte";
-  import LadderLimitPicker from "$lib/components/tournament/LadderLimitPicker.svelte";
-  import { ladderLimitLabel, limitFields } from "$lib/ladder-limit.js";
+  import { GROUP_FORMATS, gameModeLabel, vehiclePoolLabel } from "#lib/tournament.js";
+  import { cleanTable } from "#lib/points.js";
+  import { isTwoStage } from "#lib/create-event.js";
+  import PointsEditor from "#lib/components/PointsEditor.svelte";
+  import LadderLimitPicker from "#lib/components/tournament/LadderLimitPicker.svelte";
+  import { ladderLimitLabel, limitFields } from "#lib/ladder-limit.js";
 
   let { form = $bindable() } = $props();
 

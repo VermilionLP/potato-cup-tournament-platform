@@ -1,6 +1,6 @@
 // Layout maths for the OBS overlay (routes/tournament/[id]/overlay): the
 // single-elimination tree, the double-elimination tree, the stage board and
-// grouped Swiss. Pure functions, no $lib imports beyond plain JS helpers, so
+// grouped Swiss. Pure functions, no #lib imports beyond plain JS helpers, so
 // they can be tested with node --test.
 
 import { bracketConnectorPath, layoutBracketBand, treePositions } from "./bracket.js";
