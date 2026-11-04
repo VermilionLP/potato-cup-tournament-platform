@@ -6,7 +6,7 @@
   // several streams of one event can each have their own overlay.
   // Scenes live in $lib/components/overlay, layout maths in
   // $lib/overlay-layout.js.
-  import { onMount } from "svelte";
+  import { onMount, untrack } from "svelte";
   import { page } from "$app/state";
   import { API } from "$lib/api.js";
   import { buildMatchOrder } from "$lib/bracket.js";
@@ -17,7 +17,7 @@
   import IntermissionScene from "$lib/components/overlay/IntermissionScene.svelte";
   import IngameScene from "$lib/components/overlay/IngameScene.svelte";
   import HybridScene from "$lib/components/overlay/HybridScene.svelte";
-  import { coalescedRefresh } from "$lib/coalesced-refresh.js";
+  import { liveSync } from "$lib/live-sync.js";
 
   let tid = $derived(page.params.id);
   let sceneParam = $derived(page.url.searchParams.get("scene") || "auto"); // auto, intro, ingame, intermission, hybrid
@@ -99,29 +99,17 @@
   // ambient background unless transparent=true.
   let isTransparent = $derived(transparentParam || (currentScene === "ingame" && bgParam !== "true"));
 
-  // Live updates: a burst of event messages becomes one reload (kept short
-  // so the stream scene follows quickly).
+  // Live updates: a burst of event messages becomes one refresh.
   $effect(() => {
     if (!tid) return;
     load();
-    const refresh = coalescedRefresh(refreshData, { delay: 150, maxWait: 600 });
-    const es = new EventSource(`/api/tournaments/${tid}/stream`);
-    es.onmessage = (event) => {
-      try {
-        JSON.parse(event.data); // malformed messages are skipped
-      } catch (e) {
-        console.error("Overlay failed to parse event message", e);
-        return;
-      }
-      refresh();
-    };
-    es.onerror = (e) => {
-      console.warn("Overlay SSE lost connection. Retrying...", e);
-    };
-    return () => {
-      es.close();
-      refresh.stop();
-    };
+    // Short delays so the stream scene follows quickly ($lib/live-sync.js).
+    return liveSync(tid, {
+      current: () => untrack(() => event),
+      apply: (next) => (event = next),
+      delay: 150,
+      maxWait: 600,
+    });
   });
 
   async function load() {
@@ -133,14 +121,6 @@
       errorMsg = e.message || "Failed to load tournament";
     } finally {
       loading = false;
-    }
-  }
-
-  async function refreshData() {
-    try {
-      event = await API.getTournament(tid);
-    } catch (e) {
-      console.error("Refresh failed:", e);
     }
   }
 

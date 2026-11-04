@@ -248,3 +248,36 @@ test('admins merge a likely duplicate player from the player list', async () => 
     await browser.close();
   }
 });
+
+test('live updates: a result elsewhere shows up as a small delta, not a full reload', async () => {
+  const players = [];
+  for (let i = 0; i < 4; i += 1) players.push(await makePlayer('live'));
+  const id = await makeEvent({ players, start: true });
+  const { browser, page, errors } = await openPage();
+  try {
+    const requests = [];
+    page.on('request', (r) => requests.push(new URL(r.url()).pathname));
+    await page.goto(`${BASE}/tournament/${id}`);
+    await page.getByRole('tab', { name: '对阵', selected: true }).waitFor({ timeout: T });
+    await page.waitForTimeout(1000); // the live stream connects
+    const before = requests.filter((p) => p === `/api/tournaments/${id}`).length;
+    const event = await api('GET', `/tournaments/${id}`);
+    const match = event.matches.find((m) => m.player1_id && m.player2_id);
+    await api('POST', `/tournaments/${id}/matches/${match.id}/result`, { score1: 2, score2: 1 });
+    // The winner's crown / score appears without reloading the page.
+    for (let i = 0; i < 50 && !requests.includes(`/api/tournaments/${id}/live`); i += 1) await page.waitForTimeout(200);
+    assert.ok(requests.includes(`/api/tournaments/${id}/live`), 'fetched the delta');
+    await page.waitForTimeout(800);
+    assert.equal(requests.filter((p) => p === `/api/tournaments/${id}`).length, before, 'no full reload');
+    // The match card (both players' names) now shows the 2 and the 1.
+    const card = page.locator('div.rounded-md', { hasText: match.player1_id }).filter({ hasText: match.player2_id }).last();
+    const text = await card.innerText();
+    assert.ok(/(^|\n)\s*2\s*(\n|$)/.test(text) && /(^|\n)\s*1\s*(\n|$)/.test(text), `score on the card: ${JSON.stringify(text)}`);
+    assert.deepEqual(errors, [], 'no uncaught errors in the page');
+  } catch (e) {
+    await page.screenshot({ path: 'e2e-live-delta.png', fullPage: true }).catch(() => {});
+    throw e;
+  } finally {
+    await browser.close();
+  }
+});

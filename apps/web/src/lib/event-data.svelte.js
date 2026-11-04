@@ -8,7 +8,7 @@
 import { untrack } from "svelte";
 import { toast } from "svelte-sonner";
 import { API } from "$lib/api.js";
-import { coalescedRefresh } from "$lib/coalesced-refresh.js";
+import { liveSync } from "$lib/live-sync.js";
 import { previewMinPlayers, seedOrderOf } from "$lib/event-view.js";
 
 export class EventData {
@@ -36,31 +36,19 @@ export class EventData {
     this.#tid = tid;
     this.#isAdmin = isAdmin;
 
-    // Live updates: a burst of event messages becomes one reload.
+    // Live updates ($lib/live-sync.js): match changes merge a delta, the
+    // rest reloads the event; a burst of messages is one refresh.
     $effect(() => {
       const id = this.#tid();
       if (!id) return;
-      const refresh = coalescedRefresh(async () => {
-        const next = await API.getTournament(id);
-        if (id !== this.#tid()) return; // route moved to another event meanwhile
-        this.tournament = next;
-        this.seedOrder = seedOrderOf(next?.players);
+      return liveSync(id, {
+        current: () => (this.#loadedId === id ? untrack(() => this.tournament) : null),
+        apply: (next) => {
+          if (id !== this.#tid()) return; // route moved to another event meanwhile
+          this.tournament = next;
+          this.seedOrder = seedOrderOf(next?.players);
+        },
       });
-      const es = new EventSource(`/api/tournaments/${id}/stream`);
-      es.onmessage = (event) => {
-        try {
-          JSON.parse(event.data); // malformed messages are skipped
-        } catch (e) {
-          console.error("解析实时事件失败", e);
-          return;
-        }
-        refresh();
-      };
-      es.onerror = (e) => console.warn("实时推送连接发生错误，正在尝试重连...", e);
-      return () => {
-        es.close();
-        refresh.stop();
-      };
     });
 
     // The Ban / Pick template, reloaded when the settings that pick it change.

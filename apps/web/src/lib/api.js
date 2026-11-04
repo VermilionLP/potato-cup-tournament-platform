@@ -81,6 +81,8 @@ export const API = {
   // Tournaments
   listTournaments: () => request('/tournaments'),
   getTournament: (id) => request(`/tournaments/${enc(id)}`),
+  // Live delta after match changes ($lib/live-sync.js): changed matches since `since` (a synced_at)
+  getTournamentLive: (id, since) => request(`/tournaments/${enc(id)}/live?since=${enc(since)}`),
   createTournament: (data) => request('/tournaments', { method: 'POST', body: JSON.stringify(data) }),
   deleteTournament: (id) => request(`/tournaments/${enc(id)}`, { method: 'DELETE' }),
   updateStatus: (id, status, scheduled_time) => request(`/tournaments/${enc(id)}/status`, { method: 'POST', body: JSON.stringify({ status, scheduled_time }) }),

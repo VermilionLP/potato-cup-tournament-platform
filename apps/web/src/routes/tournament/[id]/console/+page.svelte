@@ -3,7 +3,7 @@
   // to settle (disputes, walkover claims), scores waiting for confirmation,
   // matches ready to play and waiting ones, and check-in before the start.
   // Board maths in $lib/match-day.js; reporting goes through MatchReport.
-  import { onMount } from "svelte";
+  import { onMount, untrack } from "svelte";
   import { toast } from "svelte-sonner";
   import { page } from "$app/state";
   import { API } from "$lib/api.js";
@@ -13,7 +13,7 @@
   import { matchDayBoard } from "$lib/match-day.js";
   import { formatReport } from "$lib/match-card.js";
   import { channelOptions, savedChannel, saveChannel, withChannel } from "$lib/live-channels.js";
-  import { coalescedRefresh } from "$lib/coalesced-refresh.js";
+  import { liveSync } from "$lib/live-sync.js";
   import { Button } from "$lib/components/ui/button/index.js";
   import Flag from "$lib/components/Flag.svelte";
   import ContactBadges from "$lib/components/players/ContactBadges.svelte";
@@ -60,16 +60,12 @@
     const id = tid;
     channel = savedChannel(id);
     load();
-    const refresh = coalescedRefresh(async () => {
-      const next = await API.getTournament(id);
-      if (id === tid) tournament = next;
+    return liveSync(id, {
+      current: () => untrack(() => tournament),
+      apply: (next) => {
+        if (id === tid) tournament = next;
+      },
     });
-    const es = new EventSource(`/api/tournaments/${id}/stream`);
-    es.onmessage = () => refresh();
-    return () => {
-      es.close();
-      refresh.stop();
-    };
   });
 
   function ensureAdmin() {

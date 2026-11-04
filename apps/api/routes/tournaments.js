@@ -2,6 +2,7 @@
 // Settings and stages are in tournament-settings.js, seeds / bracket /
 // overlay in tournament-bracket.js, imports in tournament-import.js.
 
+import { liveDelta, NO_LADDER } from '../lib/live-delta.js';
 import { normalizeLadderLimit } from '../lib/ladder-limit.js';
 import { TournamentRepo } from '../repositories/tournament-repo.js';
 import { LadderRepo } from '../repositories/ladder-repo.js';
@@ -27,7 +28,12 @@ export default async function tournamentsRoutes(fastify) {
     return await repo.list();
   });
 
+  // The database clock when a read starts: the `since` of the next live
+  // update (GET /tournaments/:id/live) for whoever got this read.
+  const dbNow = async () => (await fastify.db.query('SELECT NOW() AS now')).rows[0].now;
+
   fastify.get('/tournaments/:id', async (req) => {
+    const syncedAt = await dbNow();
     const t = await repo.getById(req.params.id);
     if (!t) throw fastify.httpErrors.notFound('Tournament not found');
     const [players, ms, votes, ladder, channels] = await Promise.all([
@@ -37,7 +43,27 @@ export default async function tournamentsRoutes(fastify) {
       ladderRepo.eventRatings(t),
       liveChannels.list(req.params.id),
     ]);
-    return tournamentDetail(t, { players, matches: ms, votes, ladder, channels });
+    return { ...tournamentDetail(t, { players, matches: ms, votes, ladder, channels }), synced_at: syncedAt };
+  });
+
+  // Live update after match changes (results, reports, the live match):
+  // the event without players and votes, only the matches changed since
+  // `since` (a synced_at from an earlier read), and every match id so
+  // removed matches can be dropped. Standings, group stage and points are
+  // recomputed as in the full read (lib/live-delta.js).
+  fastify.get('/tournaments/:id/live', async (req) => {
+    const since = new Date(String(req.query?.since || ''));
+    if (Number.isNaN(since.getTime())) throw fastify.httpErrors.badRequest('since is required');
+    const syncedAt = await dbNow();
+    const t = await repo.getById(req.params.id);
+    if (!t) throw fastify.httpErrors.notFound('Tournament not found');
+    const [players, ms, channels] = await Promise.all([
+      repo.getPlayers(req.params.id),
+      repo.getMatches(req.params.id),
+      liveChannels.list(req.params.id),
+    ]);
+    const detail = tournamentDetail(t, { players, matches: ms, votes: [], ladder: NO_LADDER, channels });
+    return { ...liveDelta(detail, since), synced_at: syncedAt };
   });
 
   fastify.get('/tournaments/:id/stream', { sse: 'only' }, async (req, reply) => {
