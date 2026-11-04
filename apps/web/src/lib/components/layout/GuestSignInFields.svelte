@@ -1,17 +1,46 @@
 <script>
   // Sign-in fields for a visitor: required contact, player ID, and quick
-  // picks of existing players (recently active first).
+  // picks of existing players (recently active first). While the ID is
+  // typed, /players/lookup says whether it is already a player (with their
+  // event count), an old ID of one, or close to one, so people find their
+  // existing record instead of making a second player. `lookup` is bound so
+  // the dialog can ask before a new ID is saved next to a similar one.
   import { isRecentlySeen } from "$lib/players.js";
   import { parseContact } from "$lib/contact.js";
+  import { API } from "$lib/api.js";
   import { Input } from "$lib/components/ui/input/index.js";
+  import CircleCheckIcon from "@lucide/svelte/icons/circle-check";
+  import InfoIcon from "@lucide/svelte/icons/info";
 
   let {
     idInput = $bindable(""),
     contactInput = $bindable(""),
     contactError = "",
     players = [],
+    lookup = $bindable(null), // { name, exact, alias, similar } for idInput
     onsubmit,
   } = $props();
+
+  $effect(() => {
+    const name = idInput.trim();
+    if (!name) {
+      lookup = null;
+      return;
+    }
+    const timer = setTimeout(async () => {
+      try {
+        const res = await API.lookupPlayer(name);
+        if (idInput.trim() === name) lookup = { name, ...res };
+      } catch {
+        lookup = null;
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  });
+  let current = $derived(lookup && lookup.name === idInput.trim() ? lookup : null);
+
+  const eventsText = (p) => (p.events ? `参加过 ${p.events} 场赛事` : "还没有参赛记录");
+  const useId = (id) => (idInput = id);
 
   let showInactive = $state(false);
   let active = $derived(players.filter((p) => isRecentlySeen(p.last_seen_at)));
@@ -69,6 +98,48 @@
       onkeydown={onEnter}
     />
   </div>
+
+  {#if current}
+    {@const exact = current.exact}
+    {#if exact}
+      <div class="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-2.5 text-[11px] text-emerald-700 dark:text-emerald-300 space-y-1">
+        <p class="flex items-center gap-1.5 font-semibold"><CircleCheckIcon class="w-3.5 h-3.5 shrink-0" />已有选手「{exact.id}」的记录</p>
+        <p><span>{eventsText(exact)}</span>{#if exact.last_event}<span>，最近一场：{exact.last_event}</span>{/if}<span>。如果这是你，直接保存即可，以前的战绩都会算在你名下。</span></p>
+        {#if exact.key_bound}
+          <p class="text-amber-700 dark:text-amber-300">这个 ID 已经在其他设备上登录过：如果是你本人，保存后按提示导入那台设备的「设备密钥」，或联系管理员重置；不是你的话请换一个 ID。</p>
+        {/if}
+      </div>
+    {:else if current.alias}
+      <div class="rounded-lg border border-sky-500/30 bg-sky-500/10 p-2.5 text-[11px] text-sky-700 dark:text-sky-300 space-y-1.5">
+        <p class="flex items-center gap-1.5 font-semibold"><InfoIcon class="w-3.5 h-3.5 shrink-0" />「{current.alias.alias}」已经改名为「{current.alias.player.id}」</p>
+        <p><span>{eventsText(current.alias.player)}</span><span>。如果是你，请改用新的 ID，战绩都在那里。</span></p>
+        <button type="button" onclick={() => useId(current.alias.player.id)} class="rounded-md border border-sky-500/40 px-2 py-0.5 font-semibold hover:bg-sky-500/20 cursor-pointer">
+          改用「{current.alias.player.id}」
+        </button>
+      </div>
+    {/if}
+    {#if !exact && current.similar.length}
+      <div class="rounded-lg border border-amber-500/30 bg-amber-500/10 p-2.5 text-[11px] text-amber-700 dark:text-amber-300 space-y-1.5">
+        <p class="flex items-center gap-1.5 font-semibold"><InfoIcon class="w-3.5 h-3.5 shrink-0" />已有相似的选手 ID，是你吗？</p>
+        <p>选手 ID 区分大小写。用已有的 ID 登录，以前的比赛和天梯分数才会算在你名下；新建 ID 会变成另一位选手。</p>
+        <div class="flex flex-wrap gap-1.5">
+          {#each current.similar as p (p.id)}
+            <button
+              type="button"
+              onclick={() => useId(p.id)}
+              title={p.via ? `曾用名：${p.via}` : p.last_event ? `最近一场：${p.last_event}` : ""}
+              class="rounded-md border border-amber-500/40 bg-background/60 px-2 py-0.5 text-foreground hover:bg-amber-500/20 cursor-pointer"
+            >
+              <span class="font-semibold">{p.id}</span>
+              <span class="text-muted-foreground">· {p.events ? `${p.events} 场` : "无参赛"}</span>
+            </button>
+          {/each}
+        </div>
+      </div>
+    {:else if !exact && !current.alias}
+      <p class="text-[10px] text-muted-foreground">没有找到这个 ID，保存后会创建新的选手资料。</p>
+    {/if}
+  {/if}
 
   {#if players.length > 0}
     <div class="space-y-1.5">

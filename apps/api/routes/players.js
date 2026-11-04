@@ -3,6 +3,7 @@
 // player-keys.js, registrations in registrations.js, statistics in
 // player-stats.js.
 
+import { lookupPlayerName } from '../lib/player-lookup.js';
 import { PlayerRepo, mergePlayerInto } from '../repositories/player-repo.js';
 import { isAdminRequest, requireAdmin, requireSelfOrAdmin } from '../lib/admin.js';
 import { contactProblem, parseContact, CONTACT_REQUIRED } from '../lib/contact.js';
@@ -22,6 +23,34 @@ export default async function playersRoutes(fastify) {
   fastify.get('/players', async (req) => {
     const admin = isAdminRequest(req);
     return (await repo.list()).map((p) => publicPlayer(p, admin));
+  });
+
+  // Sign-in help: whether a typed name is already a player (exactly, as an
+  // old ID, or nearly), with how many events they played. No contact data.
+  fastify.get('/players/lookup', async (req) => {
+    const name = String(req.query?.name || '').trim().slice(0, 64);
+    if (!name) return { exact: null, alias: null, similar: [] };
+    const [rows, aliases] = await Promise.all([
+      fastify.db.query(`
+        WITH played AS (
+          SELECT player_id, tournament_id FROM axsuck.tournament_players
+          UNION SELECT player1_id, tournament_id FROM axsuck.matches WHERE player1_id IS NOT NULL
+          UNION SELECT player2_id, tournament_id FROM axsuck.matches WHERE player2_id IS NOT NULL
+        ), last_event AS (
+          SELECT DISTINCT ON (pl.player_id) pl.player_id, t.name
+          FROM played pl JOIN axsuck.tournaments t ON t.id = pl.tournament_id
+          ORDER BY pl.player_id, COALESCE(t.played_at, t.created_at) DESC
+        )
+        SELECT p.id, p.last_seen_at,
+               (SELECT COUNT(DISTINCT tournament_id)::int FROM played WHERE player_id = p.id) AS events,
+               le.name AS last_event,
+               EXISTS (SELECT 1 FROM axsuck.player_keys k WHERE k.player_id = p.id) AS key_bound
+        FROM axsuck.players p
+        LEFT JOIN last_event le ON le.player_id = p.id
+      `),
+      fastify.db.query('SELECT alias, player_id FROM axsuck.player_aliases'),
+    ]);
+    return lookupPlayerName(name, rows.rows, aliases.rows);
   });
 
   fastify.get('/players/:id', async (req) => {

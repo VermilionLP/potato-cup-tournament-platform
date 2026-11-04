@@ -23,6 +23,7 @@
   let contactInput = $state("");
   let contactError = $state("");
   let existingPlayers = $state([]);
+  let lookup = $state(null); // GuestSignInFields: is the typed ID already a player
 
   // Profile of the signed-in player
   let flag = $state("cn");
@@ -104,6 +105,16 @@
     if (!trimmedId) {
       toast.error("请输入选手 ID");
       return;
+    }
+    // A new ID next to an existing similar one is usually the same person.
+    const known = lookup?.name === trimmedId ? lookup : null;
+    const alike = known && !known.exact ? (known.alias ? [known.alias.player] : known.similar) : [];
+    if (alike.length) {
+      const ok = await askConfirm(
+        `已有相似的选手 ID：${alike.map((p) => `「${p.id}」`).join("、")}。\n用新 ID「${trimmedId}」会成为另一位选手，以前的战绩和天梯分数不会带过来。确定使用新 ID 吗？`,
+        { confirmText: "使用新 ID" },
+      );
+      if (!ok) return;
     }
 
     busy = true;
@@ -222,7 +233,7 @@
       <ProfileFields bind:idInput bind:qq bind:discord bind:flag bind:team bind:link />
       <DeviceKeyCard />
     {:else}
-      <GuestSignInFields bind:idInput bind:contactInput {contactError} players={existingPlayers} onsubmit={signIn} />
+      <GuestSignInFields bind:idInput bind:contactInput bind:lookup {contactError} players={existingPlayers} onsubmit={signIn} />
     {/if}
 
     <Dialog.Footer class="flex flex-col sm:flex-row gap-2 mt-2">

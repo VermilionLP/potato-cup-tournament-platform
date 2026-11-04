@@ -122,6 +122,8 @@ export const API = {
 
   // Players / Registration
   listPlayers: () => request('/players'),
+  // { exact, alias, similar }: is a typed name already a player (sign-in help)
+  lookupPlayer: (name) => request(`/players/lookup?name=${enc(name)}`),
   // tier: S-D / "none"; kind: season / monthly / weekly / qualifier / misc / "none".
   getPlayerStatistics: ({ tier = '', kind = '' } = {}) => {
     const params = new URLSearchParams();

@@ -115,6 +115,28 @@ test('a ladder limit stops unrated players signing up; admins can still add them
   }
 });
 
+test('signing in points new visitors to their existing player record', async () => {
+  const player = await makePlayer('Known');
+  await makeEvent({ players: [player] });
+  const { browser, page, errors } = await openPage();
+  try {
+    await page.goto(`${BASE}/`);
+    await page.locator('#header-profile-button').click({ timeout: T });
+    await page.locator('#player-id-input').fill(player.toLowerCase());
+    await page.getByText('已有相似的选手 ID，是你吗？').waitFor({ timeout: T });
+    await page.getByRole('button', { name: new RegExp(`^${player} ·`) }).click();
+    assert.equal(await page.locator('#player-id-input').inputValue(), player);
+    await page.getByText(`已有选手「${player}」的记录`).waitFor({ timeout: T });
+    await page.getByText('参加过 1 场赛事').waitFor({ timeout: T });
+    assert.deepEqual(errors, [], 'no uncaught errors in the page');
+  } catch (e) {
+    await page.screenshot({ path: 'e2e-sign-in-lookup.png', fullPage: true }).catch(() => {});
+    throw e;
+  } finally {
+    await browser.close();
+  }
+});
+
 test('an admin deletes an event after confirming in the page (no browser dialog)', async () => {
   const id = await makeEvent();
   const event = await api('GET', `/tournaments/${id}`);
