@@ -145,6 +145,18 @@ if [ -z "$CHANGES" ]; then
 else
   echo "$CHANGES"
 fi
+# Files deleted from the repo since the last deployed commit: rsync only
+# adds and updates, so without this they would stay on the server (e.g. a
+# stale svelte.config.js breaks the SvelteKit 3 build).
+DELETED=""
+if [ -n "${LAST_COMMIT:-}" ] && [ -d "$STAGING/.git" ] && git -C "$STAGING" cat-file -e "${LAST_COMMIT}^{commit}" 2>/dev/null; then
+  while IFS= read -r f; do
+    [ -n "$f" ] && [ -e "$TARGET/$f" ] && [ ! -e "$STAGING/$f" ] && DELETED+="$f"$'\n'
+  done < <(git -C "$STAGING" diff --no-renames --name-only --diff-filter=D "$LAST_COMMIT" HEAD)
+fi
+if [ -n "$DELETED" ]; then
+  printf '%s' "$DELETED" | sed 's/^/*deleting /'
+fi
 
 echo
 read -r -p "Apply the changes above? [y/N] " ans
@@ -156,12 +168,26 @@ fi
 echo "==> 5/10 apply"
 LAST_DEPLOYED=$(cat "$DEPLOYED_MARKER" 2>/dev/null || true)
 rsync "${RSYNC_OPTS[@]}" -c "$STAGING"/ "$TARGET"/
+if [ -n "$DELETED" ]; then
+  printf '%s' "$DELETED" | while IFS= read -r f; do rm -f -- "$TARGET/$f"; done
+  echo "deleted $(printf '%s' "$DELETED" | grep -c .) file(s) removed from the repo"
+fi
 echo "applied $(printf '%s\n' "$CHANGES" | grep -c . || true) file(s)"
 
 # The smoke test of the new code, kept outside the tree so a rollback can use it.
 SMOKE=$(mktemp)
 cp "$STAGING/scripts/smoke.sh" "$SMOKE" 2>/dev/null || SMOKE=""
 smoke() { if [ -z "$SMOKE" ]; then echo "(no scripts/smoke.sh, skipped)"; return 0; fi; bash "$SMOKE" "$1"; }
+
+# Waits up to a minute for the API to answer after a (re)start; a busy
+# server can take longer than a few seconds.
+wait_for_api() {
+  for _ in $(seq 1 60); do
+    curl -sf "$1/api/ping" > /dev/null && return 0
+    sleep 1
+  done
+  return 1
+}
 
 # Puts the previous code back (from this deploy's backup), reinstalls,
 # rebuilds and restarts. The database stays as migrated.
@@ -178,7 +204,7 @@ rollback() {
   NODE_OPTIONS=--max-old-space-size=1024 pnpm build:web
   pm2 restart "$PM2_APP" --update-env
   if [ -n "$LAST_DEPLOYED" ]; then echo "$LAST_DEPLOYED" > "$DEPLOYED_MARKER"; else rm -f "$DEPLOYED_MARKER"; fi
-  sleep 3
+  wait_for_api http://localhost:3100
   if smoke http://localhost:3100; then
     echo "ROLLED BACK: the site runs the previous version again."
   else
@@ -347,7 +373,7 @@ pm2 restart "$PM2_APP" --update-env
 if [ -n "$NEW_COMMIT" ]; then
   echo "$NEW_COMMIT" > "$DEPLOYED_MARKER"
 fi
-sleep 3
+wait_for_api http://localhost:3100 || true
 pm2 logs "$PM2_APP" --lines 15 --nostream
 
 echo
