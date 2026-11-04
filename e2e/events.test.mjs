@@ -329,7 +329,7 @@ test('admins change event settings in the settings dialog; the header shows tags
   const { browser, page, errors } = await openPage({ admin: true });
   try {
     await page.goto(`${BASE}/tournament/${id}`);
-    await page.getByRole('button', { name: '设置' }).click({ timeout: T });
+    await page.getByRole('button', { name: '设置', exact: true }).click({ timeout: T });
     const dialog = page.getByRole('dialog');
     await dialog.getByText('赛事设置').waitFor({ timeout: T });
     await page.screenshot({ path: 'e2e-shot-event-settings.png' });
