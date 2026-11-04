@@ -3,7 +3,8 @@
 // player-keys.js, registrations in registrations.js, statistics in
 // player-stats.js.
 
-import { lookupPlayerName } from '../lib/player-lookup.js';
+import { cached } from '../lib/ladder-cache.js';
+import { duplicatePairs, lookupPlayerName } from '../lib/player-lookup.js';
 import { PlayerRepo, mergePlayerInto } from '../repositories/player-repo.js';
 import { isAdminRequest, requireAdmin, requireSelfOrAdmin } from '../lib/admin.js';
 import { contactProblem, parseContact, CONTACT_REQUIRED } from '../lib/contact.js';
@@ -25,32 +26,65 @@ export default async function playersRoutes(fastify) {
     return (await repo.list()).map((p) => publicPlayer(p, admin));
   });
 
+  // Every player's event count, last event and key, cached like the ladder
+  // (dropped after any write, 5 minutes at most): the lookup runs while
+  // people type. Used by the sign-in lookup and the duplicate finder.
+  function playerIndex() {
+    return cached(fastify.db, 'player-lookup', async () => {
+      const [rowsRes, aliasRes] = await Promise.all([
+        fastify.db.query(`
+          WITH played AS (
+            SELECT player_id, tournament_id FROM axsuck.tournament_players
+            UNION SELECT player1_id, tournament_id FROM axsuck.matches WHERE player1_id IS NOT NULL
+            UNION SELECT player2_id, tournament_id FROM axsuck.matches WHERE player2_id IS NOT NULL
+          ), last_event AS (
+            SELECT DISTINCT ON (pl.player_id) pl.player_id, t.name
+            FROM played pl JOIN axsuck.tournaments t ON t.id = pl.tournament_id
+            ORDER BY pl.player_id, COALESCE(t.played_at, t.created_at) DESC
+          )
+          SELECT p.id, p.last_seen_at,
+                 (SELECT COUNT(DISTINCT tournament_id)::int FROM played WHERE player_id = p.id) AS events,
+                 le.name AS last_event,
+                 EXISTS (SELECT 1 FROM axsuck.player_keys k WHERE k.player_id = p.id) AS key_bound
+          FROM axsuck.players p
+          LEFT JOIN last_event le ON le.player_id = p.id
+        `),
+        fastify.db.query('SELECT alias, player_id FROM axsuck.player_aliases'),
+      ]);
+      return { rows: rowsRes.rows, aliases: aliasRes.rows };
+    });
+  }
+
   // Sign-in help: whether a typed name is already a player (exactly, as an
   // old ID, or nearly), with how many events they played. No contact data.
   fastify.get('/players/lookup', async (req) => {
     const name = String(req.query?.name || '').trim().slice(0, 64);
     if (!name) return { exact: null, alias: null, similar: [] };
-    const [rows, aliases] = await Promise.all([
-      fastify.db.query(`
-        WITH played AS (
-          SELECT player_id, tournament_id FROM axsuck.tournament_players
-          UNION SELECT player1_id, tournament_id FROM axsuck.matches WHERE player1_id IS NOT NULL
-          UNION SELECT player2_id, tournament_id FROM axsuck.matches WHERE player2_id IS NOT NULL
-        ), last_event AS (
-          SELECT DISTINCT ON (pl.player_id) pl.player_id, t.name
-          FROM played pl JOIN axsuck.tournaments t ON t.id = pl.tournament_id
-          ORDER BY pl.player_id, COALESCE(t.played_at, t.created_at) DESC
-        )
-        SELECT p.id, p.last_seen_at,
-               (SELECT COUNT(DISTINCT tournament_id)::int FROM played WHERE player_id = p.id) AS events,
-               le.name AS last_event,
-               EXISTS (SELECT 1 FROM axsuck.player_keys k WHERE k.player_id = p.id) AS key_bound
-        FROM axsuck.players p
-        LEFT JOIN last_event le ON le.player_id = p.id
-      `),
-      fastify.db.query('SELECT alias, player_id FROM axsuck.player_aliases'),
+    const { rows, aliases } = await playerIndex();
+    return lookupPlayerName(name, rows, aliases);
+  });
+
+  // Admins: likely duplicate players (lib/player-lookup.js duplicatePairs),
+  // without the pairs marked as different people.
+  fastify.get('/players/duplicates', async (req) => {
+    requireAdmin(fastify, req);
+    const [{ rows }, dismissed] = await Promise.all([
+      playerIndex(),
+      fastify.db.query('SELECT player_a, player_b FROM axsuck.player_not_duplicates'),
     ]);
-    return lookupPlayerName(name, rows.rows, aliases.rows);
+    return { pairs: duplicatePairs(rows, dismissed.rows.map((r) => [r.player_a, r.player_b])) };
+  });
+
+  // Admins: "not the same person" for a suggested pair.
+  fastify.post('/players/not-duplicates', async (req) => {
+    requireAdmin(fastify, req);
+    const ids = [String(req.body?.a || ''), String(req.body?.b || '')].sort();
+    if (!ids[0] || !ids[1] || ids[0] === ids[1]) throw fastify.httpErrors.badRequest('a and b must be two player IDs');
+    await fastify.db.query(
+      'INSERT INTO axsuck.player_not_duplicates (player_a, player_b) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+      ids,
+    );
+    return { ok: true };
   });
 
   fastify.get('/players/:id', async (req) => {

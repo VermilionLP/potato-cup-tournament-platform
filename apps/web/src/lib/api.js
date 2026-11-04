@@ -148,6 +148,9 @@ export const API = {
   touchPlayer: (id) => request(`/players/${enc(id)}/touch`, { method: 'POST', body: JSON.stringify({}) }),
   renamePlayer: (oldId, newId) => request(`/players/${enc(oldId)}/change-id`, { method: 'POST', body: JSON.stringify({ newId }) }),
   deletePlayer: (id) => request(`/players/${enc(id)}`, { method: 'DELETE' }),
+  // Admins: likely duplicate players and "not the same person"
+  getDuplicatePlayers: () => request('/players/duplicates'),
+  markNotDuplicate: (a, b) => request('/players/not-duplicates', { method: 'POST', body: JSON.stringify({ a, b }) }),
   mergePlayer: (id, targetId) => request(`/players/${enc(id)}/merge`, { method: 'POST', body: JSON.stringify({ targetId }) }),
   register: (tournamentId, player_id) => request(`/tournaments/${enc(tournamentId)}/register`, { method: 'POST', body: JSON.stringify({ player_id }) }),
   ladderEligibility: (tournamentId, player_id) => request(`/tournaments/${enc(tournamentId)}/ladder-eligibility?player_id=${encodeURIComponent(player_id)}`),

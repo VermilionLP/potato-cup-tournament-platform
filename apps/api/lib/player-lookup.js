@@ -74,3 +74,33 @@ export function lookupPlayerName(name, players = [], aliases = [], limit = 5) {
   const similar = scored.slice(0, limit).map(({ p, s, via }) => ({ ...p, closeness: s, ...(via ? { via } : {}) }));
   return { exact, alias, similar };
 }
+
+const pairKey = (a, b) => (a < b ? `${a}\u0000${b}` : `${b}\u0000${a}`);
+
+/**
+ * Likely duplicate players for admins: pairs whose IDs differ only in case /
+ * separators, a typo, or one containing the other (similarity above),
+ * closest first. `dismissed` holds [a, b] pairs marked as different people.
+ * Each pair suggests merging the player with fewer events into the other
+ * (`from` → `into`).
+ */
+export function duplicatePairs(players = [], dismissed = [], limit = 50) {
+  const skip = new Set(dismissed.map(([a, b]) => pairKey(a, b)));
+  const norm = players.map((p) => ({ p, n: normalizeName(p.id) })).filter((x) => x.n);
+  const pairs = [];
+  for (let i = 0; i < norm.length; i += 1) {
+    for (let j = i + 1; j < norm.length; j += 1) {
+      const a = norm[i].p;
+      const b = norm[j].p;
+      if (skip.has(pairKey(a.id, b.id))) continue;
+      const closeness = similarity(a.id, b.id);
+      if (closeness === null) continue;
+      const rank = (p) => [(p.events || 0), p.key_bound ? 1 : 0, p.last_seen_at ? new Date(p.last_seen_at).getTime() : 0];
+      const [ra, rb] = [rank(a), rank(b)];
+      const aWins = ra[0] !== rb[0] ? ra[0] > rb[0] : ra[1] !== rb[1] ? ra[1] > rb[1] : ra[2] >= rb[2];
+      pairs.push({ closeness, into: aWins ? a : b, from: aWins ? b : a });
+    }
+  }
+  pairs.sort((x, y) => x.closeness - y.closeness || (y.into.events + y.from.events) - (x.into.events + x.from.events) || x.into.id.localeCompare(y.into.id));
+  return pairs.slice(0, limit);
+}

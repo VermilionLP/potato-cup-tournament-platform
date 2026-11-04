@@ -11,6 +11,10 @@
   import PlayerTable from "$lib/components/players/PlayerTable.svelte";
   import PlayerCards from "$lib/components/players/PlayerCards.svelte";
   import PlayerProfileDialog from "$lib/components/players/PlayerProfileDialog.svelte";
+  import { lazy } from "$lib/lazy.js";
+
+  // Admins: likely duplicate players to merge (loaded for admins only).
+  const loadDuplicates = lazy(() => import("$lib/components/players/DuplicatePlayers.svelte"));
   import PlusIcon from "@lucide/svelte/icons/plus";
   import SearchIcon from "@lucide/svelte/icons/search";
   import ChevronDownIcon from "@lucide/svelte/icons/chevron-down";
@@ -91,6 +95,12 @@
       </Button>
     {/if}
   </div>
+
+  {#if isAdmin}
+    {#await loadDuplicates() then m}
+      <m.default onmerged={onchanged} />
+    {/await}
+  {/if}
 
   <div class="relative max-w-sm">
     <SearchIcon class="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/60 pointer-events-none" />

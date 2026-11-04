@@ -1,11 +1,14 @@
 // A small in-memory rate limit for write requests (no dependency; one API
 // process). Each client IP gets `limit` requests per `windowMs` per bucket;
 // past that the request is answered with 429 and Retry-After. Reads (GET,
-// HEAD, OPTIONS) and admin requests are not limited.
+// HEAD, OPTIONS) are limited only by rules marked `reads`; admin requests
+// are never limited.
 
 import { isAdminRequest } from './admin.js';
 
 export const RATE_LIMITS = [
+  // Sign-in name lookup (GET, asked while typing): plenty for people, not for scraping.
+  { bucket: 'player-lookup', reads: true, test: (path) => path === '/api/players/lookup', limit: 60, windowMs: 60_000 },
   // Binding device keys: a handful per minute is plenty.
   { bucket: 'player-key', test: (path) => /^\/api\/players\/[^/]+\/key$/.test(path), limit: 10, windowMs: 60_000 },
   // Everything else that writes: registration, votes, profiles, results.
@@ -23,8 +26,8 @@ export function createRateLimiter(rules = RATE_LIMITS, now = () => Date.now()) {
   }
 
   /** null when allowed, else { retryAfter } in seconds. */
-  function check(ip, path) {
-    const rule = rules.find((r) => r.test(path));
+  function check(ip, path, read = false) {
+    const rule = rules.find((r) => (!read || r.reads) && r.test(path));
     if (!rule) return null;
     const t = now();
     sweep(t);
@@ -46,10 +49,10 @@ const READS = new Set(['GET', 'HEAD', 'OPTIONS']);
 
 export function registerRateLimit(fastify, limiter = createRateLimiter()) {
   fastify.addHook('onRequest', async (req, reply) => {
-    if (READS.has(req.method) || !req.url.startsWith('/api/')) return;
+    if (!req.url.startsWith('/api/')) return;
     if (isAdminRequest(req)) return;
     const path = req.url.split('?')[0];
-    const blocked = limiter.check(req.ip, path);
+    const blocked = limiter.check(req.ip, path, READS.has(req.method));
     if (!blocked) return;
     reply.header('Retry-After', String(blocked.retryAfter));
     throw fastify.httpErrors.tooManyRequests(`操作太频繁，请 ${blocked.retryAfter} 秒后再试`);

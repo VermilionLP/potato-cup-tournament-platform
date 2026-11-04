@@ -10,7 +10,8 @@
   import TrophyIcon from "@lucide/svelte/icons/trophy";
   import ChevronDownIcon from "@lucide/svelte/icons/chevron-down";
   import { userState } from "$lib/user.svelte.js";
-  import { scrollToRow } from "$lib/expand-row.js";
+  import { PAGE_SIZE, scrollToRow, visibleRows } from "$lib/expand-row.js";
+  import ShowMoreRows from "$lib/components/ShowMoreRows.svelte";
 
   // `detail` (snippet, given the player) opens under the selected row;
   // clicking the row again closes it.
@@ -76,6 +77,12 @@
       return statsSortOrder === "asc" ? valA - valB : valB - valA;
     });
   });
+
+  // The first rows only, until asked for more (search shows everything).
+  let limit = $state(PAGE_SIZE);
+  let shownStatsPlayers = $derived(
+    visibleRows(sortedStatsPlayers, limit, { selectedId: selected?.id, searching: statsSearchQuery.trim() !== "" }),
+  );
 </script>
 
 <div class="bg-card border border-border rounded-xl shadow-sm overflow-hidden flex flex-col">
@@ -191,7 +198,7 @@
         </tr>
       </thead>
       <tbody class="divide-y divide-border/60">
-        {#each sortedStatsPlayers as p (p.id)}
+        {#each shownStatsPlayers as p (p.id)}
           <tr
             data-row={p.id}
             onclick={() => toggle(p)}
@@ -259,7 +266,7 @@
 
   <!-- Mobile player list -->
   <div class="sm:hidden divide-y divide-border/60">
-    {#each sortedStatsPlayers as p (p.id)}
+    {#each shownStatsPlayers as p (p.id)}
       <button
         type="button"
         data-row={p.id}
@@ -308,4 +315,5 @@
       <div class="py-10 text-center text-xs text-muted-foreground italic">没有匹配的选手。</div>
     {/if}
   </div>
+  <ShowMoreRows shown={shownStatsPlayers.length} total={sortedStatsPlayers.length} onmore={() => (limit = shownStatsPlayers.length + PAGE_SIZE)} onall={() => (limit = Infinity)} />
 </div>

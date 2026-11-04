@@ -26,6 +26,8 @@ apps/
 
 CI（`.github/workflows/ci.yml`）有两个任务：`test`（单元测试 + 前端构建）和 `smoke`（Ubuntu 24.04 + 临时 PostgreSQL：从头跑全部迁移、启动真实服务器、`scripts/smoke.sh` 检查页面 / 静态文件 / API / 文档 / 压缩，再跑 `e2e/` 里的 Playwright 浏览器测试：访客浏览赛事、管理员填报比分、选手报名）。推送 `ci/**` 分支也会跑 CI；`deps/**` 分支由 `lockfile.yml` 在 GitHub 上更新 `pnpm-lock.yaml`（本地连不上 npm 时用）。
 
+数据库每日备份：在服务器上运行一次 `bash /home/admin/suck/scripts/backup-db.sh --install-cron`（每天 04:17，保留 14 份，`--remove-cron` 取消）。
+
 `scripts/deploy.sh` 在构建后先用 `BACKGROUND_JOBS=off PORT=3101` 启动新版本跑 `scripts/smoke.sh`，通过才重启正式进程，重启后再跑一次；构建失败、试运行失败或重启后检查失败都会自动用本次部署前的代码备份回滚（数据库迁移不回滚，脚本会提示 pre-deploy 数据库备份的位置）。
 
 ## Commands

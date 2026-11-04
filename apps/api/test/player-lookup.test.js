@@ -45,3 +45,20 @@ test('exact, alias and similar players', () => {
   assert.deepEqual(lookupPlayerName('  ', players), { exact: null, alias: null, similar: [] });
   assert.deepEqual(lookupPlayerName('Brand New Name', players).similar, []);
 });
+
+test('duplicate pairs suggest merging the smaller record into the bigger one', async () => {
+  const { duplicatePairs } = await import('../lib/player-lookup.js');
+  const list = [
+    { id: 'Vermilion', events: 12 },
+    { id: 'vermilion', events: 1 },
+    { id: 'Vermillion', events: 0 },
+    { id: 'Someone', events: 4 },
+  ];
+  const pairs = duplicatePairs(list);
+  assert.deepEqual(pairs.map((p) => [p.from.id, p.into.id, p.closeness]), [
+    ['vermilion', 'Vermilion', 0],
+    ['Vermillion', 'Vermilion', 1],
+    ['Vermillion', 'vermilion', 1],
+  ]);
+  assert.equal(duplicatePairs(list, [['Vermilion', 'vermilion']]).length, 2, 'dismissed pairs are left out');
+});

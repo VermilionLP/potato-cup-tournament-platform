@@ -223,3 +223,28 @@ test('statistics: details open under the player row and close again', async () =
     await browser.close();
   }
 });
+
+test('admins merge a likely duplicate player from the player list', async () => {
+  const main = await makePlayer('Twin');
+  const copy = main.toLowerCase();
+  await api('POST', '/players', { id: copy, flag: 'cn', battle_tags: { qq: '123456' } });
+  await makeEvent({ players: [main] });
+  const pairs = (await api('GET', '/players/duplicates')).pairs;
+  assert.ok(pairs.some((p) => p.from.id === copy && p.into.id === main), 'suggested: the copy into the main record');
+  const { browser, page, errors } = await openPage({ admin: true });
+  try {
+    await page.goto(`${BASE}/players`);
+    await page.getByRole('button', { name: /疑似重复的选手/ }).click({ timeout: T });
+    await page.getByRole('button', { name: `合并到 ${main}` }).first().click();
+    await page.getByRole('button', { name: '合并', exact: true }).click({ timeout: T });
+    await page.getByText(`已将 ${copy} 合并到 ${main}`).waitFor({ timeout: T });
+    const left = (await api('GET', '/players')).map((p) => p.id);
+    assert.ok(left.includes(main) && !left.includes(copy), 'the copy is gone');
+    assert.deepEqual(errors, [], 'no uncaught errors in the page');
+  } catch (e) {
+    await page.screenshot({ path: 'e2e-duplicates.png', fullPage: true }).catch(() => {});
+    throw e;
+  } finally {
+    await browser.close();
+  }
+});

@@ -6,9 +6,12 @@
 #
 # Writes $BACKUP_DIR/db/suck-db-<date>-<label>.dump (pg_dump custom format,
 # compressed) and keeps the newest $KEEP dumps of that label.
-# deploy.sh runs it before every deploy; for a daily backup add to crontab
-# (crontab -e):
-#   17 4 * * * bash /home/admin/suck/scripts/backup-db.sh daily >> /home/admin/suck-backups/db/backup.log 2>&1
+# deploy.sh runs it before every deploy. For a daily backup (04:17 server
+# time, newest 14 kept) run once:
+#   bash /home/admin/suck/scripts/backup-db.sh --install-cron
+# which adds this line to the user's crontab (if it isn't there yet):
+#   17 4 * * * KEEP=14 bash /home/admin/suck/scripts/backup-db.sh daily >> /home/admin/suck-backups/db/backup.log 2>&1
+# `--remove-cron` takes it out again.
 #
 # Restore (stop the service first; replaces everything in schema axsuck):
 #   pm2 stop suck-tournament
@@ -19,6 +22,27 @@ set -euo pipefail
 
 TARGET="${TARGET:-/home/admin/suck}"
 BACKUP_DIR="${BACKUP_DIR:-/home/admin/suck-backups}"
+
+CRON_LINE="17 4 * * * KEEP=14 bash $TARGET/scripts/backup-db.sh daily >> $BACKUP_DIR/db/backup.log 2>&1"
+case "${1:-}" in
+  --install-cron)
+    command -v crontab >/dev/null || { echo "FAILED: crontab not found (dnf install cronie && systemctl enable --now crond)"; exit 1; }
+    mkdir -p "$BACKUP_DIR/db" && chmod 700 "$BACKUP_DIR/db"
+    if crontab -l 2>/dev/null | grep -Fq "scripts/backup-db.sh daily"; then
+      echo "daily backup already scheduled:"
+    else
+      { crontab -l 2>/dev/null || true; echo "$CRON_LINE"; } | crontab -
+      echo "daily backup scheduled:"
+    fi
+    crontab -l | grep -F "scripts/backup-db.sh daily"
+    exit 0
+    ;;
+  --remove-cron)
+    { crontab -l 2>/dev/null || true; } | { grep -Fv "scripts/backup-db.sh daily" || true; } | crontab -
+    echo "daily backup removed from crontab"
+    exit 0
+    ;;
+esac
 KEEP="${KEEP:-30}"
 LABEL="${1:-manual}"
 [[ "$LABEL" =~ ^[a-z0-9-]+$ ]] || { echo "label must be lowercase letters, digits or -"; exit 1; }

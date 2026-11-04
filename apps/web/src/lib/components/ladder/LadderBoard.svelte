@@ -12,7 +12,8 @@
   import TierBadge from "$lib/components/TierBadge.svelte";
   import Flag from "$lib/components/Flag.svelte";
   import { userState } from "$lib/user.svelte.js";
-  import { scrollToRow } from "$lib/expand-row.js";
+  import { PAGE_SIZE, scrollToRow, visibleRows } from "$lib/expand-row.js";
+  import ShowMoreRows from "$lib/components/ShowMoreRows.svelte";
   import ChevronDownIcon from "@lucide/svelte/icons/chevron-down";
 
   let {
@@ -25,6 +26,10 @@
     onselect,
     detail,
   } = $props();
+
+  // The first rows only, until asked for more (search shows everything).
+  let limit = $state(PAGE_SIZE);
+  let shownPlayers = $derived(visibleRows(filteredPlayers, limit, { selectedId: selected?.id, searching: query.trim() !== "" }));
 
   const toggle = (p) => onselect(selected?.id === p.id ? null : p);
   let me = $derived(userState.id ? players.find((p) => p.id === userState.id) : null);
@@ -122,7 +127,7 @@
           </tr>
         </thead>
         <tbody class="divide-y divide-border/60">
-          {#each filteredPlayers as p (p.id)}
+          {#each shownPlayers as p (p.id)}
             <tr
               data-row={p.id}
               onclick={() => toggle(p)}
@@ -192,7 +197,7 @@
 
     <!-- Mobile card list -->
     <div class="sm:hidden divide-y divide-border/60">
-      {#each filteredPlayers as p (p.id)}
+      {#each shownPlayers as p (p.id)}
         <button
           type="button"
           data-row={p.id}
@@ -242,5 +247,6 @@
         </div>
       {/if}
     </div>
+    <ShowMoreRows shown={shownPlayers.length} total={filteredPlayers.length} onmore={() => (limit = shownPlayers.length + PAGE_SIZE)} onall={() => (limit = Infinity)} />
   </Card.Content>
 </Card.Root>

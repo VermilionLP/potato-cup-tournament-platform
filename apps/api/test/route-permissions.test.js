@@ -29,7 +29,7 @@ const SELF_WRITES = new Set([
   'DELETE /tournaments/:id/matches/:matchId/report',
 ]);
 // Reads only admins may make.
-const ADMIN_READS = ['GET /players/:id/key', 'GET /tournaments/:id/wiki', 'GET /client-errors'];
+const ADMIN_READS = ['GET /players/:id/key', 'GET /players/duplicates', 'GET /tournaments/:id/wiki', 'GET /client-errors'];
 const body = { player_id: 'p1', id: 'p1', score1: 2, score2: 0, winner_id: 'p1', newId: 'p9', targetId: 'p2', name: 'X', battle_tags: { qq: '123456' } };
 
 test('every write needs an identity; a request without one writes nothing', async () => {

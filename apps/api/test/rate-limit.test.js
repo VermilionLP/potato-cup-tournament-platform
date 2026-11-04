@@ -30,3 +30,11 @@ test('old entries are swept', () => {
   limiter.check('2.2.2.2', '/api/x');
   assert.equal(limiter.size(), 1);
 });
+
+test('reads are limited only by rules marked reads', async () => {
+  const { createRateLimiter, RATE_LIMITS } = await import('../lib/rate-limit.js');
+  const limiter = createRateLimiter(RATE_LIMITS, () => 0);
+  for (let i = 0; i < 60; i += 1) assert.equal(limiter.check('1.2.3.4', '/api/players/lookup', true), null);
+  assert.ok(limiter.check('1.2.3.4', '/api/players/lookup', true).retryAfter > 0);
+  for (let i = 0; i < 100; i += 1) assert.equal(limiter.check('1.2.3.4', '/api/tournaments', true), null);
+});

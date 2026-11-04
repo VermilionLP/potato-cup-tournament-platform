@@ -1686,4 +1686,18 @@ export default {
   "我的天梯": "My ladder",
   "我的数据": "My stats",
   "点击选手，在下方展开详细数据": "Click a player to open their details below",
+  // Long boards and duplicate players
+  "显示 {0:n} / {1:n} 名": "Showing {0} of {1}",
+  "再显示 {0:n} 名": "Show {0} more",
+  "全部显示": "Show all",
+  "加载疑似重复选手失败:": "Couldn't load likely duplicates:",
+  "{0:n} 场赛事": "{0} events",
+  "· 已绑定设备": "· device bound",
+  "把「{0}」合并到「{1}」？ 「{2}」的报名、对阵、投票和天梯记录都会归到「{3}」，旧 ID 保留为曾用名。此操作不能撤销。": "Merge \"{0}\" into \"{1}\"? Registrations, matches, votes and ladder games of \"{2}\" move to \"{3}\", and the old ID is kept as a former name. This can't be undone.",
+  "合并": "Merge",
+  "疑似重复的选手（{0:n} 组）": "Likely duplicate players ({0})",
+  "ID 只差大小写、空格 / 下划线或一两个字母的选手，可能是同一个人注册了两次。默认把参赛少的合并到参赛多的；不是同一人就点「不是同一人」，以后不再提示。": "Players whose IDs differ only in case, spaces / underscores or a letter or two may be one person who signed up twice. The record with fewer events merges into the one with more; if they are different people, choose \"Not the same person\" and the pair won't be suggested again.",
+  "反过来合并": "Merge the other way",
+  "反向合并": "Reverse",
+  "不是同一人": "Not the same person",
 };
