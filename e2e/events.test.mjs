@@ -340,6 +340,7 @@ test('admins change event settings in the settings dialog; the header shows tags
     }
     assert.equal((await api('GET', `/tournaments/${id}`)).game_mode, 'sb');
     await page.keyboard.press('Escape');
+    await dialog.waitFor({ state: 'hidden', timeout: T });
     assert.equal(await page.locator('select[aria-label="比赛模式"], select').filter({ hasText: 'RB' }).count(), 0, 'no selects left in the header');
     await page.screenshot({ path: 'e2e-shot-event-header.png' });
     assert.deepEqual(errors, [], 'no uncaught errors in the page');
