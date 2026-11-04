@@ -1,13 +1,13 @@
 <script>
-  // Header tag for the ladder limit. Admins pick it (LadderLimitPicker) and
-  // save; others see "天梯分 ≤ 3300" / "黄金及以下" when one is set.
+  // The ladder limit: a tag in the header (「限 黄金及以下」), or (editable, in
+  // EventSettingsDialog for admins) LadderLimitPicker that saves. Tag: "天梯分 ≤ 3300" / "黄金及以下" when one is set.
   import { toast } from "svelte-sonner";
   import { API } from "#lib/api.js";
   import { DEFAULT_LIMIT_MMR, ladderLimitLabel, limitChoice, limitFields, limitProblem } from "#lib/ladder-limit.js";
   import { gameModeInfo, vehiclePoolLabel } from "#lib/tournament.js";
   import LadderLimitPicker from "./LadderLimitPicker.svelte";
 
-  let { tournament = $bindable(), tid, isAdmin = false } = $props();
+  let { tournament = $bindable(), tid, isAdmin = false, editable = false } = $props();
 
   let label = $derived(ladderLimitLabel(tournament));
   let division = $derived(`${gameModeInfo(tournament?.game_mode).code} · ${vehiclePoolLabel(tournament?.vehicle_pool) || "全部"}`);
@@ -40,13 +40,12 @@
   }
 </script>
 
-{#if isAdmin}
-  <span class="inline-flex items-center gap-1" {title}>
+{#if editable && isAdmin}
+  <span class="inline-flex flex-wrap items-center gap-1.5" {title}>
     <LadderLimitPicker
       bind:choice
       bind:mmr
       disabled={saving}
-      compact
       onchoice={(c) => {
         if (c !== "mmr") save();
       }}

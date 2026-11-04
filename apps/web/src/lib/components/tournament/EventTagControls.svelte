@@ -1,7 +1,8 @@
 <script>
-  // The editable tags of an event (admins get selects, others tags): tier
-  // and kind, game mode and event type. The Ban / Pick template is chosen on
-  // the 载具池 tab (PoolTemplatePicker).
+  // An event's tier and kind, game mode and event type: read-only tags in
+  // the header, or (editable, in EventSettingsDialog for admins) labelled
+  // selects that save on change. The Ban / Pick template is chosen on the
+  // 载具池 tab (PoolTemplatePicker).
   import { toast } from "svelte-sonner";
   import { API } from "#lib/api.js";
   import {
@@ -18,7 +19,7 @@
     vehiclePoolLabel,
   } from "#lib/tournament.js";
 
-  let { tournament = $bindable(), tid, isAdmin = false } = $props();
+  let { tournament = $bindable(), tid, isAdmin = false, editable = false } = $props();
 
   function adminOnly() {
     if (isAdmin) return true;
@@ -76,68 +77,53 @@
 
 </script>
 
-{#if isAdmin}
-  <select
-    aria-label="赛事等级"
-    title="赛事等级"
-    value={tournament.tier || ""}
-    disabled={savingTier}
-    onchange={(e) => saveTier("tier", e.currentTarget.value)}
-    class="h-6 rounded-md border px-1.5 text-xs font-bold cursor-pointer disabled:opacity-60 {TIER_TAG[tournament.tier] || 'border-border bg-background text-foreground'}"
-  >
-    <option value="">未分级</option>
-    {#each EVENT_TIERS as tier (tier.id)}
-      <option value={tier.id}>{tier.name}</option>
-    {/each}
-  </select>
-  <select
-    aria-label="赛事性质"
-    title="赛事性质"
-    value={tournament.event_kind || ""}
-    disabled={savingTier}
-    onchange={(e) => saveTier("event_kind", e.currentTarget.value)}
-    class="h-6 rounded-md border border-border bg-background px-1.5 text-xs font-semibold text-foreground cursor-pointer disabled:opacity-60"
-  >
-    <option value="">未设置性质</option>
-    {#each EVENT_KINDS as kind (kind.id)}
-      <option value={kind.id}>{kind.name}</option>
-    {/each}
-  </select>
-{:else if tierTagText(tournament)}
-  <span class="rounded-md border border-border bg-muted/60 px-2 py-0.5 font-bold text-muted-foreground" title="赛事等级">{tierTagText(tournament)}</span>
-{/if}
-{#if isAdmin}
-  <select
-    aria-label="比赛模式"
-    title="比赛模式"
-    value={tournament.game_mode || "rb"}
-    disabled={savingMode}
-    onchange={(e) => saveGameMode(e.currentTarget.value)}
-    class="h-6 rounded-md border border-border bg-background px-1.5 text-xs font-mono font-bold text-foreground cursor-pointer disabled:opacity-60"
-  >
-    {#each GAME_MODES as mode (mode.id)}
-      <option value={mode.id} title={mode.name}>{mode.code}</option>
-    {/each}
-  </select>
+{#if editable && isAdmin}
+  {@const field = "h-9 w-full rounded-md border border-border bg-background px-2 text-sm text-foreground cursor-pointer disabled:opacity-60"}
+  <div class="grid grid-cols-2 gap-3">
+    <label class="space-y-1">
+      <span class="block text-[11px] font-semibold text-muted-foreground">赛事等级</span>
+      <select value={tournament.tier || ""} disabled={savingTier} onchange={(e) => saveTier("tier", e.currentTarget.value)} class="{field} font-bold">
+        <option value="">未分级</option>
+        {#each EVENT_TIERS as tier (tier.id)}
+          <option value={tier.id}>{tier.name}</option>
+        {/each}
+      </select>
+    </label>
+    <label class="space-y-1">
+      <span class="block text-[11px] font-semibold text-muted-foreground">赛事性质</span>
+      <select value={tournament.event_kind || ""} disabled={savingTier} onchange={(e) => saveTier("event_kind", e.currentTarget.value)} class={field}>
+        <option value="">未设置</option>
+        {#each EVENT_KINDS as kind (kind.id)}
+          <option value={kind.id}>{kind.name}</option>
+        {/each}
+      </select>
+    </label>
+    <label class="space-y-1">
+      <span class="block text-[11px] font-semibold text-muted-foreground">比赛模式</span>
+      <select value={tournament.game_mode || "rb"} disabled={savingMode} onchange={(e) => saveGameMode(e.currentTarget.value)} class="{field} font-mono font-bold">
+        {#each GAME_MODES as mode (mode.id)}
+          <option value={mode.id}>{mode.code} · {mode.name}</option>
+        {/each}
+      </select>
+    </label>
+    <label class="space-y-1">
+      <span class="block text-[11px] font-semibold text-muted-foreground">比赛类型</span>
+      <select value={tournament.vehicle_pool} disabled={savingPool} onchange={(e) => saveEventPool(e.currentTarget.value)} class={field}>
+        {#if !vehiclePoolLabel(tournament.vehicle_pool)}
+          <option value={tournament.vehicle_pool}>未分类</option>
+        {/if}
+        {#each VEHICLE_POOLS as pool (pool.id)}
+          <option value={pool.id}>{pool.name}</option>
+        {/each}
+      </select>
+    </label>
+  </div>
 {:else}
+  {#if tierTagText(tournament)}
+    <span class="rounded-md border px-2 py-0.5 font-bold {TIER_TAG[tournament.tier] || 'border-border bg-muted/60 text-muted-foreground'}" title="赛事等级">{tierTagText(tournament)}</span>
+  {/if}
   <span class="rounded-md border border-border bg-muted/60 px-2 py-0.5 font-mono font-bold text-foreground/80" title={gameModeTitle(tournament.game_mode)}>{gameModeLabel(tournament.game_mode)}</span>
-{/if}
-{#if isAdmin}
-  <select
-    aria-label="比赛类型"
-    title="比赛类型"
-    value={tournament.vehicle_pool}
-    disabled={savingPool}
-    onchange={(e) => saveEventPool(e.currentTarget.value)}
-    class="h-6 rounded-md border px-1.5 text-xs font-semibold cursor-pointer disabled:opacity-60 {POOL_TAG[tournament.vehicle_pool] || 'border-border bg-background text-foreground'}"
-  >
-    {#if !vehiclePoolLabel(tournament.vehicle_pool)}
-      <option value={tournament.vehicle_pool}>未分类</option>
-    {/if}
-    {#each VEHICLE_POOLS as pool (pool.id)}
-      <option value={pool.id}>{pool.name}</option>
-    {/each}
-  </select>
-{:else if vehiclePoolLabel(tournament.vehicle_pool)}
-  <span class="rounded-md border border-border bg-muted/60 px-2 py-0.5 font-semibold text-muted-foreground">{vehiclePoolLabel(tournament.vehicle_pool)}</span>
+  {#if vehiclePoolLabel(tournament.vehicle_pool)}
+    <span class="rounded-md border px-2 py-0.5 font-semibold {POOL_TAG[tournament.vehicle_pool] || 'border-border bg-muted/60 text-muted-foreground'}">{vehiclePoolLabel(tournament.vehicle_pool)}</span>
+  {/if}
 {/if}

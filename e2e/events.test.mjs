@@ -323,3 +323,30 @@ test('admins create an event from the wizard in one step (the rest has defaults)
     await browser.close();
   }
 });
+
+test('admins change event settings in the settings dialog; the header shows tags only', async () => {
+  const id = await makeEvent();
+  const { browser, page, errors } = await openPage({ admin: true });
+  try {
+    await page.goto(`${BASE}/tournament/${id}`);
+    await page.getByRole('button', { name: '设置' }).click({ timeout: T });
+    const dialog = page.getByRole('dialog');
+    await dialog.getByText('赛事设置').waitFor({ timeout: T });
+    await page.screenshot({ path: 'e2e-shot-event-settings.png' });
+    await dialog.getByLabel('比赛模式').selectOption('sb');
+    for (let i = 0; i < 25; i += 1) {
+      if ((await api('GET', `/tournaments/${id}`)).game_mode === 'sb') break;
+      await page.waitForTimeout(200);
+    }
+    assert.equal((await api('GET', `/tournaments/${id}`)).game_mode, 'sb');
+    await page.keyboard.press('Escape');
+    assert.equal(await page.locator('select[aria-label="比赛模式"], select').filter({ hasText: 'RB' }).count(), 0, 'no selects left in the header');
+    await page.screenshot({ path: 'e2e-shot-event-header.png' });
+    assert.deepEqual(errors, [], 'no uncaught errors in the page');
+  } catch (e) {
+    await page.screenshot({ path: 'e2e-settings.png', fullPage: true }).catch(() => {});
+    throw e;
+  } finally {
+    await browser.close();
+  }
+});

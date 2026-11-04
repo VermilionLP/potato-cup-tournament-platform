@@ -305,17 +305,16 @@
         onunregister={() => doUnregister(userState.id)}
         onreload={load}
         onedittime={() => timeEditDialog?.start()}
+        oncheckinchange={setCheckin}
       />
       {#if isAdmin}
         <StatusControls
           status={tournament.status}
           {startBlocked}
           canStart={!startBlocked}
-          checkinEnabled={Boolean(tournament.checkin?.enabled)}
           consoleHref="/tournament/{encodeURIComponent(tid)}/console"
           onendvoting={() => finalTimeDialog?.start()}
           onstatus={onStatus}
-          oncheckinchange={setCheckin}
         />
       {/if}
     </div>

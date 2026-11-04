@@ -1724,4 +1724,17 @@ export default {
   "按本场比赛的天梯（{0} · {1}）计算；超过上限、未定级或定级中（不足 10 场）的选手不能自行报名，管理员仍可代报。": "Uses this event's ladder ({0} · {1}); players above the limit, unrated or in placement (under 10 games) can't sign up themselves; admins can still add them.",
   "未命名": "Untitled",
   "{0} · {1} · 前 {2:n} 晋级": "{0} · {1} · top {2} advance",
+  // Event settings dialog
+  "修改等级、模式、类型、天梯限制、签到和奖金积分": "Change tier, mode, type, ladder limit, check-in and points / prizes",
+  "设置": "Settings",
+  "赛事设置": "Event settings",
+  "· 每一项修改后立即保存（积分表点「保存积分」）。": "· Every change saves at once (the points table saves with \"Save points\").",
+  "分类": "Classification",
+  "等级和性质用于统计和 Wiki 导出；模式和类型决定天梯分榜和载具池。": "Tier and kind are used for statistics and the wiki export; mode and type pick the ladder division and the vehicle pool.",
+  "报名": "Sign-ups",
+  "赛事已开始，不能再修改签到设置。": "The event has started; check-in can no longer be changed.",
+  "随时可以修改，赛事结束后的积分会重新计算。": "Can be changed at any time; points of a finished event are recalculated.",
+  "这场赛事还不计入积分榜；保存后计入。": "This event is not on the leaderboard yet; saving adds it.",
+  "重新打开比赛后可以继续修改比分，确定吗？": "Reopen the event so scores can be changed again?",
+  "改回时间投票": "Back to time vote",
 };

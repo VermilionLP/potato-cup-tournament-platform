@@ -1,12 +1,14 @@
 <script>
   // Event page header: title (editable by admins), status and the sign-up
-  // button, the tag row in two groups (settings: EventTagControls, the
-  // format and the ladder limit; rewards: points and prizes), facts, match time (with check-in)
-  // and points settings.
+  // button, one row of read-only tags in two groups (settings: tier, mode,
+  // type, format, ladder limit; rewards: points and prizes), the player
+  // count and the match time (with check-in). Admins change the tags and
+  // points in EventSettingsDialog (the 设置 button, loaded for admins only).
   import { goto } from "$app/navigation";
   import { toast } from "svelte-sonner";
   import { API } from "#lib/api.js";
-  import { POINTS_PRESETS, cleanTable, copyTable, currentSeason, placeName, pointsTableProblem, prizeRows, prizeTotal } from "#lib/points.js";
+  import { placeName, prizeRows, prizeTotal } from "#lib/points.js";
+  import { lazy } from "#lib/lazy.js";
   import { eventFormatLabel } from "#lib/tournament.js";
   import { Button } from "#lib/components/ui/button/index.js";
   import { Input } from "#lib/components/ui/input/index.js";
@@ -14,7 +16,7 @@
   import MatchTime from "#lib/components/MatchTime.svelte";
   import EventTagControls from "./EventTagControls.svelte";
   import LadderLimitTag from "./LadderLimitTag.svelte";
-  import PointsEditor from "#lib/components/PointsEditor.svelte";
+  import SettingsIcon from "@lucide/svelte/icons/settings";
   import ArrowLeftIcon from "@lucide/svelte/icons/arrow-left";
   import PencilIcon from "@lucide/svelte/icons/pencil";
   import TrophyIcon from "@lucide/svelte/icons/trophy";
@@ -35,7 +37,13 @@
     onunregister,
     onreload,
     onedittime,
+    oncheckinchange,
   } = $props();
+
+  // Admins: the settings dialog (tags, ladder limit, check-in, points).
+  const loadSettings = lazy(() => import("./EventSettingsDialog.svelte"));
+  let settings = $state(null);
+  const openSettings = (section = "") => settings?.open(section);
   let canSignUp = $derived(tournament?.status === "registration" && !tournament?.source_url);
 
   let hasPoints = $derived(Boolean(tournament?.points_table?.length));
@@ -71,56 +79,6 @@
       toast.error(e.message);
     } finally {
       savingTitle = false;
-    }
-  }
-
-  // Potato Cup points (积分榜): admins edit an event's table at any time.
-  let editingPoints = $state(false);
-  let pointsDraft = $state([]);
-  let pointsSeasonDraft = $state("");
-  let pointsKindDraft = $state("weekly");
-  let pointsInviteDraft = $state(false);
-  let savingPoints = $state(false);
-
-  async function openPointsEdit() {
-    pointsDraft = copyTable(tournament?.points_table?.length ? tournament.points_table : POINTS_PRESETS[0].table);
-    pointsSeasonDraft = tournament?.points_season || currentSeason();
-    if (!tournament?.points_season) {
-      // Not on the leaderboard yet: default to the admins' current season.
-      try {
-        const res = await API.getPointsSeasons();
-        if (res.current) pointsSeasonDraft = res.current;
-      } catch {
-        // keep the calendar year
-      }
-    }
-    pointsKindDraft = tournament?.points_kind === "monthly" ? "monthly" : "weekly";
-    pointsInviteDraft = Boolean(tournament?.points_invite);
-    editingPoints = true;
-  }
-
-  async function savePoints(clear = false) {
-    if (!adminOnly()) return;
-    if (!clear) {
-      const problem = pointsTableProblem(pointsDraft, pointsSeasonDraft);
-      if (problem) return toast.error(problem);
-    }
-    savingPoints = true;
-    try {
-      await API.updateTournament(
-        tid,
-        clear
-          ? { points_table: null }
-          : { points_table: cleanTable(pointsDraft), points_season: pointsSeasonDraft.trim(), points_kind: pointsKindDraft, points_invite: pointsInviteDraft },
-      );
-      // Reload: awarded points are computed with the event.
-      await onreload?.();
-      editingPoints = false;
-      toast.success(clear ? "已设为不计入积分榜" : "积分已保存");
-    } catch (e) {
-      toast.error(e.message);
-    } finally {
-      savingPoints = false;
     }
   }
 </script>
@@ -175,9 +133,9 @@
     {/if}
   </div>
 
-  <!-- Event tags: settings (tier, mode, type, format, detail), then rewards (points, prizes). -->
+  <!-- Event tags: settings (tier, mode, type, format, ladder limit), then rewards (points, prizes); admins: 设置. -->
   <div class="flex flex-wrap items-center gap-x-1.5 gap-y-1.5 pt-1 text-xs">
-    <EventTagControls bind:tournament {tid} {isAdmin} />
+    <EventTagControls bind:tournament {tid} />
     <span class="rounded-md border border-border bg-muted/60 px-2 py-0.5 font-semibold text-muted-foreground">{isSwiss && !isTwoStage ? `瑞士轮 · ${swissRoundsLabel}` : eventFormatLabel(tournament)}</span>
     {#if isTwoStage}
       <span class="text-muted-foreground">{tournament.swiss_group_size ? `每组 ${tournament.swiss_group_size} 人` : "不分组"}{hasGroupBrackets ? "" : ` · ${swissRoundsLabel}`} · 每组前 {tournament.advance_per_group} 名晋级</span>
@@ -185,9 +143,9 @@
       <span class="text-muted-foreground">败者晋级</span>
     {/if}
     {#if !tournament.source_url}
-      <LadderLimitTag bind:tournament {tid} {isAdmin} />
+      <LadderLimitTag bind:tournament {tid} />
     {/if}
-    {#if hasPoints || prizePool || isAdmin}
+    {#if hasPoints || prizePool}
       <span class="hidden sm:inline-block h-4 w-px bg-border mx-1" aria-hidden="true"></span>
     {/if}
     {#if hasPoints}
@@ -208,41 +166,26 @@
     {#if isAdmin}
       <button
         type="button"
-        onclick={() => (editingPoints ? (editingPoints = false) : openPointsEdit())}
-        class="text-[11px] font-semibold text-primary hover:underline cursor-pointer"
+        onclick={() => openSettings()}
+        class="inline-flex items-center gap-1 rounded-md border border-dashed border-border px-2 py-0.5 font-semibold text-muted-foreground hover:border-primary/50 hover:text-primary transition-colors cursor-pointer"
+        title="修改等级、模式、类型、天梯限制、签到和奖金积分"
       >
-        {editingPoints ? "收起奖金与积分" : hasPoints ? "编辑奖金与积分" : "设置奖金与积分"}
+        <SettingsIcon class="h-3 w-3" />
+        设置
       </button>
     {/if}
   </div>
 
-  <!-- Facts: ID, players, date. -->
+  <!-- Facts: players, voters, date of an imported event (ID and creation date are in 设置). -->
   <p class="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground">
-    {#if isAdmin}<span class="font-mono">ID: {tournament.id}</span>{/if}
     <span>选手 <span class="font-semibold text-foreground tabular-nums">{tournament.player_count || 0} / {tournament.player_capacity}</span></span>
     {#if tournament.status === "voting"}
       <span>投票 <span class="font-semibold text-foreground tabular-nums">{tournament.voter_count || 0}</span> 人</span>
     {/if}
     {#if tournament.source_url}
       <span>比赛日期 {tournament.scheduled_time || "未知"}</span>
-    {:else if isAdmin}
-      <span>创建于 {new Date(tournament.created_at).toLocaleDateString("zh-CN")}</span>
     {/if}
   </p>
-
-  {#if isAdmin && editingPoints}
-    <div class="mt-3 max-w-xl space-y-2 rounded-xl border border-border bg-card/60 p-3">
-      <div class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">奖金与积分设置</div>
-      <PointsEditor bind:table={pointsDraft} bind:season={pointsSeasonDraft} bind:kind={pointsKindDraft} bind:invite={pointsInviteDraft} compact />
-      <div class="flex flex-wrap items-center gap-2">
-        <Button size="sm" class="h-8 text-xs cursor-pointer" disabled={savingPoints} onclick={() => savePoints(false)}>保存</Button>
-        {#if hasPoints}
-          <Button variant="outline" size="sm" class="h-8 text-xs cursor-pointer" disabled={savingPoints} onclick={() => savePoints(true)}>不计入积分榜</Button>
-        {/if}
-        <Button variant="outline" size="sm" class="h-8 text-xs cursor-pointer" disabled={savingPoints} onclick={() => (editingPoints = false)}>取消</Button>
-      </div>
-    </div>
-  {/if}
 
   {#if tournament.source_url}
     <a
@@ -286,3 +229,9 @@
     </MatchTime>
   {/if}
 </div>
+
+{#if isAdmin}
+  {#await loadSettings() then m}
+    <m.default bind:this={settings} bind:tournament {tid} {oncheckinchange} {onreload} />
+  {/await}
+{/if}
