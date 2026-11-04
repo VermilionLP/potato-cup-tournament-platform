@@ -209,10 +209,12 @@ test('statistics: details open under the player row and close again', async () =
     await page.goto(`${BASE}/stats`);
     await page.getByRole('button', { name: '我的数据' }).click({ timeout: T });
     const row = page.locator(`tr[data-row="${a}"]`);
-    await page.getByText(`ID: ${a}`).waitFor({ timeout: T });
+    // The table (wide screens) holds the open details; the phone list is hidden.
+    const details = page.locator('table').getByText(`ID: ${a}`);
+    await details.waitFor({ timeout: T });
     assert.equal(await row.getAttribute('aria-expanded'), 'true');
     await row.click();
-    await page.getByText(`ID: ${a}`).waitFor({ state: 'detached', timeout: T });
+    await details.waitFor({ state: 'detached', timeout: T });
     assert.deepEqual(errors, [], 'no uncaught errors in the page');
   } catch (e) {
     await page.screenshot({ path: 'e2e-stats-expand.png', fullPage: true }).catch(() => {});
