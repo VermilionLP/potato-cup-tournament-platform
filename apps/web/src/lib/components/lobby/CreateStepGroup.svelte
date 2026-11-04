@@ -10,11 +10,7 @@
   let preview = $derived(groupPreview(form));
 </script>
 
-<section class="space-y-3 rounded-xl border border-border/60 bg-background/30 p-3">
-  <div class="flex items-center justify-between gap-2">
-    <div class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">第一阶段 · 小组赛</div>
-    <span class="text-[10px] text-muted-foreground">开赛时按种子蛇形分组</span>
-  </div>
+<section class="space-y-4">
   <div class="space-y-1.5">
     <span class="block text-xs text-foreground/80">小组赛赛制</span>
     <Segmented

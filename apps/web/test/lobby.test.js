@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { createEventBody, createSteps, eventIdFromName, groupPreview, newEventForm, stepError } from "../src/lib/create-event.js";
+import { createEventBody, createSteps, eventIdFromName, firstProblem, groupPreview, newEventForm, stepError, stepSummary } from "../src/lib/create-event.js";
 import { actionLabel, countdownLabel, displayCapacity, relativeDay, statusLabel, statusStyle } from "../src/lib/lobby.js";
 
 test("relativeDay counts calendar days both ways", () => {
@@ -28,9 +28,9 @@ test("countdownLabel and capacity labels", () => {
 
 test("the wizard has two extra pages for two-stage events", () => {
   const form = newEventForm("2026");
-  assert.deepEqual(createSteps(form).map((s) => s.id), ["basics", "format", "extras"]);
+  assert.deepEqual(createSteps(form).map((s) => s.id), ["basics", "format", "rules", "points"]);
   form.format = "two_stage";
-  assert.deepEqual(createSteps(form).map((s) => s.id), ["basics", "format", "group", "playoff", "extras"]);
+  assert.deepEqual(createSteps(form).map((s) => s.id), ["basics", "format", "group", "playoff", "rules", "points"]);
   assert.equal(form.pointsSeason, "2026");
 });
 
@@ -90,4 +90,28 @@ test("createEventBody: single stage and two-stage requests", () => {
   assert.equal(two.body.points_season, "2026");
 
   assert.match(createEventBody({ ...newEventForm(), name: "x", format: "two_stage", groupSize: 1 }).error, /留空表示不分组/);
+});
+
+test("wizard step summaries and the first problem", () => {
+  const form = newEventForm("2026");
+  assert.deepEqual(firstProblem(form), { step: "basics", error: "请输入赛事名称" });
+  form.name = "Potato Cup Weekly #41";
+  assert.equal(firstProblem(form), null);
+  assert.equal(stepSummary(form, "basics"), "Potato Cup Weekly #41 · 128 人");
+  assert.equal(stepSummary(form, "format"), "单败淘汰");
+  assert.equal(stepSummary(form, "rules"), "Ban / Pick");
+  assert.match(stepSummary(form, "points"), /^2026 周赛/);
+  form.checkinEnabled = true;
+  form.ladderLimit = "gold";
+  assert.equal(stepSummary(form, "rules"), "Ban / Pick · 签到 · 黄金及以下");
+  form.ladderLimit = "mmr";
+  form.ladderMaxMmr = 5;
+  assert.equal(firstProblem(form).step, "rules");
+  form.ladderLimit = "";
+  form.pointsSeason = "x";
+  assert.equal(firstProblem(form).step, "points");
+  form.pointsEnabled = false;
+  assert.equal(stepSummary(form, "points"), "不计入积分榜");
+  form.format = "two_stage";
+  assert.equal(stepSummary(form, "group"), "瑞士轮 · 每组 4 人 · 前 2 晋级");
 });

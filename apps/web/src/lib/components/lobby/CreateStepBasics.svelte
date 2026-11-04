@@ -8,11 +8,10 @@
   let { form = $bindable() } = $props();
 </script>
 
-<section class="space-y-3 rounded-xl border border-border/60 bg-background/30 p-3">
-  <div class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">基本信息</div>
+<section class="space-y-4">
   <div class="space-y-1.5">
     <label for="create-name-input" class="text-xs font-semibold text-foreground/80">赛事名称</label>
-    <Input id="create-name-input" bind:value={form.name} placeholder="例如 Potato Cup Weekly #40" class="bg-background border-border text-foreground" />
+    <Input id="create-name-input" bind:value={form.name} placeholder="例如 Potato Cup Weekly #40" class="h-10 bg-background border-border text-base font-semibold text-foreground" />
   </div>
   <div class="grid grid-cols-[6.5rem_1fr] gap-3">
     <div class="space-y-1.5">

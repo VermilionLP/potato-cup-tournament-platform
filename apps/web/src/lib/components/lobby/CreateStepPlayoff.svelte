@@ -8,8 +8,7 @@
   let preview = $derived(groupPreview(form));
 </script>
 
-<section class="space-y-3 rounded-xl border border-border/60 bg-background/30 p-3">
-  <div class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">第二阶段 · 淘汰赛</div>
+<section class="space-y-4">
   <div class="space-y-1.5">
     <span class="block text-xs text-foreground/80">淘汰赛赛制</span>
     <Segmented

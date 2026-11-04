@@ -281,3 +281,45 @@ test('live updates: a result elsewhere shows up as a small delta, not a full rel
     await browser.close();
   }
 });
+
+test('admins create an event from the wizard in one step (the rest has defaults)', async () => {
+  const name = `E2E Wizard ${Math.random().toString(36).slice(2, 7)}`;
+  const admin = await makePlayer('wiz');
+  const { browser, page, errors } = await openPage({ admin: true, player: admin });
+  try {
+    await page.goto(`${BASE}/`);
+    await page.getByRole('button', { name: '创建赛事' }).first().click({ timeout: T });
+    const dialog = page.getByRole('dialog');
+    await dialog.getByText('基本信息').first().waitFor({ timeout: T });
+    await page.screenshot({ path: 'e2e-shot-wizard-basics.png' });
+    // Every step can be visited; the step list shows what each is set to.
+    await dialog.getByRole('button', { name: /^2\s*赛制/ }).click();
+    await page.screenshot({ path: 'e2e-shot-wizard-format.png' });
+    await dialog.getByRole('button', { name: /规则/ }).first().click();
+    await page.screenshot({ path: 'e2e-shot-wizard-rules.png' });
+    // Without a name the first problem opens its step.
+    await dialog.getByRole('button', { name: '创建赛事' }).click();
+    await page.locator('#create-name-input').fill(name);
+    await dialog.getByRole('button', { name: '创建赛事' }).click();
+    const id = name.toLowerCase().replace(/[^a-z0-9]/g, '');
+    let event = null;
+    for (let i = 0; i < 30 && !event; i += 1) {
+      event = await api('GET', `/tournaments/${id}`).catch(() => null);
+      if (!event) await page.waitForTimeout(200);
+    }
+    assert.ok(event, 'the event exists');
+    assert.equal(event.format, 'single_elim');
+    assert.equal(event.banpick_enabled, true);
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.getByRole('button', { name: '创建赛事' }).first().click();
+    await page.getByRole('dialog').getByText('基本信息').first().waitFor({ timeout: T });
+    await page.screenshot({ path: 'e2e-shot-wizard-phone.png' });
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= 390), true, 'no sideways scrolling');
+    assert.deepEqual(errors, [], 'no uncaught errors in the page');
+  } catch (e) {
+    await page.screenshot({ path: 'e2e-wizard.png', fullPage: true }).catch(() => {});
+    throw e;
+  } finally {
+    await browser.close();
+  }
+});

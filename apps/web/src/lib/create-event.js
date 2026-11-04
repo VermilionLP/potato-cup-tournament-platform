@@ -2,9 +2,9 @@
 // the request body. Pure functions over a plain form object so they can be
 // tested with node --test (the dialog keeps the form in $state).
 
-import { DEFAULT_LIMIT_MMR, limitChoice, limitFields, limitProblem } from "./ladder-limit.js";
+import { DEFAULT_LIMIT_MMR, ladderLimitLabel, limitChoice, limitFields, limitProblem } from "./ladder-limit.js";
 import { MAX_SWISS_ROUNDS, MIN_SWISS_ROUNDS, groupBracketProblem, isValidSwissRounds } from "./tournament.js";
-import { POINTS_PRESETS, cleanTable, copyTable, currentSeason, pointsTableProblem } from "./points.js";
+import { POINTS_PRESETS, cleanTable, copyTable, currentSeason, pointsTableProblem, prizeTotal } from "./points.js";
 
 /** A fresh form; `season` is the admins' current points season, if known. */
 export function newEventForm(season = "") {
@@ -131,19 +131,69 @@ export function autoRoundsBasis(form) {
 /** Event ID made from the name: lower-case letters and digits. */
 export const eventIdFromName = (name) => String(name || "").trim().toLowerCase().replace(/[^a-z0-9]/g, "");
 
-/** Wizard steps: basics, format, one page per stage of a two-stage event, extras. */
+/**
+ * Wizard steps: basics, format, one page per stage of a two-stage event,
+ * rules (Ban / Pick, check-in, ladder limit) and points / prizes.
+ */
 export function createSteps(form) {
   return [
     { id: "basics", label: "基本信息" },
     { id: "format", label: "赛制" },
     ...(isTwoStage(form)
       ? [
-          { id: "group", label: "第一阶段 · 小组赛" },
-          { id: "playoff", label: "第二阶段 · 淘汰赛" },
+          { id: "group", label: "小组赛" },
+          { id: "playoff", label: "淘汰赛" },
         ]
       : []),
-    { id: "extras", label: "载具与确认" },
+    { id: "rules", label: "规则" },
+    { id: "points", label: "奖金与积分" },
   ];
+}
+
+const FORMAT_NAMES = { single_elim: "单败淘汰", double_elim: "双败淘汰", swiss: "瑞士轮", two_stage: "小组赛 + 淘汰赛" };
+const roundsText = (form) => (form.swissRoundsMode === "auto" ? "单循环" : `${form.swissRounds} 轮`);
+
+/** One line under each step in the wizard's step list: what is set there. */
+export function stepSummary(form, id) {
+  if (id === "basics") {
+    const parts = [form.name.trim() || "未命名", `${form.capacity} 人`];
+    return parts.join(" · ");
+  }
+  if (id === "format") {
+    const name = FORMAT_NAMES[form.format] || form.format;
+    if (form.format === "single_elim") return form.loserAdvances ? `${name} · 败者晋级` : name;
+    if (form.format === "double_elim") return form.grandFinalReset ? `${name} · 总决赛重置` : name;
+    if (form.format === "swiss") return `${name} · ${roundsText(form)}`;
+    return name;
+  }
+  if (id === "group") {
+    const format = { swiss: "瑞士轮", single_elim: "单败", double_elim: "双败" }[form.groupFormat] || form.groupFormat;
+    const size = groupSizeValue(form);
+    return `${format} · ${size ? `每组 ${size} 人` : "不分组"} · 前 ${form.advancePerGroup} 晋级`;
+  }
+  if (id === "playoff") return form.playoffFormat === "double_elim" ? "双败淘汰" : "单败淘汰";
+  if (id === "rules") {
+    const parts = [form.banpickEnabled ? "Ban / Pick" : "无 BP"];
+    if (form.checkinEnabled) parts.push("签到");
+    const limit = ladderLimitLabel(limitFields(form.ladderLimit, form.ladderMaxMmr));
+    if (limit) parts.push(limit);
+    return parts.join(" · ");
+  }
+  if (id === "points") {
+    if (!form.pointsEnabled) return "不计入积分榜";
+    const pool = prizeTotal(form.pointsTable);
+    return `${form.pointsSeason} ${form.pointsKind === "monthly" ? "月赛" : "周赛"}${pool ? ` · ${pool} 金鹰币` : ""}`;
+  }
+  return "";
+}
+
+/** The first step with a problem and the problem, or null when the form can be created. */
+export function firstProblem(form) {
+  for (const s of createSteps(form)) {
+    const error = stepError(form, s.id);
+    if (error) return { step: s.id, error };
+  }
+  return null;
 }
 
 const groupSizeValue = (form) => (form.groupSize === "" || form.groupSize === null ? null : Number(form.groupSize));
@@ -182,6 +232,8 @@ export function stepError(form, id) {
     if (err) return err;
   }
   if (id === "group") return groupSetupError(form);
+  if (id === "rules") return limitProblem(form.ladderLimit, form.ladderMaxMmr);
+  if (id === "points" && form.pointsEnabled) return pointsTableProblem(form.pointsTable, form.pointsSeason);
   return "";
 }
 
