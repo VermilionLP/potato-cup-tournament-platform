@@ -10,12 +10,12 @@
   import { lazy } from "$lib/lazy.js";
   import { toast } from "svelte-sonner";
   import { page } from "$app/state";
-  import { goto } from "$app/navigation";
   import { userState } from "$lib/user.svelte.js";
   import { EventData } from "$lib/event-data.svelte.js";
   import { buildMatchOrder } from "$lib/bracket.js";
   import { overlayStages, pickStage } from "$lib/overlay.js";
   import { suggestedVoteTimes, voteOptionsFrom } from "$lib/votes.js";
+  import { activeTabOf, eventTabs, tabFromHash } from "$lib/event-tabs.js";
   import { GROUP_FORMATS, startBlockedMessage } from "$lib/tournament.js";
   import {
     bracketMatchesOf,
@@ -30,7 +30,6 @@
     podiumOf,
     roundLabeler,
   } from "$lib/event-view.js";
-  import { Button } from "$lib/components/ui/button/index.js";
   import EventHeader from "$lib/components/tournament/EventHeader.svelte";
   import StatusControls from "$lib/components/tournament/StatusControls.svelte";
   import PhaseStepper from "$lib/components/tournament/PhaseStepper.svelte";
@@ -41,12 +40,11 @@
   import EventPoolTab from "$lib/components/tournament/EventPoolTab.svelte";
   import EventLiveTab from "$lib/components/tournament/EventLiveTab.svelte";
   import RosterCard from "$lib/components/tournament/RosterCard.svelte";
+  import EventPageStatus from "$lib/components/tournament/EventPageStatus.svelte";
   import MatchReport from "$lib/components/tournament/MatchReport.svelte";
   import { registrationActions } from "$lib/event-registration.js";
   import { stageActions } from "$lib/event-stage.js";
   import { channelOptions, liveElsewhere, savedChannel, savedStreamMode, saveChannel, withChannel } from "$lib/live-channels.js";
-  import TrophyIcon from "@lucide/svelte/icons/trophy";
-  import ArrowLeftIcon from "@lucide/svelte/icons/arrow-left";
 
   const loadAdminDialogs = lazy(async () => {
     const [wiki, time, finalTime, playerEdit, handoffPart, startCheckin] = await Promise.all([
@@ -211,24 +209,11 @@
     ensureAdmin,
   });
 
-  // Tabs (remembered in the address as #overview / #bracket / #pool /
-  // #players / #live). A running event opens on its bracket, the others on
-  // the overview. The vehicle pool tab shows when the event has a template
-  // (for admins also without one, to pick it).
-  const TAB_IDS = ["overview", "bracket", "pool", "players", "live"];
+  // Tabs ($lib/event-tabs.js), remembered in the address hash.
   let chosenTab = $state("");
-  let tabs = $derived([
-    { id: "overview", label: "概览" },
-    { id: "bracket", label: tournament?.status === "registration" ? "对阵预览" : "对阵" },
-    ...(data.bpTemplate || (isAdmin && banpickEnabled) ? [{ id: "pool", label: "载具池" }] : []),
-    { id: "players", label: "选手", count: tournament?.players?.length ?? 0 },
-    { id: "live", label: "直播" },
-  ]);
-  let activeTab = $derived(chosenTab || (tournament?.status === "in_progress" ? "bracket" : "overview"));
-  onMount(() => {
-    const fromHash = window.location.hash.slice(1);
-    if (TAB_IDS.includes(fromHash)) chosenTab = fromHash;
-  });
+  let tabs = $derived(eventTabs(tournament, { hasTemplate: Boolean(data.bpTemplate), isAdmin, banpickEnabled }));
+  let activeTab = $derived(activeTabOf(tournament, chosenTab));
+  onMount(() => (chosenTab = tabFromHash(window.location.hash)));
   function selectTab(id) {
     chosenTab = id;
     history.replaceState(history.state, "", `#${id}`);
@@ -267,22 +252,8 @@
 
 <svelte:head><title>{tournament?.name || "赛事"} · Potato Cup</title></svelte:head>
 
-{#if data.loading}
-  <div class="flex flex-col items-center justify-center py-20 gap-3 text-muted-foreground">
-    <div class="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin"></div>
-    <p class="text-sm">正在加载赛事详情...</p>
-  </div>
-{:else if !tournament}
-  <div class="text-center py-16 border border-border bg-card/30 rounded-2xl max-w-xl mx-auto space-y-4">
-    <TrophyIcon class="w-12 h-12 text-muted-foreground mx-auto" />
-    <div>
-      <h2 class="text-lg font-bold text-foreground">赛事不存在</h2>
-      <p class="text-xs text-muted-foreground mt-1">您访问的赛事 ID 在数据库中未找到。</p>
-    </div>
-    <Button size="sm" onclick={() => goto("/")} class="gap-1 text-xs">
-      <ArrowLeftIcon class="w-3.5 h-3.5" /> 返回首页
-    </Button>
-  </div>
+{#if data.loading || !tournament}
+  <EventPageStatus loading={data.loading} />
 {:else}
   {#snippet roster()}
     <RosterCard {tournament} {isAdmin} onedit={(p) => playerEditor?.edit(p)} onunregister={doUnregister} oncheckin={checkInFor} />
