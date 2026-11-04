@@ -2,8 +2,9 @@
 // [{ from, to, points, prize? }] (prize: Golden Eagles, 金鹰币), the points
 // counted towards a season (year) leaderboard.
 
-// Presets double as the kind of points event: a monthly (月赛) champion
-// qualifies for the Winter Finals regardless of points.
+// Presets double as the kind of points event: 周赛 (weekly) or 大型赛事
+// (id "monthly", formerly 月赛), whose champion is invited to the Winter
+// Finals by default.
 export const POINTS_PRESETS = [
   {
     id: "weekly",
@@ -17,14 +18,14 @@ export const POINTS_PRESETS = [
   },
   {
     id: "monthly",
-    label: "月赛",
+    label: "大型赛事",
     table: [
-      { from: 1, to: 1, points: 300 },
-      { from: 2, to: 2, points: 180 },
-      { from: 3, to: 3, points: 100 },
-      { from: 4, to: 4, points: 75 },
-      { from: 5, to: 6, points: 55 },
-      { from: 7, to: 8, points: 35 },
+      { from: 1, to: 1, points: 300, prize: 10000 },
+      { from: 2, to: 2, points: 180, prize: 5000 },
+      { from: 3, to: 3, points: 100, prize: 2500 },
+      { from: 4, to: 4, points: 75, prize: 2000 },
+      { from: 5, to: 6, points: 55, prize: 1000 },
+      { from: 7, to: 8, points: 35, prize: 1000 },
       { from: 9, to: 12, points: 20 },
       { from: 13, to: 16, points: 10 },
     ],

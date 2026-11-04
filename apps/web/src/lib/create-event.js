@@ -182,7 +182,7 @@ export function stepSummary(form, id) {
   if (id === "points") {
     if (!form.pointsEnabled) return "不计入积分榜";
     const pool = prizeTotal(form.pointsTable);
-    return `${form.pointsSeason} ${form.pointsKind === "monthly" ? "月赛" : "周赛"}${pool ? ` · ${pool} 金鹰币` : ""}`;
+    return `${form.pointsSeason} ${form.pointsKind === "monthly" ? "大型赛事" : "周赛"}${pool ? ` · ${pool} 金鹰币` : ""}`;
   }
   return "";
 }

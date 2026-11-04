@@ -1,6 +1,6 @@
 <script>
   // Points and prizes per placing (积分榜 and 金鹰币): the kind of event
-  // (周赛 / 月赛, which also loads its default table), the rows, the season
+  // (周赛 / 大型赛事, which also loads its default table), the rows, the season
   // (year) and whether the champion gets a direct Winter Finals invite.
   import { POINTS_PRESETS, copyTable, placeColor, placeRangeLabel, pointsTableProblem, prizeTotal } from "#lib/points.js";
   import CoinsIcon from "@lucide/svelte/icons/coins";

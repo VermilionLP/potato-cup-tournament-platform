@@ -155,7 +155,7 @@
         title="年度积分榜"
       >
         <TrophyIcon class="w-3 h-3" />
-        <span>计入 {tournament.points_season} 积分榜</span>{#if !tournament.event_kind}<span>{tournament.points_kind === "monthly" ? "（月赛）" : "（周赛）"}</span>{/if}{#if tournament.points_invite}<span>· 冠军直邀</span>{/if}
+        <span>计入 {tournament.points_season} 积分榜</span>{#if !tournament.event_kind}<span>{tournament.points_kind === "monthly" ? "（大型赛事）" : "（周赛）"}</span>{/if}{#if tournament.points_invite}<span>· 冠军直邀</span>{/if}
       </a>
     {/if}
     {#if prizePool}

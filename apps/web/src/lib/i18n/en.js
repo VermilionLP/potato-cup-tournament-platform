@@ -85,7 +85,7 @@ export default {
   "直邀赛事：{0}": "Invite events: {0}",
   "（未结束）": " (not finished)",
   "「直邀」为指定赛事冠军的名额（冠军已有资格时顺延给亚军），「积分」为按积分排名的名额，随赛季进行变化。同分并列同一名次。": "\"Invite\" marks a chosen event's champion (passed to the runner-up if already qualified); \"Points\" the places by points, which change during the season. Equal totals share a rank.",
-  "计入积分榜的周赛和月赛按最终名次给分，每个赛季按比赛类型分别排名。冬季总决赛每个类型 16 人：管理员指定的直邀赛事冠军直接晋级（冠军已有资格时顺延给亚军），其余名额按积分排名。积分在赛事设置中定义，赛事结束后计入。": "Weekly and monthly events on the leaderboard award points by final placing; each season ranks every event type separately. Each type's Winter Finals has 16 players: the champions of the invite events chosen by the admins qualify directly (passed to the runner-up if already qualified), the other places go by points. Points are set in the event settings and count once the event ends.",
+  "计入积分榜的周赛和大型赛事按最终名次给分，每个赛季按比赛类型分别排名。冬季总决赛每个类型 16 人：管理员指定的直邀赛事冠军直接晋级（冠军已有资格时顺延给亚军），其余名额按积分排名。积分在赛事设置中定义，赛事结束后计入。": "Weekly and major events on the leaderboard award points by final placing; each season ranks every event type separately. Each type's Winter Finals has 16 players: the champions of the invite events chosen by the admins qualify directly (passed to the runner-up if already qualified), the other places go by points. Points are set in the event settings and count once the event ends.",
   "已取消 {0} 的直邀名额": "{0} no longer has a direct invite",
   "{0} 的冠军将直接获得名额": "{0}'s champion now gets a direct invite",
   "这场赛事不计入积分榜，不能设置直邀名额": "This event isn't on the leaderboard, so it can't have a direct invite",
@@ -1754,4 +1754,6 @@ export default {
   "保存实时比分 {0:n} : {1:n}": "Save live score {0} : {1}",
   "提交最终比分": "Submit final score",
   "实时比分必须是 0-99 的整数": "A live score must be a whole number from 0 to 99",
+  "（大型赛事）": " (major)",
+  "大型赛事": "Major event",
 };
