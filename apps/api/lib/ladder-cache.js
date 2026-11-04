@@ -87,6 +87,7 @@ export const CACHE_NEUTRAL_ROUTES = new Set([
   'DELETE /tournaments/:id/checkin',
   'POST /tournaments/:id/overlay-state',
   'POST /tournaments/:id/active-match',
+  'POST /tournaments/:id/matches/:matchId/live-score',
   'POST /tournaments/:id/matches/:matchId/report/dispute',
   'DELETE /tournaments/:id/matches/:matchId/report',
   'POST /client-errors',

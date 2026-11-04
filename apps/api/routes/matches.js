@@ -1,7 +1,7 @@
 import { MatchRepo } from '../repositories/match-repo.js';
 import { getRequesterId, isAdminRequest, requireAdmin, requireMatchPlayerOrAdmin } from '../lib/admin.js';
 import { inTransaction } from '../lib/transaction.js';
-import { canConfirm, canDispute, playerReport, reportToApply, scoreProblem } from '../lib/match-reports.js';
+import { canConfirm, canDispute, liveScoreProblem, playerReport, reportToApply, scoreProblem } from '../lib/match-reports.js';
 import { afterResult, applyReport, notifyReportToConfirm, recordScore, recordWalkover } from '../lib/match-flow.js';
 
 export default async function matchesRoutes(fastify) {
@@ -83,6 +83,27 @@ export default async function matchesRoutes(fastify) {
     await afterResult(fastify, req.params.id);
 
     return { match: updated, advanced };
+  });
+
+  // Live score while the match is played: no winner, no advancement, just
+  // the current score for the bracket and the overlay. Admins and the two
+  // players; both null clears it. Any result (or rollback) clears it too
+  // (trigger, migration 042).
+  fastify.post('/tournaments/:id/matches/:matchId/live-score', async (req) => {
+    const { score1 = null, score2 = null } = req.body || {};
+    const problem = liveScoreProblem(score1, score2);
+    if (problem) throw fastify.httpErrors.badRequest(problem);
+    const match = await matchOf(req);
+    await requireMatchPlayerOrAdmin(fastify, req, match);
+    requireOpenMatch(match);
+    const clear = score1 === null;
+    const res = await fastify.db.query(
+      `UPDATE axsuck.matches SET live_score1 = $2, live_score2 = $3, live_score_at = $4
+       WHERE id = $1 AND status = 'pending' RETURNING *`,
+      [match.id, clear ? null : Number(score1), clear ? null : Number(score2), clear ? null : new Date()],
+    );
+    fastify.tournamentEvents.emit(`update:${req.params.id}`, { type: 'match_live_score', matchId: match.id });
+    return { match: res.rows[0] };
   });
 
   // A walkover: at once from an admin; a player's claim waits for an admin.

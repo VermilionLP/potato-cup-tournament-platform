@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { isCompletedBye, isMine, isPlayableIn, slotScore } from '../src/lib/match-card.js';
+import { hasLiveScore, isCompletedBye, isMine, isPlayableIn, slotScore } from '../src/lib/match-card.js';
 import { columnConnectors, numberMatches, treePositions, withGrandFinalColumn } from '../src/lib/bracket.js';
 
 const m = (o) => ({ id: 1, status: 'pending', player1_id: 'a', player2_id: 'b', winner_id: null, score1: 0, score2: 0, ...o });
@@ -52,4 +52,12 @@ test('grand final column, connectors and numbers', () => {
   assert.deepEqual(paths.map((p) => p.active), [true, false, false]);
   const numbers = numberMatches(wb, [], [{ id: 9 }], [{ id: 7 }]);
   assert.deepEqual([...numbers], [[1, 1], [2, 2], [3, 3], [9, 4], [7, 5]]);
+});
+
+test('a pending match shows its live score', () => {
+  const live = m({ status: 'pending', live_score1: 1, live_score2: 0 });
+  assert.equal(hasLiveScore(live), true);
+  assert.equal(slotScore(live, 1), 1);
+  assert.equal(slotScore(live, 2), 0);
+  assert.equal(hasLiveScore(m({ status: 'completed', live_score1: 1, live_score2: 0 })), false);
 });

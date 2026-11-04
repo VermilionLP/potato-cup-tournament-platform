@@ -1,6 +1,6 @@
 <script>
-  // Reporting a match: Ban / Pick, the score or a walkover, an admin's
-  // correction or rollback, in MatchResultDialog. Players' scores wait for
+  // Reporting a match: Ban / Pick, a live score during play, the score or a
+  // walkover, an admin's correction or rollback, in MatchResultDialog. Players' scores wait for
   // the opponent (PendingReportPanel: confirm, dispute, withdraw); admins'
   // take effect at once. Methods: report(match), openBanPick(match),
   // openDetails(match) (report when pending, correct when an admin can),
@@ -52,8 +52,9 @@
     selectedMatch = match;
     correctingMatch = false;
     reportStep = step === "banpick" && banpickEnabled ? "banpick" : "score";
-    score1Input = 0;
-    score2Input = 0;
+    // Continue from the live score saved during the match, if any.
+    score1Input = Number(match.live_score1) || 0;
+    score2Input = Number(match.live_score2) || 0;
     showMatchDialog = true;
   }
 
@@ -131,6 +132,23 @@
       toast.error(e.message);
     } finally {
       submittingResult = false;
+    }
+  }
+
+  // Live score during the match: no winner, no advancement; the dialog
+  // stays open for the next change.
+  let savingLive = $state(false);
+  async function saveLiveScore(score1, score2) {
+    if (needsIdentity() || !selectedMatch) return;
+    savingLive = true;
+    try {
+      const res = await API.setLiveScore(tid, selectedMatch.id, score1, score2);
+      if (res?.match) selectedMatch = res.match;
+      toast.success(`已保存实时比分 ${score1} : ${score2}`);
+    } catch (e) {
+      toast.error(e.message);
+    } finally {
+      savingLive = false;
     }
   }
 
@@ -240,4 +258,6 @@
   onwalkover={recordWalkover}
   onrollback={doRollback}
   onsubmit={selectGameWinner}
+  onsavelive={saveLiveScore}
+  {savingLive}
 />

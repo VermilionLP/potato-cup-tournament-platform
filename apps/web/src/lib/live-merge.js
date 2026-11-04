@@ -13,6 +13,7 @@ export const DELTA_TYPES = new Set([
   "match_report_withdrawn",
   "active_match_updated",
   "overlay_state_updated",
+  "match_live_score",
 ]);
 
 /** The event with a delta merged in: changed matches replaced, removed ones dropped, order from the server. */

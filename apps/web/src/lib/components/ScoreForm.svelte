@@ -1,5 +1,11 @@
 <script>
+  // The score of one match as a scoreboard: both players side by side with
+  // a big score each (type it, or −/+), quick scores, and what the score
+  // means (winner, or who advances under 败者晋级). Walkovers (弃权判定)
+  // are separate (MatchResultDialog).
   import CrownIcon from "@lucide/svelte/icons/crown";
+  import MinusIcon from "@lucide/svelte/icons/minus";
+  import PlusIcon from "@lucide/svelte/icons/plus";
   import Flag from "#lib/components/Flag.svelte";
   import { SCORE_PRESETS, scoreOutcome } from "#lib/tournament.js";
 
@@ -11,28 +17,19 @@
     format = "single_elim",
     loserAdvances = false,
     disabled = false,
-    onWalkover = () => {},
+    // The match is being played: a tie is a normal live score, not a problem.
+    liveHint = false,
   } = $props();
 
   const MAX_SCORE = 99;
   const outcome = $derived(scoreOutcome(score1, score2, { format, loserAdvances }));
-  const advancerName = $derived(
-    outcome.advancer === 1 ? player1.name : outcome.advancer === 2 ? player2.name : "",
-  );
-  const winnerName = $derived(
-    outcome.winner === 1 ? player1.name : outcome.winner === 2 ? player2.name : "",
-  );
+  const nameOf = (slot) => (slot === 1 ? player1.name : player2.name);
 
-  function clamp(n) {
-    const v = Math.round(Number(n) || 0);
-    return Math.min(MAX_SCORE, Math.max(0, v));
-  }
-
+  const clamp = (n) => Math.min(MAX_SCORE, Math.max(0, Math.round(Number(n) || 0)));
   function step(slot, delta) {
     if (slot === 1) score1 = clamp(score1 + delta);
     else score2 = clamp(score2 + delta);
   }
-
   function preset([a, b]) {
     score1 = a;
     score2 = b;
@@ -41,126 +38,99 @@
 
 {#snippet side(slot, player)}
   {@const leading = outcome.winner === slot}
-  <div
-    class="flex min-w-0 flex-1 flex-col items-center gap-2 rounded-xl border px-3 py-3 transition-all
-      {leading ? 'border-primary/60 bg-primary/10 ring-1 ring-primary/40' : 'border-border bg-background/40'}"
-  >
-    <div class="flex h-5 items-center gap-1">
+  {@const value = slot === 1 ? score1 : score2}
+  <div class="flex min-w-0 flex-col items-center gap-2 {slot === 2 ? 'sm:items-center' : ''}">
+    <div class="flex h-4 items-center gap-1 text-[10px]">
       {#if leading}
         <CrownIcon class="h-3.5 w-3.5 text-amber-500" />
-        <span class="text-[10px] font-bold text-primary">胜者</span>
+        <span class="font-bold text-primary">领先</span>
       {:else if player.seed}
-        <span class="text-[10px] text-muted-foreground">种子 #{player.seed}</span>
+        <span class="text-muted-foreground">种子 #{player.seed}</span>
       {/if}
     </div>
     <div class="flex max-w-full items-center gap-1.5">
-      <Flag code={player.flag} size={16} />
-      <span class="truncate text-sm font-bold text-foreground" title={player.name}>{player.name}</span>
+      <Flag code={player.flag} size={18} />
+      <span class="truncate text-sm font-bold text-foreground sm:text-base" title={player.name}>{player.name}</span>
     </div>
+    <input
+      type="number"
+      inputmode="numeric"
+      min="0"
+      max={MAX_SCORE}
+      {disabled}
+      value={value}
+      oninput={(e) => (slot === 1 ? (score1 = e.currentTarget.value) : (score2 = e.currentTarget.value))}
+      onblur={() => (slot === 1 ? (score1 = clamp(score1)) : (score2 = clamp(score2)))}
+      onfocus={(e) => e.currentTarget.select()}
+      aria-label="{player.name} 的比分"
+      class="score-input h-20 w-24 rounded-2xl border-2 bg-background text-center font-mono text-5xl font-black tabular-nums transition-colors focus:outline-none
+        {leading ? 'border-primary text-primary' : 'border-border text-foreground focus:border-primary/60'}"
+    />
     <div class="flex items-center gap-2">
       <button
         type="button"
         {disabled}
         onclick={() => step(slot, -1)}
-        class="flex h-8 w-8 items-center justify-center rounded-full border border-border text-lg leading-none text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-40 cursor-pointer"
-        aria-label="{player.name} 减 1 分">−</button
+        class="flex h-9 w-11 items-center justify-center rounded-lg border border-border bg-background text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-40 cursor-pointer"
+        aria-label="{player.name} 减 1 分"
       >
-      {#if slot === 1}
-        <input
-          type="number"
-          min="0"
-          max={MAX_SCORE}
-          {disabled}
-          bind:value={score1}
-          onblur={() => (score1 = clamp(score1))}
-          aria-label="{player.name} 的比分"
-          class="score-input h-14 w-16 rounded-lg border border-border bg-background text-center font-mono text-4xl font-black
-            {leading ? 'text-primary' : 'text-foreground'}"
-        />
-      {:else}
-        <input
-          type="number"
-          min="0"
-          max={MAX_SCORE}
-          {disabled}
-          bind:value={score2}
-          onblur={() => (score2 = clamp(score2))}
-          aria-label="{player.name} 的比分"
-          class="score-input h-14 w-16 rounded-lg border border-border bg-background text-center font-mono text-4xl font-black
-            {leading ? 'text-primary' : 'text-foreground'}"
-        />
-      {/if}
+        <MinusIcon class="h-4 w-4" />
+      </button>
       <button
         type="button"
         {disabled}
         onclick={() => step(slot, 1)}
-        class="flex h-8 w-8 items-center justify-center rounded-full border border-border text-lg leading-none text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-40 cursor-pointer"
-        aria-label="{player.name} 加 1 分">+</button
+        class="flex h-9 w-11 items-center justify-center rounded-lg border border-primary/40 bg-primary/10 text-primary transition-colors hover:bg-primary hover:text-primary-foreground disabled:opacity-40 cursor-pointer"
+        aria-label="{player.name} 加 1 分"
       >
+        <PlusIcon class="h-4 w-4" />
+      </button>
     </div>
   </div>
 {/snippet}
 
 <div class="space-y-3">
-  <div class="flex items-stretch gap-2">
-    {@render side(1, player1)}
-    <div class="flex shrink-0 items-center text-xs font-black text-muted-foreground">VS</div>
-    {@render side(2, player2)}
+  <!-- Scoreboard -->
+  <div class="rounded-2xl border border-border bg-muted/20 px-3 py-4">
+    <div class="grid grid-cols-[1fr_auto_1fr] items-start gap-2">
+      {@render side(1, player1)}
+      <div class="flex h-full flex-col items-center justify-center pt-12">
+        <span class="font-mono text-3xl font-black text-muted-foreground/60">:</span>
+      </div>
+      {@render side(2, player2)}
+    </div>
   </div>
 
+  <!-- Quick scores -->
   <div class="flex flex-wrap items-center justify-center gap-1.5">
-    <span class="text-[10px] text-muted-foreground">快捷比分</span>
     {#each SCORE_PRESETS as p (p.join(":"))}
       {@const active = Number(score1) === p[0] && Number(score2) === p[1]}
       <button
         type="button"
         {disabled}
         onclick={() => preset(p)}
-        class="rounded-full border px-2.5 py-0.5 font-mono text-xs transition-colors cursor-pointer
-          {active ? 'border-primary bg-primary text-primary-foreground' : 'border-border text-foreground/80 hover:border-foreground/40'}"
+        class="rounded-lg border px-3 py-1 font-mono text-xs font-semibold transition-colors cursor-pointer
+          {active ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-background text-foreground/80 hover:border-primary/50'}"
       >
         {p[0]} : {p[1]}
       </button>
     {/each}
   </div>
 
+  <!-- What the score means -->
   <div
     class="rounded-lg px-3 py-2 text-center text-xs
       {outcome.tie ? 'bg-muted/60 text-muted-foreground' : 'bg-primary/10 text-foreground'}"
   >
     {#if outcome.tie}
-      比分相同，无法判定胜者，请调整比分
+      {liveHint ? "比分持平：可以保存为实时比分；提交最终比分需要分出胜负" : "比分相同，无法判定胜者，请调整比分"}
     {:else if outcome.advancer !== outcome.winner}
-      <span class="font-bold">{winnerName}</span> 获胜 ·
-      <span class="font-bold text-primary">{advancerName}</span> 晋级（败者晋级规则）
+      <span class="font-bold">{nameOf(outcome.winner)}</span> 获胜 ·
+      <span class="font-bold text-primary">{nameOf(outcome.advancer)}</span> 晋级（败者晋级规则）
     {:else}
-      <span class="font-bold text-primary">{winnerName}</span> 获胜
+      <span class="font-bold text-primary">{nameOf(outcome.winner)}</span> 获胜
     {/if}
   </div>
-
-  <details class="group rounded-lg border border-border/60 px-3 py-1.5 text-xs">
-    <summary class="cursor-pointer select-none text-muted-foreground hover:text-foreground">
-      弃权判定（一方未到场或退赛）
-    </summary>
-    <div class="grid grid-cols-2 gap-2 pt-2 pb-1">
-      <button
-        type="button"
-        {disabled}
-        onclick={() => onWalkover(player1.id)}
-        class="truncate rounded-md border border-border px-2 py-1.5 hover:bg-muted disabled:opacity-40 cursor-pointer"
-      >
-        判 {player1.name} 晋级
-      </button>
-      <button
-        type="button"
-        {disabled}
-        onclick={() => onWalkover(player2.id)}
-        class="truncate rounded-md border border-border px-2 py-1.5 hover:bg-muted disabled:opacity-40 cursor-pointer"
-      >
-        判 {player2.name} 晋级
-      </button>
-    </div>
-  </details>
 </div>
 
 <style>

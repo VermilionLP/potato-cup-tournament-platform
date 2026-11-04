@@ -46,7 +46,7 @@ test('an admin reports a score from the bracket', async () => {
     await plus.click();
     await plus.click();
     const submitted = page.waitForResponse((r) => r.url().includes(`/matches/${match.id}/`) && r.request().method() === 'POST', { timeout: T });
-    await page.getByRole('button', { name: /提交比分\s+2\s*:\s*0/ }).click();
+    await page.getByRole('button', { name: /提交最终比分\s+2\s*:\s*0/ }).click();
     const res = await submitted;
     assert.equal(res.status(), 200, `result request ${res.url()}: ${await res.text()}`);
     // The result is stored (the winner is set right after the score).
@@ -346,6 +346,48 @@ test('admins change event settings in the settings dialog; the header shows tags
     assert.deepEqual(errors, [], 'no uncaught errors in the page');
   } catch (e) {
     await page.screenshot({ path: 'e2e-settings.png', fullPage: true }).catch(() => {});
+    throw e;
+  } finally {
+    await browser.close();
+  }
+});
+
+test('a live score during the match: shown on the bracket, cleared by the result', async () => {
+  const players = [];
+  for (let i = 0; i < 4; i += 1) players.push(await makePlayer('lsc'));
+  const id = await makeEvent({ players, start: true });
+  const event = await api('GET', `/tournaments/${id}`);
+  const match = event.matches.find((m) => m.player1_id && m.player2_id && m.status === 'pending');
+  const me = await makePlayer('lop');
+  const { browser, page, errors } = await openPage({ admin: true, player: me });
+  try {
+    await page.goto(`${BASE}/tournament/${id}#bracket`);
+    const card = page.getByRole('button').filter({ hasText: match.player1_id }).filter({ hasText: match.player2_id }).first();
+    await card.click({ timeout: T });
+    await page.getByRole('button', { name: `${match.player1_id} 加 1 分` }).click({ timeout: T });
+    await page.screenshot({ path: 'e2e-shot-result-dialog.png' });
+    await page.getByRole('button', { name: /保存实时比分\s+1\s*:\s*0/ }).click();
+    let m = null;
+    for (let i = 0; i < 25 && m?.live_score1 == null; i += 1) {
+      await page.waitForTimeout(200);
+      m = (await api('GET', `/tournaments/${id}`)).matches.find((x) => x.id === match.id);
+    }
+    assert.equal(m.live_score1, 1);
+    assert.equal(m.live_score2, 0);
+    assert.equal(m.status, 'pending', 'no result yet');
+    assert.equal(m.winner_id, null);
+    // The dialog stays open and says so; the card shows 实时 once closed.
+    await page.getByText(/实时比分 1 : 0/).first().waitFor({ timeout: T });
+    await page.keyboard.press('Escape');
+    await card.getByText('实时').waitFor({ timeout: T });
+    // A ladder rating or advancement is not touched by a live score; the result clears it.
+    await api('POST', `/tournaments/${id}/matches/${match.id}/result`, { score1: 2, score2: 0 });
+    m = (await api('GET', `/tournaments/${id}`)).matches.find((x) => x.id === match.id);
+    assert.equal(m.status, 'completed');
+    assert.equal(m.live_score1, null, 'cleared by the result');
+    assert.deepEqual(errors, [], 'no uncaught errors in the page');
+  } catch (e) {
+    await page.screenshot({ path: 'e2e-live-score.png', fullPage: true }).catch(() => {});
     throw e;
   } finally {
     await browser.close();

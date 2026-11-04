@@ -76,3 +76,16 @@ test('check-in opens 30 minutes before the start (Beijing time) and needs the sw
   assert.equal(checkinState({ ...t, scheduled_time: '' }, 0).open, true, 'no time: open during registration');
   assert.equal(checkinState(t, 0).opens_at, '2026-11-02T11:30:00.000Z');
 });
+
+test('live scores allow ties and clearing, not nonsense', async () => {
+  const { liveScoreProblem } = await import('../lib/match-reports.js');
+  assert.equal(liveScoreProblem(0, 0), null);
+  assert.equal(liveScoreProblem(1, 1), null);
+  assert.equal(liveScoreProblem(2, 1), null);
+  assert.equal(liveScoreProblem(null, null), null);
+  assert.ok(liveScoreProblem(-1, 0));
+  assert.ok(liveScoreProblem(1.5, 0));
+  assert.ok(liveScoreProblem(100, 0));
+  assert.ok(liveScoreProblem(1, null));
+  assert.ok(liveScoreProblem('', 0));
+});

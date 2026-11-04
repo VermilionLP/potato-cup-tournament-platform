@@ -7,7 +7,7 @@
   // admins when its result can be corrected. The parent sets the size
   // (`class`, e.g. "h-full") and handles byes.
   import { canCorrectResult } from "#lib/tournament.js";
-  import { isMine, isPlayableIn, slotScore } from "#lib/match-card.js";
+  import { hasLiveScore, isMine, isPlayableIn, slotScore } from "#lib/match-card.js";
   import Flag from "#lib/components/Flag.svelte";
   import MatchCardActions from "#lib/components/tournament/MatchCardActions.svelte";
   import CrownIcon from "@lucide/svelte/icons/crown";
@@ -54,7 +54,14 @@
   <div
     class="flex h-[18px] shrink-0 items-center justify-between border-b border-neutral-200 bg-neutral-100 px-2 text-[8px] font-mono text-neutral-500 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-400"
   >
-    <span class="truncate">{title}</span>
+    <span class="flex min-w-0 items-center gap-1">
+      <span class="truncate">{title}</span>
+      {#if hasLiveScore(match)}
+        <span class="inline-flex shrink-0 items-center gap-0.5 rounded bg-red-500/15 px-1 font-bold text-red-600 dark:text-red-400" title="比赛进行中的实时比分，还没有出结果">
+          <span class="h-1.5 w-1.5 animate-pulse rounded-full bg-red-500"></span>实时
+        </span>
+      {/if}
+    </span>
     <MatchCardActions
       {match}
       {playable}
@@ -82,10 +89,10 @@
         </span>
         {#if won}<CrownIcon class="h-2.5 w-2.5 shrink-0 text-amber-500" />{/if}
       </div>
-      {#if match.status !== "pending"}
+      {#if match.status !== "pending" || hasLiveScore(match)}
         <div
           class="flex h-full w-7 shrink-0 items-center justify-center border-l border-neutral-200 font-mono text-[11px] font-bold dark:border-neutral-900/60
-            {won ? 'text-primary' : 'text-neutral-400 dark:text-neutral-500'}"
+            {won ? 'text-primary' : hasLiveScore(match) ? 'text-red-600 dark:text-red-400' : 'text-neutral-400 dark:text-neutral-500'}"
         >
           {slotScore(match, slot)}
         </div>

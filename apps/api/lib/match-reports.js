@@ -62,6 +62,16 @@ export function reportToApply(report, which = 'report') {
 }
 
 /** A score report must have two whole, non-negative, different scores. */
+/**
+ * A live score (during the match, no winner): whole numbers 0-99, a tie
+ * allowed; both null clears it. The problem, or null.
+ */
+export function liveScoreProblem(score1, score2) {
+  if (score1 === null && score2 === null) return null;
+  const ok = (v) => Number.isInteger(Number(v)) && v !== '' && v !== null && Number(v) >= 0 && Number(v) <= 99;
+  return ok(score1) && ok(score2) ? null : '实时比分必须是 0-99 的整数';
+}
+
 export function scoreProblem(score1, score2) {
   const a = Number(score1);
   const b = Number(score2);

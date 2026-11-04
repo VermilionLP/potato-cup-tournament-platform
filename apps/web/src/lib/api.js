@@ -159,6 +159,9 @@ export const API = {
   unregister: (tournamentId, player_id) => request(`/tournaments/${enc(tournamentId)}/register`, { method: 'DELETE', body: JSON.stringify({ player_id }) }),
 
   // Matches / Results
+  // Live score during a match (no winner); nulls clear it
+  setLiveScore: (tournamentId, matchId, score1, score2) =>
+    request(`/tournaments/${enc(tournamentId)}/matches/${matchId}/live-score`, { method: 'POST', body: JSON.stringify({ score1, score2 }) }),
   submitResult: (tournamentId, matchId, score1, score2) =>
     request(`/tournaments/${enc(tournamentId)}/matches/${matchId}/result`, { method: 'POST', body: JSON.stringify({ score1, score2 }) }),
   submitWalkover: (tournamentId, matchId, winner_id) =>

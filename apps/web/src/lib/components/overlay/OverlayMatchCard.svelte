@@ -26,7 +26,7 @@
     {extra}"
   {style}
 >
-  {#each [[m.player1_id, m.score1], [m.player2_id, m.score2]] as [pid, score], slot (slot)}
+  {#each [[m.player1_id, done ? m.score1 : (m.live_score1 ?? m.score1)], [m.player2_id, done ? m.score2 : (m.live_score2 ?? m.score2)]] as [pid, score], slot (slot)}
     {@const lost = done && m.winner_id && pid && m.winner_id !== pid}
     {@const dim = lost || (!done && pid && isAlive && !isAlive(pid))}
     {#if slot === 1}
@@ -46,7 +46,7 @@
             {!pid ? 'text-slate-600 italic font-bold' : dim ? 'text-slate-500 font-normal opacity-50' : 'text-slate-100 font-black'}"
         >{pid ? who.name(pid) : bye ? "—" : "TBD"}</span>
       </span>
-      {#if !bye && (m.status === "walkover" || done || live)}
+      {#if !bye && (m.status === "walkover" || done || live || m.live_score1 != null)}
         <span
           class="font-orbitron rounded bg-slate-900/90 shrink-0 text-center {s.score}
             {dim ? 'text-slate-600 font-normal opacity-40' : 'text-cyan-400 font-black'}"

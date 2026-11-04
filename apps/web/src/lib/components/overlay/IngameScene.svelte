@@ -68,18 +68,24 @@
           <span class="text-amber-400">{stageShort(activeMatch)}</span>
         </div>
         <div class="py-1.5 px-5 flex flex-col gap-0 font-sans">
-          <div class="flex items-center justify-center py-0.5">
+          <div class="flex items-center justify-center gap-3 py-0.5">
             <span class="text-slate-100 font-black text-center text-xl sm:text-2xl leading-tight tracking-tight truncate w-full" title={who.name(activeMatch.player1_id)}>
               {who.name(activeMatch.player1_id)}
             </span>
+            {#if activeMatch.live_score1 != null}
+              <span class="font-orbitron shrink-0 rounded bg-slate-900/90 px-2 text-xl font-black text-cyan-400">{activeMatch.live_score1}</span>
+            {/if}
           </div>
           <div class="h-px bg-cyan-500/20 flex items-center justify-center relative my-0.5">
             <span class="absolute bg-slate-950 px-2 text-[9px] text-cyan-400 font-black font-mono tracking-widest">VS</span>
           </div>
-          <div class="flex items-center justify-center py-0.5">
+          <div class="flex items-center justify-center gap-3 py-0.5">
             <span class="text-slate-100 font-black text-center text-xl sm:text-2xl leading-tight tracking-tight truncate w-full" title={who.name(activeMatch.player2_id)}>
               {who.name(activeMatch.player2_id)}
             </span>
+            {#if activeMatch.live_score1 != null}
+              <span class="font-orbitron shrink-0 rounded bg-slate-900/90 px-2 text-xl font-black text-cyan-400">{activeMatch.live_score2}</span>
+            {/if}
           </div>
         </div>
       </div>
