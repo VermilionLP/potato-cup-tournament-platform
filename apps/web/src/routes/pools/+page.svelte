@@ -4,6 +4,8 @@
   // rules. Events use the best-matching template unless an admin picks one.
   // Everyone can view and export them; admins create, copy, edit and delete.
   // Draft and save helpers are in #lib/pool-editor.js.
+  import PageSkeleton from "#lib/components/PageSkeleton.svelte";
+  import PageHeader from "#lib/components/PageHeader.svelte";
   import { onMount } from "svelte";
   import { page } from "$app/state";
   import { toast } from "svelte-sonner";
@@ -192,20 +194,18 @@
 <!-- w-full min-w-0: with auto margins in the layout's flex column the page
      would otherwise grow to the vehicle table's width on phones. -->
 <div class="mx-auto w-full min-w-0 max-w-5xl space-y-4 px-1 sm:px-4 py-2 sm:py-6">
-  <div class="space-y-1">
-    <h1 class="flex items-center gap-2 text-xl font-bold text-foreground">
-      <PlaneIcon class="h-5 w-5 text-primary" />
-      载具池模板
-    </h1>
-    <p class="text-xs text-muted-foreground">
-      每个模板属于一种比赛类型，可以限定游戏模式，并带有自己的 Ban / Pick 规则。比赛默认自动使用同类型里最匹配游戏模式的模板（按排序），管理员也可以在赛事页手动指定。{isAdmin
-        ? "可以新建、复制、编辑和删除模板，或导入 JSON / CSV 载具表。"
-        : "可以导出载具表为 JSON / CSV。"}
-    </p>
-  </div>
+  <PageHeader title="载具池模板" icon={PlaneIcon} description="每种比赛类型的载具分组和 Ban / Pick 规则">
+    {#snippet more()}
+      <p>
+        每个模板属于一种比赛类型，可以限定游戏模式，并带有自己的 Ban / Pick 规则。比赛默认自动使用同类型里最匹配游戏模式的模板（按排序），管理员也可以在赛事页手动指定。{isAdmin
+          ? "可以新建、复制、编辑和删除模板，或导入 JSON / CSV 载具表。"
+          : "可以导出载具表为 JSON / CSV。"}
+      </p>
+    {/snippet}
+  </PageHeader>
 
   {#if loading}
-    <p class="py-8 text-center text-xs text-muted-foreground">加载中...</p>
+    <PageSkeleton kind="table" label="加载中..." rows={6} />
   {:else}
     <!-- Templates grouped by event type -->
     <TemplatePicker {byType} {activeId} {drafts} {isAdmin} newId={NEW_ID} {isNew} onpick={pick} onnew={() => startNew(null)} />

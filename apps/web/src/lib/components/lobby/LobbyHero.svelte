@@ -127,7 +127,7 @@
       {#if clock}
         <div class="md:text-right">
           <div class="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{clock.phase === "before" ? "距离开赛" : "比赛中"}</div>
-          <div class="font-mono text-3xl font-black tabular-nums tracking-tight {clock.soon ? 'text-red-500' : 'text-foreground'}">
+          <div class="text-3xl font-black tabular-nums tracking-tight {clock.soon ? 'text-red-500' : 'text-foreground'}">
             {clock.phase === "before" ? clock.text : clock.text.replace("已开赛 ", "")}
           </div>
         </div>

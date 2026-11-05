@@ -2,6 +2,7 @@
   // Potato Cup points leaderboard (积分榜): per season (year) and event type,
   // the points players earned in finished events with a points table. The
   // board is PointsBoard; admins also get SeasonAdmin (loaded on demand).
+  import PageHeader from "#lib/components/PageHeader.svelte";
   import PageSkeleton from "#lib/components/PageSkeleton.svelte";
   import { onMount } from "svelte";
   import { toast } from "svelte-sonner";
@@ -93,15 +94,11 @@
 <svelte:head><title>年度积分榜 · Potato Cup</title></svelte:head>
 
 <div class="space-y-5">
-  <div class="space-y-1">
-    <h1 class="flex items-center gap-2 text-2xl font-extrabold tracking-tight">
-      <AwardIcon class="h-6 w-6 text-primary" />
-      土豆杯积分榜
-    </h1>
-    <p class="text-xs text-muted-foreground">
-      计入积分榜的周赛和大型赛事按最终名次给分，每个赛季按比赛类型分别排名。冬季总决赛每个类型 16 人：管理员指定的直邀赛事冠军直接晋级（冠军已有资格时顺延给亚军），其余名额按积分排名。积分在赛事设置中定义，赛事结束后计入。
-    </p>
-  </div>
+  <PageHeader title="土豆杯积分榜" icon={AwardIcon} description="周赛和大型赛事按最终名次给分，每个赛季按比赛类型分别排名">
+    {#snippet more()}
+      <p>计入积分榜的周赛和大型赛事按最终名次给分，每个赛季按比赛类型分别排名。冬季总决赛每个类型 16 人：管理员指定的直邀赛事冠军直接晋级（冠军已有资格时顺延给亚军），其余名额按积分排名。积分在赛事设置中定义，赛事结束后计入。</p>
+    {/snippet}
+  </PageHeader>
 
   {#if loading && !data}
     <PageSkeleton kind="table" label="加载中..." rows={10} />

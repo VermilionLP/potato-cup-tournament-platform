@@ -1,6 +1,7 @@
 <script>
   // Lobby: the event that matters now on top (LobbyHero), the other upcoming
   // / running events, then finished ones filtered by event type. Rows and the create-event wizard live in #lib/components/lobby.
+  import PageHeader from "#lib/components/PageHeader.svelte";
   import PageSkeleton from "#lib/components/PageSkeleton.svelte";
   import { onMount } from "svelte";
   import { toast } from "svelte-sonner";
@@ -115,15 +116,8 @@
 
 <div class="space-y-6">
   <!-- Top Headline and Create trigger -->
-  <div class="flex items-center justify-between border-b border-border/60 pb-5">
-    <div>
-      <h1
-        class="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-foreground via-foreground/90 to-primary bg-clip-text text-transparent"
-      >
-        赛事大厅
-      </h1>
-    </div>
-    <div class="flex items-center gap-2 shrink-0">
+  <PageHeader title="赛事大厅" icon={TrophyIcon} description="报名、投票和观看 Potato Cup 水友赛">
+    {#snippet actions()}
       {#if isAdmin}
         {#if lastEvent}
           <Button
@@ -144,8 +138,8 @@
           创建赛事
         </Button>
       {/if}
-    </div>
-  </div>
+    {/snippet}
+  </PageHeader>
 
   {#if loading}
     <PageSkeleton kind="lobby" label="正在加载赛事数据..." />

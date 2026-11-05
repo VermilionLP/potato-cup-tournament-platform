@@ -2,6 +2,8 @@
   // Statistics page: player records over the events of a tier / kind
   // (GET /players/statistics, computed on the server). Clicking a player
   // opens their details under the row. Parts are in #lib/components/stats.
+  import PageHeader from "#lib/components/PageHeader.svelte";
+  import ChartIcon from "@lucide/svelte/icons/chart-column";
   import PageSkeleton from "#lib/components/PageSkeleton.svelte";
   import { onMount } from "svelte";
   import { toast } from "svelte-sonner";
@@ -48,16 +50,7 @@
 
 <div class="space-y-6">
   <!-- Page header -->
-  <div class="flex items-center justify-between border-b border-border/60 pb-5">
-    <div>
-      <h1 class="text-3xl font-extrabold tracking-tight bg-linear-to-r from-foreground via-foreground/90 to-primary bg-clip-text text-transparent">
-        数据统计
-      </h1>
-      <p class="text-xs text-muted-foreground mt-1">
-        分析赛事选手表现，挖掘趣味数据与胜率统计
-      </p>
-    </div>
-  </div>
+  <PageHeader title="数据统计" icon={ChartIcon} description="选手生涯战绩、趣味榜单和载具统计" />
 
   <!-- Event tier / kind filter -->
   <StatsScopeFilter tier={statsTier} kind={statsKind} disabled={statsLoading} onchange={setScope} />

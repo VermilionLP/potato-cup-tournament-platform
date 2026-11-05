@@ -1833,4 +1833,11 @@ export default {
   "{0} 空过，": "{0} passed; ",
   "轮到你禁用了": "Your turn to ban",
   "{0}：{1}请打开 Ban/Pick 选择要禁用的大组": "{0}: {1}open the Ban/Pick and choose a group to ban",
+  "说明": "Details",
+  "共 {0} 名选手（近一年活跃 {1} 名）": "{0} players ({1} active in the last year)",
+  "报名、投票和观看 Potato Cup 水友赛": "Sign up, vote and watch Potato Cup events",
+  "选手生涯战绩、趣味榜单和载具统计": "Career records, fun boards and vehicle statistics",
+  "全部已完成对局按日期顺序用 Elo 计算，初始 MMR 3000": "Every finished match in date order, rated with Elo from 3000",
+  "每种比赛类型的载具分组和 Ban / Pick 规则": "Vehicle groups and Ban / Pick rules per event type",
+  "周赛和大型赛事按最终名次给分，每个赛季按比赛类型分别排名": "Weekly and major events award points by placing; each season ranks every event type separately",
 };

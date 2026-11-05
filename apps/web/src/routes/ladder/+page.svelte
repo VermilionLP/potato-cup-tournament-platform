@@ -1,4 +1,5 @@
 <script>
+  import PageHeader from "#lib/components/PageHeader.svelte";
   import PageSkeleton from "#lib/components/PageSkeleton.svelte";
   import { onMount } from "svelte";
   import { toast } from "svelte-sonner";
@@ -122,22 +123,24 @@
 <svelte:head><title>天梯 · Potato Cup</title></svelte:head>
 
 <div class="space-y-6">
-  <div class="flex flex-col gap-2">
-    <div class="flex items-center gap-2">
-      <TrendingUpIcon class="w-6 h-6 text-primary" />
-      <h1 class="text-2xl font-extrabold tracking-tight">天梯 MMR</h1>
-      {#if divisionLabel}
-        <Badge variant="outline" class="text-xs font-bold border-primary/40 text-primary">{divisionLabel}</Badge>
-      {/if}
-    </div>
-    <p class="text-xs text-muted-foreground">
-      所有已完成的赛事对局按比赛日期顺序用 Elo 计算；初始
-      MMR 3000。选“最近一年”时只用近 365 天的对局从 3000 重新计算。默认只显示近 {data?.active_days || 365} 天有对局的选手；分数不重置，
-      回归后沿用原分。种子默认按这里的 MMR 自动排序。
-    </p>
-    <p class="text-xs text-muted-foreground">
-      选择模式和比赛类型可以查看单独计算的分榜（如 AB 螺旋桨），只用该组合的对局从 3000 开始算。分榜只列出在该组合打过对局的选手。赛事自动排种子时按该赛事的模式和比赛类型分榜排序，没有该组合对局的选手排在最后。
-    </p>
+  <div class="space-y-3">
+    <PageHeader title="天梯 MMR" icon={TrendingUpIcon} description="全部已完成对局按日期顺序用 Elo 计算，初始 MMR 3000">
+      {#snippet badge()}
+        {#if divisionLabel}
+          <Badge variant="outline" class="text-xs font-bold border-primary/40 text-primary">{divisionLabel}</Badge>
+        {/if}
+      {/snippet}
+      {#snippet more()}
+        <p>
+          所有已完成的赛事对局按比赛日期顺序用 Elo 计算；初始
+          MMR 3000。选“最近一年”时只用近 365 天的对局从 3000 重新计算。默认只显示近 {data?.active_days || 365} 天有对局的选手；分数不重置，
+          回归后沿用原分。种子默认按这里的 MMR 自动排序。
+        </p>
+        <p>
+          选择模式和比赛类型可以查看单独计算的分榜（如 AB 螺旋桨），只用该组合的对局从 3000 开始算。分榜只列出在该组合打过对局的选手。赛事自动排种子时按该赛事的模式和比赛类型分榜排序，没有该组合对局的选手排在最后。
+        </p>
+      {/snippet}
+    </PageHeader>
     <!-- Division picker: game mode × event type -->
     <DivisionPicker mode={ladderMode} pool={ladderPool} onchange={setDivision} />
   </div>

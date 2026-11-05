@@ -2,6 +2,8 @@
   // Player list: search, recently active players first (your own entry on
   // top), inactive ones folded away. Table, cards and the edit dialog live
   // in #lib/components/players.
+  import PageHeader from "#lib/components/PageHeader.svelte";
+  import UsersIcon from "@lucide/svelte/icons/users";
   import PageSkeleton from "#lib/components/PageSkeleton.svelte";
   import { onMount } from "svelte";
   import { toast } from "svelte-sonner";
@@ -80,22 +82,19 @@
 {/snippet}
 
 <div class="space-y-6">
-  <div class="flex items-center justify-between border-b border-border/60 pb-5">
-    <div>
-      <h1 class="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-foreground via-foreground/90 to-primary bg-clip-text text-transparent">
-        选手列表
-      </h1>
-      <p class="text-xs text-muted-foreground mt-1">
-        共 {players.length} 名选手（近一年活跃 {players.filter((p) => isRecentlySeen(p)).length} 名）· 管理全局选手档案与关联信息
-      </p>
-    </div>
-    {#if isAdmin}
-      <Button onclick={() => dialog?.openCreate()} class="gap-1.5 font-bold hover:scale-[1.02] transition-transform text-xs">
-        <PlusIcon class="w-4 h-4" />
-        新增选手
-      </Button>
-    {/if}
-  </div>
+  <PageHeader title="选手列表" icon={UsersIcon}>
+    {#snippet description()}
+      共 {players.length} 名选手（近一年活跃 {players.filter((p) => isRecentlySeen(p)).length} 名）
+    {/snippet}
+    {#snippet actions()}
+      {#if isAdmin}
+        <Button onclick={() => dialog?.openCreate()} class="gap-1.5 font-bold text-xs">
+          <PlusIcon class="w-4 h-4" />
+          新增选手
+        </Button>
+      {/if}
+    {/snippet}
+  </PageHeader>
 
   {#if isAdmin}
     {#await loadDuplicates() then m}

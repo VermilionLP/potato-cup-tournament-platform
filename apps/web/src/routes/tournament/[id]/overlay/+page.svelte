@@ -3,6 +3,8 @@
   // bracket "hybrid" scene and "banpick"), 1920x1080 scaled to the window.
   // The scene comes from ?scene=, else the dashboard's choice, else the live
   // match (its Ban / Pick until the result is confirmed, then ingame).
+  // A scene change plays a short stinger (SceneStinger; ?stinger=false
+  // turns it off).
   // ?channel=N follows one live channel (its live match and scene), so
   // several streams of one event can each have their own overlay.
   // Scenes live in #lib/components/overlay, layout maths in
@@ -19,6 +21,7 @@
   import IngameScene from "#lib/components/overlay/IngameScene.svelte";
   import HybridScene from "#lib/components/overlay/HybridScene.svelte";
   import BanPickScene from "#lib/components/overlay/BanPickScene.svelte";
+  import SceneStinger from "#lib/components/overlay/SceneStinger.svelte";
   import { liveSync } from "#lib/live-sync.js";
 
   let tid = $derived(page.params.id);
@@ -116,6 +119,19 @@
       .then((res) => (pool = res?.template || null))
       .catch(() => (poolLoaded = false));
   });
+  // A stinger sweeps across on every scene change after the first one
+  // (?stinger=false turns it off).
+  let stingerOn = $derived(page.url.searchParams.get("stinger") !== "false");
+  let stingerKey = $state(0);
+  let shownScene = null;
+  $effect(() => {
+    const scene = loading ? null : currentScene;
+    untrack(() => {
+      if (scene && shownScene && scene !== shownScene && stingerOn) stingerKey += 1;
+      if (scene) shownScene = scene;
+    });
+  });
+
   // The ingame scene is transparent unless bg=true; the others have the
   // ambient background unless transparent=true.
   let isTransparent = $derived(transparentParam || (currentScene === "ingame" && bgParam !== "true"));
@@ -175,6 +191,10 @@
       <div class="glow-orb glow-purple"></div>
       <div class="glow-orb glow-orange"></div>
     {/if}
+
+    {#key stingerKey}
+      {#if stingerKey}<SceneStinger label={tournament?.name || "Potato Cup"} />{/if}
+    {/key}
 
     {#if loading}
       <div class="flex-1 flex flex-col items-center justify-center gap-3">
