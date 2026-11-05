@@ -1898,4 +1898,7 @@ export default {
   "{0}s 后{1}": "{1} in {0}s",
   "延后 +{0}s": "Delay +{0}s",
   "跳过 BP": "Skip BP",
+  "历史最高 MMR": "Highest MMR ever",
+  "选手数据": "Players",
+  "选手生涯战绩、趣味榜单、载具统计和名人堂": "Career records, fun boards, vehicle statistics and the hall of fame",
 };

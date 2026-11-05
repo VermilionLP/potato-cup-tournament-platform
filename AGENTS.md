@@ -77,7 +77,7 @@ Ban / Pick 的载具池是 `axsuck.vehicle_pools` 里的模板（迁移 027）�
 
 ## Hall of fame and sharing
 
-`GET /hall-of-fame`（`lib/hall-of-fame.js`）：每场结束赛事的领奖台（`eventPlacements`，预选赛列出但不计冠军）和全部纪录（冠军、登台、参赛、胜场、最长连胜、最高 MMR，后三项来自天梯历史），网页 `/hall`（名人堂，另列每个赛季各类型的积分榜第一）。赛事结束后「分享到 Discord」可以生成 1080×1350 的结果图（`#lib/result-image.js`，浏览器 canvas 绘制，保存或复制）；赛事链接的预览图是 `static/og-image.png`（`summary_large_image`）。
+`GET /hall-of-fame`（`lib/hall-of-fame.js`）：每场结束赛事的领奖台（`eventPlacements`，预选赛列出但不计冠军）和全部纪录（冠军、登台、参赛、胜场、最长连胜、最高 MMR，后三项来自天梯历史），在统计页的「名人堂」标签（`/stats#hall`，只显示统计页其他榜单没有的纪录：登台、最长连胜、历史最高 MMR；另列每个赛季各类型的积分榜第一；旧链接 `/hall` 会跳转过去）。赛事结束后「分享到 Discord」可以生成 1080×1350 的结果图（`#lib/result-image.js`，浏览器 canvas 绘制，保存或复制）；赛事链接的预览图是 `static/og-image.png`（`summary_large_image`）。
 
 ## Event tiers
 
