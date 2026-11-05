@@ -450,7 +450,8 @@ test('Ban / Pick runs on the server: turns, undo, a draw seen by the other playe
     await api('POST', `/tournaments/${id}/matches/${match.id}/banpick`, { action: 'confirmGroup' });
     await api('POST', `/tournaments/${id}/matches/${match.id}/banpick`, { action: 'drawVehicle' });
     await api('POST', `/tournaments/${id}/matches/${match.id}/banpick`, { action: 'confirm' });
-    await overlay.getByText(/载具 · G[AC]-\d/).waitFor({ timeout: T });
+    await overlay.getByText(/G[AC]-\d/).first().waitFor({ timeout: T });
+    await overlay.getByText("RESULTS").waitFor({ timeout: T });
     await page.screenshot({ path: 'e2e-shot-banpick.png' });
     await overlay.screenshot({ path: 'e2e-shot-banpick-overlay.png' });
     assert.deepEqual(errors, [], 'no uncaught errors in the page');
