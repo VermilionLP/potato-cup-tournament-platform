@@ -1,20 +1,15 @@
 <script>
   // Ban / Pick vehicle groups, kept compact as text: while banning, a group
   // (or one of its vehicles) is clicked to ban it; bans, removals and the
-  // drawn result are marked. Each group shows its nation's flag; pointing at
+  // drawn result are marked. Pointing at
   // (or tapping) a vehicle shows its wiki slot picture in the preview bar
   // above, so the grid stays the same size.
   import { ban, bannedBy, isGroupBanned } from "#lib/banpick.js";
-  import { nationFlag } from "#lib/wt-units.js";
   import VehicleSlot from "./VehicleSlot.svelte";
 
   let { bp = $bindable(), grouped = [], banning = false } = $props();
 
   let preview = $state(null);
-  const groupFlag = (g) => {
-    const nations = [...new Set(g.vehicles.flatMap((v) => String(v.nation || "").split(" / ")).filter(Boolean))];
-    return nations.length === 1 ? nationFlag(nations[0]) : null;
-  };
 
   function vehicleInfo(v) {
     return [v.nation, v.br != null ? `BR ${v.br}` : null, v.type].filter(Boolean).join(" · ");
@@ -59,12 +54,7 @@
         onclick={() => (bp = ban(bp, g.group))}
         class="flex w-full items-center justify-between gap-1 text-left {pickable ? 'cursor-pointer' : 'cursor-default'}"
       >
-        <span class="flex min-w-0 items-center gap-1">
-          {#if groupFlag(g)}
-            <img src={groupFlag(g).cached} alt="" class="h-3 w-auto shrink-0 rounded-[2px]" loading="lazy" onerror={(e) => (e.currentTarget.style.display = "none")} />
-          {/if}
-          <span class="truncate text-[11px] font-bold text-foreground {removed ? 'line-through' : ''}">{g.group}</span>
-        </span>
+        <span class="truncate text-[11px] font-bold text-foreground {removed ? 'line-through' : ''}">{g.group}</span>
         {#if banner}
           <span
             class="shrink-0 rounded px-1 text-[9px] font-black text-white {banner === 'A' ? 'bg-rose-500' : 'bg-sky-500'}"

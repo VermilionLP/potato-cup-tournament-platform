@@ -1,5 +1,5 @@
 <script>
-  // Ban / Pick after the bans: the drawn group (with its nation's flag) and
+  // Ban / Pick after the bans: the drawn group and
   // vehicle with a short slot-machine roll, and the draw / remove / back
   // buttons the rules allow. Once a group is drawn its vehicles show as
   // garage slots with wiki pictures (the roll highlights them); the drawn
@@ -15,7 +15,6 @@
     removeVehicle,
     rerollsLeft,
   } from "#lib/banpick.js";
-  import { nationFlag } from "#lib/wt-units.js";
   import VehicleSlot from "./VehicleSlot.svelte";
 
   let { bp = $bindable(), grouped = [], rolling = $bindable(false) } = $props();
@@ -48,10 +47,6 @@
   // The drawn (or rolling) group and its vehicles, for the pictures.
   let shownGroup = $derived(rolling && bp.phase === "drawGroup" ? rollingLabel : bp.group);
   let groupVehiclesShown = $derived(grouped.find((g) => g.group === bp.group)?.vehicles || []);
-  let flagOf = (group) => {
-    const nations = [...new Set((grouped.find((g) => g.group === group)?.vehicles || []).flatMap((v) => String(v.nation || "").split(" / ")).filter(Boolean))];
-    return nations.length === 1 ? nationFlag(nations[0]) : null;
-  };
   let shownVehicle = $derived(
     rolling && bp.phase === "drawVehicle" ? groupVehiclesShown.find((v) => v.name === rollingLabel) : groupVehiclesShown.find((v) => v.name === bp.vehicle),
   );
@@ -72,9 +67,6 @@
     <div class="min-w-0">
       <div class="text-[10px] text-muted-foreground">大组</div>
       <div class="flex min-w-0 items-center gap-1.5 text-base font-black text-foreground {rolling && bp.phase === 'drawGroup' ? 'opacity-60' : ''}">
-        {#if shownGroup && flagOf(shownGroup)}
-          <img src={flagOf(shownGroup).cached} alt="" class="h-4 w-auto shrink-0 rounded-sm" onerror={(e) => (e.currentTarget.style.display = "none")} />
-        {/if}
         <span class="truncate">{shownGroup || "待抽取"}</span>
       </div>
     </div>
