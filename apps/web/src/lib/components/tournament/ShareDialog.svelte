@@ -1,5 +1,6 @@
 <script>
-  // "分享到 Discord": a ready-to-paste post about the event (time as Discord
+  // "分享到 Discord": a ready-to-paste post about the event; for a finished
+  // event also a results image (#lib/result-image.js) to save or copy (time as Discord
   // dynamic timestamps, mode and vehicle type, format, check-in, prizes and
   // points; or the podium once finished), editable, split into messages under
   // Discord's 2000-character limit (#lib/discord-share.js). start() opens it.
@@ -10,8 +11,48 @@
   import { formatInZone } from "#lib/datetime.js";
   import { i18n, loadTranslator } from "#lib/i18n/locale.svelte.js";
   import CopyIcon from "@lucide/svelte/icons/copy";
+  import ImageIcon from "@lucide/svelte/icons/image";
+  import DownloadIcon from "@lucide/svelte/icons/download";
+  import { drawResultImage, resultRows, topVehicle } from "#lib/result-image.js";
 
-  let { tournament, podium = [] } = $props();
+  // Results image (finished events): drawn on a canvas when the results are shown.
+  let imageUrl = $state("");
+  let imageBlob = null;
+  async function makeImage() {
+    imageUrl = "";
+    try {
+      const canvas = document.createElement("canvas");
+      await drawResultImage(canvas, {
+        t: tournament,
+        rows: resultRows(standings, tournament?.points_table || [], 8),
+        vehicle: topVehicle(tournament?.matches || []),
+        site: window.location.origin,
+      });
+      imageBlob = await new Promise((r) => canvas.toBlob(r, "image/png"));
+      imageUrl = imageBlob ? URL.createObjectURL(imageBlob) : "";
+    } catch (e) {
+      console.warn("results image failed", e);
+    }
+  }
+  function saveImage() {
+    if (!imageUrl) return;
+    const a = document.createElement("a");
+    a.href = imageUrl;
+    a.download = `${tournament?.name || "potato-cup"}-结果.png`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  }
+  async function copyImage() {
+    try {
+      await navigator.clipboard.write([new window.ClipboardItem({ "image/png": imageBlob })]);
+      toast.success("已复制图片，可以直接粘贴到 QQ / Discord");
+    } catch {
+      toast.error("这个浏览器不能复制图片，请用「保存图片」");
+    }
+  }
+
+  let { tournament, podium = [], standings = [] } = $props();
 
   let open = $state(false);
   let kind = $state("announce");
@@ -39,6 +80,7 @@
     lang = i18n.locale === "en" ? "en" : "zh";
     open = true;
     build();
+    if (tournament?.status === "completed" && standings.length) makeImage();
   }
 
   function choose(k, l = lang) {
@@ -113,6 +155,23 @@
           {/each}
         </div>
       </div>
+
+      {#if kind === "results" && tournament?.status === "completed" && standings.length}
+        <div class="space-y-1.5 rounded-lg border border-border/70 bg-muted/20 p-2">
+          <div class="flex flex-wrap items-center justify-between gap-2 text-[11px]">
+            <span class="inline-flex items-center gap-1 font-semibold"><ImageIcon class="h-3.5 w-3.5" />结果图（1080 × 1350）</span>
+            <span class="flex gap-1.5">
+              <Button size="sm" variant="outline" disabled={!imageUrl} onclick={copyImage} class="h-7 gap-1 text-xs"><CopyIcon class="h-3.5 w-3.5" />复制图片</Button>
+              <Button size="sm" disabled={!imageUrl} onclick={saveImage} class="h-7 gap-1 text-xs"><DownloadIcon class="h-3.5 w-3.5" />保存图片</Button>
+            </span>
+          </div>
+          {#if imageUrl}
+            <img src={imageUrl} alt="比赛结果图" class="mx-auto max-h-72 rounded-md border border-border" />
+          {:else}
+            <p class="py-6 text-center text-[11px] text-muted-foreground">正在生成…</p>
+          {/if}
+        </div>
+      {/if}
 
       <div class="space-y-1">
         <div class="flex items-center justify-between text-[11px] text-muted-foreground">

@@ -453,5 +453,5 @@
 
 <!-- Ready-to-paste Discord post (loaded on first use) -->
 {#if tournament && ShareDialog}
-  <ShareDialog bind:this={shareDialog} {tournament} podium={sharePodium} />
+  <ShareDialog bind:this={shareDialog} {tournament} podium={sharePodium} {standings} />
 {/if}

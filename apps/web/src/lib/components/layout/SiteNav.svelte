@@ -9,6 +9,7 @@
   import AwardIcon from "@lucide/svelte/icons/award";
   import PlaneIcon from "@lucide/svelte/icons/plane";
   import BugIcon from "@lucide/svelte/icons/bug";
+  import CrownIcon from "@lucide/svelte/icons/crown";
   import { userState } from "#lib/user.svelte.js";
 
   // placement: "top" (in the header, wide screens) or "bottom" (phones).
@@ -20,6 +21,7 @@
     { href: "/stats", label: "数据统计", short: "统计", icon: TrendingUpIcon },
     { href: "/ladder", label: "天梯", icon: SwordsIcon },
     { href: "/points", label: "年度积分榜", short: "积分榜", icon: AwardIcon },
+    { href: "/hall", label: "名人堂", icon: CrownIcon },
     { href: "/pools", label: "载具池", icon: PlaneIcon },
   ];
   // Admins also see the front-end error reports.

@@ -168,7 +168,7 @@ test('phones: no sideways scrolling, navigation at the bottom', async () => {
   const { browser, page } = await openPage();
   try {
     await page.setViewportSize({ width: 390, height: 800 });
-    for (const path of ['/', `/tournament/${id}`, '/players', '/stats', '/ladder', '/points', '/pools']) {
+    for (const path of ['/', `/tournament/${id}`, '/players', '/stats', '/ladder', '/points', '/pools', '/hall']) {
       await page.goto(`${BASE}${path}`);
       // Event pages keep a live connection open, so wait for the content instead of network idle.
       await page.locator('main').waitFor({ timeout: T });

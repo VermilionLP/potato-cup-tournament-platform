@@ -1,6 +1,6 @@
 <script>
-  // OBS overlay for an event: five scenes (intro, intermission, ingame, the
-  // bracket "hybrid" scene and "banpick"), 1920x1080 scaled to the window.
+  // OBS overlay for an event: six scenes (intro, intermission, ingame, the
+  // bracket "hybrid" scene, "banpick" and the "versus" card), 1920x1080 scaled to the window.
   // The scene comes from ?scene=, else the dashboard's choice, else the live
   // match (its Ban / Pick until the result is confirmed, then ingame).
   // A scene change plays a short stinger (SceneStinger; ?stinger=false
@@ -22,6 +22,7 @@
   import HybridScene from "#lib/components/overlay/HybridScene.svelte";
   import BanPickScene from "#lib/components/overlay/BanPickScene.svelte";
   import SceneStinger, { STINGER_COVER_MS } from "#lib/components/overlay/SceneStinger.svelte";
+  import VersusScene from "#lib/components/overlay/VersusScene.svelte";
   import { liveSync } from "#lib/live-sync.js";
 
   let tid = $derived(page.params.id);
@@ -223,6 +224,8 @@
       <IntermissionScene matches={playableMatches} {matchOrder} {stageShort} {who} />
     {:else if scene === "ingame"}
       <IngameScene {tournament} {tickerRounds} {activeMatch} {stageShort} {who} />
+    {:else if scene === "versus"}
+      <VersusScene {tournament} {activeMatch} {stageShort} {who} />
     {:else if scene === "banpick"}
       <BanPickScene {tournament} {activeMatch} {pool} {stageShort} {who} />
     {:else if scene === "hybrid"}

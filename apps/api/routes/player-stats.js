@@ -7,6 +7,7 @@ import { statsScope } from '../lib/event-tier.js';
 import { buildPlayerStatistics } from '../lib/player-statistics.js';
 import { cached } from '../lib/ladder-cache.js';
 import { buildBanpickStats } from '../lib/banpick-stats.js';
+import { buildHallOfFame } from '../lib/hall-of-fame.js';
 
 export default async function playerStatsRoutes(fastify) {
   const repo = PlayerRepo(fastify.db);
@@ -63,4 +64,18 @@ export default async function playerStatsRoutes(fastify) {
       return buildBanpickStats(rows, { type, player });
     });
   });
+
+  // Hall of fame (lib/hall-of-fame.js): every finished event's podium and
+  // the all-time records.
+  fastify.get('/hall-of-fame', async () => cached(fastify.db, 'hall-of-fame', async () => {
+    const tournaments = (await fastify.db.query(
+      "SELECT id, name, status, format, playoff_format, swiss_rounds, swiss_group_size, advance_per_group, source_title, tier, event_kind, vehicle_pool, scheduled_time, played_at, created_at FROM axsuck.tournaments WHERE status = 'completed'",
+    )).rows;
+    const registrations = (await fastify.db.query('SELECT * FROM axsuck.tournament_players')).rows;
+    const matches = (await fastify.db.query("SELECT * FROM axsuck.matches WHERE status IN ('completed', 'walkover')")).rows;
+    const players = await repo.list();
+    const names = new Map(players.map((p) => [p.id, { name: p.display_name || p.id, flag: p.flag || '' }]));
+    const { history } = await ladderRepo.getRatings({ includeInactive: true });
+    return buildHallOfFame({ tournaments, registrations, matches, history, names });
+  }));
 }

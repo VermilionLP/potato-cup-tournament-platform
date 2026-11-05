@@ -2,7 +2,8 @@
   // "Going live" mode of the event page for one live channel. Only this
   // browser is affected (remembered per event): while it is on and the
   // event is in progress with no live match on the channel, the operator
-  // must pick the next match (blocking dialog). With Ban / Pick on (`banpick`)
+  // must pick the next match (blocking dialog). The overlay shows the VS card
+  // (both players) for 15 s first. With Ban / Pick on (`banpick`)
   // and the match's result not confirmed yet, the overlay shows the Ban /
   // Pick scene first and waits; once the result is confirmed (on the server,
   // by anyone) the countdown starts. Without it the bracket scene shows.
@@ -96,6 +97,7 @@
   /** Stops the countdown and any wait for Ban / Pick (e.g. an admin picked a scene by hand). */
   export function clearHud() {
     waitingBp = null;
+    stopVersus();
     stopTimer();
   }
 
@@ -168,28 +170,63 @@
     toast.info(`已延后 ${AUTO_HUD_EXTEND} 秒切换到大屏 HUD`);
   }
 
+  // The VS card shows first, for VERSUS_SECONDS (or until 跳过).
+  const VERSUS_SECONDS = 15;
+  let versus = $state(null); // { matchId, withBp, seconds }
+  let versusTimer = null;
+  function stopVersus() {
+    if (versusTimer) clearInterval(versusTimer);
+    versusTimer = null;
+    versus = null;
+  }
+  async function afterVersus() {
+    const v = versus;
+    stopVersus();
+    if (!v || liveMatch?.id !== v.matchId) return;
+    if (v.withBp) {
+      await showBanPickScene();
+      waitingBp = v.matchId;
+      toast.success("大屏切到 Ban/Pick；结果确认后倒计时切换到游戏内 HUD");
+    } else {
+      await showBracketScene();
+      startCountdown();
+    }
+  }
+
   async function chooseNextMatch(matchId) {
     if (!ensureAdmin()) return;
     try {
       const match = tournament?.matches?.find((m) => m.id === matchId);
       const withBp = banpick && match?.banpick?.state?.phase !== "done";
       // Scene first, then mark the match live, so the overlay never flashes the HUD.
-      if (withBp) await showBanPickScene();
-      else await showBracketScene();
+      await setScene("versus");
       await API.setActiveMatch(tid, matchId, channel);
       nextMatchOpen = false;
       stopTimer();
       // Reload first so the page already knows the new live match.
       await onreload?.();
-      if (withBp) {
-        waitingBp = matchId;
-        toast.success("已选择当前直播对局，大屏显示 Ban/Pick；结果确认后倒计时切换到游戏内 HUD");
-      } else {
-        toast.success("已选择当前直播对局，倒计时结束后切换到大屏游戏内 HUD");
-        startCountdown();
-      }
+      toast.success(
+        withBp
+          ? `已选择当前直播对局：先显示 VS 对位卡 ${VERSUS_SECONDS} 秒，再进入 Ban/Pick`
+          : `已选择当前直播对局：先显示 VS 对位卡 ${VERSUS_SECONDS} 秒，再倒计时切换到游戏内 HUD`,
+      );
+      stopVersus();
+      versus = { matchId, withBp, seconds: VERSUS_SECONDS };
+      versusTimer = setInterval(() => {
+        if (!versus) return;
+        versus.seconds -= 1;
+        if (versus.seconds <= 0) afterVersus();
+      }, 1000);
     } catch (e) {
       toast.error("选择直播对局失败: " + e.message);
+    }
+  }
+
+  async function setScene(scene) {
+    try {
+      await API.setOverlayState(tid, scene, overlayRound(), undefined, channel);
+    } catch (e) {
+      toast.error("切换大屏场景失败: " + e.message);
     }
   }
 
@@ -214,6 +251,16 @@
   }
 </script>
 
+{#if versus}
+  <div
+    class="fixed bottom-5 left-1/2 -translate-x-1/2 z-[60] flex items-center gap-3 rounded-xl border border-primary/30 bg-card/95 px-4 py-3 shadow-lg backdrop-blur"
+  >
+    <ClockIcon class="w-4 h-4 text-primary shrink-0 animate-pulse" />
+    <span class="text-xs font-medium whitespace-nowrap">大屏显示 VS 对位卡 · {versus.seconds}s 后</span>
+    <span class="text-xs font-medium whitespace-nowrap">{versus.withBp ? "进入 Ban/Pick" : "切到对阵图并开始倒计时"}</span>
+    <Button size="sm" class="h-7 text-xs cursor-pointer" onclick={afterVersus}>跳过</Button>
+  </div>
+{/if}
 {#if waitingBp && !hudActive}
   <div
     class="fixed bottom-5 left-1/2 -translate-x-1/2 z-[60] flex items-center gap-3 rounded-xl border border-primary/30 bg-card/95 px-4 py-3 shadow-lg backdrop-blur"

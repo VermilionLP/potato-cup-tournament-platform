@@ -141,6 +141,8 @@ export const API = {
     const qs = params.toString();
     return request(`/banpick/stats${qs ? `?${qs}` : ''}`);
   },
+  // Every finished event's podium and the all-time records.
+  getHallOfFame: () => request('/hall-of-fame'),
   getPlayTimes: () => request('/stats/play-times'),
   getPushPublicKey: () => request('/push/public-key'),
   subscribePush: (subscription) =>

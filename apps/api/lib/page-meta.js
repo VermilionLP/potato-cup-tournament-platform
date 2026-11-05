@@ -50,7 +50,7 @@ export function injectMeta(html, meta) {
   ]
     .filter(([, v]) => v)
     .map(([k, v]) => `<meta property="${k}" content="${escapeHtml(v)}" />`);
-  tags.push('<meta name="twitter:card" content="summary" />', '<meta name="theme-color" content="#f59e0b" />');
+  tags.push('<meta name="twitter:card" content="summary_large_image" />', '<meta name="theme-color" content="#f59e0b" />');
   if (meta.description) tags.push(`<meta name="description" content="${escapeHtml(meta.description)}" />`);
   let out = html.replace(/<title>[^<]*<\/title>/, `<title>${escapeHtml(meta.title)}</title>`);
   out = out.replace('</head>', `${tags.join('\n')}\n</head>`);

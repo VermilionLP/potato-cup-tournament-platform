@@ -140,7 +140,7 @@ if (staticRoot) {
             return injectMeta(html, {
               ...eventMeta(t),
               url: `${origin}/tournament/${encodeURIComponent(eventId)}`,
-              image: `${origin}/web-app-manifest-512x512.png`,
+              image: `${origin}/og-image.png`,
             });
           }
         } catch (err) {
