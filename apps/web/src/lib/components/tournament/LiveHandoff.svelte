@@ -2,8 +2,12 @@
   // "Going live" mode of the event page for one live channel. Only this
   // browser is affected (remembered per event): while it is on and the
   // event is in progress with no live match on the channel, the operator
-  // must pick the next match (blocking dialog); 60 s later the overlay
-  // switches to the in-game HUD (countdown banner, can be pushed back).
+  // must pick the next match (blocking dialog). With Ban / Pick on (`banpick`)
+  // and the match's result not confirmed yet, the overlay shows the Ban /
+  // Pick scene first and waits; once the result is confirmed (on the server,
+  // by anyone) the countdown starts. Without it the bracket scene shows.
+  // 60 s after that the overlay switches to the in-game HUD (countdown
+  // banner, can be pushed back).
   // Methods: start() (asks the pre-flight checklist first), stop(),
   // clearHud(), matchFinished() (back to the bracket scene).
   import { toast } from "svelte-sonner";
@@ -27,6 +31,7 @@
     playerName,
     ensureAdmin,
     onreload,
+    banpick = false, // the event has Ban / Pick with a vehicle pool
   } = $props();
 
   const AUTO_HUD_DELAY = 60;
@@ -37,6 +42,8 @@
   let hudActive = $state(false);
   let hudSeconds = $state(AUTO_HUD_DELAY);
   let timer = null;
+  // The live match whose Ban / Pick we wait for (its id), or null.
+  let waitingBp = $state(null);
 
   // The active match only counts as live while it is still pending.
   let liveMatch = $derived.by(() => {
@@ -58,6 +65,27 @@
     }
   });
 
+  // Waiting for Ban / Pick: the confirmed result starts the countdown; an
+  // admin undoing it stops the countdown and waits again.
+  let bpDone = $derived(liveMatch?.banpick?.state?.phase === "done");
+  $effect(() => {
+    if (!waitingBp || liveMatch?.id !== waitingBp) return;
+    if (bpDone && !hudActive) {
+      toast.success("Ban/Pick 结果已确认，倒计时后切换到游戏内 HUD");
+      startCountdown();
+    } else if (!bpDone && hudActive) {
+      stopTimer();
+      showBanPickScene();
+    }
+  });
+  // The match ended or another one went live: stop waiting.
+  $effect(() => {
+    if (!waitingBp) return;
+    const m = tournament?.matches?.find((x) => x.id === waitingBp);
+    const other = tournament?.active_match_id && tournament.active_match_id !== waitingBp;
+    if (!m || m.status !== "pending" || other) waitingBp = null;
+  });
+
   // Stop the countdown when leaving the page.
   $effect(() => () => clearHud());
 
@@ -65,7 +93,13 @@
     return tournament?.overlay_round || Math.max(...(overlayMatches?.map((m) => m.round) || [1]));
   }
 
+  /** Stops the countdown and any wait for Ban / Pick (e.g. an admin picked a scene by hand). */
   export function clearHud() {
+    waitingBp = null;
+    stopTimer();
+  }
+
+  function stopTimer() {
     if (timer) {
       clearInterval(timer);
       timer = null;
@@ -75,6 +109,8 @@
 
   async function switchToHud() {
     if (!ensureAdmin()) return;
+    clearHud();
+    waitingBp = null;
     try {
       await API.setOverlayState(tid, "ingame", overlayRound(), undefined, channel);
       toast.success("已自动切换大屏到游戏内 HUD 场景");
@@ -93,19 +129,34 @@
     }
   }
 
+  async function showBanPickScene() {
+    if (!ensureAdmin()) return;
+    try {
+      await API.setOverlayState(tid, "banpick", overlayRound(), undefined, channel);
+    } catch (e) {
+      toast.error("切换大屏到 Ban/Pick 场景失败: " + e.message);
+    }
+  }
+
+  /** Skips waiting for Ban / Pick and starts the countdown now. */
+  function skipBanPick() {
+    waitingBp = null;
+    startCountdown();
+  }
+
   /** After a live match's result: back to the bracket scene while streaming. */
   export async function matchFinished() {
     if (streamMode) await showBracketScene();
   }
 
   function startCountdown() {
-    clearHud();
+    stopTimer();
     hudSeconds = AUTO_HUD_DELAY;
     hudActive = true;
     timer = setInterval(() => {
       hudSeconds -= 1;
       if (hudSeconds <= 0) {
-        clearHud();
+        stopTimer();
         switchToHud();
       }
     }, 1000);
@@ -120,13 +171,23 @@
   async function chooseNextMatch(matchId) {
     if (!ensureAdmin()) return;
     try {
-      // Bracket first, then mark the match live, so the overlay never flashes the HUD.
-      await showBracketScene();
+      const match = tournament?.matches?.find((m) => m.id === matchId);
+      const withBp = banpick && match?.banpick?.state?.phase !== "done";
+      // Scene first, then mark the match live, so the overlay never flashes the HUD.
+      if (withBp) await showBanPickScene();
+      else await showBracketScene();
       await API.setActiveMatch(tid, matchId, channel);
       nextMatchOpen = false;
-      toast.success("已选择当前直播对局，倒计时结束后切换到大屏游戏内 HUD");
-      startCountdown();
+      stopTimer();
+      // Reload first so the page already knows the new live match.
       await onreload?.();
+      if (withBp) {
+        waitingBp = matchId;
+        toast.success("已选择当前直播对局，大屏显示 Ban/Pick；结果确认后倒计时切换到游戏内 HUD");
+      } else {
+        toast.success("已选择当前直播对局，倒计时结束后切换到大屏游戏内 HUD");
+        startCountdown();
+      }
     } catch (e) {
       toast.error("选择直播对局失败: " + e.message);
     }
@@ -147,11 +208,21 @@
     streamMode = false;
     saveStreamMode(tid, false);
     clearHud();
+    waitingBp = null;
     nextMatchOpen = false;
     toast.info("已结束直播状态");
   }
 </script>
 
+{#if waitingBp && !hudActive}
+  <div
+    class="fixed bottom-5 left-1/2 -translate-x-1/2 z-[60] flex items-center gap-3 rounded-xl border border-primary/30 bg-card/95 px-4 py-3 shadow-lg backdrop-blur"
+  >
+    <ClockIcon class="w-4 h-4 text-primary shrink-0 animate-pulse" />
+    <span class="text-xs font-medium whitespace-nowrap">大屏显示 Ban/Pick，等待结果确认…</span>
+    <Button size="sm" variant="outline" class="h-7 text-xs cursor-pointer" onclick={skipBanPick}>跳过，开始倒计时</Button>
+  </div>
+{/if}
 {#if hudActive}
   <div
     class="fixed bottom-5 left-1/2 -translate-x-1/2 z-[60] flex items-center gap-3 rounded-xl border border-primary/30 bg-card/95 px-4 py-3 shadow-lg backdrop-blur"

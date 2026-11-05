@@ -2,7 +2,7 @@
   // OBS overlay for an event: five scenes (intro, intermission, ingame, the
   // bracket "hybrid" scene and "banpick"), 1920x1080 scaled to the window.
   // The scene comes from ?scene=, else the dashboard's choice, else the live
-  // match (its Ban / Pick while one is under way, then ingame).
+  // match (its Ban / Pick until the result is confirmed, then ingame).
   // ?channel=N follows one live channel (its live match and scene), so
   // several streams of one event can each have their own overlay.
   // Scenes live in #lib/components/overlay, layout maths in
@@ -95,17 +95,22 @@
   let currentScene = $derived.by(() => {
     if (sceneParam && sceneParam !== "auto") return sceneParam;
     if (tournament?.overlay_scene && tournament.overlay_scene !== "auto") return tournament.overlay_scene;
-    if (activeMatch && bpUnderWay(activeMatch)) return "banpick";
+    if (activeMatch && bpPending(activeMatch)) return "banpick";
     return activeMatch ? "ingame" : "hybrid";
   });
-  // A Ban / Pick started on the server and not confirmed yet.
-  const bpUnderWay = (m) => Boolean(m?.banpick?.log?.length) && m.banpick.state?.phase !== "done";
+  // The live match still needs its Ban / Pick: the event has one (and a
+  // vehicle pool), the match is not played yet (no live score) and its
+  // result is not confirmed.
+  const bpPending = (m) =>
+    Boolean(pool) && tournament?.banpick_enabled !== false && m.status === "pending" && m.live_score1 == null && m.banpick?.state?.phase !== "done";
 
-  // The event's vehicle pool, for the Ban / Pick scene's groups and pictures.
+  // The event's vehicle pool, for the Ban / Pick scene's groups and pictures
+  // (and to know whether the event has Ban / Pick at all).
   let pool = $state(null);
   let poolLoaded = false;
   $effect(() => {
-    if (currentScene !== "banpick" || poolLoaded || !tid) return;
+    const wanted = currentScene === "banpick" || (tournament && tournament.banpick_enabled !== false);
+    if (!wanted || poolLoaded || !tid) return;
     poolLoaded = true;
     API.getEventVehiclePool(tid)
       .then((res) => (pool = res?.template || null))

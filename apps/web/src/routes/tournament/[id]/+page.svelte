@@ -446,6 +446,7 @@
       {playerName}
       {ensureAdmin}
       onreload={load}
+      banpick={banpickEnabled && Boolean(data.bpTemplate)}
     />
   {/await}
 {/if}

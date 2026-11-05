@@ -1798,4 +1798,9 @@ export default {
   "没有可抽的大组了": "No groups left to draw",
   "这个大组没有可抽的载具了": "No vehicles left to draw in this group",
   "现在不能进行这个操作": "That can't be done right now",
+  "Ban/Pick 结果已确认，倒计时后切换到游戏内 HUD": "Ban/Pick confirmed; switching to the in-game HUD after the countdown",
+  "切换大屏到 Ban/Pick 场景失败: ": "Could not switch the overlay to Ban/Pick: ",
+  "已选择当前直播对局，大屏显示 Ban/Pick；结果确认后倒计时切换到游戏内 HUD": "Live match chosen; the overlay shows the Ban/Pick and switches to the in-game HUD after a countdown once the result is confirmed",
+  "大屏显示 Ban/Pick，等待结果确认…": "Overlay shows the Ban/Pick, waiting for the result…",
+  "跳过，开始倒计时": "Skip, start the countdown",
 };
