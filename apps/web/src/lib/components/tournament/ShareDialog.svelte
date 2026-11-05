@@ -26,7 +26,6 @@
         t: tournament,
         rows: resultRows(standings, tournament?.points_table || [], 8),
         vehicle: topVehicle(tournament?.matches || []),
-        site: window.location.origin,
       });
       imageBlob = await new Promise((r) => canvas.toBlob(r, "image/png"));
       imageUrl = imageBlob ? URL.createObjectURL(imageBlob) : "";

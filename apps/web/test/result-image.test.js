@@ -22,3 +22,12 @@ test("the most played vehicle", () => {
   assert.equal(topVehicle([]), null);
   assert.deepEqual(topVehicle([done("Bf 109"), done("P-51"), done("Bf 109"), { banpick: { state: { phase: "ban" } } }]), { name: "Bf 109", count: 2 });
 });
+
+test("English info line and rewards", async () => {
+  const { infoLine, rewardText } = await import("../src/lib/result-image.js");
+  assert.equal(infoLine({ scheduled_time: "2026-10-31T20:00", game_mode: "rb", vehicle_pool: "prop", format: "single_elim", player_count: 15 }), "2026-10-31  ·  RB  ·  Prop  ·  Single Elimination  ·  15 Players");
+  assert.equal(infoLine({ scheduled_time: "2026/1/5 20:00", format: "swiss", playoff_format: "double_elim" }), "2026-01-05  ·  Swiss Groups + Double Elimination");
+  assert.equal(rewardText({ prize: 10000, points: 100 }, true), "10,000 Golden Eagles  ·  100 PTS");
+  assert.equal(rewardText({ prize: 0, points: 60 }), "60 PTS");
+  assert.equal(rewardText({}), "");
+});

@@ -1,8 +1,8 @@
 // Results image of a finished event (a PNG to post in QQ / Discord): the
-// rows it lists and the drawing on a <canvas>. resultRows is pure (tested);
+// rows it lists (the top 8 places) and the drawing on a <canvas>. The
+// image's own text is English (players' names stay as they are). resultRows is pure (tested);
 // drawResultImage needs a browser.
 
-import { eventSummary } from "./tournament.js";
 import { flagSrc } from "./flags.js";
 
 export const IMAGE_W = 1080;
@@ -50,6 +50,28 @@ export function topVehicle(matches = []) {
   return best ? { name: best[0], count: best[1] } : null;
 }
 
+const MODES = { ab: "AB", rb: "RB", sb: "SB" };
+const POOLS = { prop: "Prop", "legacy-jet": "Legacy Jet", "top-jet": "Top Jet", proleague: "Pro League BVR" };
+const FORMATS = { single_elim: "Single Elimination", double_elim: "Double Elimination", swiss: "Swiss" };
+
+/** "2026-10-31 · RB · Prop · Single Elimination · 15 Players". */
+export function infoLine(t = {}) {
+  const day = String(t.scheduled_time || "").match(/(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
+  const date = day ? `${day[1]}-${day[2].padStart(2, "0")}-${day[3].padStart(2, "0")}` : "";
+  const format = t.playoff_format
+    ? `${t.format === "swiss" ? "Swiss Groups" : "Groups"} + ${FORMATS[t.playoff_format] || t.playoff_format}`
+    : FORMATS[t.format] || "";
+  const count = (t.players || []).length || t.player_count || 0;
+  return [date, MODES[t.game_mode] || "", POOLS[t.vehicle_pool] || "", format, count ? `${count} Players` : ""].filter(Boolean).join("  ·  ");
+}
+
+/** "10,000 Golden Eagles" / "60 PTS" for a row; "" without either. */
+export function rewardText(r, both = false) {
+  const prize = r.prize ? `${r.prize.toLocaleString("en-US")} Golden Eagles` : "";
+  const points = r.points ? `${r.points} PTS` : "";
+  return both ? [prize, points].filter(Boolean).join("  ·  ") : prize || points;
+}
+
 const load = (src) =>
   new Promise((resolve) => {
     if (!src) return resolve(null);
@@ -86,9 +108,9 @@ function fit(ctx, text, max, size, weight = 900) {
 
 /**
  * Draws the results image on `canvas` (sized IMAGE_W × IMAGE_H).
- * t: the event; rows: resultRows(); vehicle: topVehicle(); site: origin.
+ * t: the event; rows: resultRows(); vehicle: topVehicle().
  */
-export async function drawResultImage(canvas, { t, rows = [], vehicle = null, site = "" }) {
+export async function drawResultImage(canvas, { t, rows = [], vehicle = null }) {
   canvas.width = IMAGE_W;
   canvas.height = IMAGE_H;
   const ctx = canvas.getContext("2d");
@@ -136,11 +158,9 @@ export async function drawResultImage(canvas, { t, rows = [], vehicle = null, si
   ctx.fillStyle = "#ffffff";
   fit(ctx, t.name || "", W - 140, 60);
   ctx.fillText(t.name || "", W / 2, y + 50);
-  const info = eventSummary(t);
-  const when = String(t.scheduled_time || "").slice(0, 10).replace(/-/g, "/");
   ctx.font = `600 26px ${FONT}`;
   ctx.fillStyle = "#94a3b8";
-  ctx.fillText([when, info.mode, info.pool, info.format, `${(t.players || []).length || t.player_count || 0} 名选手`].filter(Boolean).join("  ·  "), W / 2, y + 100);
+  ctx.fillText(infoLine(t), W / 2, y + 100);
   y += 150;
 
   // Champion card.
@@ -160,7 +180,7 @@ export async function drawResultImage(canvas, { t, rows = [], vehicle = null, si
     ctx.textAlign = "center";
     ctx.font = `800 28px ${FONT}`;
     ctx.fillStyle = "#fbbf24";
-    ctx.fillText("🏆  冠 军", W / 2, y + 52);
+    ctx.fillText("🏆  CHAMPION", W / 2, y + 52);
     const size = fit(ctx, champ.name, w - 200, 76);
     const nameW = ctx.measureText(champ.name).width;
     const flagW = flags[0] ? 64 : 0;
@@ -170,54 +190,57 @@ export async function drawResultImage(canvas, { t, rows = [], vehicle = null, si
     ctx.fillStyle = "#ffffff";
     ctx.font = `900 ${size}px ${FONT}`;
     ctx.fillText(champ.name, startX + flagW + (flagW ? 20 : 0), y + 138);
-    if (champ.prize) {
+    if (champ.prize || champ.points) {
       ctx.textAlign = "center";
       ctx.font = `700 26px ${FONT}`;
       ctx.fillStyle = "#fcd34d";
-      const prize = `${champ.prize.toLocaleString()} 金鹰币`;
-      const points = champ.points ? `${champ.points} 积分` : "";
-      ctx.fillText([prize, points].filter(Boolean).join("  ·  "), W / 2, y + 186);
+      ctx.fillText(rewardText(champ, true), W / 2, y + 186);
     }
     y += h + 36;
   }
 
-  // The other places.
-  const rowH = 74;
-  rows.slice(1).forEach((r, i) => {
-    const top = y + i * (rowH + 12);
-    if (top + rowH > H - 110) return;
+  // The other places (2nd to 8th), sized to fit above the footer.
+  const others = rows.slice(1, 8);
+  const footH = vehicle ? 80 : 40;
+  const gap = 12;
+  const rowH = Math.min(74, Math.floor((H - footH - y - gap * Math.max(0, others.length - 1)) / Math.max(1, others.length)));
+  const mid = rowH / 2;
+  others.forEach((r, i) => {
+    const top = y + i * (rowH + gap);
     const x = 90;
     const w = W - 180;
     ctx.fillStyle = "rgba(24, 29, 37, 0.94)";
-    rounded(ctx, x, top, w, rowH, 18);
+    rounded(ctx, x, top, w, rowH, 16);
     ctx.fill();
     // Place badge.
     ctx.fillStyle = MEDAL[r.from] || "#334155";
-    rounded(ctx, x + 18, top + 15, 76, 44, 12);
+    rounded(ctx, x + 18, top + mid - 22, 76, 44, 12);
     ctx.fill();
     ctx.fillStyle = MEDAL[r.from] ? "#0f172a" : "#e2e8f0";
     ctx.textAlign = "center";
     ctx.font = `900 26px ${FONT}`;
-    ctx.fillText(r.place, x + 56, top + 47);
+    ctx.fillText(r.place, x + 56, top + mid + 9);
     const flag = flags[i + 1];
-    if (flag) ctx.drawImage(flag, x + 116, top + 22, 40, 30);
+    if (flag) ctx.drawImage(flag, x + 116, top + mid - 15, 40, 30);
     ctx.textAlign = "left";
     ctx.fillStyle = "#ffffff";
     fit(ctx, r.name, w - 470, 34, 800);
-    ctx.fillText(r.name, x + 172, top + 49);
-    if (r.prize || r.points) {
+    ctx.fillText(r.name, x + 172, top + mid + 12);
+    const reward = rewardText(r);
+    if (reward) {
       ctx.textAlign = "right";
       ctx.font = `700 24px ${FONT}`;
       ctx.fillStyle = r.prize ? "#fcd34d" : "#94a3b8";
-      ctx.fillText(r.prize ? `${r.prize.toLocaleString()} 金鹰币` : `${r.points} 积分`, x + w - 24, top + 47);
+      ctx.fillText(reward, x + w - 24, top + mid + 9);
     }
   });
 
-  // Footer.
-  ctx.textAlign = "center";
-  ctx.font = `600 24px ${FONT}`;
-  ctx.fillStyle = "#64748b";
-  const foot = [vehicle ? `本届最常用载具：${vehicle.name}（${vehicle.count} 场）` : "", site.replace(/^https?:\/\//, "")].filter(Boolean);
-  foot.forEach((line, i) => ctx.fillText(line, W / 2, H - 70 + i * 36 - (foot.length - 1) * 18));
+  // Footer: the vehicle played most.
+  if (vehicle) {
+    ctx.textAlign = "center";
+    ctx.font = `600 24px ${FONT}`;
+    ctx.fillStyle = "#64748b";
+    ctx.fillText(`Most played vehicle: ${vehicle.name} (${vehicle.count} ${vehicle.count === 1 ? "match" : "matches"})`, W / 2, H - 40);
+  }
   return canvas;
 }
