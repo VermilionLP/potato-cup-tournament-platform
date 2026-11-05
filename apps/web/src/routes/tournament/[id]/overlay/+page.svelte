@@ -21,7 +21,7 @@
   import IngameScene from "#lib/components/overlay/IngameScene.svelte";
   import HybridScene from "#lib/components/overlay/HybridScene.svelte";
   import BanPickScene from "#lib/components/overlay/BanPickScene.svelte";
-  import SceneStinger from "#lib/components/overlay/SceneStinger.svelte";
+  import SceneStinger, { STINGER_COVER_MS } from "#lib/components/overlay/SceneStinger.svelte";
   import { liveSync } from "#lib/live-sync.js";
 
   let tid = $derived(page.params.id);
@@ -119,22 +119,32 @@
       .then((res) => (pool = res?.template || null))
       .catch(() => (poolLoaded = false));
   });
-  // A stinger sweeps across on every scene change after the first one
-  // (?stinger=false turns it off).
+  // A stinger (the logo wipe) plays on every scene change after the first
+  // one, and the new scene appears only once the stinger covers the frame
+  // (?stinger=false: switch at once, no stinger).
   let stingerOn = $derived(page.url.searchParams.get("stinger") !== "false");
   let stingerKey = $state(0);
-  let shownScene = null;
+  let shownScene = $state(null);
+  let swapTimer = null;
   $effect(() => {
-    const scene = loading ? null : currentScene;
+    const next = loading ? null : currentScene;
     untrack(() => {
-      if (scene && shownScene && scene !== shownScene && stingerOn) stingerKey += 1;
-      if (scene) shownScene = scene;
+      if (!next || next === shownScene) return;
+      clearTimeout(swapTimer);
+      if (!shownScene || !stingerOn) {
+        shownScene = next;
+        return;
+      }
+      stingerKey += 1;
+      swapTimer = setTimeout(() => (shownScene = currentScene), STINGER_COVER_MS);
     });
   });
+  $effect(() => () => clearTimeout(swapTimer));
+  let scene = $derived(shownScene || currentScene);
 
   // The ingame scene is transparent unless bg=true; the others have the
   // ambient background unless transparent=true.
-  let isTransparent = $derived(transparentParam || (currentScene === "ingame" && bgParam !== "true"));
+  let isTransparent = $derived(transparentParam || (scene === "ingame" && bgParam !== "true"));
 
   // Live updates: a burst of event messages becomes one refresh.
   $effect(() => {
@@ -193,7 +203,7 @@
     {/if}
 
     {#key stingerKey}
-      {#if stingerKey}<SceneStinger label={tournament?.name || "Potato Cup"} />{/if}
+      {#if stingerKey}<SceneStinger />{/if}
     {/key}
 
     {#if loading}
@@ -207,15 +217,15 @@
         <div class="text-2xl font-bold tracking-tight text-white">{errorMsg}</div>
         <p class="text-base text-slate-400 max-w-md">Verify the tournament ID or server connection in the dashboard panel.</p>
       </div>
-    {:else if currentScene === "intro"}
+    {:else if scene === "intro"}
       <IntroScene {tournament} stage={selectedStage} {matchOrder} {who} />
-    {:else if currentScene === "intermission"}
+    {:else if scene === "intermission"}
       <IntermissionScene matches={playableMatches} {matchOrder} {stageShort} {who} />
-    {:else if currentScene === "ingame"}
+    {:else if scene === "ingame"}
       <IngameScene {tournament} {tickerRounds} {activeMatch} {stageShort} {who} />
-    {:else if currentScene === "banpick"}
+    {:else if scene === "banpick"}
       <BanPickScene {tournament} {activeMatch} {pool} {stageShort} {who} />
-    {:else if currentScene === "hybrid"}
+    {:else if scene === "hybrid"}
       <HybridScene
         {tournament}
         matches={stageMatches}
