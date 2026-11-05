@@ -60,3 +60,33 @@ export function pointsRows(boards = [], playerId) {
 export function eventRows(tournaments = []) {
   return [...tournaments].reverse();
 }
+
+/** The last `n` ladder games, newest first: [{ won, opponent, score, event, id }]. */
+export function recentForm(history = [], n = 5) {
+  return history.slice(0, n).map((h) => ({
+    id: h.game_id ?? `${h.tournament_id}-${h.opponent_id}-${h.played_at}`,
+    won: Boolean(h.won),
+    opponent: h.opponent_name || h.opponent_id,
+    score: `${h.score_for ?? "?"} : ${h.score_against ?? "?"}`,
+    event: h.tournament_name || "",
+  }));
+}
+
+/**
+ * Sparkline of the last `n` games' MMR (oldest first, starting from the MMR
+ * before the first of them), as SVG points in a `width` × `height` box.
+ * Returns { points, min, max, up } or null with fewer than 2 values.
+ */
+export function mmrSparkline(history = [], { n = 30, width = 160, height = 40 } = {}) {
+  const games = history.slice(0, n).reverse();
+  if (!games.length) return null;
+  const values = [games[0].mmr_before ?? games[0].mmr_after, ...games.map((h) => h.mmr_after)].filter(Number.isFinite);
+  if (values.length < 2) return null;
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const span = max - min || 1;
+  const points = values
+    .map((v, i) => `${((i / (values.length - 1)) * width).toFixed(1)},${(height - 2 - ((v - min) / span) * (height - 4)).toFixed(1)}`)
+    .join(" ");
+  return { points, min, max, up: values.at(-1) >= values[0] };
+}

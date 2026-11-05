@@ -1,18 +1,17 @@
 <script>
-  // Player page: profile, titles and placings, MMR curve, records per event
+  // Player page: the player card (PlayerCard: profile, league, MMR
+  // sparkline, recent form, favourite vehicles), titles and placings, MMR curve, records per event
   // type and game mode, this season's points and head-to-head records. All
   // from existing endpoints (/players/:id, /players/statistics,
   // /ladder/players/:id, /points-leaderboard); maths in #lib/player-profile.js.
+  import PageSkeleton from "#lib/components/PageSkeleton.svelte";
   import { page } from "$app/state";
   import { API } from "#lib/api.js";
   import { TIER_TAG, tierBreakdown } from "#lib/tournament.js";
   import { placeClass, placeText } from "#lib/stats-view.js";
-  import { formatWinRate, tierBadgeClass } from "#lib/ladder.js";
-  import { wikiUrl } from "#lib/players.js";
   import { eventRows, headToHead, modeRows, opponentsOf, pointsRows, poolRows } from "#lib/player-profile.js";
   import * as Card from "#lib/components/ui/card/index.js";
-  import Flag from "#lib/components/Flag.svelte";
-  import ContactBadges from "#lib/components/players/ContactBadges.svelte";
+  import PlayerCard from "#lib/components/players/PlayerCard.svelte";
   import DivisionPicker from "#lib/components/ladder/DivisionPicker.svelte";
   import MmrChart from "#lib/components/ladder/mmr-chart.svelte";
   import TrophyIcon from "@lucide/svelte/icons/trophy";
@@ -79,10 +78,7 @@
 <svelte:head><title>{name} · Potato Cup</title></svelte:head>
 
 {#if loading && !notFound}
-  <div class="flex flex-col items-center justify-center py-20 gap-3 text-muted-foreground">
-    <div class="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin"></div>
-    <p class="text-sm">正在加载选手资料...</p>
-  </div>
+  <PageSkeleton kind="profile" label="正在加载选手资料..." />
 {:else if notFound}
   <div class="text-center py-16 border border-border bg-card/30 rounded-2xl max-w-xl mx-auto space-y-3">
     <h2 class="text-lg font-bold">找不到选手 {id}</h2>
@@ -90,32 +86,7 @@
   </div>
 {:else}
   <div class="space-y-6">
-    <!-- Header -->
-    <div class="flex flex-wrap items-start justify-between gap-4 border-b border-border/60 pb-5">
-      <div class="space-y-2 min-w-0">
-        <h1 class="text-2xl font-black flex items-center gap-2">
-          <Flag code={profile.flag} size={24} />
-          {#if profile.team}<span class="text-base text-muted-foreground font-mono">[{profile.team}]</span>{/if}
-          <span class="truncate">{name}</span>
-        </h1>
-        <div class="flex flex-wrap items-center gap-1.5">
-          <ContactBadges tags={profile.battle_tags} compact empty="未填写联系方式" />
-          {#if profile.link}
-            <a href={wikiUrl(profile.link)} target="_blank" rel="noopener" class="text-[11px] text-primary hover:underline">Liquipedia</a>
-          {/if}
-        </div>
-      </div>
-      {#if ladderAll}
-        <div class="text-right space-y-1">
-          <div class="text-[11px] text-muted-foreground">综合天梯</div>
-          <div class="flex items-center gap-2 justify-end">
-            <span class="rounded border px-1.5 py-0.5 text-[11px] font-bold {tierBadgeClass(ladderAll.tier?.group)}">{ladderAll.tier?.name}</span>
-            <span class="text-2xl font-black font-mono">{ladderAll.mmr}</span>
-          </div>
-          <div class="text-[11px] text-muted-foreground">{ladderAll.games} 场 · 胜率 {formatWinRate(ladderAll.win_rate)}</div>
-        </div>
-      {/if}
-    </div>
+    <PlayerCard {profile} ladder={ladderAll} {name} />
 
     <!-- Summary -->
     <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">

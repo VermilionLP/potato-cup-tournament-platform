@@ -115,3 +115,12 @@ test("wizard step summaries and the first problem", () => {
   form.format = "two_stage";
   assert.equal(stepSummary(form, "group"), "瑞士轮 · 每组 4 人 · 前 2 晋级");
 });
+
+test("featured event: being played, else the next sign-up, else voting", async () => {
+  const { featuredEvent } = await import("../src/lib/lobby.js");
+  const reg = (id, time) => ({ id, status: "registration", scheduled_time: time });
+  assert.equal(featuredEvent([]), null);
+  assert.equal(featuredEvent([{ id: "v", status: "voting" }, reg("late", "2026-12-01 20:00"), reg("soon", "2026-11-10 20:00"), reg("none", null)]).id, "soon");
+  assert.equal(featuredEvent([reg("a", "2026-11-10 20:00"), { id: "live", status: "in_progress" }]).id, "live");
+  assert.equal(featuredEvent([{ id: "v", status: "voting" }, { id: "c", status: "completed" }]).id, "v");
+});

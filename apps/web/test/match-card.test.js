@@ -61,3 +61,14 @@ test('a pending match shows its live score', () => {
   assert.equal(slotScore(live, 2), 0);
   assert.equal(hasLiveScore(m({ status: 'completed', live_score1: 1, live_score2: 0 })), false);
 });
+
+test("Ban / Pick on the card: the confirmed result, or under way", async () => {
+  const { bpResult, bpUnderWay } = await import("../src/lib/match-card.js");
+  assert.equal(bpResult({}), "");
+  assert.equal(bpResult({ banpick: { state: { phase: "done", group: "GA", vehicle: "a1" } } }), "a1");
+  assert.equal(bpResult({ banpick: { state: { phase: "done", group: "GA", vehicle: null } } }), "GA（组内任选）");
+  assert.equal(bpUnderWay({ banpick: { state: { phase: "ban" }, log: [] } }), false);
+  assert.equal(bpUnderWay({ banpick: { state: { phase: "ban" }, log: [{ action: "ban", undone: true }, { action: "undo" }] } }), false);
+  assert.equal(bpUnderWay({ banpick: { state: { phase: "drawGroup" }, log: [{ action: "pass" }] } }), true);
+  assert.equal(bpUnderWay({ banpick: { state: { phase: "done" }, log: [{ action: "confirm" }] } }), false);
+});

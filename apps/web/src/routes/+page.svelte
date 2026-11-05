@@ -1,6 +1,7 @@
 <script>
-  // Lobby: upcoming / running events, then finished ones filtered by event
-  // type. Rows and the create-event wizard live in #lib/components/lobby.
+  // Lobby: the event that matters now on top (LobbyHero), the other upcoming
+  // / running events, then finished ones filtered by event type. Rows and the create-event wizard live in #lib/components/lobby.
+  import PageSkeleton from "#lib/components/PageSkeleton.svelte";
   import { onMount } from "svelte";
   import { toast } from "svelte-sonner";
   import { API } from "#lib/api.js";
@@ -8,10 +9,11 @@
   import { downloadText } from "#lib/download.js";
   import { userState } from "#lib/user.svelte.js";
   import { EVENT_TIERS, VEHICLE_POOLS } from "#lib/tournament.js";
-  import { eventDate, relativeDay } from "#lib/lobby.js";
+  import { eventDate, featuredEvent, relativeDay } from "#lib/lobby.js";
   import { Button } from "#lib/components/ui/button/index.js";
   import ActiveEventRow from "#lib/components/lobby/ActiveEventRow.svelte";
   import HistoryEventRow from "#lib/components/lobby/HistoryEventRow.svelte";
+  import LobbyHero from "#lib/components/lobby/LobbyHero.svelte";
   import { copyableEvents } from "#lib/create-event.js";
   import CopyIcon from "@lucide/svelte/icons/copy";
   import CreateEventDialog from "#lib/components/lobby/CreateEventDialog.svelte";
@@ -28,6 +30,9 @@
 
   let activeTournaments = $derived(tournaments.filter((t) => t.status !== "completed"));
   let historyTournaments = $derived(tournaments.filter((t) => t.status === "completed"));
+  // The event on top (LobbyHero); the list below shows the others.
+  let featured = $derived(featuredEvent(activeTournaments));
+  let otherActive = $derived(activeTournaments.filter((t) => t.id !== featured?.id));
   // History filter by event type ("" = all).
   let historyPool = $state("");
   let historyChips = $derived([
@@ -143,14 +148,7 @@
   </div>
 
   {#if loading}
-    <div
-      class="flex flex-col items-center justify-center py-20 gap-3 text-muted-foreground"
-    >
-      <div
-        class="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin"
-      ></div>
-      <p class="text-sm">正在加载赛事数据...</p>
-    </div>
+    <PageSkeleton kind="lobby" label="正在加载赛事数据..." />
   {:else}
     <!-- ── Active Tournaments ──────────────────────────────── -->
     {#if activeTournaments.length === 0}
@@ -183,11 +181,16 @@
         {/if}
       </div>
     {:else}
-      <div class="divide-y divide-border border border-border bg-card/30 rounded-2xl overflow-hidden shadow-sm">
-        {#each activeTournaments as t (t.id)}
-          <ActiveEventRow {t} {isAdmin} ondelete={deleteTournament} />
-        {/each}
-      </div>
+      {#if featured}
+        <LobbyHero t={featured} onchanged={load} {isAdmin} ondelete={deleteTournament} />
+      {/if}
+      {#if otherActive.length}
+        <div class="divide-y divide-border border border-border bg-card/30 rounded-2xl overflow-hidden shadow-sm">
+          {#each otherActive as t (t.id)}
+            <ActiveEventRow {t} {isAdmin} ondelete={deleteTournament} />
+          {/each}
+        </div>
+      {/if}
     {/if}
 
     <!-- ── History Tournaments ────────────────────────────── -->

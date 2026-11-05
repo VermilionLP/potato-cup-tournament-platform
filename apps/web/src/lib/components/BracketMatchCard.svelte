@@ -2,12 +2,13 @@
   // One match card of the event page's brackets and lists (single and double
   // elimination, Swiss, the phone round list), so every format looks and
   // acts alike: a header (title + MatchCardActions), two player rows with
-  // flag, name, crown for the winner and the score cell (#lib/match-card.js).
+  // flag, name, crown for the winner and the score cell (#lib/match-card.js);
+  // the header also shows the Ban / Pick result (or "BP 中").
   // The card opens the result dialog when the match can be played, or for
   // admins when its result can be corrected. The parent sets the size
   // (`class`, e.g. "h-full") and handles byes.
   import { canCorrectResult } from "#lib/tournament.js";
-  import { hasLiveScore, isMine, isPlayableIn, slotScore } from "#lib/match-card.js";
+  import { bpResult, bpUnderWay, hasLiveScore, isMine, isPlayableIn, slotScore } from "#lib/match-card.js";
   import Flag from "#lib/components/Flag.svelte";
   import MatchCardActions from "#lib/components/tournament/MatchCardActions.svelte";
   import CrownIcon from "@lucide/svelte/icons/crown";
@@ -56,6 +57,11 @@
   >
     <span class="flex min-w-0 items-center gap-1">
       <span class="truncate">{title}</span>
+      {#if bpResult(match)}
+        <span class="min-w-0 truncate rounded bg-amber-500/15 px-1 font-bold text-amber-700 dark:text-amber-300" title="本场载具（Ban/Pick 结果）">{bpResult(match)}</span>
+      {:else if bpUnderWay(match)}
+        <span class="shrink-0 rounded bg-primary/15 px-1 font-bold text-primary" title="Ban/Pick 进行中">BP 中</span>
+      {/if}
       {#if hasLiveScore(match)}
         <span class="inline-flex shrink-0 items-center gap-0.5 rounded bg-red-500/15 px-1 font-bold text-red-600 dark:text-red-400" title="比赛进行中的实时比分，还没有出结果">
           <span class="h-1.5 w-1.5 animate-pulse rounded-full bg-red-500"></span>实时

@@ -134,6 +134,13 @@ export const API = {
     const qs = params.toString();
     return request(`/players/statistics${qs ? `?${qs}` : ''}`);
   },
+  // Ban / Pick numbers for one event type (default the busiest); player adds theirs.
+  getBanpickStats: ({ tier = '', kind = '', type = '', player = '' } = {}) => {
+    const params = new URLSearchParams();
+    for (const [k, v] of Object.entries({ tier, kind, type, player })) if (v) params.set(k, v);
+    const qs = params.toString();
+    return request(`/banpick/stats${qs ? `?${qs}` : ''}`);
+  },
   getPlayTimes: () => request('/stats/play-times'),
   getPushPublicKey: () => request('/push/public-key'),
   subscribePush: (subscription) =>

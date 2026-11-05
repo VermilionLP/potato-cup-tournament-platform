@@ -2,6 +2,7 @@
   // Potato Cup points leaderboard (积分榜): per season (year) and event type,
   // the points players earned in finished events with a points table. The
   // board is PointsBoard; admins also get SeasonAdmin (loaded on demand).
+  import PageSkeleton from "#lib/components/PageSkeleton.svelte";
   import { onMount } from "svelte";
   import { toast } from "svelte-sonner";
   import { page } from "$app/state";
@@ -103,7 +104,7 @@
   </div>
 
   {#if loading && !data}
-    <p class="py-16 text-center text-xs text-muted-foreground">加载中...</p>
+    <PageSkeleton kind="table" label="加载中..." rows={10} />
   {:else if !data?.seasons?.length}
     <div class="rounded-xl border border-border bg-card/40 py-16 text-center text-sm text-muted-foreground">
       还没有计入积分榜的赛事。创建赛事时在「年度积分榜」里设置积分即可。

@@ -2,7 +2,7 @@ import { MatchRepo } from '../repositories/match-repo.js';
 import { getRequesterId, isAdminRequest, requireAdmin, requireMatchPlayerOrAdmin } from '../lib/admin.js';
 import { inTransaction } from '../lib/transaction.js';
 import { canConfirm, canDispute, liveScoreProblem, playerReport, reportToApply, scoreProblem } from '../lib/match-reports.js';
-import { afterResult, applyReport, notifyReportToConfirm, recordScore, recordWalkover } from '../lib/match-flow.js';
+import { afterResult, applyReport, notifyBanTurn, notifyReportToConfirm, recordScore, recordWalkover } from '../lib/match-flow.js';
 import { act, emptyRecord, groupVehicles } from '../lib/banpick.js';
 import { normalizeRules, resolveTemplate } from '../lib/vehicle-pools.js';
 
@@ -151,6 +151,9 @@ export default async function matchesRoutes(fastify) {
     if (out.conflict) throw fastify.httpErrors.conflict('Ban/Pick 刚刚被别人更新了，已刷新为最新状态');
     if (out.error) throw out.status === 403 ? fastify.httpErrors.forbidden(out.error) : fastify.httpErrors.badRequest(out.error);
     fastify.tournamentEvents.emit(`update:${req.params.id}`, { type: 'match_banpick', matchId: match.id });
+    notifyBanTurn(fastify.db, req.params.id, match, out.record, fastify.log).catch((err) => {
+      fastify.log?.error({ err, matchId: match.id }, 'ban turn notice failed');
+    });
     return { banpick: out.record, entry: out.entry };
   });
 

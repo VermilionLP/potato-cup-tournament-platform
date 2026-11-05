@@ -24,3 +24,20 @@ test("points per board", () => {
   const boards = [{ pool: "prop", players: [{ id: "a", rank: 2, total: 30, events: 3 }, { id: "b", rank: 1, total: 40, events: 3 }] }, { pool: "proleague", players: [] }];
   assert.deepEqual(pointsRows(boards, "a"), [{ pool: "prop", name: "螺旋桨", rank: 2, total: 30, events: 3, of: 2 }]);
 });
+
+test("recent form and the MMR sparkline", async () => {
+  const { recentForm, mmrSparkline } = await import("../src/lib/player-profile.js");
+  const history = [
+    { game_id: 3, won: true, opponent_name: "B", score_for: 2, score_against: 1, mmr_before: 3010, mmr_after: 3030, tournament_name: "W3" },
+    { game_id: 2, won: false, opponent_name: "C", score_for: 0, score_against: 2, mmr_before: 3020, mmr_after: 3010 },
+    { game_id: 1, won: true, opponent_name: "D", score_for: 2, score_against: 0, mmr_before: 3000, mmr_after: 3020 },
+  ];
+  assert.deepEqual(recentForm(history, 2).map((g) => [g.won, g.opponent, g.score]), [[true, "B", "2 : 1"], [false, "C", "0 : 2"]]);
+  const s = mmrSparkline(history, { width: 30, height: 12 });
+  assert.equal(s.min, 3000);
+  assert.equal(s.max, 3030);
+  assert.equal(s.up, true);
+  assert.equal(s.points.split(" ").length, 4);
+  assert.equal(s.points.split(" ")[0], "0.0,10.0");
+  assert.equal(mmrSparkline([]), null);
+});

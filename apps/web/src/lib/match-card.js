@@ -44,3 +44,16 @@ export function reportBadge(match) {
   if (r.disputed) return { label: "有争议", tone: "danger" };
   return { label: r.kind === "walkover" ? "弃权待审" : "待确认", tone: "info" };
 }
+
+/** The confirmed Ban / Pick result of a match ("Bf 109 F-4", "GA（组内任选）"), or "". */
+export function bpResult(match) {
+  const s = match?.banpick?.state;
+  if (s?.phase !== "done") return "";
+  return s.vehicle || (s.group ? `${s.group}（组内任选）` : "");
+}
+
+/** Ban / Pick started on the server and not confirmed yet. */
+export function bpUnderWay(match) {
+  const bp = match?.banpick;
+  return Boolean(bp?.state && bp.state.phase !== "done" && bp.log?.some((e) => !e.undone && e.action !== "undo" && e.action !== "reset"));
+}

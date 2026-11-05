@@ -2,6 +2,7 @@
   // Player list: search, recently active players first (your own entry on
   // top), inactive ones folded away. Table, cards and the edit dialog live
   // in #lib/components/players.
+  import PageSkeleton from "#lib/components/PageSkeleton.svelte";
   import { onMount } from "svelte";
   import { toast } from "svelte-sonner";
   import { API } from "#lib/api.js";
@@ -113,10 +114,7 @@
   </div>
 
   {#if loading}
-    <div class="flex flex-col items-center justify-center py-20 gap-3 text-muted-foreground">
-      <div class="w-7 h-7 rounded-full border-2 border-primary border-t-transparent animate-spin"></div>
-      <p class="text-sm">正在加载选手数据...</p>
-    </div>
+    <PageSkeleton kind="table" label="正在加载选手数据..." rows={10} />
   {:else}
     <PlayerTable players={shownPlayers} {isAdmin} {emptyText} onedit={openEdit} footer={filteredPlayers.length ? listFooter : null} />
     <PlayerCards players={shownPlayers} {isAdmin} {emptyText} onedit={openEdit} footer={filteredPlayers.length ? listFooter : null} />

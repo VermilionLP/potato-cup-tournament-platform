@@ -2,6 +2,7 @@
   // Statistics page: player records over the events of a tier / kind
   // (GET /players/statistics, computed on the server). Clicking a player
   // opens their details under the row. Parts are in #lib/components/stats.
+  import PageSkeleton from "#lib/components/PageSkeleton.svelte";
   import { onMount } from "svelte";
   import { toast } from "svelte-sonner";
   import { API } from "#lib/api.js";
@@ -10,6 +11,7 @@
   import PlayerStatsTable from "#lib/components/stats/PlayerStatsTable.svelte";
   import PlayerDetailCard from "#lib/components/stats/PlayerDetailCard.svelte";
   import RankingBoards from "#lib/components/stats/RankingBoards.svelte";
+  import BanPickStats from "#lib/components/stats/BanPickStats.svelte";
 
   let statsData = $state(null);
   let statsLoading = $state(true);
@@ -61,10 +63,7 @@
   <StatsScopeFilter tier={statsTier} kind={statsKind} disabled={statsLoading} onchange={setScope} />
 
   {#if statsLoading}
-    <div class="flex flex-col items-center justify-center py-20 gap-3 text-muted-foreground bg-card/20 border border-border border-dashed rounded-xl">
-      <div class="w-7 h-7 rounded-full border-2 border-primary border-t-transparent animate-spin"></div>
-      <p class="text-sm font-semibold">正在整理选手生涯战绩与趣味榜单...</p>
-    </div>
+    <PageSkeleton kind="stats" label="正在整理选手生涯战绩与趣味榜单..." />
   {:else}
     {#if statsData}
       <StatsOverview global={statsData.global} />
@@ -83,6 +82,8 @@
         <!-- Right: Rankings & Boards -->
         <RankingBoards rankings={statsData.rankings} />
       </div>
+
+      <BanPickStats tier={statsTier} kind={statsKind} />
     {/if}
   {/if}
 </div>

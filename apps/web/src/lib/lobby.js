@@ -47,7 +47,7 @@ export function beijingTitle(raw, converted = true) {
   return `北京时间 ${formatInZone(instant, "Asia/Shanghai")}${converted ? "（已换算为你的时区）" : ""}`;
 }
 
-function scheduledDateTime(t) {
+export function scheduledDateTime(t) {
   const raw = t?.scheduled_time;
   if (!raw) return null;
   const instant = toInstant(raw);
@@ -121,3 +121,17 @@ const STATUS = {
 
 export const statusLabel = (status) => STATUS[status]?.label || status;
 export const statusStyle = (status) => STATUS[status]?.style || "bg-zinc-500/10 text-zinc-400";
+
+/**
+ * The event the lobby puts on top: one being played, else the next one
+ * taking sign-ups (soonest start first, no time last), else one voting on
+ * its time. null when nothing is coming up.
+ */
+export function featuredEvent(list = []) {
+  const live = list.filter((t) => t.status === "in_progress");
+  if (live.length) return live[0];
+  const when = (t) => scheduledDateTime(t)?.getTime() ?? Infinity;
+  const open = list.filter((t) => t.status === "registration").sort((a, b) => when(a) - when(b));
+  if (open.length) return open[0];
+  return list.find((t) => t.status === "voting") || null;
+}

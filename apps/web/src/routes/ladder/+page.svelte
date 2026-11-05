@@ -1,4 +1,5 @@
 <script>
+  import PageSkeleton from "#lib/components/PageSkeleton.svelte";
   import { onMount } from "svelte";
   import { toast } from "svelte-sonner";
   import { API } from "#lib/api.js";
@@ -142,10 +143,7 @@
   </div>
 
   {#if loading}
-    <div class="flex flex-col items-center justify-center py-20 gap-3 text-muted-foreground">
-      <div class="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin"></div>
-      <span class="text-xs">正在计算天梯分...</span>
-    </div>
+    <PageSkeleton kind="table" label="正在计算天梯分..." rows={10} />
   {:else if errorMsg}
     <div class="text-center py-16 border border-border bg-card/30 rounded-2xl">
       <p class="text-sm text-rose-400">加载失败：{errorMsg}</p>

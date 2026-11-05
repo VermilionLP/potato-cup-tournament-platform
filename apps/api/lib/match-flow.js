@@ -130,3 +130,27 @@ export async function afterResult(fastify, tournamentId) {
     fastify.log?.error({ err, tournamentId }, 'ready notices failed');
   });
 }
+
+/**
+ * Ban / Pick: tells the player whose turn it is to ban (once per turn and
+ * player; an undo and redo does not send it again).
+ */
+export async function notifyBanTurn(db, tournamentId, match, record, log) {
+  const state = record?.state;
+  if (!pushEnabled() || state?.phase !== 'ban') return 0;
+  const side = state.bans.length % 2 === 0 ? 'A' : 'B';
+  const playerId = side === 'A' ? match.player1_id : match.player2_id;
+  const opponentId = side === 'A' ? match.player2_id : match.player1_id;
+  if (!playerId || !(await claimNotice(db, match.id, `bp-turn-${state.bans.length}-${playerId}`))) return 0;
+  const event = (await db.query('SELECT name FROM axsuck.tournaments WHERE id = $1', [tournamentId])).rows[0];
+  const other = (await db.query('SELECT id, battle_tags FROM axsuck.players WHERE id = $1', [opponentId])).rows[0];
+  const last = state.bans.at(-1);
+  const who = getPlayerDisplayName(other) || opponentId;
+  const before = !last ? '' : last.group ? `${who} 禁用了 ${last.group}，` : `${who} 空过，`;
+  return sendToPlayers(db, [playerId], {
+    title: '轮到你禁用了',
+    body: `${event?.name || ''}：${before}请打开 Ban/Pick 选择要禁用的大组`,
+    url: `/tournament/${encodeURIComponent(tournamentId)}`,
+    tag: `suck-${tournamentId}-bp-${match.id}`,
+  }, log);
+}
