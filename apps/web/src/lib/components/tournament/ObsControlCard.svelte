@@ -209,7 +209,7 @@
         <div class="space-y-1.5 p-2.5 rounded-xl border border-primary/20 bg-primary/5">
           <span class="font-bold text-primary block text-[11px]">✨ 推荐：全自动智能切换直播源 (Unified Auto)</span>
           <span class="text-[10px] text-muted-foreground block leading-normal mb-1">
-            放入 OBS 浏览器源即可。有直播中比赛时自动渲染游戏 HUD（透明底），无直播对局时自动渲染场间统计大屏（深色底，显示待开打对局和本轮详情）。
+            放入 OBS 浏览器源即可，跟随上面「当前显示大屏」的选择。选 Auto 时：直播对局开启了 Ban/Pick 且结果未确认时显示 Ban/Pick 画面，确认后（或已保存实时比分时）显示游戏 HUD（透明底）；无直播对局时显示场间对阵大屏（深色底）。
           </span>
           <div class="flex items-center gap-1.5">
             <input
