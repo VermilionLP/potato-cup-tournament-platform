@@ -65,11 +65,11 @@ export function infoLine(t = {}) {
   return [date, MODES[t.game_mode] || "", POOLS[t.vehicle_pool] || "", format, count ? `${count} Players` : ""].filter(Boolean).join("  ·  ");
 }
 
-/** "10,000 Golden Eagles" / "60 PTS" for a row; "" without either. */
-export function rewardText(r, both = false) {
-  const prize = r.prize ? `${r.prize.toLocaleString("en-US")} Golden Eagles` : "";
+/** "10,000 GE  ·  60 PTS" (prize and points of a row, either may be missing); "" without both. */
+export function rewardText(r) {
+  const prize = r.prize ? `${r.prize.toLocaleString("en-US")} GE` : "";
   const points = r.points ? `${r.points} PTS` : "";
-  return both ? [prize, points].filter(Boolean).join("  ·  ") : prize || points;
+  return [prize, points].filter(Boolean).join("  ·  ");
 }
 
 const load = (src) =>
@@ -194,7 +194,7 @@ export async function drawResultImage(canvas, { t, rows = [], vehicle = null }) 
       ctx.textAlign = "center";
       ctx.font = `700 26px ${FONT}`;
       ctx.fillStyle = "#fcd34d";
-      ctx.fillText(rewardText(champ, true), W / 2, y + 186);
+      ctx.fillText(rewardText(champ), W / 2, y + 186);
     }
     y += h + 36;
   }
@@ -226,12 +226,19 @@ export async function drawResultImage(canvas, { t, rows = [], vehicle = null }) 
     ctx.fillStyle = "#ffffff";
     fit(ctx, r.name, w - 470, 34, 800);
     ctx.fillText(r.name, x + 172, top + mid + 12);
-    const reward = rewardText(r);
-    if (reward) {
-      ctx.textAlign = "right";
-      ctx.font = `700 24px ${FONT}`;
-      ctx.fillStyle = r.prize ? "#fcd34d" : "#94a3b8";
-      ctx.fillText(reward, x + w - 24, top + mid + 9);
+    // Points on the right (grey), the prize before them (gold).
+    ctx.textAlign = "right";
+    ctx.font = `700 24px ${FONT}`;
+    let right = x + w - 24;
+    if (r.points) {
+      const pts = `${r.points} PTS`;
+      ctx.fillStyle = "#94a3b8";
+      ctx.fillText(pts, right, top + mid + 9);
+      right -= ctx.measureText(pts).width + 28;
+    }
+    if (r.prize) {
+      ctx.fillStyle = "#fcd34d";
+      ctx.fillText(`${r.prize.toLocaleString("en-US")} GE`, right, top + mid + 9);
     }
   });
 
