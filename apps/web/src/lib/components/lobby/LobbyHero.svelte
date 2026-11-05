@@ -81,17 +81,6 @@
           <span class="rounded-full bg-primary/15 px-2 py-0.5 text-primary">{statusLabel(t.status)}</span>
         {/if}
         <span class="text-muted-foreground">下一场比赛</span>
-        {#if isAdmin}
-          <button
-            type="button"
-            onclick={() => ondelete?.(t)}
-            class="ml-auto flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground/60 hover:bg-red-500/10 hover:text-red-500 cursor-pointer"
-            title="删除赛事"
-            aria-label="删除赛事 {t.name}"
-          >
-            <Trash2Icon class="h-4 w-4" />
-          </button>
-        {/if}
       </div>
       <a {href} class="block text-2xl font-black leading-tight tracking-tight text-foreground hover:text-primary sm:text-3xl">{t.name}</a>
       <EventTags {t} />
@@ -152,6 +141,17 @@
           <RadioIcon class="h-4 w-4" />看对阵
           {#if liveCount}<span class="font-normal opacity-80">· {liveCount} 场可开打</span>{/if}
         </Button>
+      {/if}
+      <!-- Admins: a quiet link under the main action, away from it -->
+      {#if isAdmin}
+        <button
+          type="button"
+          onclick={() => ondelete?.(t)}
+          class="inline-flex items-center gap-1 self-center rounded px-1.5 py-0.5 text-[11px] text-muted-foreground/70 hover:bg-red-500/10 hover:text-red-500 cursor-pointer md:self-end"
+          aria-label="删除赛事 {t.name}"
+        >
+          <Trash2Icon class="h-3.5 w-3.5" />删除赛事
+        </button>
       {/if}
     </div>
   </div>
