@@ -9,7 +9,7 @@
   import { Button } from "#lib/components/ui/button/index.js";
   import BanPickPanel from "#lib/components/BanPickPanel.svelte";
   import ScoreForm from "#lib/components/ScoreForm.svelte";
-  import { canConfirm, confirmResult, resultLabel } from "#lib/banpick.js";
+  import { canConfirm, mayAct, resultLabel } from "#lib/banpick.js";
   import { hasLiveScore } from "#lib/match-card.js";
   import PendingReportPanel from "./PendingReportPanel.svelte";
   import LadderPreview from "./LadderPreview.svelte";
@@ -20,14 +20,14 @@
   let {
     open = $bindable(false),
     step = $bindable("banpick"),
-    bp = $bindable(),
+    bp,
+    bpRemote = null,
     score1 = $bindable(0),
     score2 = $bindable(0),
     match = null,
     tournament,
     correcting = false,
     banpickEnabled = false,
-    bpMatchId = null,
     vehicles = [],
     poolName = "",
     submitting = false,
@@ -51,6 +51,17 @@
     return { id, name: playerName(id), flag: p?.flag, seed: p?.seed };
   };
   let showBanPick = $derived(step === "banpick" && banpickEnabled && !correcting);
+  let confirmingBp = $state(false);
+  async function confirmBp() {
+    confirmingBp = true;
+    try {
+      await bpRemote.act("confirm");
+    } catch {
+      // shown by the page
+    } finally {
+      confirmingBp = false;
+    }
+  }
 
   function submit() {
     onsubmit(Number(score1) > Number(score2) ? match.player1_id : match.player2_id);
@@ -79,11 +90,11 @@
             <span>Ban / Pick</span>
             {#if bp.phase === "done"}
               <Button size="sm" onclick={() => (step = "score")}>填报比分 →</Button>
-            {:else}
+            {:else if mayAct(bpRemote?.record, "confirm", bpRemote?.me, bpRemote?.myId)}
               <Button
                 size="sm"
-                disabled={!canConfirm(bp)}
-                onclick={() => (bp = confirmResult(bp))}
+                disabled={!canConfirm(bp) || confirmingBp}
+                onclick={confirmBp}
                 title={canConfirm(bp) ? "锁定本场载具" : "抽到结果后才能确认"}>确认抽取结果</Button
               >
             {/if}
@@ -91,7 +102,7 @@
         {:else}
           <div class="flex flex-wrap items-center gap-2 mb-1 pr-6">
             <span>填报比分</span>
-            {#if banpickEnabled && bpMatchId === match?.id && bp.phase === "done"}
+            {#if banpickEnabled && bp.phase === "done"}
               <span class="rounded-full border border-primary/40 bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary">
                 本场载具：{resultLabel(bp)}
               </span>
@@ -108,7 +119,7 @@
       {#if step === "banpick" && banpickEnabled}
         <div class="py-2">
           {#key match.id}
-            <BanPickPanel bind:bp {vehicles} {poolName} player1={player(match.player1_id)} player2={player(match.player2_id)} />
+            <BanPickPanel {bp} remote={bpRemote} nameOf={playerName} {vehicles} {poolName} player1={player(match.player1_id)} player2={player(match.player2_id)} />
           {/key}
         </div>
       {:else}

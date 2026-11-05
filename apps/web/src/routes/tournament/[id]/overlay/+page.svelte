@@ -1,7 +1,8 @@
 <script>
-  // OBS overlay for an event: four scenes (intro, intermission, ingame and
-  // the bracket "hybrid" scene), 1920x1080 scaled to the window. The scene
-  // comes from ?scene=, else the dashboard's choice, else the live match.
+  // OBS overlay for an event: five scenes (intro, intermission, ingame, the
+  // bracket "hybrid" scene and "banpick"), 1920x1080 scaled to the window.
+  // The scene comes from ?scene=, else the dashboard's choice, else the live
+  // match (its Ban / Pick while one is under way, then ingame).
   // ?channel=N follows one live channel (its live match and scene), so
   // several streams of one event can each have their own overlay.
   // Scenes live in #lib/components/overlay, layout maths in
@@ -17,10 +18,11 @@
   import IntermissionScene from "#lib/components/overlay/IntermissionScene.svelte";
   import IngameScene from "#lib/components/overlay/IngameScene.svelte";
   import HybridScene from "#lib/components/overlay/HybridScene.svelte";
+  import BanPickScene from "#lib/components/overlay/BanPickScene.svelte";
   import { liveSync } from "#lib/live-sync.js";
 
   let tid = $derived(page.params.id);
-  let sceneParam = $derived(page.url.searchParams.get("scene") || "auto"); // auto, intro, ingame, intermission, hybrid
+  let sceneParam = $derived(page.url.searchParams.get("scene") || "auto"); // auto, intro, ingame, intermission, hybrid, banpick
   // Stage to show: "wb:2", "sw:3"... (a plain round number still works for
   // single elimination and Swiss).
   let stageParam = $derived(page.url.searchParams.get("stage") || page.url.searchParams.get("round"));
@@ -93,7 +95,21 @@
   let currentScene = $derived.by(() => {
     if (sceneParam && sceneParam !== "auto") return sceneParam;
     if (tournament?.overlay_scene && tournament.overlay_scene !== "auto") return tournament.overlay_scene;
+    if (activeMatch && bpUnderWay(activeMatch)) return "banpick";
     return activeMatch ? "ingame" : "hybrid";
+  });
+  // A Ban / Pick started on the server and not confirmed yet.
+  const bpUnderWay = (m) => Boolean(m?.banpick?.log?.length) && m.banpick.state?.phase !== "done";
+
+  // The event's vehicle pool, for the Ban / Pick scene's groups and pictures.
+  let pool = $state(null);
+  let poolLoaded = false;
+  $effect(() => {
+    if (currentScene !== "banpick" || poolLoaded || !tid) return;
+    poolLoaded = true;
+    API.getEventVehiclePool(tid)
+      .then((res) => (pool = res?.template || null))
+      .catch(() => (poolLoaded = false));
   });
   // The ingame scene is transparent unless bg=true; the others have the
   // ambient background unless transparent=true.
@@ -172,6 +188,8 @@
       <IntermissionScene matches={playableMatches} {matchOrder} {stageShort} {who} />
     {:else if currentScene === "ingame"}
       <IngameScene {tournament} {tickerRounds} {activeMatch} {stageShort} {who} />
+    {:else if currentScene === "banpick"}
+      <BanPickScene {tournament} {activeMatch} {pool} {stageShort} {who} />
     {:else if currentScene === "hybrid"}
       <HybridScene
         {tournament}

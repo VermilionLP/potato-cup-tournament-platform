@@ -1,7 +1,9 @@
 <script>
   // Overlay "ingame" scene: a results ticker at the top and the live match
-  // in the top-right corner, over the game capture.
+  // in the top-right corner (with the Ban / Pick result once confirmed), over
+  // the game capture.
   import { fade, fly } from "svelte/transition";
+  import { resultLabel } from "#lib/banpick.js";
 
   let { tournament, tickerRounds = [], activeMatch = null, stageShort, who } = $props();
 
@@ -87,6 +89,11 @@
               <span class="font-orbitron shrink-0 rounded bg-slate-900/90 px-2 text-xl font-black text-cyan-400">{activeMatch.live_score2}</span>
             {/if}
           </div>
+          {#if activeMatch.banpick?.state?.phase === "done"}
+            <div class="mt-1 border-t border-cyan-500/20 pt-1 text-center text-sm font-bold text-amber-300 truncate">
+              载具 · {resultLabel(activeMatch.banpick.state)}
+            </div>
+          {/if}
         </div>
       </div>
     {/if}

@@ -4,10 +4,11 @@
   // drawn result are marked. Pointing at
   // (or tapping) a vehicle shows its wiki slot picture in the preview bar
   // above, so the grid stays the same size.
-  import { ban, bannedBy, isGroupBanned } from "#lib/banpick.js";
+  import { bannedBy, isGroupBanned } from "#lib/banpick.js";
   import VehicleSlot from "./VehicleSlot.svelte";
 
-  let { bp = $bindable(), grouped = [], banning = false } = $props();
+  // `banning`: the viewer may ban now; onban(group, vehicle) bans.
+  let { bp, grouped = [], banning = false, onban } = $props();
 
   let preview = $state(null);
 
@@ -51,7 +52,7 @@
       <button
         type="button"
         disabled={!pickable}
-        onclick={() => (bp = ban(bp, g.group))}
+        onclick={() => onban(g.group, null)}
         class="flex w-full items-center justify-between gap-1 text-left {pickable ? 'cursor-pointer' : 'cursor-default'}"
       >
         <span class="truncate text-[11px] font-bold text-foreground {removed ? 'line-through' : ''}">{g.group}</span>
@@ -76,7 +77,7 @@
             onfocus={() => (preview = v)}
             onclick={() => {
               preview = v;
-              if (pickable) bp = ban(bp, g.group, v.name);
+              if (pickable) onban(g.group, v.name);
             }}
             title={vehicleInfo(v)}
             class="rounded px-1 py-px text-[9.5px] leading-tight

@@ -3,6 +3,8 @@ import { getRequesterId, isAdminRequest, requireAdmin, requireMatchPlayerOrAdmin
 import { inTransaction } from '../lib/transaction.js';
 import { canConfirm, canDispute, liveScoreProblem, playerReport, reportToApply, scoreProblem } from '../lib/match-reports.js';
 import { afterResult, applyReport, notifyReportToConfirm, recordScore, recordWalkover } from '../lib/match-flow.js';
+import { act, emptyRecord, groupVehicles } from '../lib/banpick.js';
+import { normalizeRules, resolveTemplate } from '../lib/vehicle-pools.js';
 
 export default async function matchesRoutes(fastify) {
   const repo = MatchRepo(fastify.db);
@@ -104,6 +106,52 @@ export default async function matchesRoutes(fastify) {
     );
     fastify.tournamentEvents.emit(`update:${req.params.id}`, { type: 'match_live_score', matchId: match.id });
     return { match: res.rows[0] };
+  });
+
+  // Ban / Pick on the server (lib/banpick.js): the two players and admins
+  // act on it, the server makes the draws. `rev` (optional) is the revision
+  // the client saw; a different one answers 409 with the current record so
+  // two clicks at once can't draw twice.
+  fastify.post('/tournaments/:id/matches/:matchId/banpick', async (req) => {
+    const { action, group = null, vehicle = null, rev = null } = req.body || {};
+    const match = await matchOf(req);
+    await requireMatchPlayerOrAdmin(fastify, req, match);
+    const admin = isAdminRequest(req);
+    if (!match.player1_id || !match.player2_id) throw fastify.httpErrors.badRequest('双方选手确定后才能 Ban/Pick');
+    if (!admin && match.status !== 'pending') throw fastify.httpErrors.badRequest('这场比赛已经结束了');
+    const t = (await fastify.db.query(
+      'SELECT vehicle_pool, game_mode, vehicle_template, banpick_enabled FROM axsuck.tournaments WHERE id = $1',
+      [req.params.id],
+    )).rows[0];
+    if (!t?.banpick_enabled) throw fastify.httpErrors.badRequest('这场赛事没有开启 Ban/Pick');
+    const templates = (await fastify.db.query(
+      'SELECT id, event_type, game_modes, rules, sort_order, vehicles FROM axsuck.vehicle_pools',
+    )).rows;
+    const template = resolveTemplate(templates, t);
+    if (!template) throw fastify.httpErrors.badRequest('这场赛事没有载具池模板');
+    const rules = normalizeRules(template.rules);
+    const by = admin ? 'admin' : getRequesterId(req);
+    const requester = getRequesterId(req);
+    const side = requester && requester === match.player1_id ? 'A' : requester && requester === match.player2_id ? 'B' : null;
+
+    const out = await inTransaction(fastify.db, async (client) => {
+      const row = (await client.query('SELECT banpick FROM axsuck.matches WHERE id = $1 FOR UPDATE', [match.id])).rows[0];
+      const record = row?.banpick?.state ? row.banpick : emptyRecord(rules);
+      if (rev !== null && rev !== undefined && Number(rev) !== record.rev) return { conflict: true, record };
+      const result = act(record, { action, group, vehicle }, {
+        grouped: groupVehicles(template.vehicles || []),
+        rules,
+        who: { admin, side },
+        by,
+      });
+      if (result.error) return { ...result, record };
+      await client.query('UPDATE axsuck.matches SET banpick = $2::jsonb WHERE id = $1', [match.id, JSON.stringify(result.record)]);
+      return result;
+    });
+    if (out.conflict) throw fastify.httpErrors.conflict('Ban/Pick 刚刚被别人更新了，已刷新为最新状态');
+    if (out.error) throw out.status === 403 ? fastify.httpErrors.forbidden(out.error) : fastify.httpErrors.badRequest(out.error);
+    fastify.tournamentEvents.emit(`update:${req.params.id}`, { type: 'match_banpick', matchId: match.id });
+    return { banpick: out.record, entry: out.entry };
   });
 
   // A walkover: at once from an admin; a player's claim waits for an admin.

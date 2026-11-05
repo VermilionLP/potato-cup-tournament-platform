@@ -2,13 +2,13 @@
   // Reporting a match: Ban / Pick, a live score during play, the score or a
   // walkover, an admin's correction or rollback, in MatchResultDialog. Players' scores wait for
   // the opponent (PendingReportPanel: confirm, dispute, withdraw); admins'
-  // take effect at once. Methods: report(match), openBanPick(match),
+  // take effect at once. Ban / Pick runs on the server (bpAct). Methods: report(match), openBanPick(match),
   // openDetails(match) (report when pending, correct when an admin can),
   // confirmReport(match), disputeReport(match), withdrawReport(match).
   import { toast } from "svelte-sonner";
   import { API } from "#lib/api.js";
   import { askConfirm } from "#lib/confirm.svelte.js";
-  import { initialBanPick } from "#lib/banpick.js";
+  import { initialBanPick, newerRecord } from "#lib/banpick.js";
   import { canCorrectResult } from "#lib/tournament.js";
   import { correctionWarning, hasDependentMatchPlayed, recordedResultLabel, resultMessage } from "#lib/event-view.js";
   import MatchResultDialog from "./MatchResultDialog.svelte";
@@ -34,9 +34,9 @@
   let reportStep = $state("banpick");
   // True while an admin is correcting a match that already has a result.
   let correctingMatch = $state(false);
-  // Ban/Pick progress for the match it was started on.
-  let bpState = $state(initialBanPick());
-  let bpMatchId = $state(null);
+  // Ban / Pick is kept on the server (POST .../banpick): the newest of the
+  // match row (live updates) and the last answer to our own action.
+  let bpAnswer = $state(null);
   let score1Input = $state(0);
   let score2Input = $state(0);
   let selectedMatch = $state(null);
@@ -45,10 +45,7 @@
   // Match report: clicking a card opens the score form; the card's BP
   // button opens Ban/Pick.
   function openMatchReport(match, step = "score") {
-    if (bpMatchId !== match.id) {
-      bpState = initialBanPick(bpTemplate?.rules);
-      bpMatchId = match.id;
-    }
+    if (selectedMatch?.id !== match.id) bpAnswer = null;
     selectedMatch = match;
     correctingMatch = false;
     reportStep = step === "banpick" && banpickEnabled ? "banpick" : "score";
@@ -58,12 +55,37 @@
     showMatchDialog = true;
   }
 
+  let liveRow = $derived(selectedMatch ? tournament?.matches?.find((m) => m.id === selectedMatch.id) || selectedMatch : null);
+  let bpRecord = $derived(newerRecord(liveRow?.banpick, bpAnswer));
+  let bpState = $derived(bpRecord?.state || initialBanPick(bpTemplate?.rules));
+  let bpRemote = $derived({
+    record: bpRecord,
+    myId: isAdmin ? "admin" : userState.id,
+    me: {
+      admin: isAdmin,
+      side: !userState.id ? null : userState.id === liveRow?.player1_id ? "A" : userState.id === liveRow?.player2_id ? "B" : null,
+    },
+    act: bpAct,
+  });
+  async function bpAct(action, args = {}) {
+    if (!selectedMatch) return;
+    try {
+      const res = await API.banPick(tid, selectedMatch.id, { action, ...args, rev: bpRecord?.rev ?? 0 });
+      bpAnswer = res.banpick;
+    } catch (e) {
+      toast.error(e.message);
+      if (e.status === 409) await onreload?.();
+      throw e;
+    }
+  }
+
   export function openBanPick(match) {
     openMatchReport(match, "banpick");
   }
 
   // Opens the score step pre-filled with the recorded result so an admin can fix it.
   function openMatchCorrection(match) {
+    if (selectedMatch?.id !== match.id) bpAnswer = null;
     selectedMatch = match;
     correctingMatch = true;
     reportStep = "score";
@@ -236,14 +258,14 @@
 <MatchResultDialog
   bind:open={showMatchDialog}
   bind:step={reportStep}
-  bind:bp={bpState}
+  bp={bpState}
+  {bpRemote}
   bind:score1={score1Input}
   bind:score2={score2Input}
   match={selectedMatch}
   {tournament}
   correcting={correctingMatch}
   {banpickEnabled}
-  {bpMatchId}
   vehicles={bpTemplate?.vehicles || []}
   poolName={bpTemplate?.name || ""}
   submitting={submittingResult}

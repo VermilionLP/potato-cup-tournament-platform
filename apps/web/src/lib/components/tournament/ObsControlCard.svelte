@@ -48,6 +48,7 @@
     { key: "hybrid", title: "2. 对阵图 (树状对阵图 + 侧栏)", url: channelUrl(`${base()}?scene=hybrid`, channel), copied: "已复制对阵图链接" },
     { key: "ingame", title: "3. 游戏内 HUD (右上角选手+滚动比分)", url: channelUrl(`${base()}?scene=ingame`, channel), copied: "已复制游戏内 HUD 链接" },
     { key: "intermission", title: "4. 场间 Coming Up (可打比赛)", url: channelUrl(`${base()}?scene=intermission`, channel), copied: "已复制场间 Coming Up 链接" },
+    { key: "banpick", title: "5. Ban / Pick (直播对局的禁用与抽取)", url: channelUrl(`${base()}?scene=banpick`, channel), copied: "已复制 Ban / Pick 链接" },
   ]);
 
   function copy(url, message) {
@@ -177,6 +178,7 @@
               <option value="hybrid">Hybrid (场间树状对阵图)</option>
               <option value="intermission">Intermission (场间可打预告)</option>
               <option value="ingame">HUD (游戏内选手面板)</option>
+              <option value="banpick">Ban / Pick (直播对局的禁用与抽取)</option>
             </select>
           </div>
 

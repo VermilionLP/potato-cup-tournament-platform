@@ -162,6 +162,9 @@ export const API = {
   // Live score during a match (no winner); nulls clear it
   setLiveScore: (tournamentId, matchId, score1, score2) =>
     request(`/tournaments/${enc(tournamentId)}/matches/${matchId}/live-score`, { method: 'POST', body: JSON.stringify({ score1, score2 }) }),
+  // Ban / Pick on the server: { action, group, vehicle, rev } → { banpick, entry }
+  banPick: (tournamentId, matchId, body) =>
+    request(`/tournaments/${enc(tournamentId)}/matches/${matchId}/banpick`, { method: 'POST', body: JSON.stringify(body) }),
   submitResult: (tournamentId, matchId, score1, score2) =>
     request(`/tournaments/${enc(tournamentId)}/matches/${matchId}/result`, { method: 'POST', body: JSON.stringify({ score1, score2 }) }),
   submitWalkover: (tournamentId, matchId, winner_id) =>

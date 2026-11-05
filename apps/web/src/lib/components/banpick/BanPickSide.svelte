@@ -1,10 +1,10 @@
 <script>
   // One player in Ban / Pick: slot (A / B), name and their bans; while it is
-  // their turn to ban, a 空过 (skip) button.
+  // their turn to ban (and the viewer may), a 空过 (skip) button.
   import Flag from "#lib/components/Flag.svelte";
-  import { ban, bansOf } from "#lib/banpick.js";
+  import { bansOf } from "#lib/banpick.js";
 
-  let { slot, player, active = false, bp = $bindable() } = $props();
+  let { slot, player, active = false, bp, canPass = true, onpass } = $props();
   const rules = $derived(bp.rules);
   const own = $derived(bansOf(bp, slot));
 
@@ -35,10 +35,10 @@
       禁用：{own.length ? own.map(banLabel).join("、") : rules.bansPerPlayer ? "—" : "无"}
     </div>
   </div>
-  {#if active}
+  {#if active && canPass}
     <button
       type="button"
-      onclick={() => (bp = ban(bp, null))}
+      onclick={onpass}
       class="shrink-0 rounded-md border border-dashed border-border px-1.5 py-0.5 text-[10px] text-muted-foreground hover:border-foreground hover:text-foreground cursor-pointer"
       title="本轮不禁用任何大组"
     >

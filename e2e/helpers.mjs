@@ -25,8 +25,8 @@ export async function makePlayer(prefix = 'e2e') {
   return id;
 }
 
-/** An event with `players` registered; started (bracket made) when `start`. */
-export async function makeEvent({ players = [], start = false, format = 'single_elim' } = {}) {
+/** An event with `players` registered; started (bracket made) when `start`; Ban / Pick with `template` (a vehicle pool id). */
+export async function makeEvent({ players = [], start = false, format = 'single_elim', template = null } = {}) {
   const id = `e2e${uid()}`;
   await api('POST', '/tournaments', {
     id,
@@ -35,7 +35,8 @@ export async function makeEvent({ players = [], start = false, format = 'single_
     game_mode: 'rb',
     vehicle_pool: 'prop',
     player_capacity: 16,
-    banpick_enabled: false,
+    banpick_enabled: Boolean(template),
+    ...(template ? { vehicle_template: template } : {}),
   });
   // New events start with the time vote; open sign-ups.
   await api('POST', `/tournaments/${id}/status`, { status: 'registration' });

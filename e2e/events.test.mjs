@@ -393,3 +393,63 @@ test('a live score during the match: shown on the bracket, cleared by the result
     await browser.close();
   }
 });
+
+test('Ban / Pick runs on the server: turns, undo, a draw seen by the other player, the overlay scene', async () => {
+  const vehicles = [];
+  for (const g of ['GA', 'GB', 'GC']) for (let i = 1; i <= 2; i += 1) vehicles.push({ name: `${g}-${i}`, group: g, nation: 'USA', br: 5, type: 'fighter' });
+  const pool = await api('POST', '/vehicle-pools', { name: 'E2E BP', event_type: 'prop', game_modes: [], rules: { bansPerPlayer: 1 }, sort_order: 900, vehicles });
+  const players = [];
+  for (let i = 0; i < 4; i += 1) players.push(await makePlayer('bp'));
+  const id = await makeEvent({ players, start: true, template: pool.id });
+  const match = (await api('GET', `/tournaments/${id}`)).matches.find((m) => m.player1_id && m.player2_id && m.status === 'pending');
+  const asPlayer = async (pid, body) => {
+    const res = await fetch(`${BASE}/api/tournaments/${id}/matches/${match.id}/banpick`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-player-id': pid },
+      body: JSON.stringify(body),
+    });
+    return { status: res.status, body: await res.json() };
+  };
+  // B can't ban on A's turn; A bans, undoes, bans again; B passes.
+  assert.equal((await asPlayer(match.player2_id, { action: 'ban', group: 'GA' })).status, 403);
+  assert.equal((await asPlayer(match.player1_id, { action: 'ban', group: 'GA' })).status, 200);
+  assert.equal((await asPlayer(match.player1_id, { action: 'undo' })).status, 200);
+  assert.equal((await asPlayer(match.player1_id, { action: 'ban', group: 'GB' })).status, 200);
+  const stale = await asPlayer(match.player2_id, { action: 'pass', rev: 1 });
+  assert.equal(stale.status, 409, 'an old revision is refused');
+  const passed = await asPlayer(match.player2_id, { action: 'pass' });
+  assert.equal(passed.body.banpick.state.phase, 'drawGroup');
+  assert.deepEqual(passed.body.banpick.log.map((e) => [e.action, Boolean(e.undone)]), [['ban', true], ['undo', false], ['ban', false], ['pass', false]]);
+
+  await api('POST', `/tournaments/${id}/active-match`, { active_match_id: match.id, channel: 1 });
+  const { browser, page, errors } = await openPage({ player: match.player2_id });
+  const overlay = await browser.newPage();
+  try {
+    await overlay.goto(`${BASE}/tournament/${id}/overlay`);
+    await overlay.getByText('BAN / PICK').waitFor({ timeout: T });
+    await page.goto(`${BASE}/tournament/${id}#bracket`);
+    const card = page.getByRole('button').filter({ hasText: match.player1_id }).filter({ hasText: match.player2_id }).first();
+    await card.getByRole('button', { name: 'BP' }).click({ timeout: T });
+    await page.getByText(/禁用 GB/).first().waitFor({ timeout: T });
+    await page.getByRole('button', { name: '抽取大组' }).click();
+    let bp = null;
+    for (let i = 0; i < 30 && !bp?.state?.group; i += 1) {
+      await page.waitForTimeout(200);
+      bp = (await api('GET', `/tournaments/${id}`)).matches.find((x) => x.id === match.id).banpick;
+    }
+    assert.ok(['GA', 'GC'].includes(bp.state.group), `drew ${bp?.state?.group}`);
+    assert.equal(bp.log.at(-1).by, match.player2_id);
+    await page.getByText(`抽到大组 ${bp.state.group}`).first().waitFor({ timeout: T });
+    // The overlay follows: the drawn group shows in the middle.
+    await overlay.getByText('GROUP DRAW').waitFor({ timeout: T });
+    await page.screenshot({ path: 'e2e-shot-banpick.png' });
+    await overlay.screenshot({ path: 'e2e-shot-banpick-overlay.png' });
+    assert.deepEqual(errors, [], 'no uncaught errors in the page');
+  } catch (e) {
+    await page.screenshot({ path: 'e2e-banpick.png', fullPage: true }).catch(() => {});
+    throw e;
+  } finally {
+    await browser.close();
+    await api('DELETE', `/vehicle-pools/${pool.id}`).catch(() => {});
+  }
+});

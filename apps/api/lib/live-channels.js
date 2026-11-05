@@ -2,7 +2,7 @@
 // own live match and overlay scene / stage. Channel 1 is the default one.
 
 export const MAX_LIVE_CHANNELS = 9;
-export const OVERLAY_SCENES = ['auto', 'intro', 'ingame', 'intermission', 'hybrid'];
+export const OVERLAY_SCENES = ['auto', 'intro', 'ingame', 'intermission', 'hybrid', 'banpick'];
 export const OVERLAY_STAGE_RE = /^(main|wb|lb|gf|sw|gse|gwb|glb):\d{1,3}$/;
 
 /** Channel number from a request (1 when left out); null when invalid. */

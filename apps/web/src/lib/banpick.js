@@ -194,3 +194,96 @@ export function resultLabel(state) {
   if (state.vehicle) return state.vehicle;
   return state.group ? `${state.group}（组内任选）` : "";
 }
+
+/**
+ * One action on a local Ban / Pick (the template preview; events keep it on
+ * the server, POST .../banpick). Same action names as the server.
+ */
+export function localAct(state, grouped, action, { group = null, vehicle = null } = {}, rand = Math.random) {
+  switch (action) {
+    case "ban":
+      return ban(state, group, vehicle);
+    case "pass":
+      return ban(state, null);
+    case "drawGroup":
+      return drawGroup(state, grouped, rand);
+    case "removeGroup":
+      return removeGroup(state);
+    case "confirmGroup":
+      return confirmGroup(state);
+    case "backToGroups":
+      return backToGroups(state);
+    case "drawVehicle":
+      return drawVehicle(state, grouped, rand);
+    case "removeVehicle":
+      return removeVehicle(state);
+    case "confirm":
+      return confirmResult(state);
+    case "reset":
+      return initialBanPick(state.rules);
+    default:
+      return state;
+  }
+}
+
+const ACTION_TEXT = {
+  ban: (e) => `禁用 ${e.group}`,
+  pass: () => "放弃禁用",
+  drawGroup: (e) => `抽到大组 ${e.group}`,
+  removeGroup: (e) => `移出大组 ${e.group}`,
+  confirmGroup: (e) => `使用大组 ${e.group}`,
+  backToGroups: () => "返回大组重新抽取",
+  drawVehicle: (e) => `抽到载具 ${e.vehicle}`,
+  removeVehicle: (e) => `移出载具 ${e.vehicle}`,
+  confirm: (e) => `确认结果：${e.vehicle || `${e.group}（组内任选）`}`,
+  reset: () => "重置 Ban/Pick",
+};
+
+/** What a server log entry did, in words ("禁用 GA", "撤销：抽到大组 GB"). */
+export function logText(entry) {
+  if (entry.action === "undo") {
+    const inner = ACTION_TEXT[entry.undoneAction];
+    return `撤销：${inner ? inner(entry) : "上一步"}`;
+  }
+  return ACTION_TEXT[entry.action]?.(entry) || entry.action;
+}
+
+/** Who did it: 管理员, or the player's name (with their side for bans). */
+export function logWho(entry, nameOf = (id) => id) {
+  return entry.by === "admin" ? "管理员" : nameOf(entry.by) || entry.by;
+}
+
+/** The newer of two server records (by rev); null when neither exists. */
+export function newerRecord(a, b) {
+  if (!a?.state) return b?.state ? b : null;
+  if (!b?.state) return a;
+  return b.rev > a.rev ? b : a;
+}
+
+/**
+ * What the viewer may do on a server Ban / Pick (mirrors actionProblem in
+ * apps/api/lib/banpick.js): `me` = { admin, side: "A" | "B" | null }.
+ */
+export function mayAct(record, action, me, myId) {
+  if (me?.admin) return true;
+  if (!me?.side) return false;
+  const state = record?.state;
+  if (!state) return action !== "reset" && action !== "undo";
+  if (action === "reset") return false;
+  if (action === "undo") {
+    const last = effectiveLog(record.log).at(-1);
+    return Boolean(last && last.by === myId && (last.action === "ban" || last.action === "pass"));
+  }
+  if (state.phase === "done") return false;
+  if (action === "ban" || action === "pass") return banTurn(state) === me.side;
+  return true;
+}
+
+/** Log entries that make up the state (after the last reset, not undone). */
+export function effectiveLog(log = []) {
+  let start = 0;
+  log.forEach((e, i) => {
+    if (e.action === "reset") start = i + 1;
+  });
+  return log.slice(start).filter((e) => !e.undone && e.action !== "undo" && e.action !== "reset");
+}
