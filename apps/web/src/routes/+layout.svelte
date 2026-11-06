@@ -18,6 +18,7 @@
   import ConfirmHost from "#lib/components/layout/ConfirmHost.svelte";
   import { installErrorReporting } from "#lib/error-report.js";
   import ProfileDialog from "#lib/components/layout/ProfileDialog.svelte";
+  import SiteFooter from "#lib/components/layout/SiteFooter.svelte";
   import SunIcon from "@lucide/svelte/icons/sun";
   import MoonIcon from "@lucide/svelte/icons/moon";
   import ShieldCheckIcon from "@lucide/svelte/icons/shield-check";
@@ -206,11 +207,12 @@
 
     <!-- Main Content -->
     <!-- pb on phones: room for the bottom tab bar (SiteNav). -->
-    <main class="flex-1 p-3 pb-24 sm:p-6 sm:pb-24 md:pb-6 max-w-7xl mx-auto w-full flex flex-col min-w-0">
+    <main class="flex-1 p-3 sm:p-6 max-w-7xl mx-auto w-full flex flex-col min-w-0">
       {#if children}
         {@render children()}
       {/if}
     </main>
+    <SiteFooter />
   </div>
 {/if}
 
