@@ -36,6 +36,8 @@ const ALLOWED = new Set([
   "新建赛事默认计入当前赛季1。",
   "每个模板属于一种比赛类型，可以限定游戏模式，并带有自己的 Ban / Pick 规则。比赛默认自动使用同类型里最匹配游戏模式的模板（按排序），管理员也可以在赛事页手动指定。1",
   "隐居寒天",
+  // The ICP filing number is a legal identifier shown as issued.
+  "鲁ICP备2026068167号-1",
   "1 人的1对阵用了 1（带轮空位），请在 Liquipedia 上确认模板。",
   "Group 1 的1小组对阵没有现成的 Liquipedia 模板对照，请确认模板名。"
 ]);
