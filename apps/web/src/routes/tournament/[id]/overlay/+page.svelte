@@ -5,7 +5,8 @@
   // Every scene uses the cyan overlay style, in English, with the shared
   // top bar (OverlayTopBar).
   // The scene comes from ?scene=, else the dashboard's choice, else the live
-  // match (its Ban / Pick until the result is confirmed, then ingame).
+  // match (its Ban / Pick until the result is confirmed and 20 s of the
+  // locked-in reveal, then ingame).
   // A scene change plays a short stinger (SceneStinger; ?stinger=false
   // turns it off).
   // ?channel=N follows one live channel (its live match and scene), so
@@ -133,7 +134,7 @@
     // The countdown ran out: the match is on.
     if (countdown?.over) return "ingame";
     if (tournament?.overlay_scene && tournament.overlay_scene !== "auto") return tournament.overlay_scene;
-    if (activeMatch && bpPending(activeMatch)) return "banpick";
+    if (activeMatch && (bpPending(activeMatch) || revealHold)) return "banpick";
     return activeMatch ? "ingame" : "hybrid";
   });
   // The live match still needs its Ban / Pick: the event has one (and a
@@ -141,6 +142,28 @@
   // result is not confirmed.
   const bpPending = (m) =>
     Boolean(pool) && tournament?.banpick_enabled !== false && m.status === "pending" && m.live_score1 == null && m.banpick?.state?.phase !== "done";
+
+  // A confirmed Ban / Pick stays on screen for REVEAL_HOLD_MS (the locked-in
+  // reveal) before Auto goes to the HUD; a live score ends it at once. Timed
+  // from the confirming step on the server's clock, so a reloaded overlay
+  // agrees.
+  const REVEAL_HOLD_MS = 20_000;
+  let revealUntil = $derived.by(() => {
+    const m = activeMatch;
+    if (!m || !pool || tournament?.banpick_enabled === false) return 0;
+    if (m.banpick?.state?.phase !== "done" || m.live_score1 != null || m.status !== "pending") return 0;
+    const at = Date.parse(m.banpick?.log?.at(-1)?.at || "");
+    return Number.isFinite(at) ? at + REVEAL_HOLD_MS : 0;
+  });
+  let holdClock = $state(Date.now());
+  let revealHold = $derived(revealUntil > holdClock + clockOffset);
+  $effect(() => {
+    const left = revealUntil - (Date.now() + clockOffset);
+    holdClock = Date.now();
+    if (left <= 0) return;
+    const timer = setTimeout(() => (holdClock = Date.now()), left + 50);
+    return () => clearTimeout(timer);
+  });
 
   // The event's vehicle pool, for the Ban / Pick scene's groups and pictures
   // (and to know whether the event has Ban / Pick at all).

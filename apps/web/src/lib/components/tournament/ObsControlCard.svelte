@@ -289,7 +289,7 @@
         <div class="space-y-1.5 p-2.5 rounded-xl border border-primary/20 bg-primary/5">
           <span class="font-bold text-brand-ink block text-small">✨ 推荐：全自动智能切换直播源 (Unified Auto)</span>
           <span class="text-small text-muted-foreground block leading-normal mb-1">
-            放入 OBS 浏览器源即可，跟随上面「当前显示大屏」的选择。选 Auto 时：直播对局开启了 Ban/Pick 且结果未确认时显示 Ban/Pick 画面，确认后（或已保存实时比分时）显示游戏 HUD（透明底）；无直播对局时显示场间对阵大屏（深色底）。
+            放入 OBS 浏览器源即可，跟随上面「当前显示大屏」的选择。选 Auto 时：直播对局开启了 Ban/Pick 时显示 Ban/Pick 画面，确认结果后展示抽中的载具 20 秒，再切到游戏 HUD（透明底，已保存实时比分时立即切换）；无直播对局时显示场间对阵大屏（深色底）。
           </span>
           <div class="flex items-center gap-1.5">
             <input

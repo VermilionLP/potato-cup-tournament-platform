@@ -445,13 +445,15 @@ test('Ban / Pick runs on the server: turns, undo, a draw seen by the other playe
     // An admin picking the scene by hand works too.
     await api('POST', `/tournaments/${id}/overlay-state`, { channel: 1, overlay_scene: 'banpick' });
     await overlay.getByText('GROUP DRAW').first().waitFor({ timeout: T });
-    // Confirmed: auto mode moves on to the in-game HUD, which shows the vehicle.
+    // Confirmed: auto mode shows the locked-in vehicle for 20 s, then the
+    // in-game HUD, which shows the vehicle.
     await api('POST', `/tournaments/${id}/overlay-state`, { channel: 1, overlay_scene: 'auto' });
     await api('POST', `/tournaments/${id}/matches/${match.id}/banpick`, { action: 'confirmGroup' });
     await api('POST', `/tournaments/${id}/matches/${match.id}/banpick`, { action: 'drawVehicle' });
     await api('POST', `/tournaments/${id}/matches/${match.id}/banpick`, { action: 'confirm' });
+    await overlay.getByText("THIS MATCH'S VEHICLE").first().waitFor({ timeout: T });
+    await overlay.getByText("RESULTS").first().waitFor({ timeout: T + 25_000 });
     await overlay.getByText(/G[AC]-\d/).first().waitFor({ timeout: T });
-    await overlay.getByText("RESULTS").first().waitFor({ timeout: T });
     await page.screenshot({ path: 'e2e-shot-banpick.png' });
     await overlay.screenshot({ path: 'e2e-shot-banpick-overlay.png' });
     assert.deepEqual(errors, [], 'no uncaught errors in the page');

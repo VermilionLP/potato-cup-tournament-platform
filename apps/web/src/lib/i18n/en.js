@@ -897,7 +897,7 @@ export default {
   "展示轮次:": "Round shown:",
   "OBS 浏览器源链接:": "OBS browser source links:",
   "✨ 推荐：全自动智能切换直播源 (Unified Auto)": "✨ Recommended: fully automatic source (Unified Auto)",
-  "放入 OBS 浏览器源即可，跟随上面「当前显示大屏」的选择。选 Auto 时：直播对局开启了 Ban/Pick 且结果未确认时显示 Ban/Pick 画面，确认后（或已保存实时比分时）显示游戏 HUD（透明底）；无直播对局时显示场间对阵大屏（深色底）。": "Put it in an OBS browser source; it follows the overlay scene chosen above. On Auto: while the live match has a Ban/Pick without a confirmed result it shows the Ban/Pick; after that (or once a live score is saved) the game HUD (transparent); with no live match the bracket scene (dark).",
+  "放入 OBS 浏览器源即可，跟随上面「当前显示大屏」的选择。选 Auto 时：直播对局开启了 Ban/Pick 时显示 Ban/Pick 画面，确认结果后展示抽中的载具 20 秒，再切到游戏 HUD（透明底，已保存实时比分时立即切换）；无直播对局时显示场间对阵大屏（深色底）。": "Put it in an OBS browser source; it follows the overlay scene chosen above. On Auto: while the live match has a Ban/Pick it shows the Ban/Pick, keeps the drawn vehicle on screen for 20 seconds after the result is confirmed, then shows the game HUD (transparent; at once if a live score is saved); with no live match the bracket scene (dark).",
   "特定单场景链接 (如有需要手动配置):": "Single-scene links (if you want to set them up by hand):",
   "1. 开场对阵 (Intro / 比赛列表)": "1. Intro (match list)",
   "轮次:": "Round:",
