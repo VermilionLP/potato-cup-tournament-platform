@@ -74,17 +74,17 @@
     </button>
     {#if open}
       <div class="border-t border-amber-500/20 divide-y divide-border/60">
-        <p class="px-4 py-2 text-[11px] text-muted-foreground">
+        <p class="px-4 py-2 text-small text-muted-foreground">
           ID 只差大小写、空格 / 下划线或一两个字母的选手，可能是同一个人注册了两次。默认把参赛少的合并到参赛多的；不是同一人就点「不是同一人」，以后不再提示。
         </p>
         {#each pairs as pair (key(pair))}
           <div class="px-4 py-2.5 flex flex-col sm:flex-row sm:items-center gap-2 text-xs">
             <div class="flex-1 min-w-0 flex flex-wrap items-center gap-x-2 gap-y-0.5">
-              <a href="/player/{encodeURIComponent(pair.from.id)}" class="font-semibold hover:text-primary hover:underline break-all">{pair.from.id}</a>
-              <span class="text-[10px] text-muted-foreground">{info(pair.from)}</span>
+              <a href="/player/{encodeURIComponent(pair.from.id)}" class="font-semibold hover:text-brand-ink hover:underline break-all">{pair.from.id}</a>
+              <span class="text-small text-muted-foreground">{info(pair.from)}</span>
               <span class="text-muted-foreground">→</span>
-              <a href="/player/{encodeURIComponent(pair.into.id)}" class="font-semibold hover:text-primary hover:underline break-all">{pair.into.id}</a>
-              <span class="text-[10px] text-muted-foreground">{info(pair.into)}</span>
+              <a href="/player/{encodeURIComponent(pair.into.id)}" class="font-semibold hover:text-brand-ink hover:underline break-all">{pair.into.id}</a>
+              <span class="text-small text-muted-foreground">{info(pair.into)}</span>
             </div>
             <div class="flex flex-wrap gap-1.5 shrink-0">
               <button type="button" disabled={busy === key(pair)} onclick={() => merge(pair, pair.from, pair.into)} class="h-7 rounded-md bg-primary px-2.5 font-semibold text-primary-foreground hover:opacity-90 cursor-pointer disabled:opacity-50">

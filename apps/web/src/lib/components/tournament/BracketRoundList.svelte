@@ -42,7 +42,7 @@
             {t.key === shownKey ? 'border-primary bg-primary text-primary-foreground' : 'border-border text-foreground/80'}"
         >
           {t.label}
-          <span class="ml-1 text-[10px] font-normal opacity-75">{t.done}/{t.total}</span>
+          <span class="ml-1 text-small font-normal opacity-75">{t.done}/{t.total}</span>
         </button>
       {/each}
     </div>

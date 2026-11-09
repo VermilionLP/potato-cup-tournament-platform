@@ -23,7 +23,7 @@
     {slot === 'B' ? 'flex-row-reverse text-right' : ''}"
 >
   <span
-    class="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-[11px] font-black text-white
+    class="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-small font-black text-white
       {slot === 'A' ? 'bg-rose-500' : 'bg-sky-500'}">{slot}</span
   >
   <div class="min-w-0 flex-1">
@@ -31,7 +31,7 @@
       <Flag code={player.flag} size={12} />
       <span class="truncate text-xs font-bold text-foreground">{player.name}</span>
     </div>
-    <div class="truncate text-[10px] {own.some((b) => b.group) ? 'font-semibold text-destructive' : 'text-muted-foreground'}">
+    <div class="truncate text-small {own.some((b) => b.group) ? 'font-semibold text-destructive' : 'text-muted-foreground'}">
       禁用：{own.length ? own.map(banLabel).join("、") : rules.bansPerPlayer ? "—" : "无"}
     </div>
   </div>
@@ -39,7 +39,7 @@
     <button
       type="button"
       onclick={onpass}
-      class="shrink-0 rounded-md border border-dashed border-border px-1.5 py-0.5 text-[10px] text-muted-foreground hover:border-foreground hover:text-foreground cursor-pointer"
+      class="shrink-0 rounded-md border border-dashed border-border px-1.5 py-0.5 text-small text-muted-foreground hover:border-foreground hover:text-foreground cursor-pointer"
       title="本轮不禁用任何大组"
     >
       空过

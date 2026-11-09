@@ -13,9 +13,13 @@
     <meta name="apple-mobile-web-app-title" content="Potato Cup" />
     <link rel="manifest" href="/site.webmanifest" />
     <title>Potato Cup</title>
+    <!-- HarmonyOS Sans SC, split by character range (scripts/fonts.mjs).
+         Loaded without blocking the first paint; text shows in the system
+         font until it arrives. -->
+    <link rel="stylesheet" href="/fonts/harmonyos-sans-sc/fonts.css" media="print" onload="this.media='all'" />
     %sveltekit.head%
   </head>
-  <body class="bg-zinc-950 text-zinc-100">
+  <body>
     <div style="display: contents">%sveltekit.body%</div>
   </body>
 </html>

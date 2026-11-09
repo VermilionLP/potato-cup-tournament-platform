@@ -66,10 +66,10 @@
     </Dialog.Header>
 
     {#if absent.length}
-      <div class="flex gap-2 text-[11px]">
+      <div class="flex gap-2 text-small">
         <span class="text-muted-foreground self-center">全部：</span>
         {#each OPTIONS as [value, label] (value)}
-          <button type="button" class="text-primary hover:underline cursor-pointer" onclick={() => setAll(value)}>{label}</button>
+          <button type="button" class="text-brand-ink hover:underline cursor-pointer" onclick={() => setAll(value)}>{label}</button>
         {/each}
       </div>
       <div class="max-h-72 overflow-y-auto space-y-1.5 pr-1">
@@ -78,9 +78,9 @@
             <span class="flex items-center gap-1.5 text-xs font-medium min-w-0">
               <Flag code={p.flag} size={14} />
               <span class="truncate">{p.display_name}</span>
-              {#if p.seed}<span class="text-[10px] text-amber-500 font-bold">#{p.seed}</span>{/if}
+              {#if p.seed}<span class="text-small text-amber-500 font-bold">#{p.seed}</span>{/if}
             </span>
-            <div class="flex rounded-md bg-muted/50 p-0.5 text-[11px] shrink-0">
+            <div class="flex rounded-md bg-muted/50 p-0.5 text-small shrink-0">
               {#each OPTIONS as [value, label] (value)}
                 <button
                   type="button"
@@ -94,7 +94,7 @@
           </div>
         {/each}
       </div>
-      <div class="text-[11px] text-muted-foreground">开赛后共 {remaining} 名选手。</div>
+      <div class="text-small text-muted-foreground">开赛后共 {remaining} 名选手。</div>
     {/if}
 
     <Dialog.Footer class="flex gap-2">

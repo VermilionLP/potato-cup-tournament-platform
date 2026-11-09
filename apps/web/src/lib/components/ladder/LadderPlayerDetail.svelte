@@ -1,6 +1,7 @@
 <script>
   // A ladder player: tier, rank and record, the MMR chart (by time or by
   // game) and their rated games, newest first.
+  import { EmptyState } from "#lib/components/ui/empty-state/index.js";
   import { Badge } from "#lib/components/ui/badge/index.js";
   import * as Card from "#lib/components/ui/card/index.js";
   import MmrChart from "#lib/components/ladder/mmr-chart.svelte";
@@ -19,22 +20,22 @@
         <div class="text-2xl"><Flag code={player.flag} size={32} /></div>
         <div>
           <div class="text-base font-bold flex items-center gap-2 flex-wrap">
-            <a href="/player/{encodeURIComponent(player.id)}" class="hover:text-primary hover:underline">{player.display_name}</a>
+            <a href="/player/{encodeURIComponent(player.id)}" class="hover:text-brand-ink hover:underline">{player.display_name}</a>
             <TierBadge tier={player.tier} />
             {#if player.active === false}
-              <Badge variant="outline" class="text-[9px] px-1.5 py-0 border-amber-500/30 bg-amber-500/10 text-amber-500">
+              <Badge variant="outline" class="text-small px-1.5 py-0 border-amber-500/30 bg-amber-500/10 text-amber-500">
                 不活跃
               </Badge>
             {/if}
           </div>
-          <div class="text-[10px] text-muted-foreground">
+          <div class="text-small text-muted-foreground">
             排名 #{player.rank} · {player.games} 场 · {player.wins} 胜 {player.losses} 负
           </div>
         </div>
       </div>
       <div class="text-right">
-        <div class="text-[9px] sm:text-[10px] text-muted-foreground uppercase tracking-wider">MMR</div>
-        <div class="text-2xl font-black font-mono">{player.mmr}</div>
+        <div class="text-label sm:text-label text-muted-foreground uppercase tracking-wider">MMR</div>
+        <div class="text-2xl font-black num">{player.mmr}</div>
       </div>
     </div>
   </Card.Header>
@@ -43,14 +44,14 @@
       <div class="py-6 text-center text-xs text-muted-foreground">加载对局记录...</div>
     {:else if detail?.history?.length}
       <div class="flex flex-wrap items-center justify-between gap-2">
-        <div class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+        <div class="text-label font-bold uppercase tracking-wider text-muted-foreground">
           MMR 历史 · 共 {detail.history.length} 场
         </div>
         <div class="flex items-center gap-0.5 rounded-lg border border-border/70 bg-background/40 p-0.5">
           <button
             type="button"
             onclick={() => (chartMode = "time")}
-            class="px-2 py-1 rounded-md text-[10px] font-semibold transition-colors cursor-pointer
+            class="px-2 py-1 rounded-md text-small font-semibold transition-colors cursor-pointer
               {chartMode === 'time' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}"
           >
             按时间
@@ -58,7 +59,7 @@
           <button
             type="button"
             onclick={() => (chartMode = "game")}
-            class="px-2 py-1 rounded-md text-[10px] font-semibold transition-colors cursor-pointer
+            class="px-2 py-1 rounded-md text-small font-semibold transition-colors cursor-pointer
               {chartMode === 'game' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}"
           >
             按场次
@@ -68,7 +69,7 @@
       <div class="rounded-xl border border-border/60 bg-background/30 px-2 pt-2 pb-1">
         <MmrChart history={detail.history} mode={chartMode} />
       </div>
-      <div class="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">
+      <div class="text-label uppercase tracking-wider text-muted-foreground font-bold">
         最近对局（全部）
       </div>
       <div class="space-y-1.5 max-h-80 overflow-y-auto">
@@ -83,26 +84,26 @@
                 <span class="text-muted-foreground font-normal">
                   ({h.score_for}-{h.score_against})
                 </span>
-                <span class="hidden sm:inline text-[9px] text-muted-foreground/75 font-normal ml-1.5">
+                <span class="hidden sm:inline text-small text-muted-foreground/75 font-normal ml-1.5">
                   对手 {h.opponent_mmr}
                 </span>
               </div>
-              <div class="sm:hidden text-[9px] text-muted-foreground truncate">
+              <div class="sm:hidden text-small text-muted-foreground truncate">
                 对手 {h.opponent_mmr} · {h.tournament_name}
               </div>
             </div>
-            <span class="hidden sm:block text-[10px] text-muted-foreground truncate max-w-40">
+            <span class="hidden sm:block text-small text-muted-foreground truncate max-w-40">
               {h.tournament_name}
             </span>
-            <span class="font-mono font-bold {h.mmr_delta >= 0 ? 'text-emerald-500' : 'text-rose-500'}">
+            <span class="num font-bold {h.mmr_delta >= 0 ? 'text-emerald-500' : 'text-rose-500'}">
               {h.mmr_delta >= 0 ? "+" : ""}{h.mmr_delta}
             </span>
-            <span class="font-mono text-[10px] text-muted-foreground w-12 text-right">{h.mmr_after}</span>
+            <span class="num text-small text-muted-foreground w-12 text-right">{h.mmr_after}</span>
           </div>
         {/each}
       </div>
     {:else}
-      <div class="py-6 text-center text-xs text-muted-foreground italic">暂无对局记录。</div>
+      <EmptyState compact title="暂无对局记录。" />
     {/if}
   </Card.Content>
 </Card.Root>

@@ -174,7 +174,7 @@
   <Dialog.Content class="max-w-[500px] bg-card border border-border">
     <Dialog.Header>
       <Dialog.Title class="text-base font-bold text-foreground flex items-center gap-2">
-        <SettingsIcon class="w-4 h-4 text-primary" />
+        <SettingsIcon class="w-4 h-4 text-brand-ink" />
         {isCreating ? "新建选手资料" : `编辑 · ${editingId}`}
       </Dialog.Title>
       <Dialog.Description class="text-xs text-muted-foreground">
@@ -186,22 +186,22 @@
       <div class="space-y-1">
         <label for="edit-new-id" class="text-xs font-bold text-muted-foreground">选手 ID *</label>
         <Input id="edit-new-id" bind:value={newId} placeholder="例如: Vermilion" class="text-xs h-8 bg-background" />
-        <p class="text-[10px] text-muted-foreground/60">选手的唯一 ID 标识，若修改将同步更新其历史对阵、报名和投票数据。</p>
+        <p class="text-small text-muted-foreground/60">选手的唯一 ID 标识，若修改将同步更新其历史对阵、报名和投票数据。</p>
       </div>
 
       <div class="space-y-2.5">
         <span class="text-xs font-bold text-muted-foreground">联系方式（QQ / Discord）</span>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 bg-muted/20 border border-border/60 p-4 rounded-xl">
           <div class="space-y-1">
-            <label for="edit-contact-qq" class="text-[11px] font-bold text-muted-foreground">QQ 号</label>
+            <label for="edit-contact-qq" class="text-small font-bold text-muted-foreground">QQ 号</label>
             <Input id="edit-contact-qq" bind:value={qq} placeholder="例如: 123456789" class="text-xs h-8 bg-background border-border text-foreground" />
           </div>
           <div class="space-y-1">
-            <label for="edit-contact-discord" class="text-[11px] font-bold text-muted-foreground">Discord 用户名</label>
+            <label for="edit-contact-discord" class="text-small font-bold text-muted-foreground">Discord 用户名</label>
             <Input id="edit-contact-discord" bind:value={discord} placeholder="例如: username" class="text-xs h-8 bg-background border-border text-foreground" />
           </div>
         </div>
-        <p class="text-[10px] text-muted-foreground/60">赛务联系用，会显示在选手列表中。</p>
+        <p class="text-small text-muted-foreground/60">赛务联系用，会显示在选手列表中。</p>
       </div>
 
       <div class="grid grid-cols-2 gap-3">
@@ -221,7 +221,7 @@
       <div class="space-y-1">
         <label for="edit-link" class="text-xs font-bold text-muted-foreground">Wiki 页面名称</label>
         <Input id="edit-link" bind:value={link} placeholder="例如: Vermilion" class="text-xs h-8" />
-        <p class="text-[10px] text-muted-foreground/60">
+        <p class="text-small text-muted-foreground/60">
           Liquipedia Wiki 页面名称，最终将链接至
           https://liquipedia.net/warthunder/&lt;名称&gt;
         </p>
@@ -239,9 +239,9 @@
       <div class="rounded-lg border p-2.5 space-y-2 {pendingAction === 'delete' ? 'border-destructive/40 bg-destructive/10' : 'border-amber-500/40 bg-amber-500/10'}">
         <p class="text-xs font-semibold {pendingAction === 'delete' ? 'text-destructive' : 'text-amber-600 dark:text-amber-400'}">
           {#if pendingAction === "delete"}
-            确定要删除选手 <span class="font-mono">{editingId}</span> 吗？若已出现在对阵记录中，请改用"合并"功能。
+            确定要删除选手 <span class="num">{editingId}</span> 吗？若已出现在对阵记录中，请改用"合并"功能。
           {:else}
-            修改你自己的选手 ID 会同时更新你的登录凭证，确定要改成 <span class="font-mono">{newId.trim()}</span> 吗？
+            修改你自己的选手 ID 会同时更新你的登录凭证，确定要改成 <span class="num">{newId.trim()}</span> 吗？
           {/if}
         </p>
         <div class="flex gap-2 justify-end">

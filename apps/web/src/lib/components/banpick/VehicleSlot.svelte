@@ -45,11 +45,11 @@
   {/if}
   <span
     class="absolute right-1.5 top-1 max-w-[85%] truncate text-right font-semibold leading-tight drop-shadow
-      {size === 'lg' ? 'text-sm' : 'text-[11px]'} {state === 'out' ? 'line-through' : ''}"
+      {size === 'lg' ? 'text-sm' : 'text-small'} {state === 'out' ? 'line-through' : ''}"
   >
     {vehicle.name}
   </span>
   {#if vehicle.br != null}
-    <span class="absolute bottom-1 right-1.5 drop-shadow {size === 'lg' ? 'text-xs' : 'text-[10px]'} text-slate-300">{br(vehicle.br)}</span>
+    <span class="absolute bottom-1 right-1.5 drop-shadow {size === 'lg' ? 'text-xs' : 'text-small'} text-slate-300">{br(vehicle.br)}</span>
   {/if}
 </div>

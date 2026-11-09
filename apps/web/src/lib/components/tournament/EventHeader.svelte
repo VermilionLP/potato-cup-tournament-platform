@@ -4,6 +4,8 @@
   // type, format, ladder limit; rewards: points and prizes), the player
   // count and the match time (with check-in). Admins change the tags and
   // points in EventSettingsDialog (the 设置 button, loaded for admins only).
+  import { statusTone } from "#lib/lobby.js";
+  import { Tag } from "#lib/components/ui/tag/index.js";
   import { goto } from "$app/navigation";
   import { toast } from "svelte-sonner";
   import { API } from "#lib/api.js";
@@ -12,7 +14,6 @@
   import { eventFormatLabel } from "#lib/tournament.js";
   import { Button } from "#lib/components/ui/button/index.js";
   import { Input } from "#lib/components/ui/input/index.js";
-  import { Badge } from "#lib/components/ui/badge/index.js";
   import MatchTime from "#lib/components/MatchTime.svelte";
   import EventTagControls from "./EventTagControls.svelte";
   import LadderLimitTag from "./LadderLimitTag.svelte";
@@ -86,7 +87,7 @@
 <div class="space-y-1">
   <button
     onclick={() => goto("/")}
-    class="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors mb-1.5 cursor-pointer"
+    class="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-brand-ink transition-colors mb-1.5 cursor-pointer"
   >
     <ArrowLeftIcon class="w-3 h-3" /> 返回大厅
   </button>
@@ -105,30 +106,28 @@
         <Button variant="ghost" size="sm" onclick={() => (editingTitle = false)} class="h-9 text-xs">取消</Button>
       </div>
     {:else}
-      <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground">{tournament.name}</h1>
+      <h1 class="font-display text-[2.25rem] sm:text-[2.5rem] font-extrabold uppercase leading-none text-foreground">{tournament.name}</h1>
       {#if isAdmin}
         <button
           type="button"
           onclick={startTitleEdit}
           title="修改赛事标题"
           aria-label="修改赛事标题"
-          class="text-muted-foreground/60 hover:text-primary transition-colors cursor-pointer"
+          class="text-muted-foreground/60 hover:text-brand-ink transition-colors cursor-pointer"
         >
           <PencilIcon class="w-4 h-4" />
         </button>
       {/if}
     {/if}
-    <Badge variant="outline" class="text-[10px] px-2 py-0.5 font-bold uppercase tracking-wider bg-primary/10 text-primary border-primary/20">
-      {statusText}
-    </Badge>
+    <Tag tone={statusTone(tournament.status)} dot={tournament.status === "in_progress"}>{statusText}</Tag>
     {#if canSignUp}
       {#if isRegistered}
         <span class="inline-flex items-center gap-2 text-xs">
-          <span class="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 font-bold text-emerald-600 dark:text-emerald-400">已报名 ✓</span>
+          <Tag tone="success">已报名 ✓</Tag>
           <button type="button" onclick={() => onunregister?.()} class="text-muted-foreground hover:text-destructive cursor-pointer">取消报名</button>
         </span>
       {:else}
-        <Button size="sm" onclick={() => onregister?.()} class="h-8 font-bold">立即报名</Button>
+        <Button size="sm" onclick={() => onregister?.()}>立即报名</Button>
       {/if}
     {/if}
   </div>
@@ -151,7 +150,7 @@
     {#if hasPoints}
       <a
         href="/points?season={tournament.points_season}&pool={tournament.vehicle_pool}"
-        class="inline-flex items-center gap-1 rounded-md border border-primary/30 bg-primary/10 px-2 py-0.5 font-semibold text-primary hover:bg-primary/20 transition-colors"
+        class="inline-flex items-center gap-1 rounded-md border border-primary/30 bg-primary/10 px-2 py-0.5 font-semibold text-brand-ink hover:bg-primary/20 transition-colors"
         title="年度积分榜"
       >
         <TrophyIcon class="w-3 h-3" />
@@ -167,7 +166,7 @@
       <button
         type="button"
         onclick={() => openSettings()}
-        class="inline-flex items-center gap-1 rounded-md border border-dashed border-border px-2 py-0.5 font-semibold text-muted-foreground hover:border-primary/50 hover:text-primary transition-colors cursor-pointer"
+        class="inline-flex items-center gap-1 rounded-md border border-dashed border-border px-2 py-0.5 font-semibold text-muted-foreground hover:border-primary/50 hover:text-brand-ink transition-colors cursor-pointer"
         title="修改等级、模式、类型、天梯限制、签到和奖金积分"
       >
         <SettingsIcon class="h-3 w-3" />
@@ -177,7 +176,7 @@
   </div>
 
   <!-- Facts: players, voters, date of an imported event (ID and creation date are in 设置). -->
-  <p class="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground">
+  <p class="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-small text-muted-foreground">
     <span>选手 <span class="font-semibold text-foreground tabular-nums">{tournament.player_count || 0} / {tournament.player_capacity}</span></span>
     {#if tournament.status === "voting"}
       <span>投票 <span class="font-semibold text-foreground tabular-nums">{tournament.voter_count || 0}</span> 人</span>
@@ -192,7 +191,7 @@
       href={tournament.source_url}
       target="_blank"
       rel="noopener noreferrer"
-      class="mt-2.5 inline-flex max-w-full items-center gap-1.5 rounded-xl border border-border bg-muted/30 px-3 py-1.5 text-[11px] text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
+      class="mt-2.5 inline-flex max-w-full items-center gap-1.5 rounded-xl border border-border bg-muted/30 px-3 py-1.5 text-small text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
       title="历史赛事，赛果来自 Liquipedia（CC-BY-SA 3.0）"
     >
       <ExternalLinkIcon class="w-3.5 h-3.5 shrink-0" />
@@ -209,7 +208,7 @@
           <button
             type="button"
             onclick={onedittime}
-            class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg border border-primary/25 bg-background/50 text-[10px] font-bold text-primary hover:bg-primary hover:text-primary-foreground transition-colors cursor-pointer"
+            class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg border border-primary/25 bg-background/50 text-small font-bold text-brand-ink hover:bg-primary hover:text-primary-foreground transition-colors cursor-pointer"
             title="调整比赛时间"
           >
             <PencilIcon class="w-3 h-3" />
@@ -219,7 +218,7 @@
         <a
           href={`/api/tournaments/${encodeURIComponent(tournament.id)}/calendar.ics`}
           download={`${tournament.id}.ics`}
-          class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg border border-primary/25 bg-background/50 text-[10px] font-bold text-primary hover:bg-primary hover:text-primary-foreground transition-colors"
+          class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg border border-primary/25 bg-background/50 text-small font-bold text-brand-ink hover:bg-primary hover:text-primary-foreground transition-colors"
           title="下载 .ics 日历文件，一键导入日历（会按你的时区显示）"
         >
           <CalendarIcon class="w-3 h-3" />

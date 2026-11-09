@@ -255,7 +255,7 @@
   <div
     class="fixed bottom-5 left-1/2 z-[60] flex max-w-[calc(100vw-1.5rem)] -translate-x-1/2 flex-wrap items-center justify-center gap-x-3 gap-y-2 rounded-xl border border-primary/30 bg-card/95 px-4 py-3 shadow-lg backdrop-blur"
   >
-    <ClockIcon class="h-4 w-4 shrink-0 text-primary {stage.name === 'banpick' ? 'animate-pulse' : ''}" />
+    <ClockIcon class="h-4 w-4 shrink-0 text-brand-ink {stage.name === 'banpick' ? 'animate-pulse' : ''}" />
     {#if stage.name === "banpick"}
       <span class="text-xs font-medium">大屏显示 Ban/Pick，等待结果确认…</span>
       <Button size="sm" variant="outline" class="h-7 cursor-pointer text-xs" onclick={() => startPrep(stage)}>跳过 BP</Button>

@@ -4,14 +4,14 @@
   let { tournament } = $props();
 
   const STEPS = [
-    { status: "voting", label: "时间投票", text: "text-purple-400", dot: "bg-purple-500 text-white border-purple-500" },
-    { status: "registration", label: "选手报名", text: "text-primary", dot: "bg-primary text-black border-primary" },
+    { status: "voting", label: "时间投票", text: "text-sky-600 dark:text-sky-400", dot: "bg-sky-500 text-white border-sky-500" },
+    { status: "registration", label: "选手报名", text: "text-brand-ink", dot: "bg-primary text-black border-primary" },
     { status: "in_progress", label: "比赛进行中", text: "text-amber-500", dot: "bg-amber-500 text-black border-amber-500" },
-    { status: "completed", label: "赛事结束", text: "text-emerald-400", dot: "bg-emerald-500 text-black border-emerald-500" },
+    { status: "completed", label: "赛事结束", text: "text-emerald-600 dark:text-emerald-400", dot: "bg-emerald-500 text-black border-emerald-500" },
   ];
 </script>
 
-<div class="sm:hidden flex items-center justify-between gap-1 rounded-xl border border-border bg-card/25 px-3 py-2 text-[11px]">
+<div class="sm:hidden flex items-center justify-between gap-1 rounded-xl border border-border bg-card/25 px-3 py-2 text-small">
   {#each STEPS as step, i (step.status)}
     {@const current = tournament.status === step.status}
     {#if i > 0}<span class="text-muted-foreground/50">›</span>{/if}
@@ -23,12 +23,12 @@
   {#each STEPS as step, i (step.status)}
     {@const current = tournament.status === step.status}
     <div class="space-y-1.5 {current ? `${step.text} font-bold` : 'text-muted-foreground'}">
-      <div class="w-6 h-6 rounded-full mx-auto flex items-center justify-center text-[10px] border {current ? step.dot : 'bg-muted/40 border-border'}">
+      <div class="w-6 h-6 rounded-full mx-auto flex items-center justify-center text-small border {current ? step.dot : 'bg-muted/40 border-border'}">
         {i + 1}
       </div>
       <div>{step.label}</div>
       {#if step.status === "voting" && tournament.scheduled_time && tournament.status !== "voting"}
-        <div class="text-[9px] text-emerald-500 font-semibold">已跳过</div>
+        <div class="text-small text-emerald-500 font-semibold">已跳过</div>
       {/if}
     </div>
   {/each}

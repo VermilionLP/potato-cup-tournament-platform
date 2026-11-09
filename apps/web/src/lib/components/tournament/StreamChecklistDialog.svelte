@@ -36,7 +36,7 @@
 <Dialog.Root bind:open>
   <Dialog.Content class="max-w-2xl bg-card border border-primary/30">
     <Dialog.Header>
-      <Dialog.Title class="text-base font-bold text-primary flex items-center gap-2">
+      <Dialog.Title class="text-base font-bold text-brand-ink flex items-center gap-2">
         <RadioIcon class="w-4 h-4" /> 开播前检查
       </Dialog.Title>
       <Dialog.Description class="text-xs text-muted-foreground">
@@ -52,7 +52,7 @@
           <ItemIcon class="w-4 h-4 text-muted-foreground shrink-0" />
           <div class="min-w-0">
             <div class="text-xs font-semibold text-foreground">{item.label}</div>
-            <div class="text-[10px] text-muted-foreground">{item.desc}</div>
+            <div class="text-small text-muted-foreground">{item.desc}</div>
           </div>
         </label>
       {/each}

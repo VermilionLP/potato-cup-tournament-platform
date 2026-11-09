@@ -57,12 +57,12 @@
         >
           {g.label} 组
           {#if g.complete}
-            <span class="text-[9px] font-semibold opacity-75">已结束</span>
+            <span class="text-small font-semibold opacity-75">已结束</span>
           {:else if open}
-            <span class="text-[9px] font-semibold opacity-75">{open} 场待赛</span>
+            <span class="text-small font-semibold opacity-75">{open} 场待赛</span>
           {/if}
           {#if g.group === myGroup}
-            <span class="text-[9px] opacity-75">· 我</span>
+            <span class="text-small opacity-75">· 我</span>
           {/if}
         </button>
       {/each}
@@ -73,26 +73,26 @@
         <div class="space-y-1.5 rounded-xl border border-border bg-background/30 p-3 self-start">
           <div class="flex items-center justify-between text-xs font-bold text-foreground">
             <span>{current.label} 组名次</span>
-            <span class="text-[10px] font-normal text-muted-foreground">前 {perGroup} 名出线</span>
+            <span class="text-small font-normal text-muted-foreground">前 {perGroup} 名出线</span>
           </div>
           {#each current.rows as row (row.player_id)}
             <div
-              class="flex items-center gap-1.5 rounded-md px-1.5 py-1 text-[11px]
+              class="flex items-center gap-1.5 rounded-md px-1.5 py-1 text-small
                 {row.qualified ? 'bg-emerald-500/10' : ''}
                 {row.player_id === userId ? 'ring-1 ring-primary/50' : ''}"
             >
-              <span class="w-4 shrink-0 text-right font-mono text-[10px] text-muted-foreground">{row.how ? row.rank : "–"}</span>
+              <span class="w-4 shrink-0 text-right num text-small text-muted-foreground">{row.how ? row.rank : "–"}</span>
               <Flag code={playerById.get(row.player_id)?.flag} size={12} />
               <span class="min-w-0 flex-1 truncate font-semibold text-foreground">{nameOf(row.player_id)}</span>
               {#if row.qualified}
-                <span class="shrink-0 rounded bg-emerald-500/15 px-1 text-[9px] font-bold text-emerald-600 dark:text-emerald-400">出线</span>
+                <span class="shrink-0 rounded bg-emerald-500/15 px-1 text-small font-bold text-emerald-600 dark:text-emerald-400">出线</span>
               {:else if row.how}
-                <span class="shrink-0 text-[9px] text-muted-foreground">{row.how}</span>
+                <span class="shrink-0 text-small text-muted-foreground">{row.how}</span>
               {/if}
             </div>
           {/each}
           {#if !current.complete}
-            <p class="pt-1 text-[10px] text-muted-foreground">小组进行中，名次随比赛结果更新。</p>
+            <p class="pt-1 text-small text-muted-foreground">小组进行中，名次随比赛结果更新。</p>
           {/if}
         </div>
 

@@ -1,6 +1,7 @@
 <script>
   // Lobby: the event that matters now on top (LobbyHero), the other upcoming
   // / running events, then finished ones filtered by event type. Rows and the create-event wizard live in #lib/components/lobby.
+  import { Chip } from "#lib/components/ui/chip/index.js";
   import PageHeader from "#lib/components/PageHeader.svelte";
   import PageSkeleton from "#lib/components/PageSkeleton.svelte";
   import { onMount } from "svelte";
@@ -158,7 +159,7 @@
             可以直接创建一场新的 WarThunder 锦标赛。
           </p>
           {#if historyTournaments.length > 0}
-            <div class="mt-2 inline-flex items-center gap-1.5 text-[10px] text-muted-foreground/70">
+            <div class="mt-2 inline-flex items-center gap-1.5 text-small text-muted-foreground/70">
               <ClockIcon class="w-3 h-3 shrink-0" />
               <span>上次比赛：{relativeDay(eventDate(historyTournaments[0]))}</span>
             </div>
@@ -197,35 +198,15 @@
         <!-- Filter by vehicle pool -->
         <div class="flex flex-wrap items-center gap-1.5 mb-3">
           {#each historyChips as chip (chip.id)}
-            <button
-              type="button"
-              onclick={() => (historyPool = chip.id)}
-              aria-pressed={historyPool === chip.id}
-              class="inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-semibold transition-colors cursor-pointer
-                {historyPool === chip.id
-                ? 'border-primary bg-primary text-primary-foreground'
-                : 'border-border text-muted-foreground hover:border-foreground/40 hover:text-foreground'}"
-            >
-              {chip.name}
-              <span class="text-[10px] font-normal opacity-75 tabular-nums">{chip.count}</span>
-            </button>
+            <Chip selected={historyPool === chip.id} onclick={() => (historyPool = chip.id)}>{chip.name}
+              <span class="text-small font-normal opacity-75 tabular-nums">{chip.count}</span></Chip>
           {/each}
         </div>
         {#if tierChips.length > 2}
           <div class="flex flex-wrap items-center gap-1.5 -mt-1 mb-3">
             {#each tierChips as chip (chip.id)}
-              <button
-                type="button"
-                onclick={() => (historyTier = chip.id)}
-                aria-pressed={historyTier === chip.id}
-                class="inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px] font-semibold transition-colors cursor-pointer
-                  {historyTier === chip.id
-                  ? 'border-primary bg-primary/15 text-primary'
-                  : 'border-border text-muted-foreground hover:border-foreground/40 hover:text-foreground'}"
-              >
-                {chip.name}
-                <span class="text-[10px] font-normal opacity-75 tabular-nums">{chip.count}</span>
-              </button>
+              <Chip selected={historyTier === chip.id} onclick={() => (historyTier = chip.id)}>{chip.name}
+                <span class="text-small font-normal opacity-75 tabular-nums">{chip.count}</span></Chip>
             {/each}
           </div>
         {/if}

@@ -42,29 +42,30 @@
 </script>
 
 <div
+  data-match-card
   role="button"
   tabindex="0"
   onclick={open}
   onkeydown={(e) => (e.key === "Enter" || e.key === " ") && open()}
-  class="flex flex-col justify-between overflow-hidden rounded-md border bg-white text-xs shadow-sm transition-all dark:bg-[#1c1c1c]
+  class="flex flex-col justify-between overflow-hidden rounded-lg border bg-muted text-xs transition-all
     {clickable ? 'cursor-pointer hover:shadow-md' : 'cursor-default'}
-    {playable ? 'border-primary/30 ring-2 ring-primary/40' : 'border-neutral-300 dark:border-neutral-800'}
-    {active ? 'border-amber-500/40 ring-2 ring-amber-500/70' : ''}
+    {playable ? 'border-primary ring-1 ring-primary' : 'border-border'}
+    {active ? 'border-live ring-2 ring-live/60' : ''}
     {extra}"
 >
   <div
-    class="flex h-[18px] shrink-0 items-center justify-between border-b border-neutral-200 bg-neutral-100 px-2 text-[8px] font-mono text-neutral-500 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-400"
+    class="flex h-[18px] shrink-0 items-center justify-between border-b border-border bg-black/[0.025] px-2 text-small text-muted-foreground dark:bg-white/[0.03]"
   >
     <span class="flex min-w-0 items-center gap-1">
       <span class="truncate">{title}</span>
       {#if bpResult(match)}
-        <span class="min-w-0 truncate rounded bg-amber-500/15 px-1 font-bold text-amber-700 dark:text-amber-300" title="本场载具（Ban/Pick 结果）">{bpResult(match)}</span>
+        <span class="min-w-0 truncate rounded-full bg-brand-soft px-1.5 font-bold text-brand-soft-foreground" title="本场载具（Ban/Pick 结果）">{bpResult(match)}</span>
       {:else if bpUnderWay(match)}
-        <span class="shrink-0 rounded bg-primary/15 px-1 font-bold text-primary" title="Ban/Pick 进行中">BP 中</span>
+        <span class="shrink-0 rounded-full border border-dashed border-brand-300 px-1.5 font-bold text-brand-ink" title="Ban/Pick 进行中">BP 中</span>
       {/if}
       {#if hasLiveScore(match)}
-        <span class="inline-flex shrink-0 items-center gap-0.5 rounded bg-red-500/15 px-1 font-bold text-red-600 dark:text-red-400" title="比赛进行中的实时比分，还没有出结果">
-          <span class="h-1.5 w-1.5 animate-pulse rounded-full bg-red-500"></span>实时
+        <span class="inline-flex shrink-0 items-center gap-1 rounded-full bg-red-100 px-1.5 font-bold text-red-700 dark:bg-red-950 dark:text-red-300" title="比赛进行中的实时比分，还没有出结果">
+          <span class="h-1.5 w-1.5 animate-pulse rounded-full bg-live"></span>实时
         </span>
       {/if}
     </span>
@@ -84,21 +85,21 @@
   {#each [1, 2] as slot (slot)}
     {@const id = slot === 1 ? match.player1_id : match.player2_id}
     {@const won = Boolean(id) && match.winner_id === id}
-    <div class="flex h-[28px] items-center justify-between {slot === 1 ? 'border-b border-neutral-200/60 dark:border-neutral-900/50' : ''}">
+    <div class="flex h-[28px] items-center justify-between {slot === 1 ? 'border-b border-border' : ''}">
       <div class="flex min-w-0 flex-1 items-center gap-1.5 pl-2">
         {#if id}<Flag code={flagOf(id)} size={14} />{/if}
         <span
-          class="truncate text-[10.5px]
-            {won ? 'font-black text-foreground' : id ? 'font-semibold text-neutral-700 dark:text-neutral-300' : 'italic text-muted-foreground/70'}"
+          class="truncate text-small
+            {won ? 'font-black text-foreground' : id ? 'font-medium text-muted-foreground' : 'italic text-muted-foreground/70'}"
         >
           {nameOf(match, slot)}
         </span>
-        {#if won}<CrownIcon class="h-2.5 w-2.5 shrink-0 text-amber-500" />{/if}
+        {#if won}<CrownIcon class="h-2.5 w-2.5 shrink-0 text-amber-500 dark:text-prize" />{/if}
       </div>
       {#if match.status !== "pending" || hasLiveScore(match)}
         <div
-          class="flex h-full w-7 shrink-0 items-center justify-center border-l border-neutral-200 font-mono text-[11px] font-bold dark:border-neutral-900/60
-            {won ? 'text-primary' : hasLiveScore(match) ? 'text-red-600 dark:text-red-400' : 'text-neutral-400 dark:text-neutral-500'}"
+          class="num flex h-full w-7 shrink-0 items-center justify-center border-l border-border text-body font-bold
+            {won ? 'text-brand-ink' : hasLiveScore(match) ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground/70'}"
         >
           {slotScore(match, slot)}
         </div>

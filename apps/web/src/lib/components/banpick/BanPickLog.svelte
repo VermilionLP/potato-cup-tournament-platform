@@ -15,8 +15,8 @@
   };
 </script>
 
-<div class="rounded-lg border border-border/70 bg-muted/15 px-2.5 py-1.5 text-[11px]">
-  <div class="flex items-center justify-between gap-2 text-[10px] text-muted-foreground">
+<div class="rounded-lg border border-border/70 bg-muted/15 px-2.5 py-1.5 text-small">
+  <div class="flex items-center justify-between gap-2 text-small text-muted-foreground">
     <span class="inline-flex items-center gap-1 font-semibold"><HistoryIcon class="h-3 w-3" />操作记录 · {log.length}</span>
     {#if entries.length > 3}
       <button type="button" onclick={() => (open = !open)} class="rounded px-1 hover:bg-muted hover:text-foreground cursor-pointer">
@@ -27,9 +27,9 @@
   <ol class="mt-1 space-y-0.5">
     {#each shown as e (e.n)}
       <li class="flex items-baseline gap-2 {e.undone ? 'text-muted-foreground line-through' : ''}">
-        <span class="w-16 shrink-0 whitespace-nowrap font-mono text-[10px] text-muted-foreground">{time(e.at)}</span>
+        <span class="w-16 shrink-0 whitespace-nowrap num text-small text-muted-foreground">{time(e.at)}</span>
         {#if e.side}
-          <span class="shrink-0 rounded px-1 text-[9px] font-black text-white {e.side === 'A' ? 'bg-rose-500' : 'bg-sky-500'}">{e.side}</span>
+          <span class="shrink-0 rounded px-1 text-small font-black text-white {e.side === 'A' ? 'bg-rose-500' : 'bg-sky-500'}">{e.side}</span>
         {/if}
         <span class="min-w-0 truncate">
           <span class="font-semibold text-foreground/90">{logWho(e, nameOf)}</span>

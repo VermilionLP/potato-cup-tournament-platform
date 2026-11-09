@@ -2,6 +2,7 @@
   // Ban / Pick numbers on the statistics page (GET /banpick/stats): for one
   // event type at a time, the most banned groups, the vehicles played most
   // and the ones removed (redrawn) most. Hidden while there is no data.
+  import { EmptyState } from "#lib/components/ui/empty-state/index.js";
   import { API } from "#lib/api.js";
   import { vehiclePoolLabel } from "#lib/tournament.js";
   import BanIcon from "@lucide/svelte/icons/ban";
@@ -42,7 +43,7 @@
     <div class="flex flex-wrap items-center justify-between gap-2">
       <div>
         <h2 class="text-sm font-black tracking-tight">载具统计</h2>
-        <p class="text-[11px] text-muted-foreground">
+        <p class="text-small text-muted-foreground">
           {data.matches} 场 Ban/Pick · {data.confirmed} 场已确认载具（撤销的步骤不计）
         </p>
       </div>
@@ -52,7 +53,7 @@
             <button
               type="button"
               onclick={() => (type = t.type)}
-              class="rounded-full border px-2.5 py-0.5 text-[11px] font-semibold transition-colors cursor-pointer
+              class="rounded-full border px-2.5 py-0.5 text-small font-semibold transition-colors cursor-pointer
                 {t.type === data.type ? 'border-primary bg-primary text-primary-foreground' : 'border-border text-muted-foreground hover:text-foreground'}"
             >
               {vehiclePoolLabel(t.type) || t.type || "未分类"} · {t.matches}
@@ -75,20 +76,20 @@
                   <span class="absolute inset-y-0 left-0 rounded-md bg-primary/10" style="width: {(b.value(r) / max) * 100}%"></span>
                   <span class="relative flex items-center justify-between gap-2">
                     <span class="flex min-w-0 items-center gap-1.5">
-                      <span class="w-3 shrink-0 font-mono text-[10px] text-muted-foreground">{i + 1}</span>
+                      <span class="w-3 shrink-0 num text-small text-muted-foreground">{i + 1}</span>
                       <span class="truncate font-semibold">{r.name}</span>
-                      {#if b.sub?.(r)}<span class="shrink-0 text-[10px] text-muted-foreground">{b.sub(r)}</span>{/if}
+                      {#if b.sub?.(r)}<span class="shrink-0 text-small text-muted-foreground">{b.sub(r)}</span>{/if}
                     </span>
-                    <span class="shrink-0 font-mono text-[11px] font-bold">
-                      {b.value(r)}<span class="ml-0.5 font-sans text-[9px] font-normal text-muted-foreground">{b.unit}</span>
-                      {#if b.rate}<span class="ml-1 text-[9px] font-normal text-muted-foreground">{pct(b.value(r))}</span>{/if}
+                    <span class="shrink-0 num text-small font-bold">
+                      {b.value(r)}<span class="ml-0.5 font-sans text-small font-normal text-muted-foreground">{b.unit}</span>
+                      {#if b.rate}<span class="ml-1 text-small font-normal text-muted-foreground">{pct(b.value(r))}</span>{/if}
                     </span>
                   </span>
                 </li>
               {/each}
             </ol>
           {:else}
-            <p class="py-3 text-center text-[11px] italic text-muted-foreground">暂无数据</p>
+            <EmptyState compact title="暂无数据" />
           {/if}
         </div>
       {/each}

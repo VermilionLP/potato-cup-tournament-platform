@@ -79,7 +79,7 @@
   <Dialog.Content class="max-w-105 bg-card border border-border p-6 flex flex-col gap-4">
     <Dialog.Header>
       <Dialog.Title class="text-base font-bold text-foreground flex items-center gap-2">
-        <SettingsIcon class="w-5 h-5 text-primary" />
+        <SettingsIcon class="w-5 h-5 text-brand-ink" />
         编辑选手资料
       </Dialog.Title>
       <Dialog.Description class="text-xs text-muted-foreground">
@@ -102,15 +102,15 @@
         <span class="text-xs font-bold text-muted-foreground">联系方式（QQ / Discord）</span>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 bg-muted/20 border border-border/60 p-4 rounded-xl">
           <div class="space-y-1">
-            <label for="edit-contact-qq" class="text-[11px] font-bold text-muted-foreground">QQ 号</label>
+            <label for="edit-contact-qq" class="text-small font-bold text-muted-foreground">QQ 号</label>
             <Input id="edit-contact-qq" bind:value={qq} placeholder="例如: 123456789" class="text-xs h-8 bg-background border-border text-foreground" />
           </div>
           <div class="space-y-1">
-            <label for="edit-contact-discord" class="text-[11px] font-bold text-muted-foreground">Discord 用户名</label>
+            <label for="edit-contact-discord" class="text-small font-bold text-muted-foreground">Discord 用户名</label>
             <Input id="edit-contact-discord" bind:value={discord} placeholder="例如: username" class="text-xs h-8 bg-background border-border text-foreground" />
           </div>
         </div>
-        <p class="text-[10px] text-muted-foreground/60">赛务联系用，会显示在选手列表中。</p>
+        <p class="text-small text-muted-foreground/60">赛务联系用，会显示在选手列表中。</p>
       </div>
       <div class="grid grid-cols-2 gap-3">
         <div class="space-y-1.5">
@@ -129,7 +129,7 @@
       <div class="space-y-1.5">
         <label for="edit-link" class="text-xs font-bold text-muted-foreground">Wiki 个人页链接 (Link)</label>
         <Input id="edit-link" bind:value={link} placeholder="例如: Vermilion" class="bg-background border-border text-foreground text-xs" />
-        <p class="text-[10px] text-muted-foreground/60">
+        <p class="text-small text-muted-foreground/60">
           Liquipedia Wiki 页面名称，最终将链接至
           https://liquipedia.net/warthunder/&lt;名称&gt;
         </p>

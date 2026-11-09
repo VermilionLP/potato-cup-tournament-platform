@@ -14,7 +14,7 @@
         {value === opt.id ? 'bg-background text-foreground shadow-sm ring-1 ring-border' : 'text-muted-foreground hover:text-foreground'}"
     >
       {opt.label}
-      {#if opt.sub}<span class="ml-0.5 text-[10px] font-normal opacity-70">{opt.sub}</span>{/if}
+      {#if opt.sub}<span class="ml-0.5 text-small font-normal opacity-70">{opt.sub}</span>{/if}
     </button>
   {/each}
 </div>

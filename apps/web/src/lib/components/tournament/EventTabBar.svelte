@@ -20,15 +20,15 @@
       aria-selected={active === tb.id}
       onclick={() => onselect(tb.id)}
       class="shrink-0 border-b-2 px-3 py-2 text-sm font-semibold cursor-pointer transition-colors
-        {active === tb.id ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}"
+        {active === tb.id ? 'border-primary text-brand-ink' : 'border-transparent text-muted-foreground hover:text-foreground'}"
     >
-      {tb.label}{#if tb.count != null}<span class="ml-1 text-[11px] font-normal opacity-70">{tb.count}</span>{/if}
+      {tb.label}{#if tb.count != null}<span class="ml-1 text-small font-normal opacity-70">{tb.count}</span>{/if}
     </button>
   {/each}
   <button
     type="button"
     onclick={onshare}
-    class="ml-auto shrink-0 inline-flex items-center gap-1 px-2 sm:px-3 py-2 text-xs font-semibold text-muted-foreground hover:text-primary cursor-pointer"
+    class="ml-auto shrink-0 inline-flex items-center gap-1 px-2 sm:px-3 py-2 text-xs font-semibold text-muted-foreground hover:text-brand-ink cursor-pointer"
     title="生成可以发到 Discord 的赛事公告或结果"
     aria-label="分享到 Discord"
   >

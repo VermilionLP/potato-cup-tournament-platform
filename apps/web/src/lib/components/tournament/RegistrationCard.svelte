@@ -62,7 +62,7 @@
     type="button"
     onclick={() => toggle(p.id)}
     title={seen(p)}
-    class="text-[10px] px-2 py-0.5 rounded border transition-colors cursor-pointer {selected.includes(p.id)
+    class="text-small px-2 py-0.5 rounded border transition-colors cursor-pointer {selected.includes(p.id)
       ? 'bg-primary text-primary-foreground border-primary font-bold'
       : muted
         ? 'bg-muted/70 text-muted-foreground border-border/80 hover:bg-primary/80 hover:text-primary-foreground'
@@ -75,7 +75,7 @@
 <Card.Root class="border-border bg-card/40">
   <Card.Header class="p-6">
     <Card.Title class="text-base font-bold flex items-center gap-2">
-      <UsersIcon class="w-5 h-5 text-primary" />
+      <UsersIcon class="w-5 h-5 text-brand-ink" />
       选手报名管理
     </Card.Title>
     <Card.Description class="text-xs">
@@ -100,14 +100,14 @@
         </div>
         {#if isRegistered}
           <div class="flex items-center gap-2">
-            <Badge class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs gap-1 py-1">
+            <Badge class="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-xs gap-1 py-1">
               <CheckIcon class="w-3.5 h-3.5" /> 已在选手中
             </Badge>
             <Button
               variant="outline"
               size="sm"
               onclick={() => onunregister(userState.id)}
-              class="text-xs text-red-400 hover:text-red-300 border-red-500/20 hover:bg-red-500/10 h-8 cursor-pointer"
+              class="text-xs text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 border-red-500/20 hover:bg-red-500/10 h-8 cursor-pointer"
             >
               取消报名
             </Button>
@@ -120,10 +120,10 @@
           <div class="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-xs font-bold text-muted-foreground">?</div>
           <div>
             <p class="text-xs text-muted-foreground">还没有设置选手 ID</p>
-            <p class="text-[10px] text-muted-foreground/80 mt-0.5">填写选手 ID 和 QQ / Discord 联系方式后就能报名</p>
+            <p class="text-small text-muted-foreground/80 mt-0.5">填写选手 ID 和 QQ / Discord 联系方式后就能报名</p>
           </div>
         </div>
-        <Button variant="outline" size="sm" onclick={openProfile} class="text-xs h-8 cursor-pointer border-primary/30 text-primary animate-pulse">
+        <Button variant="outline" size="sm" onclick={openProfile} class="text-xs h-8 cursor-pointer border-primary/30 text-brand-ink animate-pulse">
           设置选手 ID
         </Button>
       {/if}
@@ -155,11 +155,11 @@
         {#if unregisteredPlayers.length > 0}
           <div class="space-y-2 pt-1">
             <div class="flex flex-wrap items-center justify-between gap-2">
-              <span class="text-[10px] font-bold text-muted-foreground">多选选手批量报名（默认只显示一年内活跃）</span>
+              <span class="text-small font-bold text-muted-foreground">多选选手批量报名（默认只显示一年内活跃）</span>
               {#if selected.length > 0}
                 <div class="flex items-center gap-1.5">
-                  <Button size="sm" onclick={registerSelected} class="h-7 text-[10px] px-2">批量报名 ({selected.length})</Button>
-                  <Button variant="ghost" size="sm" onclick={() => (selected = [])} class="h-7 text-[10px] px-2">清空</Button>
+                  <Button size="sm" onclick={registerSelected} class="h-7 text-small px-2">批量报名 ({selected.length})</Button>
+                  <Button variant="ghost" size="sm" onclick={() => (selected = [])} class="h-7 text-small px-2">清空</Button>
                 </div>
               {/if}
             </div>
@@ -167,12 +167,12 @@
               {#each active as p (p.id)}
                 {@render chip(p, false)}
               {:else}
-                <span class="text-[10px] text-muted-foreground/60 italic px-1">暂无最近一年活跃的未报名选手</span>
+                <span class="text-small text-muted-foreground/60 italic px-1">暂无最近一年活跃的未报名选手</span>
               {/each}
             </div>
             {#if inactive.length > 0}
               <details class="rounded-lg border border-border/60 bg-muted/20 px-2 py-1.5" bind:open={showInactive}>
-                <summary class="text-[10px] text-muted-foreground cursor-pointer select-none">
+                <summary class="text-small text-muted-foreground cursor-pointer select-none">
                   显示一年未登录的选手（{inactive.length}）
                 </summary>
                 <div class="flex flex-wrap gap-1.5 max-h-25 overflow-y-auto pr-1 mt-1.5">

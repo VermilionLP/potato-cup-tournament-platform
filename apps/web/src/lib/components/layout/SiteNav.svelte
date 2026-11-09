@@ -37,7 +37,7 @@
       title={link.label}
       class="flex items-center gap-1 px-2 lg:px-3 h-8 rounded-md text-sm font-medium transition-colors shrink-0 whitespace-nowrap
         {active(link.href)
-        ? 'text-primary font-semibold bg-primary/8'
+        ? 'text-brand-ink font-semibold bg-primary/8'
         : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'}"
     >
       <link.icon class="w-3.5 h-3.5" />
@@ -58,8 +58,8 @@
     {#each links as link (link.href)}
       <a
         href={link.href}
-        class="flex flex-1 min-w-0 flex-col items-center justify-center gap-0.5 py-1.5 text-[10px] font-medium transition-colors
-          {active(link.href) ? 'text-primary' : 'text-muted-foreground'}"
+        class="flex flex-1 min-w-0 flex-col items-center justify-center gap-0.5 py-1.5 text-small font-medium transition-colors
+          {active(link.href) ? 'text-brand-ink' : 'text-muted-foreground'}"
       >
         <link.icon class="w-5 h-5" />
         <span class="max-w-full truncate px-0.5">{link.short || link.label}</span>

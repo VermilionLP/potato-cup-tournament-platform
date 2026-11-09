@@ -17,9 +17,9 @@ export const getModeCode = (m) => GAME_MODES.find((x) => x.id === m)?.code ?? "�
 // Name for a tooltip beside the code badge ("历史模式"), not "RB 历史模式".
 export const getModeName = (m) => GAME_MODES.find((x) => x.id === m)?.name ?? "暂无对局";
 const MODE_COLORS = {
-  ab: { badge: "bg-sky-500/10 text-sky-400 border-sky-500/25", dot: "bg-sky-500", bar: "bg-sky-500/80" },
+  ab: { badge: "bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/25", dot: "bg-sky-500", bar: "bg-sky-500/80" },
   rb: { badge: "bg-amber-500/10 text-amber-500 border-amber-500/25", dot: "bg-amber-500", bar: "bg-amber-500/80" },
-  sb: { badge: "bg-rose-500/10 text-rose-400 border-rose-500/25", dot: "bg-rose-500", bar: "bg-rose-500/80" },
+  sb: { badge: "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/25", dot: "bg-rose-500", bar: "bg-rose-500/80" },
 };
 const NO_MODE = { badge: "bg-zinc-500/10 text-zinc-400 border-zinc-500/25", dot: "bg-zinc-500", bar: "bg-zinc-500/80" };
 export const modeColors = (m) => MODE_COLORS[m] ?? NO_MODE;
@@ -33,11 +33,11 @@ export const POOL_COLORS = {
 
 const avatarColors = [
   "from-amber-500 to-orange-500",
-  "from-purple-500 to-indigo-500",
+  "from-sky-500 to-blue-600",
   "from-blue-500 to-cyan-500",
   "from-emerald-500 to-teal-500",
   "from-rose-500 to-pink-500",
-  "from-violet-500 to-fuchsia-500",
+  "from-slate-500 to-slate-700",
 ];
 
 /** Avatar gradient of a player id (stable). */

@@ -103,7 +103,7 @@
           <div class="flex flex-wrap items-center gap-2 mb-1 pr-6">
             <span>填报比分</span>
             {#if banpickEnabled && bp.phase === "done"}
-              <span class="rounded-full border border-primary/40 bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary">
+              <span class="rounded-full border border-primary/40 bg-primary/10 px-2 py-0.5 text-small font-semibold text-brand-ink">
                 本场载具：{resultLabel(bp)}
               </span>
             {/if}
@@ -137,7 +137,7 @@
           {#if correcting}
             <div class="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs">
               <span class="font-bold text-amber-600 dark:text-amber-400">当前记录：</span>{recordedLabel(match)}
-              <span class="block text-[11px] text-muted-foreground">提交修正会先重置本场再按新结果晋级；晋级选手已打过的后续比赛也会被清空。</span>
+              <span class="block text-small text-muted-foreground">提交修正会先重置本场再按新结果晋级；晋级选手已打过的后续比赛也会被清空。</span>
             </div>
           {:else if hasLiveScore(match)}
             <div class="flex items-center gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-1.5 text-xs">
@@ -161,7 +161,7 @@
           {/if}
 
           <!-- Other outcomes: a walkover; admins reset a recorded match -->
-          <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px]">
+          <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-small">
             <button type="button" onclick={() => (showWalkover = !showWalkover)} class="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground cursor-pointer">
               <FlagIcon class="h-3 w-3" />弃权判定
             </button>
@@ -176,13 +176,13 @@
           </div>
           {#if showWalkover}
             <div class="grid grid-cols-2 gap-2 rounded-lg border border-border bg-muted/20 p-2 text-xs">
-              <span class="col-span-2 text-[11px] text-muted-foreground">一方未到场或退赛，判另一方晋级：</span>
+              <span class="col-span-2 text-small text-muted-foreground">一方未到场或退赛，判另一方晋级：</span>
               {#each [match.player1_id, match.player2_id] as pid (pid)}
                 <button
                   type="button"
                   disabled={submitting || !pid}
                   onclick={() => onwalkover(pid)}
-                  class="truncate rounded-md border border-border bg-background px-2 py-1.5 font-semibold hover:border-primary/50 hover:text-primary disabled:opacity-40 cursor-pointer"
+                  class="truncate rounded-md border border-border bg-background px-2 py-1.5 font-semibold hover:border-primary/50 hover:text-brand-ink disabled:opacity-40 cursor-pointer"
                 >
                   判 {playerName(pid)} 晋级
                 </button>

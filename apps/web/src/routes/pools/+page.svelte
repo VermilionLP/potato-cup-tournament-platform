@@ -4,6 +4,8 @@
   // rules. Events use the best-matching template unless an admin picks one.
   // Everyone can view and export them; admins create, copy, edit and delete.
   // Draft and save helpers are in #lib/pool-editor.js.
+  import { Chip } from "#lib/components/ui/chip/index.js";
+  import { EmptyState } from "#lib/components/ui/empty-state/index.js";
   import PageSkeleton from "#lib/components/PageSkeleton.svelte";
   import PageHeader from "#lib/components/PageHeader.svelte";
   import { onMount } from "svelte";
@@ -276,24 +278,8 @@
         {/if}
 
         <div class="flex gap-1.5">
-          <button
-            type="button"
-            onclick={() => (view = "table")}
-            aria-pressed={view === "table"}
-            class="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold transition-colors cursor-pointer
-              {view === 'table' ? 'border-primary bg-primary text-primary-foreground' : 'border-border text-muted-foreground hover:text-foreground'}"
-          >
-            <TableIcon class="h-3.5 w-3.5" /> 载具表
-          </button>
-          <button
-            type="button"
-            onclick={() => (view = "preview")}
-            aria-pressed={view === "preview"}
-            class="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold transition-colors cursor-pointer
-              {view === 'preview' ? 'border-primary bg-primary text-primary-foreground' : 'border-border text-muted-foreground hover:text-foreground'}"
-          >
-            <EyeIcon class="h-3.5 w-3.5" /> Ban / Pick 预览
-          </button>
+          <Chip selected={view === "table"} onclick={() => (view = "table")}><TableIcon class="h-3.5 w-3.5" /> 载具表</Chip>
+          <Chip selected={view === "preview"} onclick={() => (view = "preview")}><EyeIcon class="h-3.5 w-3.5" /> Ban / Pick 预览</Chip>
         </div>
 
         {#if view === "preview"}
@@ -303,7 +289,7 @@
         {/if}
       </div>
     {:else}
-      <p class="py-8 text-center text-xs text-muted-foreground">还没有载具池模板</p>
+      <EmptyState compact title="还没有载具池模板" />
     {/if}
   {/if}
 </div>

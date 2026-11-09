@@ -7,10 +7,11 @@
     "#lib/*": "./src/lib/*"
   },
   "scripts": {
-    "dev": "vite dev",
-    "build": "vite build && node scripts/legacy-css.mjs",
+    "dev": "node scripts/fonts.mjs && vite dev",
+    "build": "node scripts/fonts.mjs && vite build && node scripts/legacy-css.mjs",
     "preview": "vite preview",
-    "test": "node --test test/*.test.js"
+    "test": "node --test test/*.test.js",
+    "fonts": "node scripts/fonts.mjs"
   },
   "dependencies": {
     "clsx": "^2.1.1",
@@ -19,6 +20,8 @@
     "tailwind-merge": "^3.6.0"
   },
   "devDependencies": {
+    "@fontsource/barlow": "5.3.0",
+    "@fontsource/barlow-condensed": "5.3.0",
     "@internationalized/date": "^3.12.2",
     "@lucide/svelte": "^1.21.0",
     "@sveltejs/adapter-static": "^4.0.0",
@@ -26,6 +29,7 @@
     "@sveltejs/vite-plugin-svelte": "^7.0.0",
     "@tailwindcss/vite": "^4.2.2",
     "bits-ui": "^2.18.1",
+    "harmonyos-sans-sc-webfont-splitted": "1.1.0",
     "svelte": "^5.57.1",
     "tailwind-variants": "^3.2.2",
     "tailwindcss": "^4.2.2",

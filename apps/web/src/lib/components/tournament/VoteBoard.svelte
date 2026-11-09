@@ -51,7 +51,7 @@
 <Card.Root class="border-border bg-card/40">
   <Card.Header class="p-6">
     <Card.Title class="text-base font-bold flex items-center gap-2">
-      <ClockIcon class="w-5 h-5 text-purple-400" />
+      <ClockIcon class="w-5 h-5 text-sky-600 dark:text-sky-400" />
       时间偏好点选（可多选）
     </Card.Title>
     <Card.Description class="text-xs">
@@ -60,18 +60,18 @@
     </Card.Description>
     {#if isAdmin}
       <div class="flex flex-wrap items-center gap-2 mt-3">
-        <Button variant="outline" size="sm" onclick={postponeWeek} class="h-7 text-[10px] px-2">顺延一周推荐</Button>
+        <Button variant="outline" size="sm" onclick={postponeWeek} class="h-7 text-small px-2">顺延一周推荐</Button>
         {#if weekOffset > 0}
-          <Button variant="ghost" size="sm" onclick={() => (weekOffset = 0)} class="h-7 text-[10px] px-2">回到本周</Button>
-          <span class="text-[10px] text-amber-500 font-bold">已顺延 {weekOffset} 周</span>
+          <Button variant="ghost" size="sm" onclick={() => (weekOffset = 0)} class="h-7 text-small px-2">回到本周</Button>
+          <span class="text-small text-amber-500 font-bold">已顺延 {weekOffset} 周</span>
         {/if}
-        <span class="text-[10px] text-muted-foreground/60">顺延会作废已过期投票；未过期选项保留</span>
+        <span class="text-small text-muted-foreground/60">顺延会作废已过期投票；未过期选项保留</span>
       </div>
     {/if}
   </Card.Header>
   <Card.Content class="p-6 pt-0 space-y-4">
     {#if pastCount > 0}
-      <div class="rounded-xl border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-[11px] text-amber-600 dark:text-amber-400">
+      <div class="rounded-xl border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-small text-amber-600 dark:text-amber-400">
         有 {pastCount} 条已过期时间投票。点「顺延一周推荐」会作废它们并切到下周。
       </div>
     {/if}
@@ -88,24 +88,24 @@
                 <button
                   onclick={() => toggleTime(opt.proposed_time, voted)}
                   class="w-full flex flex-col text-left p-3.5 rounded-xl border transition-all text-xs cursor-pointer group/opt {voted
-                    ? 'bg-purple-950/20 border-purple-500 shadow-md shadow-purple-500/5'
-                    : 'bg-background/40 border-border/60 hover:border-purple-500/40 hover:bg-background/80'}"
+                    ? 'bg-sky-950/20 border-sky-500 shadow-md shadow-sky-500/5'
+                    : 'bg-background/40 border-border/60 hover:border-sky-500/40 hover:bg-background/80'}"
                 >
                   <div class="flex items-center justify-between w-full">
-                    <span class="font-bold font-mono text-sm text-foreground group-hover/opt:text-purple-400 transition-colors">{opt.timeOnly}</span>
+                    <span class="font-bold num text-sm text-foreground group-hover/opt:text-sky-400 transition-colors">{opt.timeOnly}</span>
                     <div class="flex items-center gap-1.5">
                       {#if opt.suggested}
-                        <Badge variant="outline" class="text-[8px] px-1 py-0 text-purple-400 border-purple-500/30">推荐</Badge>
+                        <Badge variant="outline" class="text-small px-1 py-0 text-sky-600 dark:text-sky-400 border-sky-500/30">推荐</Badge>
                       {/if}
                       {#if voted}
-                        <Badge class="bg-purple-500 text-white font-bold hover:bg-purple-500 text-[9px] px-1 py-0 shadow">已投</Badge>
+                        <Badge class="bg-sky-500 text-white font-bold hover:bg-sky-500 text-small px-1 py-0 shadow">已投</Badge>
                       {/if}
-                      <span class="bg-primary text-primary-foreground text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center shadow">{opt.count}</span>
+                      <span class="bg-primary text-primary-foreground text-small font-bold rounded-full w-5 h-5 flex items-center justify-center shadow">{opt.count}</span>
                     </div>
                   </div>
                   <div class="flex flex-wrap gap-1 mt-2.5 border-t border-border/40 pt-2 w-full">
                     {#each opt.voters as voter}
-                      <span class="text-[9px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border/40 font-medium">{playerName(voter.player_id)}</span>
+                      <span class="text-small px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border/40 font-medium">{playerName(voter.player_id)}</span>
                     {/each}
                   </div>
                 </button>

@@ -127,7 +127,7 @@
     <PageHeader title="天梯 MMR" icon={TrendingUpIcon} description="全部已完成对局按日期顺序用 Elo 计算，初始 MMR 3000">
       {#snippet badge()}
         {#if divisionLabel}
-          <Badge variant="outline" class="text-xs font-bold border-primary/40 text-primary">{divisionLabel}</Badge>
+          <Badge variant="outline" class="text-xs font-bold border-primary/40 text-brand-ink">{divisionLabel}</Badge>
         {/if}
       {/snippet}
       {#snippet more()}
@@ -149,7 +149,7 @@
     <PageSkeleton kind="table" label="正在计算天梯分..." rows={10} />
   {:else if errorMsg}
     <div class="text-center py-16 border border-border bg-card/30 rounded-2xl">
-      <p class="text-sm text-rose-400">加载失败：{errorMsg}</p>
+      <p class="text-sm text-rose-600 dark:text-rose-400">加载失败：{errorMsg}</p>
     </div>
   {:else}
     <!-- Summary -->
@@ -169,7 +169,7 @@
       {/snippet}
     </LadderBoard>
 
-    <p class="text-[10px] text-muted-foreground/70">
+    <p class="text-small text-muted-foreground/70">
       Elo：初始 3000，前 10 场 K=200（同分对局 ±100），10–30 场 K=100，30 场以后 K=50；2-0 与 2-1 同权。
       只有已完成的赛事对局计入，弃权/平局不计。活跃窗口 {data?.active_days || 365} 天；
       不活跃选手移出榜单，但分数保留，回归后继续使用。

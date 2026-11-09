@@ -39,14 +39,14 @@
     <p class="text-xs text-muted-foreground leading-normal">
       您需要先在右上角配置您的 <strong>Gamer ID</strong> 才能{what}。
     </p>
-    <Button variant="outline" size="sm" onclick={openProfile} class="text-[11px] h-7 cursor-pointer">立即配置游戏ID</Button>
+    <Button variant="outline" size="sm" onclick={openProfile} class="text-small h-7 cursor-pointer">立即配置游戏ID</Button>
   </div>
 {/snippet}
 
 <Card.Root class="border-border bg-card/40">
   <Card.Header class="p-5 pb-3">
     <Card.Title class="text-sm font-bold flex items-center gap-2">
-      <CalendarIcon class="w-4 h-4 text-purple-400" />
+      <CalendarIcon class="w-4 h-4 text-sky-600 dark:text-sky-400" />
       提案一个新的时间
     </Card.Title>
   </Card.Header>
@@ -54,21 +54,21 @@
     {#if userState.id}
       <div class="space-y-3">
         <div class="border border-border bg-background/30 rounded-xl overflow-hidden flex flex-col">
-          <div class="p-3 border-b border-border/40 bg-muted/5 flex items-center justify-between text-[10px] font-bold text-muted-foreground">
+          <div class="p-3 border-b border-border/40 bg-muted/5 flex items-center justify-between text-small font-bold text-muted-foreground">
             <span>当前身份: {userState.id}</span>
-            <span class="text-primary">不可代投票</span>
+            <span class="text-brand-ink">不可代投票</span>
           </div>
           <div class="p-3">
             <Calendar type="single" bind:value={voteDate} class="bg-transparent p-0 mx-auto" weekdayFormat="short" />
           </div>
           <div class="border-t border-border/60 p-3 max-h-40 overflow-y-auto">
-            <span class="text-[9px] text-muted-foreground font-bold uppercase tracking-wider block mb-2">选择具体时段</span>
+            <span class="text-label text-muted-foreground font-bold uppercase tracking-wider block mb-2">选择具体时段</span>
             <div class="grid grid-cols-3 gap-1.5">
               {#each VOTE_TIME_SLOTS as time (time)}
                 <Button
                   variant={voteTime === time ? "default" : "outline"}
                   onclick={() => (voteTime = time)}
-                  class="shadow-none text-[11px] h-7 py-1 px-1.5 cursor-pointer"
+                  class="shadow-none text-small h-7 py-1 px-1.5 cursor-pointer"
                 >
                   {time}
                 </Button>
@@ -78,7 +78,7 @@
         </div>
 
         <div class="p-3 bg-muted/20 border border-border rounded-xl text-xs space-y-2">
-          <div class="text-[11px] text-muted-foreground leading-normal font-medium">
+          <div class="text-small text-muted-foreground leading-normal font-medium">
             {#if voteDate && voteTime}
               你选择的提案时间为:
               <span class="font-bold text-foreground block mt-0.5">{voteDate.toString()} {voteTime}</span>

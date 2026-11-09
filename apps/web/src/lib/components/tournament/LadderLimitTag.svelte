@@ -51,7 +51,7 @@
       }}
     />
     {#if dirty}
-      <button type="button" onclick={save} disabled={saving} class="text-[11px] font-semibold text-primary hover:underline cursor-pointer disabled:opacity-60">保存</button>
+      <button type="button" onclick={save} disabled={saving} class="text-small font-semibold text-brand-ink hover:underline cursor-pointer disabled:opacity-60">保存</button>
     {/if}
   </span>
 {:else if label}

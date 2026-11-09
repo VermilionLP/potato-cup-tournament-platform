@@ -38,10 +38,10 @@
   <section class="rounded-xl border border-border bg-[#1b2128] p-3 sm:p-4 space-y-3 text-slate-100">
     <div class="flex flex-wrap items-baseline justify-between gap-2">
       <h2 class="text-sm font-bold">{template.name}</h2>
-      <span class="text-[11px] text-slate-400">{modesLabel(template.game_modes)} · {groups.length} 组 · {count} 辆</span>
+      <span class="text-small text-slate-400">{modesLabel(template.game_modes)} · {groups.length} 组 · {count} 辆</span>
     </div>
     {#if banpickEnabled}
-      <p class="text-[11px] text-slate-400">Ban / Pick：{rulesSummary(template.rules)}</p>
+      <p class="text-small text-slate-400">Ban / Pick：{rulesSummary(template.rules)}</p>
     {/if}
 
     <div class="divide-y divide-slate-700/60">
@@ -59,7 +59,7 @@
               />
             {/if}
             <span class="text-xs font-bold leading-tight">{g.group}</span>
-            <span class="text-[10px] text-slate-400">{g.vehicles.length} 辆{g.nations.length > 1 ? ` · ${g.nations.join(" / ")}` : ""}</span>
+            <span class="text-small text-slate-400">{g.vehicles.length} 辆{g.nations.length > 1 ? ` · ${g.nations.join(" / ")}` : ""}</span>
           </div>
           <div class="grid flex-1 grid-cols-2 gap-1.5 sm:grid-cols-[repeat(auto-fill,minmax(150px,1fr))]">
             {#each g.vehicles as v (v.name)}
@@ -79,9 +79,9 @@
                     onerror={(e) => fallback(e, slotImageDirect(v.unit))}
                   />
                 {/if}
-                <span class="absolute right-1.5 top-1 max-w-[85%] truncate text-right text-[11px] font-semibold leading-tight drop-shadow">{v.name}</span>
+                <span class="absolute right-1.5 top-1 max-w-[85%] truncate text-right text-small font-semibold leading-tight drop-shadow">{v.name}</span>
                 {#if v.br != null}
-                  <span class="absolute bottom-1 right-1.5 text-[10px] text-slate-300 drop-shadow">{br(v.br)}</span>
+                  <span class="absolute bottom-1 right-1.5 text-small text-slate-300 drop-shadow">{br(v.br)}</span>
                 {/if}
               </a>
             {/each}
@@ -89,6 +89,6 @@
         </div>
       {/each}
     </div>
-    <p class="text-[10px] text-slate-500">载具图片来自 War Thunder Wiki，点击卡片打开该载具的 Wiki 页面。</p>
+    <p class="text-small text-slate-500">载具图片来自 War Thunder Wiki，点击卡片打开该载具的 Wiki 页面。</p>
   </section>
 {/if}

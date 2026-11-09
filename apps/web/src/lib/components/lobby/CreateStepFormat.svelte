@@ -33,7 +33,7 @@
         </span>
         <span class="min-w-0">
           <span class="block text-sm font-bold text-foreground">{opt.label}</span>
-          <span class="block text-[11px] leading-snug text-muted-foreground">{opt.hint}</span>
+          <span class="block text-small leading-snug text-muted-foreground">{opt.hint}</span>
         </span>
       </button>
     {/each}
@@ -51,7 +51,7 @@
         />
       </div>
       {#if form.loserAdvances}
-        <span class="text-[10px] text-amber-600 dark:text-amber-400">特殊玩法：每场的败者晋级</span>
+        <span class="text-small text-amber-600 dark:text-amber-400">特殊玩法：每场的败者晋级</span>
       {/if}
     </div>
   {:else if form.format === "double_elim"}
@@ -62,7 +62,7 @@
   {:else if form.format === "swiss"}
     <SwissRoundsPicker bind:form />
   {:else}
-    <p class="text-[11px] leading-relaxed text-muted-foreground">
+    <p class="text-small leading-relaxed text-muted-foreground">
       第一阶段分组比赛，各组前几名进入第二阶段淘汰赛。点「下一步」分别设置两个阶段。
     </p>
   {/if}

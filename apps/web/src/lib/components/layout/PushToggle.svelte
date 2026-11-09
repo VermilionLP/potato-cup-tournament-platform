@@ -59,7 +59,7 @@
   title={enabled ? "关闭比赛提醒" : "开启比赛提醒（开赛前 1 小时、轮到你比赛时）"}
   aria-label={enabled ? "关闭比赛提醒" : "开启比赛提醒"}
   class="relative w-8 h-8 flex items-center justify-center rounded-md transition-colors cursor-pointer disabled:opacity-50
-    {enabled ? 'text-primary bg-primary/10 hover:bg-primary/15' : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'}"
+    {enabled ? 'text-brand-ink bg-primary/10 hover:bg-primary/15' : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'}"
 >
   {#if enabled}
     <BellIcon class="h-4 w-4" />

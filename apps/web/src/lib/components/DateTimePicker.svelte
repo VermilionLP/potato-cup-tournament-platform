@@ -81,12 +81,12 @@
         {open ? 'border-primary ring-1 ring-primary/40' : 'border-border hover:border-foreground/40'}
         bg-background"
     >
-      <CalendarIcon class="h-4 w-4 shrink-0 {selected ? 'text-primary' : 'text-muted-foreground'}" />
+      <CalendarIcon class="h-4 w-4 shrink-0 {selected ? 'text-brand-ink' : 'text-muted-foreground'}" />
       <span class="truncate {selected ? 'font-semibold text-foreground' : 'text-muted-foreground'}">
         {selected ? formatScheduled(value) : value || placeholder}
       </span>
       {#if selected}
-        <span class="ml-auto shrink-0 text-[10px] text-muted-foreground">{SOURCE_LABEL}</span>
+        <span class="ml-auto shrink-0 text-small text-muted-foreground">{SOURCE_LABEL}</span>
       {/if}
     </button>
     {#if clearable && value}
@@ -103,7 +103,7 @@
   </div>
 
   {#if instant && viewerOffset !== SOURCE_OFFSET_MINUTES}
-    <p class="text-[10px] text-muted-foreground">
+    <p class="text-small text-muted-foreground">
       = 你的时间 {formatInZone(instant, zone)}（{offsetLabel(viewerOffset)}）
     </p>
   {/if}
@@ -134,7 +134,7 @@
         </div>
         <div class="grid grid-cols-7 gap-0.5 text-center">
           {#each WEEKDAY_HEADERS as w, i (w)}
-            <div class="py-1 text-[10px] font-semibold {i >= 5 ? 'text-primary/80' : 'text-muted-foreground'}">{w}</div>
+            <div class="py-1 text-small font-semibold {i >= 5 ? 'text-brand-ink/80' : 'text-muted-foreground'}">{w}</div>
           {/each}
           {#each weeks.flat() as day (`${day.y}-${day.m}-${day.d}`)}
             {@const past = isPastDay(day)}
@@ -150,7 +150,7 @@
                 : past
                   ? 'text-muted-foreground/30 cursor-not-allowed'
                   : day.inMonth
-                    ? `cursor-pointer hover:bg-muted ${day.weekend ? 'font-semibold text-primary' : 'text-foreground'}`
+                    ? `cursor-pointer hover:bg-muted ${day.weekend ? 'font-semibold text-brand-ink' : 'text-foreground'}`
                     : 'cursor-pointer text-muted-foreground/50 hover:bg-muted'}
                 {isToday && !isSelected ? 'ring-1 ring-primary/50' : ''}"
             >
@@ -162,13 +162,13 @@
 
       <!-- Time -->
       <div class="flex flex-col gap-2 sm:border-l sm:border-border/60 sm:pl-3">
-        <div class="text-[11px] font-semibold text-muted-foreground">开赛时间（{SOURCE_LABEL}）</div>
+        <div class="text-small font-semibold text-muted-foreground">开赛时间（{SOURCE_LABEL}）</div>
         <div class="grid grid-cols-3 gap-1 sm:grid-cols-2">
           {#each TIME_SLOTS as slot (slot)}
             <button
               type="button"
               onclick={() => pickTime(slot)}
-              class="rounded-md border py-1 font-mono text-xs transition-colors cursor-pointer
+              class="rounded-md border py-1 num text-xs transition-colors cursor-pointer
                 {selectedTime === slot
                 ? 'border-primary bg-primary font-bold text-primary-foreground'
                 : 'border-border text-foreground/80 hover:border-foreground/40'}"
@@ -177,13 +177,13 @@
             </button>
           {/each}
         </div>
-        <label class="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+        <label class="flex items-center gap-1.5 text-small text-muted-foreground">
           其他
           <input
             type="time"
             bind:value={customTime}
             onchange={() => pickTime(customTime)}
-            class="min-w-0 flex-1 rounded-md border border-border bg-background px-1.5 py-0.5 font-mono text-xs text-foreground"
+            class="min-w-0 flex-1 rounded-md border border-border bg-background px-1.5 py-0.5 num text-xs text-foreground"
           />
         </label>
         <button

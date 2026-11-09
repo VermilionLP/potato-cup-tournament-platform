@@ -21,12 +21,12 @@
 <div class="flex h-12 items-center gap-2.5 rounded-lg border border-dashed border-border bg-muted/20 px-2">
   {#if preview}
     <div class="w-44 shrink-0"><VehicleSlot vehicle={preview} size="sm" /></div>
-    <div class="min-w-0 text-[11px] leading-tight">
+    <div class="min-w-0 text-small leading-tight">
       <div class="truncate font-bold text-foreground">{preview.name}</div>
       <div class="truncate text-muted-foreground">{vehicleInfo(preview)}</div>
     </div>
   {:else}
-    <span class="text-[11px] text-muted-foreground">把鼠标移到（或点按）载具名上查看图片</span>
+    <span class="text-small text-muted-foreground">把鼠标移到（或点按）载具名上查看图片</span>
   {/if}
 </div>
 
@@ -55,14 +55,14 @@
         onclick={() => onban(g.group, null)}
         class="flex w-full items-center justify-between gap-1 text-left {pickable ? 'cursor-pointer' : 'cursor-default'}"
       >
-        <span class="truncate text-[11px] font-bold text-foreground {removed ? 'line-through' : ''}">{g.group}</span>
+        <span class="truncate text-small font-bold text-foreground {removed ? 'line-through' : ''}">{g.group}</span>
         {#if banner}
           <span
-            class="shrink-0 rounded px-1 text-[9px] font-black text-white {banner === 'A' ? 'bg-rose-500' : 'bg-sky-500'}"
+            class="shrink-0 rounded px-1 text-small font-black text-white {banner === 'A' ? 'bg-rose-500' : 'bg-sky-500'}"
             >{banner} 禁</span
           >
         {:else}
-          <span class="shrink-0 text-[9px] text-muted-foreground">{g.vehicles.length}</span>
+          <span class="shrink-0 text-small text-muted-foreground">{g.vehicles.length}</span>
         {/if}
       </button>
       <div class="mt-0.5 flex flex-wrap gap-0.5">
@@ -80,7 +80,7 @@
               if (pickable) onban(g.group, v.name);
             }}
             title={vehicleInfo(v)}
-            class="rounded px-1 py-px text-[9.5px] leading-tight
+            class="rounded px-1 py-px text-small leading-tight
               {chosen
               ? 'bg-primary font-bold text-primary-foreground'
               : out

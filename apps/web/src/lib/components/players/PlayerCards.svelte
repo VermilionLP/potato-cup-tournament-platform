@@ -21,9 +21,9 @@
           <PlayerAvatar player={p} size="w-9 h-9" />
           <div class="min-w-0">
             <div class="font-bold text-foreground text-sm flex items-center gap-2 flex-wrap">
-              <a href="/player/{encodeURIComponent(p.id)}" class="truncate max-w-[120px] hover:text-primary hover:underline">{p.display_name || p.id}</a>
+              <a href="/player/{encodeURIComponent(p.id)}" class="truncate max-w-[120px] hover:text-brand-ink hover:underline">{p.display_name || p.id}</a>
               {#if p.team}
-                <Badge variant="outline" class="text-[9px] px-1.5 py-0 bg-secondary/15 text-secondary border-secondary/25 font-semibold">
+                <Badge variant="outline" class="text-small px-1.5 py-0 bg-secondary/15 text-secondary border-secondary/25 font-semibold">
                   {p.team}
                 </Badge>
               {/if}
@@ -35,7 +35,7 @@
             variant="outline"
             size="icon"
             onclick={() => onedit(p)}
-            class="w-7.5 h-7.5 text-muted-foreground hover:text-primary hover:bg-primary/10 border-border"
+            class="w-7.5 h-7.5 text-muted-foreground hover:text-brand-ink hover:bg-primary/10 border-border"
           >
             <Edit2Icon class="w-3.5 h-3.5" />
           </Button>
@@ -44,17 +44,17 @@
 
       <div class="grid grid-cols-2 gap-3 text-xs border-t border-b border-border/40 py-2.5 my-2">
         <div>
-          <span class="text-[10px] text-muted-foreground block mb-0.5">国籍 / 地区</span>
+          <span class="text-small text-muted-foreground block mb-0.5">国籍 / 地区</span>
           <span class="text-foreground text-xs flex items-center gap-1">
             <Flag code={p.flag} size={18} />
             <span class="uppercase font-medium">{p.flag || "—"}</span>
           </span>
         </div>
         <div>
-          <span class="text-[10px] text-muted-foreground block mb-0.5">Liquipedia</span>
+          <span class="text-small text-muted-foreground block mb-0.5">Liquipedia</span>
           {#if p.link}
             <div class="text-xs truncate max-w-full">
-              <a href={wikiUrl(p.link)} target="_blank" rel="noopener" class="text-primary hover:underline font-medium">{p.link} ↗</a>
+              <a href={wikiUrl(p.link)} target="_blank" rel="noopener" class="text-brand-ink hover:underline font-medium">{p.link} ↗</a>
             </div>
           {:else}
             <span class="text-muted-foreground/45">—</span>
@@ -64,7 +64,7 @@
 
       <div class="grid {isAdmin ? 'grid-cols-2' : 'grid-cols-1'} gap-3 pt-1 min-w-0">
         <div class="space-y-1 min-w-0">
-          <span class="text-[10px] text-muted-foreground block">联系方式</span>
+          <span class="text-small text-muted-foreground block">联系方式</span>
           <div class="flex flex-wrap gap-1">
             <ContactBadges tags={p.battle_tags} compact empty="未设置" />
           </div>
@@ -72,8 +72,8 @@
         {#if isAdmin}
           <!-- IP addresses are for admins only (the API leaves them out for others). -->
           <div class="space-y-1 min-w-0">
-            <span class="text-[10px] text-muted-foreground block">上次活跃 IP</span>
-            <span class="text-[10px] font-mono text-muted-foreground/80 block truncate" title={p.last_ip || "—"}>{p.last_ip || "—"}</span>
+            <span class="text-small text-muted-foreground block">上次活跃 IP</span>
+            <span class="text-small num text-muted-foreground/80 block truncate" title={p.last_ip || "—"}>{p.last_ip || "—"}</span>
           </div>
         {/if}
       </div>
@@ -88,7 +88,7 @@
   {/if}
 
   {#if footer}
-    <div class="text-[11px] text-muted-foreground/80 text-center py-1.5 px-3 bg-muted/10 border border-border rounded-lg flex flex-col items-center gap-1">
+    <div class="text-small text-muted-foreground/80 text-center py-1.5 px-3 bg-muted/10 border border-border rounded-lg flex flex-col items-center gap-1">
       {@render footer()}
     </div>
   {/if}

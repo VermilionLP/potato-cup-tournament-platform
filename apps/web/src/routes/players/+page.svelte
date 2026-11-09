@@ -68,7 +68,7 @@
     <button
       type="button"
       onclick={() => (showInactive = !showInactive)}
-      class="inline-flex items-center gap-1 font-semibold text-primary hover:underline cursor-pointer"
+      class="inline-flex items-center gap-1 font-semibold text-brand-ink hover:underline cursor-pointer"
     >
       {#if showInactive}
         <ChevronUpIcon class="w-3.5 h-3.5" />

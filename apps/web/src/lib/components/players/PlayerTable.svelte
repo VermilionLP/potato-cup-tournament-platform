@@ -17,7 +17,7 @@
   <div class="overflow-x-auto">
     <table class="w-full text-left border-collapse text-sm">
       <thead>
-        <tr class="bg-muted/40 border-b border-border text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+        <tr class="bg-muted/40 border-b border-border text-label font-semibold text-muted-foreground uppercase tracking-wider">
           <th class="px-5 py-3">选手</th>
           <th class="px-5 py-3">战队</th>
           <th class="px-5 py-3">国籍</th>
@@ -34,13 +34,13 @@
               <div class="flex items-center gap-3">
                 <PlayerAvatar player={p} />
                 <div>
-                  <div class="font-semibold text-foreground leading-tight"><a href="/player/{encodeURIComponent(p.id)}" class="hover:text-primary hover:underline">{p.display_name || p.id}</a></div>
+                  <div class="font-semibold text-foreground leading-tight"><a href="/player/{encodeURIComponent(p.id)}" class="hover:text-brand-ink hover:underline">{p.display_name || p.id}</a></div>
                 </div>
               </div>
             </td>
             <td class="px-5 py-3">
               {#if p.team}
-                <Badge variant="outline" class="text-[10px] px-1.5 py-0 bg-secondary/10 text-secondary border-secondary/25 font-semibold">
+                <Badge variant="outline" class="text-small px-1.5 py-0 bg-secondary/10 text-secondary border-secondary/25 font-semibold">
                   {p.team}
                 </Badge>
               {:else}
@@ -60,21 +60,21 @@
             </td>
             <td class="px-5 py-3">
               {#if p.link}
-                <a href={wikiUrl(p.link)} target="_blank" rel="noopener" class="text-[11px] text-primary hover:underline truncate block max-w-[160px]" title={p.link}>
+                <a href={wikiUrl(p.link)} target="_blank" rel="noopener" class="text-small text-brand-ink hover:underline truncate block max-w-[160px]" title={p.link}>
                   {p.link} ↗
                 </a>
               {:else}
                 <span class="text-muted-foreground/40 text-xs">—</span>
               {/if}
             </td>
-            {#if isAdmin}<td class="px-5 py-3 font-mono text-xs text-muted-foreground/85">{p.last_ip || "—"}</td>{/if}
+            {#if isAdmin}<td class="px-5 py-3 num text-xs text-muted-foreground/85">{p.last_ip || "—"}</td>{/if}
             <td class="px-5 py-3 text-right">
               {#if isAdmin || p.id === userState.id}
                 <Button
                   variant="ghost"
                   size="icon"
                   onclick={() => onedit(p)}
-                  class="w-7 h-7 opacity-50 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-primary hover:bg-primary/10"
+                  class="w-7 h-7 opacity-50 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-brand-ink hover:bg-primary/10"
                 >
                   <Edit2Icon class="w-3.5 h-3.5" />
                 </Button>
@@ -98,7 +98,7 @@
   </div>
 
   {#if footer}
-    <div class="px-5 py-2.5 border-t border-border/50 bg-muted/20 text-[11px] text-muted-foreground flex items-center justify-between gap-3">
+    <div class="px-5 py-2.5 border-t border-border/50 bg-muted/20 text-small text-muted-foreground flex items-center justify-between gap-3">
       {@render footer()}
     </div>
   {/if}

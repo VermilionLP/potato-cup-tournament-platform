@@ -1,52 +1,67 @@
 @import "tailwindcss";
+/* Headings and big numbers (Barlow Condensed), table numbers (Barlow).
+   Chinese and body text: HarmonyOS Sans SC, loaded from src/app.html. */
+@import "@fontsource/barlow-condensed/600.css";
+@import "@fontsource/barlow-condensed/800.css";
+@import "@fontsource/barlow/500.css";
+@import "@fontsource/barlow/700.css";
 
 @custom-variant dark (&:is(.dark *));
 
+/* Design tokens: Potato Cup style guide (light theme default, dark kept).
+   Components use these variables only; no hard-coded colours. */
+
 /* ── Light mode (default) ── */
 :root {
-  --radius: 0.75rem;
-  --background: oklch(0.98 0.005 256);
-  --foreground: oklch(0.13 0.02 256);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.13 0.02 256);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.13 0.02 256);
-  --primary: oklch(0.72 0.17 76);        /* Amber gold */
-  --primary-foreground: oklch(0.1 0.02 256);
-  --secondary: oklch(0.42 0.19 285);     /* Psionic Purple */
-  --secondary-foreground: oklch(0.97 0.01 256);
-  --muted: oklch(0.94 0.005 256);
-  --muted-foreground: oklch(0.5 0.015 256);
-  --accent: oklch(0.93 0.008 256);
-  --accent-foreground: oklch(0.13 0.02 256);
-  --destructive: oklch(0.55 0.22 27);
-  --destructive-foreground: oklch(0.97 0.01 256);
-  --border: oklch(0.88 0.008 256);
-  --input: oklch(0.92 0.005 256);
-  --ring: oklch(0.72 0.17 76);
+  --radius: 0.625rem;
+  --background: #f7f7f5;        /* page */
+  --foreground: #14161b;        /* body text */
+  --card: #ffffff;
+  --card-foreground: #14161b;
+  --popover: #ffffff;
+  --popover-foreground: #14161b;
+  --primary: #f97316;           /* brand orange: buttons, selection, progress */
+  --primary-foreground: #1a0a02;
+  --secondary: #eef0f3;         /* neutral chip */
+  --secondary-foreground: #3f4552;
+  --muted: #f1f1ee;             /* raised: hover, inner cards */
+  --muted-foreground: #5b6170;  /* secondary text (6:1 on white) */
+  --accent: #f1f1ee;
+  --accent-foreground: #14161b;
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+  --border: #e5e5e2;
+  --input: #d4d4cf;             /* outlined buttons, inputs, dashed boxes */
+  --ring: #f97316;
+  --brand-ink: #c2410c;         /* orange text on light backgrounds */
+  --brand-soft: #ffedd5;        /* orange tag background */
+  --brand-soft-foreground: #9a3412;
 }
 
 /* ── Dark mode ── */
 .dark {
-  --background: oklch(0.12 0.015 256);   /* Deep Charcoal */
-  --foreground: oklch(0.97 0.01 256);
-  --card: oklch(0.15 0.02 256);          /* Frosted Dark */
-  --card-foreground: oklch(0.97 0.01 256);
-  --popover: oklch(0.16 0.02 256);
-  --popover-foreground: oklch(0.97 0.01 256);
-  --primary: oklch(0.79 0.17 76);        /* Amber gold (dark) */
-  --primary-foreground: oklch(0.1 0.02 256);
-  --secondary: oklch(0.42 0.19 285);     /* Psionic Purple */
-  --secondary-foreground: oklch(0.97 0.01 256);
-  --muted: oklch(0.2 0.02 256);
-  --muted-foreground: oklch(0.65 0.02 256);
-  --accent: oklch(0.22 0.03 256);
-  --accent-foreground: oklch(0.97 0.01 256);
-  --destructive: oklch(0.55 0.22 27);
-  --destructive-foreground: oklch(0.97 0.01 256);
-  --border: oklch(0.24 0.02 256);
-  --input: oklch(0.22 0.02 256);
-  --ring: oklch(0.79 0.17 76);
+  --background: #0b0d12;
+  --foreground: #e6e9ee;
+  --card: #12161d;
+  --card-foreground: #e6e9ee;
+  --popover: #1b2028;
+  --popover-foreground: #e6e9ee;
+  --primary: #f97316;
+  --primary-foreground: #1a0a02;
+  --secondary: #1e2530;
+  --secondary-foreground: #cbd5e1;
+  --muted: #1b2028;
+  --muted-foreground: #8b95a5;
+  --accent: #1b2028;
+  --accent-foreground: #e6e9ee;
+  --destructive: #f43f5e;
+  --destructive-foreground: #ffffff;
+  --border: #262d38;
+  --input: #333b48;
+  --ring: #f97316;
+  --brand-ink: #fdba74;
+  --brand-soft: #2a1206;
+  --brand-soft-foreground: #fdba74;
 }
 
 @theme inline {
@@ -69,10 +84,70 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-brand-ink: var(--brand-ink);
+  --color-brand-soft: var(--brand-soft);
+  --color-brand-soft-foreground: var(--brand-soft-foreground);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-xl: calc(var(--radius) * 1.2);
+}
+
+@theme {
+  /* Brand scale (#F97316). */
+  --color-brand-100: #ffedd5;
+  --color-brand-300: #fdba74;
+  --color-brand-400: #fb923c;
+  --color-brand-500: #f97316;
+  --color-brand-600: #ea580c;
+  --color-brand-700: #c2410c;
+  --color-brand-950: #431407;
+
+  /* Fixed meanings across the site. */
+  --color-win: #22c55e;
+  --color-loss: #f43f5e;
+  --color-live: #ef4444;
+  --color-prize: #fbbf24;
+  --color-side-a: #f5b83d;      /* gold, same as the overlays */
+  --color-side-b: #b79bff;      /* purple */
+
+  /* Header bar (dark in both modes, white logo). */
+  --color-header: #0b0d12;
+
+  --font-sans: "HarmonyOS Sans SC", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Segoe UI", Roboto, "Hiragino Sans", "Noto Sans JP", sans-serif;
+  --font-display: "Barlow Condensed", "HarmonyOS Sans SC", ui-sans-serif, system-ui, sans-serif;
+  --font-num: "Barlow", "HarmonyOS Sans SC", ui-sans-serif, system-ui, sans-serif;
+
+  /* Type scale: six steps. Chinese never goes below 12px; 11px is only for
+     short uppercase English labels (LIVE, MMR). */
+  --text-display: 2.5rem;
+  --text-display--line-height: 1.05;
+  --text-title: 1.5rem;
+  --text-title--line-height: 1.2;
+  --text-heading: 1rem;
+  --text-heading--line-height: 1.4;
+  --text-body: 0.875rem;
+  --text-body--line-height: 1.6;
+  --text-small: 12px;
+  --text-small--line-height: 1.5;
+  --text-label: 11px;
+  --text-label--line-height: 1.3;
+}
+
+/* Uppercase English micro-label (LIVE, MMR, STARTS IN). */
+@utility label-caps {
+  font-family: var(--font-num);
+  font-size: var(--text-label);
+  line-height: var(--text-label--line-height);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+/* Numbers that line up in columns (scores, MMR, points). */
+@utility num {
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
 }
 
 @layer base {
@@ -83,7 +158,6 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground antialiased;
-    font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    @apply bg-background text-foreground antialiased font-sans;
   }
 }

@@ -14,7 +14,7 @@
 
 {#if podium}
   <div class="bg-linear-to-r from-amber-500/10 via-background to-amber-500/10 border border-primary/20 rounded-2xl p-6 text-center max-w-2xl mx-auto space-y-4 shadow-lg shadow-primary/5">
-    <TrophyIcon class="w-12 h-12 text-primary mx-auto animate-bounce" />
+    <TrophyIcon class="w-12 h-12 text-brand-ink mx-auto animate-bounce" />
     <div>
       <h2 class="text-xl font-extrabold tracking-tight bg-linear-to-r from-amber-400 to-amber-200 bg-clip-text text-transparent">
         冠军诞生！恭喜 {playerName(podium.champion)}
@@ -24,13 +24,13 @@
 
     <div class="grid grid-cols-2 gap-4 max-w-md mx-auto pt-2">
       <div class="p-3 bg-card/60 border border-primary/20 rounded-xl">
-        <CrownIcon class="w-5 h-5 text-amber-400 mx-auto mb-1" />
-        <p class="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold">冠军 (Gold)</p>
+        <CrownIcon class="w-5 h-5 text-amber-700 dark:text-amber-400 mx-auto mb-1" />
+        <p class="text-label text-muted-foreground uppercase tracking-widest font-semibold">冠军 (Gold)</p>
         <p class="text-sm font-bold text-foreground mt-0.5">{playerName(podium.champion)}</p>
       </div>
       <div class="p-3 bg-card/60 border border-border rounded-xl">
-        <div class="w-5 h-5 rounded-full bg-zinc-400 text-black text-[10px] font-bold mx-auto mb-1 flex items-center justify-center">2</div>
-        <p class="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold">亚军 (Silver)</p>
+        <div class="w-5 h-5 rounded-full bg-zinc-400 text-black text-small font-bold mx-auto mb-1 flex items-center justify-center">2</div>
+        <p class="text-label text-muted-foreground uppercase tracking-widest font-semibold">亚军 (Silver)</p>
         <p class="text-sm font-bold text-foreground mt-0.5">{playerName(podium.runnerUp)}</p>
       </div>
     </div>
@@ -55,7 +55,7 @@
   <Card.Root class="border-border bg-card/40 max-w-2xl mx-auto mt-6">
     <Card.Header class="p-6 pb-3">
       <Card.Title class="text-base font-bold flex items-center gap-2">
-        <ListOrderedIcon class="w-5 h-5 text-primary" />
+        <ListOrderedIcon class="w-5 h-5 text-brand-ink" />
         赛事最终名次排行 (Standings)
       </Card.Title>
       <Card.Description class="text-xs">
@@ -68,7 +68,7 @@
       <div class="overflow-x-auto border border-border/50 rounded-xl bg-background/25">
         <table class="w-full border-collapse text-left text-xs text-foreground/95">
           <thead>
-            <tr class="border-b border-border/50 bg-muted/20 text-[10px] uppercase font-bold text-muted-foreground">
+            <tr class="border-b border-border/50 bg-muted/20 text-label uppercase font-bold text-muted-foreground">
               <th class="py-2.5 px-4 w-40">名次</th>
               <th class="py-2.5 px-4">选手 (Player)</th>
               <th class="py-2.5 px-4 text-center w-24">胜场/总场</th>
@@ -80,24 +80,24 @@
           <tbody class="divide-y divide-border/30">
             {#each standings as item}
               <tr class="hover:bg-background/40 transition-colors">
-                <td class="py-3 px-4 font-bold text-primary">{item.rank}</td>
+                <td class="py-3 px-4 font-bold text-brand-ink">{item.rank}</td>
                 <td class="py-3 px-4">
                   <span class="flex items-center gap-1.5 font-semibold">
                     {#if item.team}
-                      <span class="text-[10px] text-muted-foreground font-mono">[{item.team}]</span>
+                      <span class="text-small text-muted-foreground num">[{item.team}]</span>
                     {/if}
                     <span>{item.display_name || item.id}</span>
                     {#if item.flag}
                       <span class="flex items-center gap-1">
                         <Flag code={item.flag} size={16} />
-                        <span class="text-[9px] font-bold px-1 rounded bg-muted text-muted-foreground uppercase font-mono">{item.flag}</span>
+                        <span class="text-label font-bold px-1 rounded bg-muted text-muted-foreground uppercase num">{item.flag}</span>
                       </span>
                     {/if}
                   </span>
                 </td>
-                <td class="py-3 px-4 text-center font-mono font-medium text-muted-foreground">{item.matchesWon} / {item.matchesPlayed}</td>
+                <td class="py-3 px-4 text-center num font-medium text-muted-foreground">{item.matchesWon} / {item.matchesPlayed}</td>
                 {#if tournament.points_awarded}
-                  <td class="py-3 px-4 text-center font-mono font-bold {tournament.points_awarded[item.id] ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground/50'}">
+                  <td class="py-3 px-4 text-center num font-bold {tournament.points_awarded[item.id] ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground/50'}">
                     {tournament.points_awarded[item.id] || "—"}
                   </td>
                 {/if}

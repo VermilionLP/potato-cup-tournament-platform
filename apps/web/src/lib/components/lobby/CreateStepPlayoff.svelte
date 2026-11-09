@@ -25,11 +25,11 @@
     </label>
   {/if}
   {#if preview}
-    <p class="rounded-lg bg-muted/40 px-2.5 py-1.5 text-[11px] text-foreground/80">
+    <p class="rounded-lg bg-muted/40 px-2.5 py-1.5 text-small text-foreground/80">
       若报满 {preview.players} 人：{preview.qualifiers} 人进入{form.playoffFormat === "double_elim" ? "双败" : "单败"}淘汰赛{preview.byes ? `，前 ${preview.byes} 号种子首轮轮空` : ""}{form.playoffFormat === "double_elim" && preview.qualifiers < 4 ? "（双败至少需要 4 人，请增加每组晋级人数）" : ""}。
     </p>
   {/if}
-  <p class="text-[10px] leading-relaxed text-muted-foreground">
+  <p class="text-small leading-relaxed text-muted-foreground">
     所有小组打完后由管理员确认晋级名单进入淘汰赛：种子先按小组名次排（各组第一，再各组第二……），同组选手首轮尽量分开。
   </p>
 </section>

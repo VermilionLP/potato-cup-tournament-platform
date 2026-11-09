@@ -1,4 +1,5 @@
 // Tournament metadata labels shared by the home page and the tournament page.
+import { TAG_TONE, TIER_TONE } from "./tags.js";
 
 export const GAME_MODES = [
   { id: "ab", code: "AB", name: "街机模式", full: "Arcade" },
@@ -37,11 +38,13 @@ export const VEHICLE_POOLS = [
 ];
 
 // Tag colours per event type, so the type can be spotted at a glance.
+// Vehicle pool types are descriptive, so their tags stay neutral grey
+// (#lib/tags.js); the map stays so callers can still look a type up.
 export const POOL_TAG = {
-  prop: "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300",
-  "legacy-jet": "border-sky-500/30 bg-sky-500/10 text-sky-700 dark:text-sky-300",
-  "top-jet": "border-rose-500/30 bg-rose-500/10 text-rose-700 dark:text-rose-300",
-  proleague: "border-violet-500/30 bg-violet-500/10 text-violet-700 dark:text-violet-300",
+  prop: TAG_TONE.neutral,
+  "legacy-jet": TAG_TONE.neutral,
+  "top-jet": TAG_TONE.neutral,
+  proleague: TAG_TONE.neutral,
 };
 
 // Event tiers (S-D, as on Liquipedia) and kinds; mirrors
@@ -59,13 +62,7 @@ export const EVENT_KINDS = [
   { id: "weekly", name: "周赛" },
   { id: "qualifier", name: "预选赛" },
 ];
-export const TIER_TAG = {
-  S: "border-fuchsia-500/40 bg-fuchsia-500/10 text-fuchsia-700 dark:text-fuchsia-300",
-  A: "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300",
-  B: "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
-  C: "border-slate-400/40 bg-slate-400/10 text-slate-600 dark:text-slate-300",
-  D: "border-stone-400/40 bg-stone-400/10 text-stone-600 dark:text-stone-300",
-};
+export const TIER_TAG = Object.fromEntries(Object.entries(TIER_TONE).map(([tier, tone]) => [tier, TAG_TONE[tone]]));
 
 /** "A 级" / ''. */
 export function tierLabel(tier) {

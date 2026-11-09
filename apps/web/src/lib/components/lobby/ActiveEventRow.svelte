@@ -1,8 +1,8 @@
 <script>
   // One upcoming / running event in the lobby list.
+  import { Tag } from "#lib/components/ui/tag/index.js";
   import { goto } from "$app/navigation";
-  import { actionLabel, beijingTitle, countdownLabel, displayCapacity, eventGradient, startTimeLabel, statusLabel, statusStyle } from "#lib/lobby.js";
-  import { Badge } from "#lib/components/ui/badge/index.js";
+  import { actionLabel, beijingTitle, countdownLabel, displayCapacity, eventGradient, startTimeLabel, statusLabel, statusTone } from "#lib/lobby.js";
   import EventTags from "./EventTags.svelte";
   import ClockIcon from "@lucide/svelte/icons/clock";
   import UsersIcon from "@lucide/svelte/icons/users";
@@ -30,12 +30,10 @@
     </div>
     <div class="min-w-0">
       <div class="flex items-center gap-2 flex-wrap">
-        <h3 class="font-bold text-base text-foreground group-hover:text-primary transition-colors truncate max-w-[280px] sm:max-w-[400px]">
+        <h3 class="font-bold text-base text-foreground group-hover:text-brand-ink transition-colors truncate max-w-[280px] sm:max-w-[400px]">
           {t.name}
         </h3>
-        <Badge variant="outline" class="text-[9px] px-2 py-0 font-bold uppercase tracking-wider {statusStyle(t.status)} shrink-0">
-          {statusLabel(t.status)}
-        </Badge>
+        <Tag tone={statusTone(t.status)} dot={t.status === "in_progress"}>{statusLabel(t.status)}</Tag>
       </div>
       <EventTags {t} />
     </div>
@@ -45,12 +43,12 @@
   <div class="flex items-center justify-between md:justify-end gap-6 shrink-0 flex-wrap md:flex-nowrap border-t md:border-t-0 border-border/40 pt-3 md:pt-0">
     <div class="min-w-[205px]">
       {#if t.scheduled_time}
-        <div class="flex items-center gap-1.5 text-primary text-xs font-bold whitespace-nowrap tabular-nums">
+        <div class="flex items-center gap-1.5 text-brand-ink text-xs font-bold whitespace-nowrap tabular-nums">
           <ClockIcon class="w-4 h-4 shrink-0 animate-pulse" />
           <span title={beijingTitle(t.scheduled_time)}>{startTimeLabel(t.scheduled_time)}</span>
         </div>
       {:else if t.status === "voting"}
-        <div class="flex items-center gap-1.5 text-purple-400 text-xs font-semibold italic">
+        <div class="flex items-center gap-1.5 text-sky-600 dark:text-sky-400 text-xs font-semibold italic">
           <ClockIcon class="w-4 h-4 shrink-0" />
           <span>时间投票进行中...</span>
         </div>
@@ -60,9 +58,9 @@
           <span>比赛时间待定...</span>
         </div>
       {/if}
-      <div class="text-[10px] text-muted-foreground/50 mt-1 font-mono">
+      <div class="text-small text-muted-foreground/50 mt-1 num">
         {#if t.scheduled_time}
-          <span class="text-primary/80 font-bold">{countdownLabel(t)}</span>
+          <span class="text-brand-ink/80 font-bold">{countdownLabel(t)}</span>
           <span class="mx-1">·</span>
         {/if}
         创建于 {new Date(t.created_at).toLocaleDateString("zh-CN")}
@@ -80,7 +78,7 @@
       </div>
       <div class="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
         <div
-          class="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full transition-all duration-500"
+          class="h-full bg-primary rounded-full transition-all duration-500"
           style="width: {Math.min(100, (filled / displayCapacity(t)) * 100)}%"
         ></div>
       </div>
@@ -102,7 +100,7 @@
           <Trash2Icon class="w-4 h-4" />
         </button>
       {/if}
-      <div class="flex items-center gap-1.5 text-[10px] font-bold text-muted-foreground/70 group-hover:text-primary transition-colors">
+      <div class="flex items-center gap-1.5 text-small font-bold text-muted-foreground/70 group-hover:text-brand-ink transition-colors">
         <span>{actionLabel(t)}</span>
         <div class="flex items-center justify-center w-8 h-8 rounded-full bg-muted/40 group-hover:bg-primary group-hover:text-primary-foreground transition-all duration-300">
           <ArrowRightIcon class="w-4 h-4 transition-transform group-hover:translate-x-0.5" />

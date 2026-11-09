@@ -108,7 +108,7 @@
 {#snippet versus(m)}
   <span class="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 min-w-0">
     {#each [m.player1_id, m.player2_id] as pid, i (i)}
-      {#if i === 1}<span class="text-muted-foreground text-[10px]">vs</span>{/if}
+      {#if i === 1}<span class="text-muted-foreground text-small">vs</span>{/if}
       {#if pid}
         <span class="inline-flex items-center gap-1 font-semibold">
           <Flag code={playerOf(pid).flag} size={13} />
@@ -124,7 +124,7 @@
 {#snippet matchRow(m, actions)}
   <div class="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border/60 bg-background/40 px-3 py-2 text-xs">
     <div class="min-w-0 space-y-0.5">
-      <div class="text-[10px] text-muted-foreground">#{order.get(m.id) ?? "?"} · {roundLabel(m)}</div>
+      <div class="text-small text-muted-foreground">#{order.get(m.id) ?? "?"} · {roundLabel(m)}</div>
       {@render versus(m)}
     </div>
     <div class="flex flex-wrap items-center gap-1.5">{@render actions(m)}</div>
@@ -135,7 +135,7 @@
   <section class="rounded-xl border bg-card/40 p-4 space-y-2 {tone}">
     <h2 class="text-sm font-bold flex items-center justify-between">
       <span>{title}</span>
-      <span class="text-xs font-mono text-muted-foreground">{count}</span>
+      <span class="text-xs num text-muted-foreground">{count}</span>
     </h2>
     {@render body()}
   </section>
@@ -148,14 +148,14 @@
 {:else if !isAdmin}
   <div class="py-16 text-center space-y-2">
     <p class="text-sm font-semibold">比赛日控制台只对管理员开放</p>
-    <a href="/tournament/{encodeURIComponent(tid)}" class="text-xs text-primary hover:underline">返回赛事页</a>
+    <a href="/tournament/{encodeURIComponent(tid)}" class="text-xs text-brand-ink hover:underline">返回赛事页</a>
   </div>
 {:else}
   <div class="space-y-4">
     <!-- Header -->
     <div class="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3">
       <div class="space-y-0.5">
-        <a href="/tournament/{encodeURIComponent(tid)}" class="text-[11px] text-muted-foreground hover:text-primary inline-flex items-center gap-1"><ArrowLeftIcon class="w-3 h-3" /> 赛事页</a>
+        <a href="/tournament/{encodeURIComponent(tid)}" class="text-small text-muted-foreground hover:text-brand-ink inline-flex items-center gap-1"><ArrowLeftIcon class="w-3 h-3" /> 赛事页</a>
         <h1 class="text-lg font-black">{tournament.name} · 比赛日控制台</h1>
         <div class="text-xs text-muted-foreground">
           {eventStatusLabel(tournament.status)}
@@ -178,10 +178,10 @@
 
     <!-- Summary -->
     <div class="grid grid-cols-2 sm:grid-cols-5 gap-2 text-center">
-      {#each [["直播中", board.live.length, "text-sky-500"], ["待处理", board.disputed.length, board.disputed.length ? "text-destructive" : ""], ["待确认", board.toConfirm.length, ""], ["可开打", board.ready.length, board.ready.length ? "text-primary" : ""], ["等待中", board.waiting.length, ""]] as [label, n, cls] (label)}
+      {#each [["直播中", board.live.length, "text-sky-500"], ["待处理", board.disputed.length, board.disputed.length ? "text-destructive" : ""], ["待确认", board.toConfirm.length, ""], ["可开打", board.ready.length, board.ready.length ? "text-brand-ink" : ""], ["等待中", board.waiting.length, ""]] as [label, n, cls] (label)}
         <div class="rounded-lg border border-border bg-card/40 py-2">
           <div class="text-xl font-black {cls}">{n}</div>
-          <div class="text-[11px] text-muted-foreground">{label}</div>
+          <div class="text-small text-muted-foreground">{label}</div>
         </div>
       {/each}
     </div>
@@ -195,7 +195,7 @@
             {/snippet}
             <div class="space-y-1">
               {@render matchRow(m, acts)}
-              <div class="px-3 text-[11px] text-muted-foreground">
+              <div class="px-3 text-small text-muted-foreground">
                 {playerName(m.pending_report.by)} 提交：{formatReport(m, m.pending_report, playerName)}
                 {#if m.pending_report.counter}· {playerName(m.pending_report.counter.by)} 提交：{formatReport(m, m.pending_report.counter, playerName)}{/if}
               </div>
@@ -230,7 +230,7 @@
         {#snippet liveBody()}
           {#each board.live as x (x.channel)}
             {#snippet acts(m)}
-              <span class="rounded bg-sky-500/15 px-1.5 py-0.5 text-[10px] font-bold text-sky-500 inline-flex items-center gap-1"><RadioIcon class="w-3 h-3" />频道 {x.channel}</span>
+              <span class="rounded bg-sky-500/15 px-1.5 py-0.5 text-small font-bold text-sky-500 inline-flex items-center gap-1"><RadioIcon class="w-3 h-3" />频道 {x.channel}</span>
               <Button size="sm" onclick={() => matchReport?.openDetails(m)} class="h-7 text-xs">填报</Button>
             {/snippet}
             {@render matchRow(x.match, acts)}
@@ -243,12 +243,12 @@
         {#snippet confirmBody()}
           {#each board.toConfirm as x (x.match.id)}
             {#snippet acts(m)}
-              <span class="text-[10px] text-muted-foreground">{x.minutes ? `约 ${x.minutes} 分钟后自动生效` : "即将自动生效"}</span>
+              <span class="text-small text-muted-foreground">{x.minutes ? `约 ${x.minutes} 分钟后自动生效` : "即将自动生效"}</span>
               <Button size="sm" variant="outline" onclick={() => matchReport?.confirmReport(m)} class="h-7 text-xs">直接确认</Button>
             {/snippet}
             <div class="space-y-1">
               {@render matchRow(x.match, acts)}
-              <div class="px-3 text-[11px] text-muted-foreground">{playerName(x.match.pending_report.by)} 提交：{formatReport(x.match, x.match.pending_report, playerName)}</div>
+              <div class="px-3 text-small text-muted-foreground">{playerName(x.match.pending_report.by)} 提交：{formatReport(x.match, x.match.pending_report, playerName)}</div>
             </div>
           {:else}
             <p class="text-xs text-muted-foreground italic">没有待确认的比分</p>
@@ -258,7 +258,7 @@
 
         {#snippet waitingBody()}
           {#each board.waiting as m (m.id)}
-            {#snippet acts(m)}<span class="text-[10px] text-muted-foreground">等上一场</span>{/snippet}
+            {#snippet acts(m)}<span class="text-small text-muted-foreground">等上一场</span>{/snippet}
             {@render matchRow(m, acts)}
           {:else}
             <p class="text-xs text-muted-foreground italic">没有等待中的比赛</p>

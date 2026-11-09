@@ -191,7 +191,9 @@
   />
 </svelte:head>
 
-<div class="w-screen h-screen overflow-hidden relative flex items-center justify-center {isTransparent ? 'bg-transparent' : 'bg-black'}">
+<!-- The overlays keep their own fonts until they are restyled: the site's
+     font-sans (HarmonyOS Sans SC) is reset to the system stack here. -->
+<div class="w-screen h-screen overflow-hidden relative flex items-center justify-center {isTransparent ? 'bg-transparent' : 'bg-black'}" style="--font-sans: ui-sans-serif, system-ui, sans-serif;">
   <div
     class="overlay-container font-outfit text-white overflow-hidden flex flex-col relative select-none shrink-0
       {isTransparent ? 'bg-transparent' : 'bg-radial-gradient'}"
