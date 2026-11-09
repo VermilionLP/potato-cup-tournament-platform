@@ -415,7 +415,7 @@ test('Ban / Pick runs on the server: turns, undo, a draw seen by the other playe
   const { browser, page, errors } = await openPage({ player: match.player2_id });
   const overlay = await browser.newPage();
   await overlay.goto(`${BASE}/tournament/${id}/overlay`);
-  await overlay.getByText('BAN PHASE').waitFor({ timeout: T });
+  await overlay.getByText('BANNING').first().waitFor({ timeout: T });
   // B can't ban on A's turn; A bans, undoes, bans again; B passes.
   assert.equal((await asPlayer(match.player2_id, { action: 'ban', group: 'GA' })).status, 403);
   assert.equal((await asPlayer(match.player1_id, { action: 'ban', group: 'GA' })).status, 200);
@@ -428,7 +428,7 @@ test('Ban / Pick runs on the server: turns, undo, a draw seen by the other playe
   assert.deepEqual(passed.body.banpick.log.map((e) => [e.action, Boolean(e.undone)]), [['ban', true], ['undo', false], ['ban', false], ['pass', false]]);
 
   try {
-    await overlay.getByText('GROUP DRAW').waitFor({ timeout: T });
+    await overlay.getByText('GROUP DRAW').first().waitFor({ timeout: T });
     await page.goto(`${BASE}/tournament/${id}#bracket`);
     const card = page.getByRole('button').filter({ hasText: match.player1_id }).filter({ hasText: match.player2_id }).first();
     await card.getByRole('button', { name: 'BP' }).click({ timeout: T });
@@ -444,14 +444,14 @@ test('Ban / Pick runs on the server: turns, undo, a draw seen by the other playe
     await page.getByText(`抽到大组 ${bp.state.group}`).first().waitFor({ timeout: T });
     // An admin picking the scene by hand works too.
     await api('POST', `/tournaments/${id}/overlay-state`, { channel: 1, overlay_scene: 'banpick' });
-    await overlay.getByText('GROUP DRAW').waitFor({ timeout: T });
+    await overlay.getByText('GROUP DRAW').first().waitFor({ timeout: T });
     // Confirmed: auto mode moves on to the in-game HUD, which shows the vehicle.
     await api('POST', `/tournaments/${id}/overlay-state`, { channel: 1, overlay_scene: 'auto' });
     await api('POST', `/tournaments/${id}/matches/${match.id}/banpick`, { action: 'confirmGroup' });
     await api('POST', `/tournaments/${id}/matches/${match.id}/banpick`, { action: 'drawVehicle' });
     await api('POST', `/tournaments/${id}/matches/${match.id}/banpick`, { action: 'confirm' });
     await overlay.getByText(/G[AC]-\d/).first().waitFor({ timeout: T });
-    await overlay.getByText("RESULTS").waitFor({ timeout: T });
+    await overlay.getByText("RESULTS").first().waitFor({ timeout: T });
     await page.screenshot({ path: 'e2e-shot-banpick.png' });
     await overlay.screenshot({ path: 'e2e-shot-banpick-overlay.png' });
     assert.deepEqual(errors, [], 'no uncaught errors in the page');
