@@ -97,21 +97,6 @@ export function eventDate(t) {
   return t?.created_at ? new Date(t.created_at) : null;
 }
 
-const GRADIENTS = [
-  "from-orange-500 to-amber-500",
-  "from-sky-500 to-blue-600",
-  "from-slate-500 to-slate-700",
-  "from-emerald-500 to-teal-600",
-  "from-rose-500 to-red-600",
-  "from-amber-500 to-orange-600",
-];
-
-/** Avatar gradient for an event, stable per ID. */
-export function eventGradient(id) {
-  let s = 0;
-  for (let i = 0; i < id.length; i++) s += id.charCodeAt(i);
-  return GRADIENTS[s % GRADIENTS.length];
-}
 
 const STATUS = {
   registration: { label: "报名中" },

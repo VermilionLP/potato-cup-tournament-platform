@@ -6,10 +6,10 @@
 import { cached } from '../lib/ladder-cache.js';
 import { duplicatePairs, lookupPlayerName } from '../lib/player-lookup.js';
 import { PlayerRepo, mergePlayerInto } from '../repositories/player-repo.js';
-import { isAdminRequest, requireAdmin, requireSelfOrAdmin } from '../lib/admin.js';
+import { canSeeContactsRequest, isAdminRequest, requireAdmin, requireSelfOrAdmin } from '../lib/admin.js';
 import { contactProblem, parseContact, CONTACT_REQUIRED } from '../lib/contact.js';
 import { inTransaction } from '../lib/transaction.js';
-import { publicPlayer } from '../lib/player-privacy.js';
+import { contactFor, publicPlayer } from '../lib/player-privacy.js';
 
 export default async function playersRoutes(fastify) {
   const repo = PlayerRepo(fastify.db);
@@ -20,10 +20,12 @@ export default async function playersRoutes(fastify) {
     for (const t of rows) fastify.tournamentEvents.emit(`update:${t.id}`, message);
   }
 
-  // IP addresses only for admins (lib/player-privacy.js).
+  // IP addresses only for admins, QQ / Discord only for signed-in players
+  // and admins (lib/player-privacy.js).
   fastify.get('/players', async (req) => {
     const admin = isAdminRequest(req);
-    return (await repo.list()).map((p) => publicPlayer(p, admin));
+    const contacts = await canSeeContactsRequest(fastify, req);
+    return (await repo.list()).map((p) => contactFor(publicPlayer(p, admin), contacts));
   });
 
   // Every player's event count, last event and key, cached like the ladder
@@ -91,7 +93,7 @@ export default async function playersRoutes(fastify) {
     const p = await repo.getById(req.params.id);
     if (!p) throw fastify.httpErrors.notFound('Player not found');
     return {
-      ...publicPlayer(p, isAdminRequest(req)),
+      ...contactFor(publicPlayer(p, isAdminRequest(req)), await canSeeContactsRequest(fastify, req)),
       tournaments: await repo.getTournaments(req.params.id)
     };
   });

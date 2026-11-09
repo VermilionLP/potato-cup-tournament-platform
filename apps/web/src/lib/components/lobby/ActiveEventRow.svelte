@@ -1,12 +1,14 @@
 <script>
-  // One upcoming / running event in the lobby list.
+  // One upcoming / running event in the lobby list: the tier mark, name,
+  // status and tags; then when, how many players and the action. On phones
+  // the second half is one line.
   import { Tag } from "#lib/components/ui/tag/index.js";
   import { goto } from "$app/navigation";
-  import { actionLabel, beijingTitle, countdownLabel, displayCapacity, eventGradient, startTimeLabel, statusLabel, statusTone } from "#lib/lobby.js";
+  import { actionLabel, beijingTitle, countdownLabel, displayCapacity, startTimeLabel, statusLabel, statusTone } from "#lib/lobby.js";
   import EventTags from "./EventTags.svelte";
+  import EventMark from "./EventMark.svelte";
   import ClockIcon from "@lucide/svelte/icons/clock";
   import UsersIcon from "@lucide/svelte/icons/users";
-  import TrophyIcon from "@lucide/svelte/icons/trophy";
   import ArrowRightIcon from "@lucide/svelte/icons/arrow-right";
   import Trash2Icon from "@lucide/svelte/icons/trash-2";
 
@@ -21,13 +23,11 @@
   tabindex="0"
   onclick={() => goto(href)}
   onkeydown={(e) => e.key === "Enter" && goto(href)}
-  class="group flex flex-col md:flex-row md:items-center justify-between p-4.5 hover:bg-muted/40 transition-colors cursor-pointer gap-4"
+  class="group flex flex-col md:flex-row md:items-center justify-between px-4 py-3 md:p-4.5 hover:bg-muted/40 transition-colors cursor-pointer gap-2.5 md:gap-4"
 >
   <!-- Left: avatar + title -->
-  <div class="flex items-center gap-4 min-w-0 flex-1">
-    <div class="w-10 h-10 rounded-full bg-gradient-to-br {eventGradient(t.id)} flex items-center justify-center text-white shrink-0 shadow-sm border border-white/10">
-      <TrophyIcon class="w-5 h-5 text-white" />
-    </div>
+  <div class="flex items-center gap-3 md:gap-4 min-w-0 flex-1">
+    <EventMark tier={t.tier} />
     <div class="min-w-0">
       <div class="flex items-center gap-2 flex-wrap">
         <h3 class="font-bold text-base text-foreground group-hover:text-brand-ink transition-colors truncate max-w-[280px] sm:max-w-[400px]">
@@ -40,8 +40,8 @@
   </div>
 
   <!-- Right: time, players, action -->
-  <div class="flex items-center justify-between md:justify-end gap-6 shrink-0 flex-wrap md:flex-nowrap border-t md:border-t-0 border-border/40 pt-3 md:pt-0">
-    <div class="min-w-[205px]">
+  <div class="flex items-center justify-between md:justify-end gap-3 md:gap-6 shrink-0 md:flex-nowrap pl-[52px] md:pl-0">
+    <div class="min-w-0 md:min-w-[205px]">
       {#if t.scheduled_time}
         <div class="flex items-center gap-1.5 text-brand-ink text-xs font-bold whitespace-nowrap tabular-nums">
           <ClockIcon class="w-4 h-4 shrink-0 animate-pulse" />
@@ -58,7 +58,7 @@
           <span>比赛时间待定...</span>
         </div>
       {/if}
-      <div class="text-small text-muted-foreground/50 mt-1 num">
+      <div class="hidden md:block text-small text-muted-foreground/50 mt-1 num">
         {#if t.scheduled_time}
           <span class="text-brand-ink/80 font-bold">{countdownLabel(t)}</span>
           <span class="mx-1">·</span>
@@ -67,7 +67,7 @@
       </div>
     </div>
 
-    <div class="flex items-center gap-3 w-[170px]">
+    <div class="flex items-center gap-2 md:gap-3 md:w-[170px] shrink-0">
       <div class="flex items-center gap-1 text-xs text-muted-foreground font-semibold shrink-0" title={`报名上限 ${t.player_capacity} 人`}>
         <UsersIcon class="w-3.5 h-3.5" />
         {#if t.status === "voting"}
@@ -76,7 +76,7 @@
           <span>{t.player_count || 0} / {displayCapacity(t)}</span>
         {/if}
       </div>
-      <div class="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+      <div class="hidden md:block flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
         <div
           class="h-full bg-primary rounded-full transition-all duration-500"
           style="width: {Math.min(100, (filled / displayCapacity(t)) * 100)}%"
@@ -101,7 +101,7 @@
         </button>
       {/if}
       <div class="flex items-center gap-1.5 text-small font-bold text-muted-foreground/70 group-hover:text-brand-ink transition-colors">
-        <span>{actionLabel(t)}</span>
+        <span class="hidden sm:inline">{actionLabel(t)}</span>
         <div class="flex items-center justify-center w-8 h-8 rounded-full bg-muted/40 group-hover:bg-primary group-hover:text-primary-foreground transition-all duration-300">
           <ArrowRightIcon class="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
         </div>

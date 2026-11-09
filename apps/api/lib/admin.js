@@ -1,5 +1,6 @@
 import { timingSafeEqual } from 'crypto';
 import { playerKeyMatches, requestPlayerKey, storedKeyHash } from './player-key.js';
+import { canSeeContacts } from './player-privacy.js';
 
 export const ADMIN_TOKEN_HEADER = 'x-admin-token';
 
@@ -134,4 +135,19 @@ export async function requireMatchPlayerOrAdmin(fastify, req, match) {
   throw fastify.httpErrors.forbidden(
     'Only the players in this match (or an admin) may report its result.'
   );
+}
+
+/**
+ * Whether the caller may see players' QQ / Discord: an admin, or a signed-in
+ * player (an existing x-player-id, with its device key once bound).
+ */
+export async function canSeeContactsRequest(fastify, req) {
+  return canSeeContacts(fastify.db, req, {
+    isAdmin: isAdminRequest,
+    requesterId: getRequesterId,
+    keyOk: async (r, id) => {
+      const hash = await storedKeyHash(fastify.db, id);
+      return !hash || playerKeyMatches(requestPlayerKey(r), hash);
+    },
+  });
 }

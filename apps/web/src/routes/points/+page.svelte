@@ -1,8 +1,9 @@
 <script>
+  import { EmptyState } from "#lib/components/ui/empty-state/index.js";
   // Potato Cup points leaderboard (积分榜): per season (year) and event type,
   // the points players earned in finished events with a points table. The
   // board is PointsBoard; admins also get SeasonAdmin (loaded on demand).
-  import { Chip } from "#lib/components/ui/chip/index.js";
+  import { FilterBar, FilterGroup } from "#lib/components/ui/filter-group/index.js";
   import PageHeader from "#lib/components/PageHeader.svelte";
   import PageSkeleton from "#lib/components/PageSkeleton.svelte";
   import { onMount } from "svelte";
@@ -104,41 +105,37 @@
   {#if loading && !data}
     <PageSkeleton kind="table" label="加载中..." rows={10} />
   {:else if !data?.seasons?.length}
-    <div class="rounded-xl border border-border bg-card/40 py-16 text-center text-sm text-muted-foreground">
-      还没有计入积分榜的赛事。创建赛事时在「年度积分榜」里设置积分即可。
-    </div>
+    <EmptyState title="还没有计入积分榜的赛事" hint="创建赛事时在「年度积分榜」里设置积分，赛事结束后就会出现在这里。" />
   {:else}
-    <div class="flex flex-wrap items-center gap-3">
-      <div class="flex flex-wrap items-center gap-2" role="group" aria-label="赛季">
-        {#each data.seasons as season (season)}
-          <Chip selected={data.season === season} onclick={() => pickSeason(season)}>{season} 赛季{season === data.current ? " · 当前" : ""}</Chip>
-        {/each}
-      </div>
+    <FilterBar>
+      <FilterGroup
+        label="赛季"
+        value={data.season}
+        onpick={pickSeason}
+        options={data.seasons.map((season) => ({ id: season, label: `${season} 赛季${season === data.current ? " · 进行中" : ""}` }))}
+      />
       {#if data.boards.length}
-        <div class="flex flex-wrap items-center gap-2" role="group" aria-label="比赛类型">
-          {#each VEHICLE_POOLS.filter((p) => data.boards.some((b) => b.pool === p.id)) as opt (opt.id)}
-            <Chip selected={board?.pool === opt.id} onclick={() => pickPool(opt.id)}>{opt.name}</Chip>
-          {/each}
+        <FilterGroup
+          label="类型"
+          value={board?.pool}
+          onpick={pickPool}
+          options={VEHICLE_POOLS.filter((p) => data.boards.some((b) => b.pool === p.id)).map((p) => ({ id: p.id, label: p.name }))}
+        />
+      {/if}
+      {#snippet end()}
+        <div class="relative sm:w-56">
+          <SearchIcon class="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+          <Input bind:value={query} placeholder="搜索选手 / 战队" class="h-8 pl-8 text-xs" />
         </div>
-      {/if}
-      <div class="relative w-full sm:ml-auto sm:w-56">
-        <SearchIcon class="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-        <Input bind:value={query} placeholder="搜索选手 / 战队" class="h-8 pl-8 text-xs" />
-      </div>
-    </div>
+      {/snippet}
+    </FilterBar>
 
-    <!-- Season status; admins set the current season and end / reopen one. -->
-    <div class="flex flex-wrap items-center gap-2 text-small">
-      {#if isEnded}
-        <span class="rounded-full border border-border bg-muted/50 px-2.5 py-0.5 font-semibold text-foreground">
-          {data.season} 赛季已结束 · {new Date(data.ended_at).toLocaleDateString("zh-CN")} · 积分和名单已锁定
-        </span>
-      {:else if data.season === data.current}
-        <span class="rounded-full border border-primary/40 bg-primary/10 px-2.5 py-0.5 font-semibold text-brand-ink">当前赛季 · 进行中</span>
-      {:else}
-        <span class="rounded-full border border-border px-2.5 py-0.5 text-muted-foreground">进行中</span>
-      {/if}
-    </div>
+    <!-- An ended season says when; admins set the current season and end / reopen one. -->
+    {#if isEnded}
+      <p class="text-small text-muted-foreground">
+        {data.season} 赛季已结束 · {new Date(data.ended_at).toLocaleDateString("zh-CN")} · 积分和名单已锁定
+      </p>
+    {/if}
     {#if isAdmin}
       {#await loadSeasonAdmin() then m}
         <m.default {data} onchanged={load} />
@@ -146,9 +143,7 @@
     {/if}
 
     {#if !board}
-      <div class="rounded-xl border border-border bg-card/40 py-16 text-center text-sm text-muted-foreground">
-        {data.season} 赛季还没有已结束的积分赛。
-      </div>
+      <EmptyState title="{data.season} 赛季还没有已结束的积分赛" hint="第一场计分的赛事结束后，积分会自动计入这里。" />
     {:else}
       <PointsBoard
         {board}

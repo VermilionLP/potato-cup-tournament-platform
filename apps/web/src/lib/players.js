@@ -27,18 +27,3 @@ export function wikiUrl(link) {
   return String(link).startsWith("http") ? link : `https://liquipedia.net/warthunder/${link}`;
 }
 
-const GRADIENTS = [
-  "from-amber-500 to-orange-500",
-  "from-sky-500 to-blue-600",
-  "from-blue-500 to-cyan-500",
-  "from-emerald-500 to-teal-500",
-  "from-rose-500 to-pink-500",
-  "from-slate-500 to-slate-700",
-];
-
-/** Avatar gradient for a player, stable per ID. */
-export function playerGradient(id) {
-  let s = 0;
-  for (let i = 0; i < id.length; i++) s += id.charCodeAt(i);
-  return GRADIENTS[s % GRADIENTS.length];
-}

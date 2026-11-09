@@ -1,4 +1,5 @@
 <script>
+  import { EmptyState } from "#lib/components/ui/empty-state/index.js";
   // The event's vehicle pool as War Thunder tech-tree cards: one row per
   // Ban / Pick group (with its nation's flag), each vehicle with its wiki
   // slot picture, name and BR, linking to its wiki page. Pictures come
@@ -33,7 +34,7 @@
 </script>
 
 {#if !template}
-  <p class="py-12 text-center text-xs italic text-muted-foreground">这场赛事没有载具池模板。</p>
+  <EmptyState title="这场赛事没有载具池模板" hint="管理员在「载具池」页为这种比赛类型建好模板后，这里会显示可选载具。" />
 {:else}
   <section class="rounded-xl border border-border bg-[#1b2128] p-3 sm:p-4 space-y-3 text-slate-100">
     <div class="flex flex-wrap items-baseline justify-between gap-2">
