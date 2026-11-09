@@ -67,9 +67,6 @@
 </script>
 
 <section class="relative overflow-hidden rounded-[20px] border border-border bg-card">
-  <!-- The logo's slanted orange bars (21°), behind the countdown -->
-  <div class="pointer-events-none absolute -inset-y-6 right-[300px] hidden w-7 -skew-x-[21deg] bg-primary/80 md:block" aria-hidden="true"></div>
-  <div class="pointer-events-none absolute -inset-y-6 right-[272px] hidden w-2 -skew-x-[21deg] bg-brand-600/80 md:block" aria-hidden="true"></div>
 
   <div class="relative grid gap-5 p-5 sm:p-6 md:grid-cols-[1fr_auto] md:items-center">
     <div class="min-w-0 space-y-3">

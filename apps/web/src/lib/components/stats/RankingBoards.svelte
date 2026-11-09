@@ -11,10 +11,11 @@
   import ActivityIcon from "@lucide/svelte/icons/activity";
   import ShieldAlertIcon from "@lucide/svelte/icons/shield-alert";
 
-  let { rankings } = $props();
+  // `class`: the boards' layout (a column by default, a grid in 名人堂).
+  let { rankings, class: layout = "space-y-6" } = $props();
 </script>
 
-<div class="space-y-6">
+<div class={layout}>
   <!-- Board 1: Championships -->
   <div class="bg-card border border-border rounded-xl p-4.5 shadow-sm space-y-4">
     <h3 class="text-xs font-black text-foreground uppercase tracking-wider flex items-center gap-1.5">
