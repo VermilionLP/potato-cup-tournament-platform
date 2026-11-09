@@ -1924,4 +1924,7 @@ export default {
   "生涯榜单": "Career boards",
   "全部赛事的冠军、亚军、胜率、场数和弃权排行": "Titles, runner-ups, win rate, matches and walkovers across every event",
   "正在整理生涯榜单...": "Compiling the career boards...",
+  "每位选手禁用过的次数和最常禁的大组": "How often each player bans, and the groups they ban most",
+  "有禁用记录的 Ban/Pick 场数": "Ban/Pick matches with a ban by this player",
+  "最常禁的大组": "Most banned groups",
 };

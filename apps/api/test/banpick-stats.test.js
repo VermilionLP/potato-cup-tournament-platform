@@ -38,7 +38,7 @@ test('counts bans, draws, removals and played vehicles; undone steps do not coun
   assert.equal(s.bans, 3);
   assert.equal(s.passes, 1);
   // p1 banned GA (match one, side A); p2 banned GB (one, B) and GC (two, A).
-  assert.deepEqual(s.banners.map((b) => [b.id, b.bans]), [['p2', 2], ['p1', 1]]);
+  assert.deepEqual(s.banners.map((b) => [b.id, b.bans, b.matches]), [['p2', 2, 2], ['p1', 1, 1]]);
   assert.deepEqual(s.banners[0].top.map((t) => t.group), ['GB', 'GC']);
   // p1 banned GA in match one (side A) and nothing in match two (side B passed).
   assert.deepEqual(s.player.bans, [{ group: 'GA', n: 1 }]);
