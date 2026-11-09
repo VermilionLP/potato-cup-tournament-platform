@@ -57,14 +57,14 @@
     class="flex h-[18px] shrink-0 items-center justify-between border-b border-border bg-black/[0.025] px-2 text-small text-muted-foreground dark:bg-white/[0.03]"
   >
     <span class="flex min-w-0 items-center gap-1">
-      <span class="truncate">{title}</span>
+      <span class="shrink-0 whitespace-nowrap">{title}</span>
       {#if bpResult(match)}
-        <span class="min-w-0 truncate rounded-full bg-brand-soft px-1.5 font-bold text-brand-soft-foreground" title="本场载具（Ban/Pick 结果）">{bpResult(match)}</span>
+        <span class="min-w-0 truncate rounded-full bg-brand-soft px-1.5 leading-[15px] font-bold text-brand-soft-foreground" title="本场载具（Ban/Pick 结果）">{bpResult(match)}</span>
       {:else if bpUnderWay(match)}
-        <span class="shrink-0 rounded-full border border-dashed border-brand-300 px-1.5 font-bold text-brand-ink" title="Ban/Pick 进行中">BP 中</span>
+        <span class="shrink-0 whitespace-nowrap rounded-full border border-dashed border-brand-300 px-1.5 leading-[13px] font-bold text-brand-ink" title="Ban/Pick 进行中">BP 中</span>
       {/if}
       {#if hasLiveScore(match)}
-        <span class="inline-flex shrink-0 items-center gap-1 rounded-full bg-red-100 px-1.5 font-bold text-red-700 dark:bg-red-950 dark:text-red-300" title="比赛进行中的实时比分，还没有出结果">
+        <span class="inline-flex h-[15px] shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-red-100 px-1.5 font-bold text-red-700 dark:bg-red-950 dark:text-red-300" title="比赛进行中的实时比分，还没有出结果">
           <span class="h-1.5 w-1.5 animate-pulse rounded-full bg-live"></span>实时
         </span>
       {/if}
