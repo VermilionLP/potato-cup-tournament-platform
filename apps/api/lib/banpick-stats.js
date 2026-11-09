@@ -25,8 +25,9 @@ const ranked = (map, field) => [...map.values()].filter((x) => x[field] > 0).sor
  * vehicles (with wins), over every type.
  *
  * groups.table / vehicles.table list every group / played vehicle (the
- * statistics page's vehicle tab); banners are the players who banned most
- * in this type, each with their most banned groups.
+ * statistics page's vehicle tab); banners are every player who banned in
+ * this type (most bans first), with their Ban / Pick matches and their most
+ * banned groups.
  */
 export function buildBanpickStats(rows = [], { type = '', player = '' } = {}) {
   const withBp = rows.filter((r) => r.banpick?.state && effectiveEntries(r.banpick.log).length);
@@ -63,8 +64,9 @@ export function buildBanpickStats(rows = [], { type = '', player = '' } = {}) {
       }
       bans += 1;
       if (!id) continue;
-      if (!banners.has(id)) banners.set(id, { id, bans: 0, groups: new Map() });
+      if (!banners.has(id)) banners.set(id, { id, bans: 0, matches: new Set(), groups: new Map() });
       const who = banners.get(id);
+      who.matches.add(r);
       who.bans += 1;
       who.groups.set(b.group, (who.groups.get(b.group) || 0) + 1);
     }
@@ -119,10 +121,10 @@ export function buildBanpickStats(rows = [], { type = '', player = '' } = {}) {
       .map((b) => ({
         id: b.id,
         bans: b.bans,
-        top: [...b.groups.entries()].map(([group, n]) => ({ group, n })).sort((x, y) => y.n - x.n || x.group.localeCompare(y.group)).slice(0, 3),
+        matches: b.matches.size,
+        top: [...b.groups.entries()].map(([group, n]) => ({ group, n })).sort((x, y) => y.n - x.n || x.group.localeCompare(y.group)).slice(0, 5),
       }))
-      .sort((a, b) => b.bans - a.bans || a.id.localeCompare(b.id))
-      .slice(0, 10),
+      .sort((a, b) => b.bans - a.bans || a.id.localeCompare(b.id)),
   };
   if (player) {
     out.player = {

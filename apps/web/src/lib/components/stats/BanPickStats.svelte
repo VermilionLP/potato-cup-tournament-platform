@@ -1,10 +1,11 @@
 <script>
   // The statistics page's 载具 tab (GET /banpick/stats): for one event type
-  // at a time, summary numbers, every group (bans, ban rate, drawn, played),
-  // every played vehicle with its share, and the players who ban most with
-  // their favourite bans. Undone steps are not counted.
+  // at a time, every group (bans, ban rate, drawn, played), every played
+  // vehicle with its share, and every player who bans with their favourite
+  // bans. Undone steps are not counted.
   import { EmptyState } from "#lib/components/ui/empty-state/index.js";
-  import { StatTile } from "#lib/components/ui/stat-tile/index.js";
+  import ShowMoreRows from "#lib/components/ShowMoreRows.svelte";
+  import { PAGE_SIZE } from "#lib/expand-row.js";
   import { Chip } from "#lib/components/ui/chip/index.js";
   import { TAG_BASE, TAG_TONE } from "#lib/tags.js";
   import { API } from "#lib/api.js";
@@ -36,7 +37,9 @@
   let banners = $derived(data?.banners || []);
   let maxBans = $derived(Math.max(1, ...groups.map((g) => g.bans)));
   let maxPlayed = $derived(Math.max(1, ...vehicles.map((v) => v.played)));
-  let topBanned = $derived(groups.find((g) => g.bans > 0));
+  // Who bans what: the first page, then "显示更多".
+  let bannerLimit = $state(PAGE_SIZE);
+  let shownBanners = $derived(banners.slice(0, bannerLimit));
 </script>
 
 {#if loading && !data}
@@ -59,13 +62,48 @@
       {/if}
     </div>
 
-    <!-- Summary -->
-    <div class="grid grid-cols-2 gap-3 md:grid-cols-4">
-      <StatTile label="BP Matches" value={data.matches} note="场 Ban/Pick" />
-      <StatTile label="Confirmed" value={data.confirmed} note="场已确认载具" />
-      <StatTile label="Bans / Match" value={data.matches ? (data.bans / data.matches).toFixed(1) : "0"} note="场均禁用{data.passes ? ` · ${data.passes} 次空过` : ''}" />
-      <StatTile label="Most Banned" value={topBanned?.name || "—"} tone="loss" note={topBanned ? `禁用率 ${pct(topBanned.bans, data.matches)}%` : "暂无禁用"} valueClass="truncate" />
-    </div>
+    <!-- Who bans what: every player who banned in this type -->
+    <section class="overflow-hidden rounded-xl border border-border bg-card">
+      <div class="p-4 pb-2">
+        <h3 class="flex items-center gap-1.5 text-body font-bold"><UserXIcon class="h-4 w-4 text-muted-foreground" />选手禁用偏好</h3>
+        <p class="text-small text-muted-foreground">每位选手禁用过的次数和最常禁的大组</p>
+      </div>
+      {#if banners.length}
+        <div class="overflow-x-auto">
+          <table class="w-full text-small">
+            <thead>
+              <tr class="border-y border-border bg-muted/50 text-left text-muted-foreground">
+                <th class="w-10 py-2 pl-4 font-semibold">#</th>
+                <th class="py-2 pr-3 font-semibold">选手</th>
+                <th class="py-2 pr-3 text-right font-semibold">禁用</th>
+                <th class="py-2 pr-3 text-right font-semibold" title="有禁用记录的 Ban/Pick 场数">场次</th>
+                <th class="py-2 pr-4 font-semibold">最常禁的大组</th>
+              </tr>
+            </thead>
+            <tbody>
+              {#each shownBanners as b, i (b.id)}
+                <tr class="border-b border-border/60 last:border-0 hover:bg-muted/40">
+                  <td class="num py-2 pl-4 text-muted-foreground">{i + 1}</td>
+                  <td class="py-2 pr-3"><a href="/player/{encodeURIComponent(b.id)}" class="font-bold hover:text-brand-ink">{b.id}</a></td>
+                  <td class="num py-2 pr-3 text-right font-bold">{b.bans}</td>
+                  <td class="num py-2 pr-3 text-right text-muted-foreground">{b.matches}</td>
+                  <td class="py-2 pr-4">
+                    <span class="flex flex-wrap gap-1">
+                      {#each b.top as t, j (t.group)}
+                        <span class="{TAG_BASE} {j === 0 ? TAG_TONE.brand : TAG_TONE.neutral}">{t.group} ×{t.n}</span>
+                      {/each}
+                    </span>
+                  </td>
+                </tr>
+              {/each}
+            </tbody>
+          </table>
+        </div>
+        <ShowMoreRows shown={shownBanners.length} total={banners.length} onmore={() => (bannerLimit = shownBanners.length + PAGE_SIZE)} onall={() => (bannerLimit = Infinity)} />
+      {:else}
+        <div class="p-4 pt-0"><EmptyState compact title="还没有禁用记录" /></div>
+      {/if}
+    </section>
 
     <div class="grid gap-5 lg:grid-cols-2">
       <!-- Every group -->
@@ -145,27 +183,5 @@
       </section>
     </div>
 
-    <!-- Who bans what -->
-    <section class="rounded-xl border border-border bg-card p-4">
-      <h3 class="mb-3 flex items-center gap-1.5 text-body font-bold"><UserXIcon class="h-4 w-4 text-muted-foreground" />选手禁用偏好</h3>
-      {#if banners.length}
-        <ol class="grid gap-2 md:grid-cols-2">
-          {#each banners as b, i (b.id)}
-            <li class="flex items-center gap-3 rounded-lg bg-muted px-3 py-2 text-small">
-              <span class="num w-5 shrink-0 text-muted-foreground">{i + 1}</span>
-              <a href="/player/{encodeURIComponent(b.id)}" class="min-w-0 flex-1 truncate font-bold hover:text-brand-ink">{b.id}</a>
-              <span class="flex shrink-0 flex-wrap justify-end gap-1">
-                {#each b.top as t (t.group)}
-                  <span class="{TAG_BASE} {TAG_TONE.neutral}">{t.group} ×{t.n}</span>
-                {/each}
-              </span>
-              <span class="num w-14 shrink-0 text-right font-bold">{b.bans}<span class="ml-0.5 font-sans font-normal text-muted-foreground">次</span></span>
-            </li>
-          {/each}
-        </ol>
-      {:else}
-        <EmptyState compact title="还没有禁用记录" />
-      {/if}
-    </section>
   </div>
 {/if}

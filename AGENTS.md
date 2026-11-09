@@ -81,7 +81,7 @@ Ban / Pick 的载具池是 `axsuck.vehicle_pools` 里的模板（迁移 027）�
 
 ## Hall of fame and sharing
 
-`GET /hall-of-fame`（`lib/hall-of-fame.js`）：每场结束赛事的领奖台（`eventPlacements`，预选赛列出但不计冠军）和全部纪录（冠军、登台、参赛、胜场、最长连胜、最高 MMR，后三项来自天梯历史），在统计页的「名人堂」标签（`/stats#hall`：上面是全部赛事的生涯榜单（冠军、亚军、胜率、场数、弃权，`RankingBoards`，不受统计页筛选影响），下面是纪录：登台、最长连胜、历史最高 MMR，另列每个赛季各类型的积分榜第一；旧链接 `/hall` 会跳转过去）。统计页的「载具」标签（`/stats#vehicles`，`BanPickStats`）列出每个大组的禁用 / 禁用率 / 抽中 / 出场、每辆出场载具和占比、选手禁用偏好（`banners`）。赛事结束后「分享到 Discord」可以生成 1080×1350 的结果图（`#lib/result-image.js`，浏览器 canvas 绘制，保存或复制）；赛事链接的预览图是 `static/og-image.png`（`summary_large_image`）。
+`GET /hall-of-fame`（`lib/hall-of-fame.js`）：每场结束赛事的领奖台（`eventPlacements`，预选赛列出但不计冠军）和全部纪录（冠军、登台、参赛、胜场、最长连胜、最高 MMR，后三项来自天梯历史），在统计页的「名人堂」标签（`/stats#hall`：上面是全部赛事的生涯榜单（冠军、亚军、胜率、场数、弃权，`RankingBoards`，不受统计页筛选影响），下面是纪录：登台、最长连胜、历史最高 MMR，另列每个赛季各类型的积分榜第一；旧链接 `/hall` 会跳转过去）。统计页的「载具」标签（`/stats#vehicles`，`BanPickStats`）列出每个大组的禁用 / 禁用率 / 抽中 / 出场、每辆出场载具和占比、选手禁用偏好（`banners`：每位禁用过的选手，含场次和最常禁的 5 个大组）。赛事结束后「分享到 Discord」可以生成 1080×1350 的结果图（`#lib/result-image.js`，浏览器 canvas 绘制，保存或复制）；赛事链接的预览图是 `static/og-image.png`（`summary_large_image`）。
 
 ## Event tiers
 
