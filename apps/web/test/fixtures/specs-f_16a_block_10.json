@@ -1,0 +1,598 @@
+{
+ "version": 1,
+ "unit": "f_16a_block_10",
+ "name": "F-16A",
+ "rank": "VIII",
+ "features": [
+  "Arrestor gear",
+  "Flares/Chaff",
+  "Radar",
+  "RWR",
+  "Ballistic Computer",
+  "Voice warning system"
+ ],
+ "flight": [
+  {
+   "label": "Max speed",
+   "value": "2,156 km/h",
+   "value_ab": "2,209 km/h",
+   "sub": "at 10,973 m"
+  },
+  {
+   "label": "Rate of Climb",
+   "value": "305 m/s",
+   "value_ab": "350.4 m/s"
+  },
+  {
+   "label": "Turn time",
+   "value": "19.5 s",
+   "value_ab": "18.6 s"
+  },
+  {
+   "label": "Max altitude",
+   "value": "15,240 m"
+  },
+  {
+   "label": "Takeoff Run",
+   "value": "850 m"
+  }
+ ],
+ "general": [
+  {
+   "label": "Crew",
+   "value": "1 person"
+  },
+  {
+   "label": "Engine",
+   "value": "F100-PW-220",
+   "details": [
+    {
+     "label": "Type",
+     "value": "Jet"
+    },
+    {
+     "label": "Maximum",
+     "value": "6,490 kgf",
+     "section": "Engine Thrust (0 m / 0 km/h)"
+    },
+    {
+     "label": "Afterburner",
+     "value": "9,000 kgf",
+     "section": "Engine Thrust (0 m / 0 km/h)"
+    }
+   ]
+  },
+  {
+   "label": "Length",
+   "value": "15.1 m"
+  },
+  {
+   "label": "Wingspan",
+   "value": "9.4 m"
+  },
+  {
+   "label": "Wing Loading",
+   "value": "394 kg/m²"
+  },
+  {
+   "label": "Base weight",
+   "value": "7.69 t",
+   "value_ab": "7.49 t"
+  },
+  {
+   "label": "Fuel in main tanks",
+   "value": "3.31 t (41m)"
+  },
+  {
+   "label": "Fuel in drop tanks",
+   "value": "3.09 t (38m)"
+  },
+  {
+   "label": "Max Speed Limit (IAS)",
+   "value": "1,555 km/h"
+  },
+  {
+   "label": "Mach Number Limit",
+   "value": "2.2 M"
+  },
+  {
+   "label": "G limit",
+   "value": "≈ -7/14 G"
+  },
+  {
+   "label": "Flap Speed Limit (IAS)",
+   "value": "463 / 470 km/h",
+   "info": "L / T"
+  },
+  {
+   "label": "Gear Speed Limit (IAS)",
+   "value": "482 km/h"
+  }
+ ],
+ "guns": [
+  {
+   "name": "20 mm M61A1 cannon",
+   "count": 1,
+   "ammo": "512 rounds",
+   "rate": "6,000 shots/min"
+  }
+ ],
+ "suspended": [
+  {
+   "name": "AIM-9J Sidewinder air-to-air missiles",
+   "weight": "76.9 kg",
+   "pylons": 0,
+   "stats": [
+    {
+     "label": "Projectile Mass",
+     "value": "76.9 kg"
+    },
+    {
+     "label": "Guidance",
+     "value": "IR"
+    },
+    {
+     "label": "Aspect",
+     "value": "Rear-aspect"
+    },
+    {
+     "label": "Lock range in rear-aspect",
+     "value": "5.5 km"
+    },
+    {
+     "label": "Launch range",
+     "value": "18 km"
+    },
+    {
+     "label": "Maximum speed",
+     "value": "2.5 M"
+    },
+    {
+     "label": "Maximum overload",
+     "value": "20 G"
+    },
+    {
+     "label": "Missile guidance time",
+     "value": "40 s"
+    },
+    {
+     "label": "Explosive Type",
+     "value": "HBX-1"
+    },
+    {
+     "label": "Explosive Mass",
+     "value": "4.8 kg"
+    },
+    {
+     "label": "TNT equivalent",
+     "value": "7.6 kg"
+    }
+   ]
+  },
+  {
+   "name": "AIM-9L Sidewinder air-to-air missiles",
+   "weight": "84.5 kg",
+   "pylons": 0,
+   "stats": [
+    {
+     "label": "Projectile Mass",
+     "value": "84.5 kg"
+    },
+    {
+     "label": "Guidance",
+     "value": "IR"
+    },
+    {
+     "label": "Aspect",
+     "value": "All-aspects"
+    },
+    {
+     "label": "Lock range in rear-aspect",
+     "value": "11 km"
+    },
+    {
+     "label": "Lock range in all-aspect",
+     "value": "3 km"
+    },
+    {
+     "label": "Launch range",
+     "value": "18 km"
+    },
+    {
+     "label": "Maximum speed",
+     "value": "2.5 M"
+    },
+    {
+     "label": "Maximum overload",
+     "value": "30 G"
+    },
+    {
+     "label": "Missile guidance time",
+     "value": "60 s"
+    },
+    {
+     "label": "Explosive Type",
+     "value": "PBXN-102"
+    },
+    {
+     "label": "Explosive Mass",
+     "value": "3.6 kg"
+    },
+    {
+     "label": "TNT equivalent",
+     "value": "4.6 kg"
+    }
+   ]
+  },
+  {
+   "name": "AGM-65B air-to-ground missile",
+   "weight": "210.5 kg",
+   "pylons": 0,
+   "stats": [
+    {
+     "label": "Caliber",
+     "value": "304.8 mm"
+    },
+    {
+     "label": "Projectile Mass",
+     "value": "210.5 kg"
+    },
+    {
+     "label": "Guidance",
+     "value": "TV"
+    },
+    {
+     "label": "Launch range",
+     "value": "23 km"
+    },
+    {
+     "label": "Maximum speed",
+     "value": "0.9 M"
+    },
+    {
+     "label": "Missile guidance time",
+     "value": "105 s"
+    },
+    {
+     "label": "Explosive Type",
+     "value": "Composition B"
+    },
+    {
+     "label": "Explosive Mass",
+     "value": "39.1 kg"
+    },
+    {
+     "label": "TNT equivalent",
+     "value": "51.2 kg"
+    }
+   ]
+  },
+  {
+   "name": "3 × AGM-65B air-to-ground missile",
+   "weight": "631.4 kg",
+   "pylons": 0,
+   "stats": [
+    {
+     "label": "Caliber",
+     "value": "304.8 mm"
+    },
+    {
+     "label": "Projectile Mass",
+     "value": "210.5 kg"
+    },
+    {
+     "label": "Guidance",
+     "value": "TV"
+    },
+    {
+     "label": "Launch range",
+     "value": "23 km"
+    },
+    {
+     "label": "Maximum speed",
+     "value": "0.9 M"
+    },
+    {
+     "label": "Missile guidance time",
+     "value": "105 s"
+    },
+    {
+     "label": "Explosive Type",
+     "value": "Composition B"
+    },
+    {
+     "label": "Explosive Mass",
+     "value": "39.1 kg"
+    },
+    {
+     "label": "TNT equivalent",
+     "value": "51.2 kg"
+    }
+   ]
+  },
+  {
+   "name": "57 × FFAR Mighty Mouse rockets",
+   "weight": "688.9 kg",
+   "pylons": 0,
+   "stats": [
+    {
+     "label": "Caliber",
+     "value": "70 mm"
+    },
+    {
+     "label": "Projectile Mass",
+     "value": "9 kg"
+    },
+    {
+     "label": "Maximum speed",
+     "value": "2,000 m/s"
+    },
+    {
+     "label": "Explosive Type",
+     "value": "Composition B"
+    },
+    {
+     "label": "Explosive Mass",
+     "value": "907 g"
+    },
+    {
+     "label": "TNT equivalent",
+     "value": "1.2 kg"
+    }
+   ]
+  },
+  {
+   "name": "BLU-27/B incendiary bomb",
+   "weight": "401.4 kg",
+   "pylons": 0,
+   "stats": [
+    {
+     "label": "Projectile Mass",
+     "value": "401.4 kg"
+    },
+    {
+     "label": "Explosive Type",
+     "value": "Napalm-B"
+    },
+    {
+     "label": "Explosive Mass",
+     "value": "358.3 kg"
+    }
+   ]
+  },
+  {
+   "name": "3 × 500 lb LDGP Mk 82 bomb",
+   "weight": "722.7 kg",
+   "pylons": 0,
+   "stats": [
+    {
+     "label": "Projectile Mass",
+     "value": "531 lbs"
+    },
+    {
+     "label": "Explosive Type",
+     "value": "Comp. H6"
+    },
+    {
+     "label": "Explosive Mass",
+     "value": "87.1 kg"
+    },
+    {
+     "label": "TNT equivalent",
+     "value": "117.6 kg"
+    }
+   ]
+  },
+  {
+   "name": "3 × 500 lb Mk 82 Snakeye high-drag tail fin retarded bomb",
+   "weight": "762 kg",
+   "pylons": 0,
+   "stats": [
+    {
+     "label": "Projectile Mass",
+     "value": "560 lbs"
+    },
+    {
+     "label": "Explosive Type",
+     "value": "Comp. H6"
+    },
+    {
+     "label": "Explosive Mass",
+     "value": "87.1 kg"
+    },
+    {
+     "label": "TNT equivalent",
+     "value": "117.6 kg"
+    }
+   ]
+  },
+  {
+   "name": "2000 lb LDGP Mk 84 bomb",
+   "weight": "893.6 kg",
+   "pylons": 0,
+   "stats": [
+    {
+     "label": "Projectile Mass",
+     "value": "1,970 lbs"
+    },
+    {
+     "label": "Explosive Type",
+     "value": "Comp. H6"
+    },
+    {
+     "label": "Explosive Mass",
+     "value": "428.6 kg"
+    },
+    {
+     "label": "TNT equivalent",
+     "value": "578.6 kg"
+    }
+   ]
+  },
+  {
+   "name": "2000 lb LDGP Mk 84 Air bomb",
+   "weight": "893.6 kg",
+   "pylons": 0,
+   "stats": [
+    {
+     "label": "Projectile Mass",
+     "value": "1,970 lbs"
+    },
+    {
+     "label": "Explosive Type",
+     "value": "Comp. H6"
+    },
+    {
+     "label": "Explosive Mass",
+     "value": "428.6 kg"
+    },
+    {
+     "label": "TNT equivalent",
+     "value": "578.6 kg"
+    }
+   ]
+  },
+  {
+   "name": "GBU-8",
+   "weight": "1,027 kg",
+   "pylons": 0,
+   "stats": [
+    {
+     "label": "Projectile Mass",
+     "value": "2,000 lbs"
+    },
+    {
+     "label": "Guidance",
+     "value": "TV"
+    },
+    {
+     "label": "Missile guidance time",
+     "value": "90 s"
+    },
+    {
+     "label": "Explosive Type",
+     "value": "Comp. H6"
+    },
+    {
+     "label": "Explosive Mass",
+     "value": "428.6 kg"
+    },
+    {
+     "label": "TNT equivalent",
+     "value": "578.6 kg"
+    }
+   ]
+  },
+  {
+   "name": "6 × 500 lb LDGP Mk 82 bomb",
+   "weight": "1,445.4 kg",
+   "pylons": 0,
+   "stats": [
+    {
+     "label": "Projectile Mass",
+     "value": "531 lbs"
+    },
+    {
+     "label": "Explosive Type",
+     "value": "Comp. H6"
+    },
+    {
+     "label": "Explosive Mass",
+     "value": "87.1 kg"
+    },
+    {
+     "label": "TNT equivalent",
+     "value": "117.6 kg"
+    }
+   ]
+  },
+  {
+   "name": "6 × 500 lb Mk 82 Snakeye high-drag tail fin retarded bomb",
+   "weight": "1,524 kg",
+   "pylons": 0,
+   "stats": [
+    {
+     "label": "Projectile Mass",
+     "value": "560 lbs"
+    },
+    {
+     "label": "Explosive Type",
+     "value": "Comp. H6"
+    },
+    {
+     "label": "Explosive Mass",
+     "value": "87.1 kg"
+    },
+    {
+     "label": "TNT equivalent",
+     "value": "117.6 kg"
+    }
+   ]
+  },
+  {
+   "name": "Drop tank (370 gal.)",
+   "weight": "100 kg",
+   "pylons": 0,
+   "stats": []
+  },
+  {
+   "name": "500 lb LDGP Mk 82 bomb",
+   "weight": "240.9 kg",
+   "pylons": 0,
+   "stats": [
+    {
+     "label": "Projectile Mass",
+     "value": "531 lbs"
+    },
+    {
+     "label": "Explosive Type",
+     "value": "Comp. H6"
+    },
+    {
+     "label": "Explosive Mass",
+     "value": "87.1 kg"
+    },
+    {
+     "label": "TNT equivalent",
+     "value": "117.6 kg"
+    }
+   ]
+  },
+  {
+   "name": "500 lb Mk 82 Snakeye high-drag tail fin retarded bomb",
+   "weight": "254 kg",
+   "pylons": 0,
+   "stats": [
+    {
+     "label": "Projectile Mass",
+     "value": "560 lbs"
+    },
+    {
+     "label": "Explosive Type",
+     "value": "Comp. H6"
+    },
+    {
+     "label": "Explosive Mass",
+     "value": "87.1 kg"
+    },
+    {
+     "label": "TNT equivalent",
+     "value": "117.6 kg"
+    }
+   ]
+  },
+  {
+   "name": "Drop tank (300 gal.)",
+   "weight": "100 kg",
+   "pylons": 0,
+   "stats": []
+  }
+ ],
+ "suspended_limits": [
+  {
+   "label": "Max weight",
+   "value": "5,420 kg",
+   "sub": "Maximum"
+  }
+ ]
+}

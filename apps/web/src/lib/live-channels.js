@@ -18,9 +18,9 @@ export function channelState(tournament, channel = 1) {
   if (channel === 1 && tournament && !tournament.live_channels) {
     // An API from before channels: the top-level fields are channel 1.
     const { active_match_id = null, overlay_scene = "auto", overlay_round = null, overlay_stage = null } = tournament;
-    return { channel: 1, active_match_id, overlay_scene, overlay_round, overlay_stage };
+    return { channel: 1, active_match_id, overlay_scene, overlay_round, overlay_stage, countdown_end: null };
   }
-  return { channel, active_match_id: null, overlay_scene: "auto", overlay_round: null, overlay_stage: null };
+  return { channel, active_match_id: null, overlay_scene: "auto", overlay_round: null, overlay_stage: null, countdown_end: null };
 }
 
 /**
@@ -29,8 +29,8 @@ export function channelState(tournament, channel = 1) {
  */
 export function withChannel(tournament, channel = 1) {
   if (!tournament) return tournament;
-  const { active_match_id, overlay_scene, overlay_round, overlay_stage } = channelState(tournament, channel);
-  return { ...tournament, active_match_id, overlay_scene, overlay_round, overlay_stage, live_channel: channel };
+  const { active_match_id, overlay_scene, overlay_round, overlay_stage, countdown_end = null } = channelState(tournament, channel);
+  return { ...tournament, active_match_id, overlay_scene, overlay_round, overlay_stage, countdown_end, live_channel: channel };
 }
 
 /** Matches live on the other channels: match id -> channel. */
@@ -55,6 +55,28 @@ export function channelOptions(tournament, current = 1) {
   const max = Math.max(...used);
   if (max < MAX_LIVE_CHANNELS) used.add(max + 1);
   return [...used].sort((a, b) => a - b);
+}
+
+/**
+ * Match start countdown of a channel (countdown_end), against the server's
+ * clock: `offset` is the server time minus this computer's (from the
+ * event's synced_at), so an OBS PC with a wrong clock still counts right.
+ * { remaining } in ms (0 once over), { over }; null when none is set.
+ */
+export function countdownState(end, now = Date.now(), offset = 0) {
+  const at = end ? new Date(end).getTime() : NaN;
+  if (!Number.isFinite(at)) return null;
+  const remaining = Math.max(0, at - (now + offset));
+  return { remaining, over: remaining === 0 };
+}
+
+/** "4:05", "12:00", "1:02:03": time left of a countdown, rounded up to the second. */
+export function formatCountdown(ms) {
+  const total = Math.ceil(Math.max(0, ms) / 1000);
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = String(total % 60).padStart(2, "0");
+  return h ? `${h}:${String(m).padStart(2, "0")}:${s}` : `${m}:${s}`;
 }
 
 /** Overlay link of a channel: channel 1 keeps the plain link. */

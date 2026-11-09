@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { liveChannelsView, parseChannel } from '../lib/live-channels.js';
+import { countdownEnd, liveChannelsView, parseChannel } from '../lib/live-channels.js';
 import { LiveChannelRepo } from '../repositories/live-channel-repo.js';
 import { tournamentDetail } from '../lib/tournament-detail.js';
 
@@ -30,7 +30,7 @@ test('the detail lists every channel; the old fields mirror channel 1', () => {
     channels: [{ channel: 1, active_match_id: 5, overlay_scene: 'hybrid', overlay_round: 3, overlay_stage: 'wb:3' }, ...channels],
   });
   assert.deepEqual([withMain.active_match_id, withMain.overlay_scene, withMain.overlay_round, withMain.overlay_stage], [5, 'hybrid', 3, 'wb:3']);
-  assert.deepEqual(liveChannelsView([]), [{ channel: 1, active_match_id: null, overlay_scene: 'auto', overlay_round: null, overlay_stage: null }]);
+  assert.deepEqual(liveChannelsView([]), [{ channel: 1, active_match_id: null, overlay_scene: 'auto', overlay_round: null, overlay_stage: null, countdown_end: null }]);
 });
 
 function fakeDb({ matchesOfEvent = [1, 2, 3], live = [] } = {}) {
@@ -61,6 +61,13 @@ function fakeDb({ matchesOfEvent = [1, 2, 3], live = [] } = {}) {
           rows.push(row);
         } else if (keepStage) row.overlay_stage = stage;
         Object.assign(row, { overlay_scene: scene, overlay_round: round });
+        return { rowCount: 1, rows: [] };
+      }
+      if (text.startsWith('INSERT INTO axsuck.live_channels (tournament_id, channel, countdown_end)')) {
+        const [tid, channel, end] = params;
+        const row = rows.find((r) => r.tournament_id === tid && r.channel === channel);
+        if (row) row.countdown_end = end;
+        else rows.push({ tournament_id: tid, channel, active_match_id: null, overlay_scene: 'auto', overlay_round: null, overlay_stage: null, countdown_end: end });
         return { rowCount: 1, rows: [] };
       }
       if (text.startsWith('SELECT channel, active_match_id, overlay_scene')) {
@@ -98,5 +105,22 @@ test('overlay scene and stage are per channel; a missing stage keeps the old one
   assert.deepEqual([one.overlay_scene, one.overlay_round, one.overlay_stage], ['hybrid', 3, 'wb:2']);
   const two = await repo.get('t', 2);
   assert.deepEqual([two.overlay_scene, two.overlay_round, two.overlay_stage], ['ingame', 1, null]);
-  assert.deepEqual(await repo.get('t', 5), { channel: 5, active_match_id: null, overlay_scene: 'auto', overlay_round: null, overlay_stage: null });
+  assert.deepEqual(await repo.get('t', 5), { channel: 5, active_match_id: null, overlay_scene: 'auto', overlay_round: null, overlay_stage: null, countdown_end: null });
+});
+
+test('match start countdown: seconds or an end time, within 24 hours; per channel', async () => {
+  const now = Date.parse('2026-11-10T12:00:00Z');
+  assert.equal(countdownEnd({ seconds: 300 }, now).toISOString(), '2026-11-10T12:05:00.000Z');
+  assert.equal(countdownEnd({ end: '2026-11-10T13:00:00Z' }, now).toISOString(), '2026-11-10T13:00:00.000Z');
+  assert.equal(countdownEnd({ clear: true }, now), null);
+  assert.equal(countdownEnd({ seconds: null }, now), null);
+  for (const bad of [{}, { seconds: 0 }, { seconds: -5 }, { seconds: 'x' }, { seconds: 90000 }, { end: 'soon' }, { end: '2026-11-10T11:00:00Z' }]) {
+    assert.equal(countdownEnd(bad, now), undefined, JSON.stringify(bad));
+  }
+
+  const repo = LiveChannelRepo(fakeDb());
+  const end = new Date(now + 60_000);
+  assert.equal((await repo.setCountdown('t', 2, end)).countdown_end, end);
+  assert.equal((await repo.get('t', 1)).countdown_end, null, 'channel 1 untouched');
+  assert.equal((await repo.setCountdown('t', 2, null)).countdown_end, null);
 });

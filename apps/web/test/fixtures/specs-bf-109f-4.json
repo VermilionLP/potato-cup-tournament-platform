@@ -1,0 +1,121 @@
+{
+ "version": 1,
+ "unit": "bf-109f-4",
+ "name": "Bf 109 F-4",
+ "rank": "III",
+ "features": [],
+ "flight": [
+  {
+   "label": "Max speed",
+   "value": "665 km/h",
+   "value_ab": "691 km/h",
+   "sub": "at 6,000 m"
+  },
+  {
+   "label": "Rate of Climb",
+   "value": "20 m/s",
+   "value_ab": "24.6 m/s"
+  },
+  {
+   "label": "Turn time",
+   "value": "19 s",
+   "value_ab": "18.1 s"
+  },
+  {
+   "label": "Max altitude",
+   "value": "11,600 m"
+  },
+  {
+   "label": "Takeoff Run",
+   "value": "363 m"
+  }
+ ],
+ "general": [
+  {
+   "label": "Crew",
+   "value": "1 person"
+  },
+  {
+   "label": "Engine",
+   "value": "DB-601E",
+   "details": [
+    {
+     "label": "Type",
+     "value": "Inline, 12-cylinder"
+    },
+    {
+     "label": "Cooling type",
+     "value": "Water"
+    },
+    {
+     "label": "Maximum",
+     "value": "1,170 hp",
+     "section": "Engine Power"
+    },
+    {
+     "label": "WEP",
+     "value": "1,320 hp",
+     "section": "Engine Power"
+    }
+   ]
+  },
+  {
+   "label": "Length",
+   "value": "9.2 m"
+  },
+  {
+   "label": "Wingspan",
+   "value": "9.9 m"
+  },
+  {
+   "label": "Wing Loading",
+   "value": "177 kg/m²"
+  },
+  {
+   "label": "Base weight",
+   "value": "2.58 t",
+   "value_ab": "2.51 t"
+  },
+  {
+   "label": "Fuel in main tanks",
+   "value": "0.3 t (1h 8m)"
+  },
+  {
+   "label": "Max Speed Limit (IAS)",
+   "value": "790 km/h"
+  },
+  {
+   "label": "Mach Number Limit",
+   "value": "0.82 M"
+  },
+  {
+   "label": "G limit",
+   "value": "≈ -6/12 G"
+  },
+  {
+   "label": "Flap Speed Limit (IAS)",
+   "value": "260 / 409 / 438 km/h",
+   "info": "L / T / C"
+  },
+  {
+   "label": "Gear Speed Limit (IAS)",
+   "value": "360 km/h"
+  }
+ ],
+ "guns": [
+  {
+   "name": "20 mm MG 151 cannon",
+   "count": 1,
+   "ammo": "200 rounds",
+   "rate": "700 shots/min"
+  },
+  {
+   "name": "7.92 mm MG 17 machine gun",
+   "count": 2,
+   "ammo": "1,000 rounds",
+   "rate": "1,200 shots/min"
+  }
+ ],
+ "suspended": [],
+ "suspended_limits": []
+}

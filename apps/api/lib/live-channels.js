@@ -14,7 +14,7 @@ export function parseChannel(value) {
 
 /** State of a channel with no stored row. */
 export function emptyChannel(channel) {
-  return { channel, active_match_id: null, overlay_scene: 'auto', overlay_round: null, overlay_stage: null };
+  return { channel, active_match_id: null, overlay_scene: 'auto', overlay_round: null, overlay_stage: null, countdown_end: null };
 }
 
 /**
@@ -31,6 +31,29 @@ export function liveChannelsView(rows = []) {
       overlay_scene: r.overlay_scene || 'auto',
       overlay_round: r.overlay_round ?? null,
       overlay_stage: r.overlay_stage ?? null,
+      countdown_end: r.countdown_end ?? null,
     }))
     .sort((a, b) => a.channel - b.channel);
+}
+
+// Longest match start countdown (24 hours).
+export const MAX_COUNTDOWN_SECONDS = 24 * 60 * 60;
+
+/**
+ * End time of a countdown from a request body: { seconds } from now, or an
+ * { end } time. null clears it; undefined = invalid (in the past, too far
+ * ahead or not a time).
+ */
+export function countdownEnd(body = {}, now = Date.now()) {
+  if (body.seconds === null || body.end === null || body.clear === true) return null;
+  let end;
+  if (body.seconds !== undefined) {
+    const s = Number(body.seconds);
+    if (!Number.isFinite(s)) return undefined;
+    end = now + Math.round(s) * 1000;
+  } else if (body.end !== undefined) {
+    end = new Date(String(body.end)).getTime();
+  } else return undefined;
+  if (!Number.isFinite(end) || end <= now || end > now + MAX_COUNTDOWN_SECONDS * 1000) return undefined;
+  return new Date(end);
 }

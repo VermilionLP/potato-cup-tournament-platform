@@ -3,7 +3,12 @@
   // event name on the left, the current segment as pills in the middle,
   // progress or time on the right (the `right` snippet). Steps:
   // [{ label, state: "done" | "active" | "todo" | "idle" }].
+  // A running match start countdown (set in the console; the overlay page
+  // provides it) takes the right side.
+  import { getContext } from "svelte";
+
   let { tournament, steps = [], right } = $props();
+  const countdown = getContext("overlay-countdown");
   // The logo already says Potato Cup: "FamilyX Potato Cup Weekly #41" -> "Weekly #41".
   let name = $derived(String(tournament?.name || "").replace(/^.*?potato\s*cup\s*/i, "") || tournament?.name || "");
 </script>
@@ -33,6 +38,11 @@
     {/each}
   </div>
   <div class="flex min-w-0 items-center justify-end gap-3">
-    {@render right?.()}
+    {#if countdown?.running}
+      <span class="font-num text-base font-bold tracking-[0.16em] text-cyan-200">MATCH STARTS IN</span>
+      <span class="inline-flex h-[60px] min-w-[150px] items-center justify-center rounded-xl border-2 border-cyan-400 bg-cyan-400/10 px-4 font-display text-[44px] font-extrabold leading-none tabular-nums">{countdown.text}</span>
+    {:else}
+      {@render right?.()}
+    {/if}
   </div>
 </div>

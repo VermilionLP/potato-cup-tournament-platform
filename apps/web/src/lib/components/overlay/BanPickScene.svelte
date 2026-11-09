@@ -7,13 +7,16 @@
   //   2. vehicle draw — the groups shrink into a column on the left (the
   //      drawn group and the bans) and the group's vehicles take the stage;
   //   3. locked in — everything else leaves and the vehicle (or, for a
-  //      template that ends at the group, the group) is shown in detail.
+  //      template that ends at the group, the group) is shown in detail:
+  //      its specifications from the War Thunder wiki (#lib/vehicle-specs.js)
+  //      in four cards, or the group's vehicles and the bans without them.
   // A new draw rolls through the options for a moment before it lands.
   import { untrack } from "svelte";
   import { fade } from "svelte/transition";
   import { availableGroups, availableVehicles, bansOf, effectiveLog, groupVehicles, initialBanPick } from "#lib/banpick.js";
   import { matchStageLabels, tierEnglish } from "#lib/overlay.js";
   import { slotImage, slotImageDirect } from "#lib/wt-units.js";
+  import { loadVehicleSpecs, specCards } from "#lib/vehicle-specs.js";
   import Flag from "#lib/components/Flag.svelte";
   import OverlayTopBar from "./OverlayTopBar.svelte";
   import LeagueBadge from "./LeagueBadge.svelte";
@@ -62,6 +65,24 @@
   let groupsLeft = $derived(availableGroups(bp, grouped).length);
   let shownVehicleName = $derived(rolling && rollingPhase === "drawVehicle" ? rollingLabel : bp.vehicle);
   let lockedVehicle = $derived(groupEntry?.vehicles.find((v) => v.name === bp.vehicle) || null);
+  // The locked vehicle's specifications. The group's vehicles are asked for
+  // while the vehicle is being drawn, so the reveal has them at once.
+  const unitOf = (v) => v?.wiki || v?.unit || null;
+  let specs = $state(null);
+  $effect(() => {
+    const unit = unitOf(lockedVehicle);
+    specs = null;
+    if (!unit) return;
+    let current = true;
+    loadVehicleSpecs(unit).then((s) => current && (specs = s));
+    return () => (current = false);
+  });
+  $effect(() => {
+    if (stage !== 2) return;
+    for (const v of groupEntry?.vehicles || []) loadVehicleSpecs(unitOf(v));
+  });
+  let cards = $derived(specCards(specs, String(tournament?.game_mode || "").toLowerCase()));
+
   // Who pressed the draw buttons.
   const sideOf = (action) => [...log].reverse().find((e) => e.action === action)?.side || null;
   let groupDrawer = $derived(sideOf("drawGroup"));
@@ -347,7 +368,7 @@
 
     <!-- 3 · Locked in -->
     <div
-      class="absolute bottom-16 left-16 right-16 top-36 grid grid-cols-[920px_minmax(0,1fr)] gap-12"
+      class="absolute bottom-16 left-16 right-16 top-36 grid grid-cols-[920px_minmax(0,1fr)] grid-rows-[minmax(0,1fr)] gap-12"
       style="opacity: {stage === 3 ? 1 : 0}; transform: {stage === 3 ? 'none' : 'translateY(40px) scale(0.98)'}; transition: opacity 700ms cubic-bezier(.2,.8,.2,1) {stage === 3 ? 350 : 0}ms, transform 900ms cubic-bezier(.2,.8,.2,1) {stage === 3 ? 350 : 0}ms; pointer-events: none;"
     >
       <div class="relative flex items-center justify-center overflow-hidden rounded-3xl border-2 border-cyan-400 bg-[radial-gradient(ellipse_at_50%_40%,#2A4A75_0%,#13254A_75%)] shadow-[0_0_80px_rgba(34,211,238,0.28)]">
@@ -367,40 +388,60 @@
           <span class="truncate">{who.name(activeMatch.player2_id)}</span><span class="inline-flex h-9 w-9 items-center justify-center rounded-[9px] bg-side-b font-display text-2xl text-[#22124A]">B</span>
         </div>
       </div>
-      <div class="flex min-w-0 flex-col gap-6 py-1">
-        <div class="flex flex-col gap-2.5">
+      <div class="flex min-h-0 min-w-0 flex-col {cards.length ? 'gap-3' : 'gap-6 py-1'}">
+        <div class="flex flex-col {cards.length ? 'gap-2' : 'gap-2.5'}">
           <span class="font-num text-lg font-bold tracking-[0.18em] text-cyan-200">THIS MATCH'S {lockedVehicle ? "VEHICLE" : "GROUP"}</span>
-          <span class="truncate font-display text-[104px] font-extrabold leading-[0.9]">{lockedVehicle?.name || bp.group || ""}</span>
-          <span class="text-2xl text-[#C3CAD4]">{lockedVehicle ? [lockedVehicle.nation, lockedVehicle.type].filter(Boolean).join(" · ") : "Any vehicle of the group"}</span>
+          <span class="truncate font-display font-extrabold leading-[0.9] {cards.length ? 'text-[80px]' : 'text-[104px]'}">{lockedVehicle?.name || bp.group || ""}</span>
+          <span class="text-2xl text-[#C3CAD4]">{lockedVehicle ? [lockedVehicle.nation, lockedVehicle.type, specs?.rank && `Rank ${specs.rank}`].filter(Boolean).join(" · ") : "Any vehicle of the group"}</span>
         </div>
         <div class="flex items-end gap-9">
           {#if lockedVehicle?.br != null}
-            <div class="flex flex-col gap-1"><span class="font-num text-base font-bold tracking-[0.16em] text-[#AFC0D8]">BATTLE RATING</span><span class="font-display text-[88px] font-extrabold leading-[0.85] text-cyan-400">{br(lockedVehicle)}</span></div>
+            <div class="flex flex-col gap-1"><span class="font-num text-base font-bold tracking-[0.16em] text-[#AFC0D8]">BATTLE RATING</span><span class="font-display font-extrabold leading-[0.85] text-cyan-400 {cards.length ? 'text-[64px]' : 'text-[88px]'}">{br(lockedVehicle)}</span></div>
           {/if}
           <div class="flex flex-col gap-1 pb-2"><span class="font-num text-base font-bold tracking-[0.16em] text-[#AFC0D8]">GROUP</span><span class="font-display text-[40px] font-extrabold leading-none">{bp.group || ""}</span></div>
           {#if groupDrawer || vehicleDrawer}
             <div class="flex flex-col gap-1 pb-2"><span class="font-num text-base font-bold tracking-[0.16em] text-[#AFC0D8]">DRAWN BY</span><span class="truncate text-[28px] font-extrabold leading-tight">{who.name(playerOf(vehicleDrawer || groupDrawer))}</span></div>
           {/if}
         </div>
-        <!-- The group's vehicles and the bans -->
-        <div class="flex min-h-0 flex-col gap-2 rounded-2xl border border-white/[0.07] bg-[rgba(24,40,70,0.7)] px-5 py-4">
-          <span class="font-num text-base font-bold tracking-[0.16em] text-cyan-400">IN THIS GROUP</span>
-          {#each groupEntry?.vehicles || [] as v (v.name)}
-            {@const st = vehicleState(v)}
-            <div class="flex items-baseline justify-between gap-3 border-t border-white/[0.06] py-1.5">
-              <span class="truncate text-xl font-bold {st === 'out' ? 'text-[#7184A3] line-through' : st === 'picked' ? 'text-cyan-200' : ''}">{st === "picked" ? "★ " : ""}{v.name}</span>
-              <span class="shrink-0 font-num text-xl font-bold tabular-nums {st === 'out' ? 'text-[#7184A3]' : ''}">{v.br != null ? `BR ${br(v)}` : ""}</span>
-            </div>
-          {/each}
-        </div>
-        <div class="flex flex-wrap items-center gap-2.5">
-          <span class="font-num text-base font-bold tracking-[0.16em] text-[#AFC0D8]">BANNED</span>
-          {#each bp.bans.filter((b) => b.group) as b, i (i)}
-            <span class="inline-flex items-center gap-2 rounded-lg bg-white/[0.05] px-3 py-1 text-lg font-bold line-through {b.by === 'A' ? 'text-[#FCE3A6]' : 'text-[#E4DBFF]'}">{b.group}</span>
-          {:else}
-            <span class="text-lg text-[#7184A3]">None</span>
-          {/each}
-        </div>
+        {#if cards.length}
+          <!-- Vehicle data in four cards: performance, engine, armament, flaps & limits -->
+          <div class="grid min-h-0 flex-1 grid-cols-2 grid-rows-2 gap-3" in:fade={{ duration: 500 }}>
+            {#each cards as c (c.title)}
+              <div class="flex min-w-0 flex-col gap-0.5 overflow-hidden rounded-[14px] border border-white/[0.07] bg-[rgba(24,40,70,0.7)] px-4 py-3.5">
+                <span class="mb-0.5 font-num text-base font-bold tracking-[0.16em] text-cyan-400">{c.title}</span>
+                {#each c.rows as r, i (i)}
+                  <div class="flex min-w-0 items-baseline justify-between gap-3 border-t border-white/[0.06] py-1">
+                    <span class="flex min-w-0 flex-col">
+                      <span class="truncate text-lg font-bold leading-snug {r.name || r.sub ? '' : 'text-[#AFC0D8]'}">{r.label}</span>
+                      {#if r.sub}<span class="truncate font-num text-[15px] font-bold leading-tight {r.accent ? 'text-cyan-200' : 'text-[#7184A3]'}">{r.sub}</span>{/if}
+                    </span>
+                    <span class="shrink-0 whitespace-nowrap text-right font-num text-xl font-bold tabular-nums">{r.value}</span>
+                  </div>
+                {/each}
+              </div>
+            {/each}
+          </div>
+        {:else}
+          <!-- The group's vehicles and the bans -->
+          <div class="flex min-h-0 flex-col gap-2 rounded-2xl border border-white/[0.07] bg-[rgba(24,40,70,0.7)] px-5 py-4">
+            <span class="font-num text-base font-bold tracking-[0.16em] text-cyan-400">IN THIS GROUP</span>
+            {#each groupEntry?.vehicles || [] as v (v.name)}
+              {@const st = vehicleState(v)}
+              <div class="flex items-baseline justify-between gap-3 border-t border-white/[0.06] py-1.5">
+                <span class="truncate text-xl font-bold {st === 'out' ? 'text-[#7184A3] line-through' : st === 'picked' ? 'text-cyan-200' : ''}">{st === "picked" ? "★ " : ""}{v.name}</span>
+                <span class="shrink-0 font-num text-xl font-bold tabular-nums {st === 'out' ? 'text-[#7184A3]' : ''}">{v.br != null ? `BR ${br(v)}` : ""}</span>
+              </div>
+            {/each}
+          </div>
+          <div class="flex flex-wrap items-center gap-2.5">
+            <span class="font-num text-base font-bold tracking-[0.16em] text-[#AFC0D8]">BANNED</span>
+            {#each bp.bans.filter((b) => b.group) as b, i (i)}
+              <span class="inline-flex items-center gap-2 rounded-lg bg-white/[0.05] px-3 py-1 text-lg font-bold line-through {b.by === 'A' ? 'text-[#FCE3A6]' : 'text-[#E4DBFF]'}">{b.group}</span>
+            {:else}
+              <span class="text-lg text-[#7184A3]">None</span>
+            {/each}
+          </div>
+        {/if}
       </div>
     </div>
   {/if}

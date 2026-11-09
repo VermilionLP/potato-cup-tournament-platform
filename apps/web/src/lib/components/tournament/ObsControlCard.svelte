@@ -7,12 +7,13 @@
   import { toast } from "svelte-sonner";
   import { API } from "#lib/api.js";
   import { copyText } from "#lib/clipboard.js";
-  import { channelUrl } from "#lib/live-channels.js";
+  import { channelUrl, countdownState, formatCountdown } from "#lib/live-channels.js";
   import * as Card from "#lib/components/ui/card/index.js";
   import { Button } from "#lib/components/ui/button/index.js";
   import SettingsIcon from "@lucide/svelte/icons/settings";
   import RadioIcon from "@lucide/svelte/icons/radio";
   import CopyIcon from "@lucide/svelte/icons/copy";
+  import TimerIcon from "@lucide/svelte/icons/timer";
 
   let {
     tournament,
@@ -85,6 +86,48 @@
       toast.error("更改大屏轮次失败: " + err.message);
     }
   }
+
+  // Match start countdown: the overlays show it on every scene but the HUD
+  // and switch to the HUD when it runs out. Counted on the server's clock.
+  let clockOffset = $state(0);
+  $effect(() => {
+    const at = Date.parse(tournament?.synced_at || "");
+    if (Number.isFinite(at)) clockOffset = at - Date.now();
+  });
+  let now = $state(Date.now());
+  $effect(() => {
+    if (!tournament?.countdown_end) return;
+    now = Date.now();
+    const timer = setInterval(() => (now = Date.now()), 500);
+    return () => clearInterval(timer);
+  });
+  let countdown = $derived(countdownState(tournament?.countdown_end, now, clockOffset));
+  let countdownMinutes = $state(5);
+  let countdownTime = $state("");
+
+  async function startCountdown(body, label) {
+    try {
+      await API.setCountdown(tid, body, channel);
+      toast.success(label);
+    } catch (err) {
+      toast.error("设置倒计时失败: " + err.message);
+    }
+  }
+  function startMinutes(minutes) {
+    const m = Number(minutes);
+    if (!(m > 0)) return toast.error("请输入大于 0 的分钟数");
+    startCountdown({ seconds: Math.round(m * 60) }, `倒计时已开始: ${m} 分钟`);
+  }
+  // A clock time today (tomorrow when it has passed), on this computer's clock.
+  function startAt(value) {
+    const [h, m] = String(value).split(":").map(Number);
+    if (!Number.isInteger(h) || !Number.isInteger(m)) return toast.error("请选择开始时间");
+    const end = new Date();
+    end.setHours(h, m, 0, 0);
+    if (end.getTime() <= Date.now()) end.setDate(end.getDate() + 1);
+    startCountdown({ end: new Date(end.getTime() + clockOffset).toISOString() }, `倒计时到 ${value}`);
+  }
+  const clearCountdown = () => startCountdown({ clear: true }, "已清除倒计时");
 
   let liveMatch = $derived(tournament.matches?.find((m) => m.id === tournament.active_match_id));
 </script>
@@ -180,6 +223,43 @@
               <option value="versus">对位预告 (直播对局或下一场)</option>
               <option value="banpick">Ban / Pick (直播对局的禁用与抽取)</option>
             </select>
+          </div>
+
+          <div class="flex flex-col gap-2 pt-2 border-t border-primary/10">
+            <div class="flex items-center justify-between gap-2">
+              <span class="flex items-center gap-1.5 text-small font-bold text-brand-ink shrink-0"><TimerIcon class="w-3.5 h-3.5" />比赛开始倒计时:</span>
+              {#if countdown && !countdown.over}
+                <span class="num text-sm font-bold text-brand-ink">{formatCountdown(countdown.remaining)}</span>
+              {:else if countdown?.over}
+                <span class="text-small font-bold text-red-600">已结束 · 大屏显示 HUD</span>
+              {:else}
+                <span class="text-small text-muted-foreground">未开始</span>
+              {/if}
+            </div>
+            {#if countdown}
+              <div class="flex items-center justify-between gap-2">
+                <span class="text-small text-muted-foreground leading-normal">
+                  {countdown.over ? "清除倒计时或切换场景后，大屏回到上面选的场景。" : "除 HUD 外的大屏右上角显示倒计时，最后 10 秒全屏显示，结束后自动切到 HUD。"}
+                </span>
+                <Button size="sm" variant="outline" class="h-7 text-xs cursor-pointer shrink-0" onclick={clearCountdown}>
+                  {countdown.over ? "清除" : "取消倒计时"}
+                </Button>
+              </div>
+            {/if}
+            <div class="flex flex-wrap items-center gap-1.5">
+              {#each [1, 3, 5, 10] as m (m)}
+                <Button size="sm" variant="outline" class="h-7 px-2.5 text-xs cursor-pointer" onclick={() => startMinutes(m)}>{m} 分钟</Button>
+              {/each}
+            </div>
+            <div class="flex flex-wrap items-center gap-1.5">
+              <input type="number" min="1" max="1440" step="1" class="h-7 w-16 rounded border border-input bg-background px-2 text-small num" bind:value={countdownMinutes} aria-label="倒计时分钟数" />
+              <span class="text-small text-muted-foreground">分钟</span>
+              <Button size="sm" class="h-7 px-2.5 text-xs cursor-pointer" onclick={() => startMinutes(countdownMinutes)}>开始</Button>
+              <span class="mx-1 h-4 w-px bg-border"></span>
+              <span class="text-small text-muted-foreground">或到</span>
+              <input type="time" class="h-7 rounded border border-input bg-background px-2 text-small num" bind:value={countdownTime} aria-label="比赛开始时间" />
+              <Button size="sm" variant="outline" class="h-7 px-2.5 text-xs cursor-pointer" onclick={() => startAt(countdownTime)}>设定</Button>
+            </div>
           </div>
 
           {#if tournament.overlay_scene === "intro"}
