@@ -20,7 +20,7 @@
   >
     {#each rounds as r, colIdx (r.round)}
       <div class="shrink-0 flex flex-col justify-center h-full {specs.cardWidth}">
-        <div class="text-base md:text-lg text-cyan-400 font-extrabold text-center border-b-2 border-cyan-500/20 pb-2 mb-4 font-orbitron tracking-widest shrink-0 uppercase">
+        <div class="mb-4 flex h-9 shrink-0 items-center justify-center rounded-full bg-white/[0.06] font-num text-lg font-bold uppercase tracking-[0.14em] text-[#AFC0D8]">
           {stageLabel(r.matches[0] || { bracket: "main", round: r.round }).toUpperCase()}
         </div>
 
@@ -78,24 +78,24 @@
   /* Connector classes are built dynamically (line-horizontal-active...),
      so they are global to survive Svelte's unused-selector pruning. */
   :global(.line-horizontal-active) {
-    background: rgba(6, 182, 212, 0.95);
-    box-shadow: 0 0 8px rgba(6, 182, 212, 0.8);
+    background: rgba(34, 211, 238, 0.9);
+    box-shadow: 0 0 8px rgba(34, 211, 238, 0.6);
     height: 3px !important;
   }
 
   :global(.line-horizontal-inactive) {
-    background: #475569;
+    background: rgba(175, 192, 216, 0.3);
     height: 1.5px !important;
   }
 
   :global(.line-vertical-active) {
-    background: rgba(6, 182, 212, 0.95);
-    box-shadow: 0 0 8px rgba(6, 182, 212, 0.8);
+    background: rgba(34, 211, 238, 0.9);
+    box-shadow: 0 0 8px rgba(34, 211, 238, 0.6);
     width: 3px !important;
   }
 
   :global(.line-vertical-inactive) {
-    background: #475569;
+    background: rgba(175, 192, 216, 0.3);
     width: 1.5px !important;
   }
 

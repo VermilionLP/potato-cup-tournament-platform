@@ -1,6 +1,9 @@
 <script>
-  // OBS overlay for an event: six scenes (intro, intermission, ingame, the
-  // bracket "hybrid" scene, "banpick" and the "versus" card), 1920x1080 scaled to the window.
+  // OBS overlay for an event: five scenes (intro, ingame, the bracket
+  // "hybrid" scene, "banpick" and the "versus" matchup preview, which also
+  // answers to the old "intermission"), 1920x1080 scaled to the window.
+  // Every scene uses the cyan overlay style, in English, with the shared
+  // top bar (OverlayTopBar).
   // The scene comes from ?scene=, else the dashboard's choice, else the live
   // match (its Ban / Pick until the result is confirmed, then ingame).
   // A scene change plays a short stinger (SceneStinger; ?stinger=false
@@ -17,16 +20,15 @@
   import { isBye, isDecided, isPlayable, playerLookup } from "#lib/overlay-layout.js";
   import { liveElsewhere, parseChannel, withChannel } from "#lib/live-channels.js";
   import IntroScene from "#lib/components/overlay/IntroScene.svelte";
-  import IntermissionScene from "#lib/components/overlay/IntermissionScene.svelte";
   import IngameScene from "#lib/components/overlay/IngameScene.svelte";
   import HybridScene from "#lib/components/overlay/HybridScene.svelte";
   import BanPickScene from "#lib/components/overlay/BanPickScene.svelte";
   import SceneStinger, { STINGER_COVER_MS } from "#lib/components/overlay/SceneStinger.svelte";
-  import VersusScene from "#lib/components/overlay/VersusScene.svelte";
+  import MatchupScene from "#lib/components/overlay/MatchupScene.svelte";
   import { liveSync } from "#lib/live-sync.js";
 
   let tid = $derived(page.params.id);
-  let sceneParam = $derived(page.url.searchParams.get("scene") || "auto"); // auto, intro, ingame, intermission, hybrid, banpick
+  let sceneParam = $derived(page.url.searchParams.get("scene") || "auto"); // auto, intro, ingame, versus (intermission), hybrid, banpick
   // Stage to show: "wb:2", "sw:3"... (a plain round number still works for
   // single elimination and Swiss).
   let stageParam = $derived(page.url.searchParams.get("stage") || page.url.searchParams.get("round"));
@@ -61,8 +63,9 @@
   }
 
   // Stage labels of a match: "胜者组第 2 轮" / "WB2", "瑞士轮 第 3 轮" / "R3"...
+  // Overlays are always English ("Winners Round 2").
   function stageLabel(m) {
-    return matchStageLabels(m, stageMatches).label;
+    return matchStageLabels(m, stageMatches).en;
   }
   function stageShort(m) {
     return matchStageLabels(m, tournament?.matches || []).short;
@@ -78,6 +81,7 @@
   );
   let nextMatch = $derived(playableMatches[0] || null);
   let activeMatch = $derived(tournament?.matches?.find((m) => m.id === tournament.active_match_id) || null);
+  let previewMatch = $derived(activeMatch && !isDecided(activeMatch) ? activeMatch : nextMatch);
 
   // Stages: one round of one bracket each, in playing order.
   let stages = $derived(overlayStages(stageMatches));
@@ -91,7 +95,7 @@
   // Completed matches by stage for the ticker, latest stage first.
   let tickerRounds = $derived(
     stages
-      .map((s) => ({ key: s.key, short: s.short, matches: s.matches.filter((m) => isDecided(m) && m.player1_id && m.player2_id) }))
+      .map((s) => ({ key: s.key, short: s.tag, matches: s.matches.filter((m) => isDecided(m) && m.player1_id && m.player2_id) }))
       .filter((s) => s.matches.length)
       .reverse(),
   );
@@ -141,7 +145,8 @@
     });
   });
   $effect(() => () => clearTimeout(swapTimer));
-  let scene = $derived(shownScene || currentScene);
+  // "intermission" and "versus" are one scene now (the matchup preview).
+  let scene = $derived((shownScene || currentScene) === "intermission" ? "versus" : shownScene || currentScene);
 
   // The ingame scene is transparent unless bg=true; the others have the
   // ambient background unless transparent=true.
@@ -185,51 +190,38 @@
 
 <svelte:head>
   <title>Potato Cup Overlay - {currentScene.toUpperCase()}</title>
-  <link
-    href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&family=Orbitron:wght@600;800;900&family=Noto+Sans+SC:wght@505;700;900&display=swap"
-    rel="stylesheet"
-  />
 </svelte:head>
 
-<!-- The overlays keep their own fonts until they are restyled: the site's
-     font-sans (HarmonyOS Sans SC) is reset to the system stack here. -->
-<div class="w-screen h-screen overflow-hidden relative flex items-center justify-center {isTransparent ? 'bg-transparent' : 'bg-black'}" style="--font-sans: ui-sans-serif, system-ui, sans-serif;">
+<div class="w-screen h-screen overflow-hidden relative flex items-center justify-center {isTransparent ? 'bg-transparent' : 'bg-black'}">
   <div
-    class="overlay-container font-outfit text-white overflow-hidden flex flex-col relative select-none shrink-0
-      {isTransparent ? 'bg-transparent' : 'bg-radial-gradient'}"
+    class="overlay-container font-sans text-white overflow-hidden flex flex-col relative select-none shrink-0
+      {isTransparent ? 'bg-transparent' : 'bg-navy'}"
     style="width: 1920px; height: 1080px; transform: scale({scale}); transform-origin: center center;"
   >
-    {#if !isTransparent}
-      <div class="glow-orb glow-cyan"></div>
-      <div class="glow-orb glow-purple"></div>
-      <div class="glow-orb glow-orange"></div>
-    {/if}
-
     {#key stingerKey}
       {#if stingerKey}<SceneStinger />{/if}
     {/key}
 
     {#if loading}
       <div class="flex-1 flex flex-col items-center justify-center gap-3">
-        <div class="w-16 h-16 rounded-full border-4 border-cyan-500 border-t-transparent animate-spin"></div>
-        <p class="text-base font-mono tracking-widest text-cyan-400 uppercase animate-pulse">Loading Stream Overlay...</p>
+        <div class="w-16 h-16 rounded-full border-4 border-cyan-400 border-t-transparent animate-spin"></div>
+        <p class="font-num text-lg font-bold tracking-[0.16em] text-cyan-400 uppercase animate-pulse">Loading overlay…</p>
       </div>
     {:else if errorMsg}
       <div class="flex-1 flex flex-col items-center justify-center gap-4 text-center p-8">
-        <div class="text-red-500 text-5xl">⚠️</div>
-        <div class="text-2xl font-bold tracking-tight text-white">{errorMsg}</div>
-        <p class="text-base text-slate-400 max-w-md">Verify the tournament ID or server connection in the dashboard panel.</p>
+        <div class="font-display text-5xl font-extrabold text-rose-400">ERROR</div>
+        <div class="text-2xl font-bold text-white">{errorMsg}</div>
+        <p class="text-lg text-[#AFC0D8] max-w-md">Check the event ID or the connection to the server.</p>
       </div>
     {:else if scene === "intro"}
-      <IntroScene {tournament} stage={selectedStage} {matchOrder} {who} />
-    {:else if scene === "intermission"}
-      <IntermissionScene matches={playableMatches} {matchOrder} {stageShort} {who} />
+      <IntroScene {tournament} stage={selectedStage} {stages} {matchOrder} {who} />
     {:else if scene === "ingame"}
-      <IngameScene {tournament} {tickerRounds} {activeMatch} {stageShort} {who} />
+      <IngameScene {tournament} {tickerRounds} {activeMatch} matches={stageMatches} {who} />
     {:else if scene === "versus"}
-      <VersusScene {tournament} {activeMatch} {stageShort} {who} />
+      <!-- The live match until it has a result, then the next one. -->
+      <MatchupScene {tournament} match={previewMatch} live={previewMatch === activeMatch} matches={stageMatches} {realMatches} {matchOrder} {who} />
     {:else if scene === "banpick"}
-      <BanPickScene {tournament} {activeMatch} {pool} {stageShort} {who} />
+      <BanPickScene {tournament} {activeMatch} {pool} {stageMatches} {who} />
     {:else if scene === "hybrid"}
       <HybridScene
         {tournament}
@@ -262,53 +254,8 @@
     height: 100vh;
   }
 
-  .bg-radial-gradient {
-    background: radial-gradient(circle at 50% 50%, #04070d 0%, #000000 100%);
-  }
-
-  /* Animated Neon Ambient Orbs */
-  .glow-orb {
-    position: absolute;
-    border-radius: 50%;
-    filter: blur(140px);
-    opacity: 0.16;
-    z-index: 0;
-    pointer-events: none;
-    animation: float 25s infinite ease-in-out alternate;
-  }
-
-  .glow-cyan {
-    background: #06b6d4;
-    width: 700px;
-    height: 700px;
-    top: -250px;
-    left: -200px;
-  }
-
-  .glow-purple {
-    background: #a855f7;
-    width: 600px;
-    height: 600px;
-    bottom: -200px;
-    right: -150px;
-    animation-delay: -5s;
-  }
-
-  .glow-orange {
-    background: #f97316;
-    width: 500px;
-    height: 500px;
-    top: 30%;
-    left: 60%;
-    animation-delay: -10s;
-  }
-
-  @keyframes float {
-    0% {
-      transform: translate(0, 0) scale(1);
-    }
-    100% {
-      transform: translate(70px, 60px) scale(1.15);
-    }
+  /* The overlays' navy background (cyan style). */
+  .bg-navy {
+    background: radial-gradient(ellipse at 45% 40%, #1b3a63 0%, #0a1630 80%);
   }
 </style>

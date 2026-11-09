@@ -13,15 +13,15 @@
   <div class="flex flex-col gap-4" style="transform: scale({scale}); transform-origin: center center;">
     {#each bands as band (band.bracket)}
       <div>
-        <div class="text-[11px] font-mono font-bold tracking-[0.3em] text-cyan-400/80 uppercase mb-2">{band.name}</div>
+        <div class="mb-2 font-num text-base font-bold uppercase tracking-[0.16em] text-cyan-200">{band.name}</div>
         <div class="flex gap-4 items-start">
           {#each band.columns as col (col.key)}
             <div class="w-58 shrink-0">
               <div
-                class="text-sm font-extrabold text-center pb-1 mb-2 border-b-2 font-orbitron tracking-wider uppercase
-                  {col.key === selectedKey ? 'text-amber-400 border-amber-500/40' : 'text-cyan-400 border-cyan-500/20'}"
+                class="mb-2 flex h-7 items-center justify-center rounded-full font-num text-sm font-bold uppercase tracking-[0.12em]
+                  {col.key === selectedKey ? 'bg-cyan-400 text-[#03252E]' : 'bg-white/[0.06] text-[#AFC0D8]'}"
               >
-                {col.label}
+                {col.tag}
               </div>
               <div class="flex flex-col" style="gap: {BOARD_GAP}px">
                 {#each col.matches as m (m.id)}

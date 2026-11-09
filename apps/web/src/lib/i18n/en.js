@@ -1927,4 +1927,7 @@ export default {
   "每位选手禁用过的次数和最常禁的大组": "How often each player bans, and the groups they ban most",
   "有禁用记录的 Ban/Pick 场数": "Ban/Pick matches with a ban by this player",
   "最常禁的大组": "Most banned groups",
+  "4. 对位预告 (直播对局或下一场的双方资料)": "4. Matchup preview (the live or next match, both players)",
+  "已复制对位预告链接": "Matchup preview link copied",
+  "对位预告 (直播对局或下一场)": "Matchup preview (live or next match)",
 };

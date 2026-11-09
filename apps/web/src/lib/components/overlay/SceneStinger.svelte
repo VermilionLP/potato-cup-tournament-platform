@@ -7,17 +7,17 @@
 
 <script>
   // Scene change stinger built on the Potato Cup logo
-  // (static/overlay/potato-cup-logo.webp): slanted panels in the logo's
-  // orange and a grainy charcoal slide in along the logo's slash angle and
+  // (static/overlay/potato-cup-logo.webp): slanted cyan panels and a grainy
+  // navy one (the overlays' cyan style) slide in along the logo's slash angle and
   // cover the frame, the logo lands in the middle with a light sweep over
-  // its letters and orange slashes drifting behind it, then the panels slide
+  // its letters and cyan slashes drifting behind it, then the panels slide
   // out the other way (the logo with them) onto the new scene. Mounted again (by a {#key}) on
   // every scene change; it ends fully out of the frame.
   const LOGO = "/overlay/potato-cup-logo.webp";
 </script>
 
 <div class="stinger" style="--total: {STINGER_TOTAL_MS}ms" aria-hidden="true">
-  <div class="panel orange lead"></div>
+  <div class="panel band lead"></div>
   <div class="panel dark">
     <div class="grain"></div>
     <div class="slash s1"></div>
@@ -28,7 +28,7 @@
       <div class="shine" style="mask-image: url({LOGO}); -webkit-mask-image: url({LOGO})"></div>
     </div>
   </div>
-  <div class="panel orange tail"></div>
+  <div class="panel band tail"></div>
 </div>
 
 <style>
@@ -50,17 +50,17 @@
     transform: translateX(110%) skewX(-21deg);
     animation: wipe var(--total) cubic-bezier(0.77, 0, 0.18, 1) forwards;
   }
-  .orange {
-    background: linear-gradient(100deg, #ff3d00 0%, #ff6a00 55%, #ff8a1a 100%);
+  .band {
+    background: linear-gradient(100deg, #0891b2 0%, #22d3ee 55%, #67e8f9 100%);
   }
-  /* The orange panels sit under the charcoal one: the lead shows as a band
+  /* The cyan panels sit under the navy one: the lead shows as a band
      ahead of it coming in, the tail as a band behind it going out. */
   .lead {
     z-index: 1;
     animation-delay: 0ms;
   }
   .dark {
-    background: radial-gradient(ellipse at 50% 45%, #1b2028 0%, #0b0d12 70%);
+    background: radial-gradient(ellipse at 55% 45%, #1b3a63 0%, #0a1630 72%);
     z-index: 2;
     animation-delay: 70ms;
     overflow: hidden;
@@ -90,12 +90,12 @@
     background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.55 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
   }
 
-  /* Orange slashes drifting behind the logo (counter-skewed inside the panel). */
+  /* Cyan slashes drifting behind the logo (counter-skewed inside the panel). */
   .slash {
     position: absolute;
     top: -10%;
     height: 120%;
-    background: linear-gradient(180deg, #ff7a00, #ff3d00);
+    background: linear-gradient(180deg, #67e8f9, #0891b2);
     opacity: 0.9;
     animation: drift var(--total) linear forwards;
   }

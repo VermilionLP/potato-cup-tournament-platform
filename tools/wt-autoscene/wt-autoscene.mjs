@@ -40,7 +40,7 @@ if (cli.help) {
   console.log(`用法: node wt-autoscene.mjs --site https://你的网站 --event <赛事ID> [--channel 1]
   或: node wt-autoscene.mjs --config config.json   （一键启动用 start-autoscene.bat）
   管理员令牌放在环境变量 POTATO_ADMIN_TOKEN 或 config.json 的 adminToken
-  --scene-battle/--scene-ended/--scene-hangar  网站大屏场景（auto|intro|ingame|intermission|hybrid，none = 不切）
+  --scene-battle/--scene-ended/--scene-hangar  网站大屏场景（auto|intro|ingame|versus|hybrid|banpick，none = 不切；intermission 等同 versus）
   --end-delay 8        战斗结束后等几秒再切
   --obs ws://127.0.0.1:4455   同时切 OBS 场景（密码放在环境变量 OBS_PASSWORD 或 config.json 的 obsPassword）
   --obs-battle/--obs-ended/--obs-hangar  对应的 OBS 场景名

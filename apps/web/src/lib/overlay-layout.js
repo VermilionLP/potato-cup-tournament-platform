@@ -18,6 +18,8 @@ export function playerLookup(players = []) {
     name: (id) => (!id ? "TBD" : map.get(id)?.display_name ?? id),
     seed: (id) => map.get(id)?.seed ?? null,
     flag: (id) => map.get(id)?.flag ?? null,
+    /** The event player record (ladder_mmr, ladder_games, ladder_tier...). */
+    get: (id) => (id ? map.get(id) ?? null : null),
   };
 }
 
@@ -207,7 +209,7 @@ export function boardScale(bands = []) {
     0,
   );
   const width = Math.max(...bands.map((band) => band.columns.length)) * (232 + 16);
-  return Math.min(1.4, 840 / height, 1440 / width);
+  return Math.min(1.4, 820 / height, 1320 / width);
 }
 
 // ---------------------------------------------------------------- grouped Swiss
@@ -267,5 +269,5 @@ export function groupBoardScale(rounds = []) {
   const rows = Math.max(1, ...rounds.map((r) => r.matches.length));
   const height = 90 + rows * 62;
   const width = rounds.length * (GROUP_COL_W + 20) + 40;
-  return Math.min(1.6, 800 / height, 1400 / width);
+  return Math.min(1.6, 800 / height, 1320 / width);
 }

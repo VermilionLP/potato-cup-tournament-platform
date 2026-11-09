@@ -1,104 +1,112 @@
 <script>
-  // Side panel of the overlay's bracket scene: next match, progress and
-  // (Swiss) standings.
+  // Side panel of the overlay's bracket scene: the live match, the next one,
+  // and the latest results (or, in Swiss and group stages, the standings).
   import { fade } from "svelte/transition";
   import Flag from "#lib/components/Flag.svelte";
 
   let {
+    tournament,
     nextMatch = null,
     activeMatch = null,
     nextTag = "",
-    progress,
     focusGroup = null,
     standings = [],
+    matches = [],
     stageLabel,
     matchOrder,
     who,
   } = $props();
+
+  const decided = (m) => m.status === "completed" || m.status === "walkover";
+  let latest = $derived(
+    matches
+      .filter((m) => decided(m) && m.player1_id && m.player2_id)
+      .sort((a, b) => String(b.updated_at || b.played_at || "").localeCompare(String(a.updated_at || a.played_at || "")) || (matchOrder.get(b.id) ?? 0) - (matchOrder.get(a.id) ?? 0))
+      .slice(0, 4),
+  );
+  const score = (m, slot) => (m.status === "walkover" ? (m.winner_id === (slot === 1 ? m.player1_id : m.player2_id) ? "W" : "FF") : slot === 1 ? (m.live_score1 ?? m.score1 ?? "") : (m.live_score2 ?? m.score2 ?? ""));
 </script>
 
-{#snippet nextPlayer(pid)}
-  <div class="flex items-center justify-between gap-2">
-    <div class="flex items-center gap-2 min-w-0">
-      <span class="text-[9px] font-mono text-slate-500 shrink-0">#{who.seed(pid) ?? "-"}</span>
-      <span class="text-sm font-black text-white truncate">{who.name(pid)}</span>
-    </div>
+{#snippet title(text, extra = "")}
+  <div class="mb-2 flex items-center justify-between">
+    <span class="font-num text-base font-bold tracking-[0.16em] text-cyan-400">{text}</span>
+    {#if extra}<span class="font-num text-base font-bold tracking-[0.12em] text-[#7184A3]">{extra}</span>{/if}
   </div>
 {/snippet}
 
-<aside class="w-80 shrink-0 flex flex-col justify-center gap-4 py-4">
-  <div class="rounded-2xl border border-cyan-500/25 bg-slate-950/80 p-5 shadow-2xl backdrop-blur">
-    <div class="flex items-center justify-between mb-3">
-      <span class="text-[10px] font-mono font-bold tracking-[0.2em] text-cyan-400 uppercase">NEXT MATCH</span>
-      <span class="text-[9px] font-mono text-slate-500">{nextTag}</span>
+{#snippet row(m, pid, slot, showScore)}
+  {@const lost = decided(m) && m.winner_id && m.winner_id !== pid}
+  <div class="flex h-9 items-center gap-2.5 {lost ? 'opacity-45' : ''}">
+    {#if pid}<Flag code={who.flag(pid)} size={22} />{/if}
+    <span class="min-w-0 flex-1 truncate text-[22px] font-bold">{who.name(pid)}</span>
+    {#if showScore}<span class="font-display text-[28px] font-extrabold leading-none {lost ? 'text-[#7184A3]' : 'text-cyan-400'}">{score(m, slot)}</span>{/if}
+  </div>
+{/snippet}
+
+<aside class="flex w-[420px] shrink-0 flex-col gap-5">
+  {#if activeMatch}
+    <div class="rounded-2xl border-2 border-cyan-400 bg-[rgba(24,40,70,0.92)] px-5 py-4 shadow-[0_0_40px_rgba(34,211,238,0.2)]">
+      {@render title("● NOW LIVE", stageLabel(activeMatch).toUpperCase())}
+      {@render row(activeMatch, activeMatch.player1_id, 1, activeMatch.live_score1 != null)}
+      <div class="my-1 h-px bg-white/10"></div>
+      {@render row(activeMatch, activeMatch.player2_id, 2, activeMatch.live_score1 != null)}
     </div>
+  {/if}
+
+  <div class="rounded-2xl border border-white/[0.07] bg-[rgba(24,40,70,0.92)] px-5 py-4">
+    {@render title("UP NEXT", nextMatch ? `#${matchOrder.get(nextMatch.id) ?? ""} · ${stageLabel(nextMatch).toUpperCase()}` : nextTag)}
     {#if nextMatch}
-      <div class="space-y-2">
-        {@render nextPlayer(nextMatch.player1_id)}
-        <div class="flex items-center gap-2">
-          <div class="h-px flex-1 bg-slate-800"></div>
-          <span class="text-[8px] font-black tracking-[0.2em] text-slate-600 font-orbitron">VS</span>
-          <div class="h-px flex-1 bg-slate-800"></div>
-        </div>
-        {@render nextPlayer(nextMatch.player2_id)}
-      </div>
-      <div class="mt-3 pt-3 border-t border-slate-800/80 flex items-center justify-between text-[9px] font-mono text-slate-500 uppercase">
-        <span>{stageLabel(nextMatch)}</span>
-        <span>#{matchOrder.get(nextMatch.id)}</span>
-      </div>
-    {:else if activeMatch}
-      <div class="text-sm font-black text-amber-400">LIVE</div>
-      <div class="text-xs text-slate-400 mt-1">
-        {who.name(activeMatch.player1_id)} vs
-        {who.name(activeMatch.player2_id)}
-      </div>
+      {@render row(nextMatch, nextMatch.player1_id, 1, false)}
+      <div class="my-1 h-px bg-white/10"></div>
+      {@render row(nextMatch, nextMatch.player2_id, 2, false)}
     {:else}
-      <div class="text-sm text-slate-500 italic">No playable match right now.</div>
+      <p class="text-lg text-[#7184A3]">No match ready to play.</p>
     {/if}
   </div>
 
-  <div class="rounded-2xl border border-slate-800/80 bg-slate-950/60 p-5">
-    <div class="text-[10px] font-mono font-bold tracking-[0.2em] text-slate-500 uppercase">{progress.title}</div>
-    <div class="text-3xl font-black text-white font-orbitron mt-1">{progress.value}</div>
-    <div class="text-[10px] font-mono text-slate-500 mt-2">{progress.done} / {progress.total} MATCHES</div>
-    <div class="h-1 bg-slate-800 rounded-full mt-2 overflow-hidden">
-      <div class="h-full bg-cyan-400" style="width: {progress.percent}%"></div>
-    </div>
-  </div>
-
   {#if focusGroup}
-    <div class="rounded-2xl border border-amber-500/40 bg-slate-950/80 p-4 shadow-2xl backdrop-blur">
-      <div class="flex items-center justify-between mb-2">
-        <span class="text-[10px] font-mono font-bold tracking-[0.2em] text-cyan-400 uppercase">STANDINGS</span>
-        <span class="text-xs font-black font-orbitron tracking-wider text-amber-400">GROUP {focusGroup.label}</span>
-      </div>
+    <div class="min-h-0 flex-1 overflow-hidden rounded-2xl border border-white/[0.07] bg-[rgba(24,40,70,0.92)] px-5 py-4">
+      {@render title("STANDINGS", `GROUP ${focusGroup.label}`)}
       {#key focusGroup.label}
-        <div class="space-y-1" in:fade={{ duration: 300 }}>
-          {#each focusGroup.rows as row, i (row.player_id)}
-            {@const through = focusGroup.perGroup && (row.rank ?? i + 1) <= focusGroup.perGroup}
-            <div class="flex items-center gap-2 rounded px-1 py-0.5 text-xs {through ? 'bg-cyan-500/10' : ''}">
-              <span class="w-5 text-right font-mono {through ? 'text-cyan-400' : 'text-slate-500'}">{row.rank ?? i + 1}</span>
-              <Flag code={who.flag(row.player_id)} size={16} />
-              <span class="flex-1 truncate font-bold text-white">{who.name(row.player_id)}</span>
-              <span class="font-orbitron text-cyan-400 shrink-0">{row.wins ?? 0}-{row.losses ?? 0}</span>
+        <div class="flex flex-col" in:fade={{ duration: 300 }}>
+          {#each focusGroup.rows as r, i (r.player_id)}
+            {@const through = focusGroup.perGroup && (r.rank ?? i + 1) <= focusGroup.perGroup}
+            <div class="flex h-9 items-center gap-2.5 border-t border-white/[0.06] {through ? 'text-white' : 'text-[#AFC0D8]'}">
+              <span class="w-6 text-right font-num text-lg font-bold {through ? 'text-cyan-400' : 'text-[#7184A3]'}">{r.rank ?? i + 1}</span>
+              <Flag code={who.flag(r.player_id)} size={20} />
+              <span class="min-w-0 flex-1 truncate text-lg font-bold">{who.name(r.player_id)}</span>
+              <span class="font-num text-lg font-bold tabular-nums">{r.wins ?? 0}–{r.losses ?? 0}</span>
             </div>
           {/each}
         </div>
       {/key}
     </div>
   {:else if standings.length}
-    <div class="rounded-2xl border border-cyan-500/25 bg-slate-950/80 p-4 shadow-2xl backdrop-blur">
-      <div class="text-[10px] font-mono font-bold tracking-[0.2em] text-cyan-400 uppercase mb-2">STANDINGS</div>
-      <div class="space-y-1">
-        {#each standings as row, i (row.player_id + (row.group_label || ""))}
-          <div class="flex items-center gap-2 text-xs">
-            <span class="w-6 text-right font-mono text-slate-500">{row.group_label ? `${row.group_label}${row.rank}` : row.rank ?? i + 1}</span>
-            <Flag code={who.flag(row.player_id)} size={16} />
-            <span class="flex-1 truncate font-bold text-white">{who.name(row.player_id)}</span>
-            <span class="font-orbitron text-cyan-400 shrink-0">{row.wins ?? 0}-{row.losses ?? 0}</span>
+    <div class="min-h-0 flex-1 overflow-hidden rounded-2xl border border-white/[0.07] bg-[rgba(24,40,70,0.92)] px-5 py-4">
+      {@render title("STANDINGS")}
+      {#each standings.slice(0, 10) as r, i (r.player_id + (r.group_label || ""))}
+        <div class="flex h-9 items-center gap-2.5 border-t border-white/[0.06]">
+          <span class="w-8 text-right font-num text-lg font-bold text-[#7184A3]">{r.group_label ? `${r.group_label}${r.rank}` : (r.rank ?? i + 1)}</span>
+          <Flag code={who.flag(r.player_id)} size={20} />
+          <span class="min-w-0 flex-1 truncate text-lg font-bold">{who.name(r.player_id)}</span>
+          <span class="font-num text-lg font-bold tabular-nums">{r.wins ?? 0}–{r.losses ?? 0}</span>
+        </div>
+      {/each}
+    </div>
+  {:else}
+    <div class="min-h-0 flex-1 overflow-hidden rounded-2xl border border-white/[0.07] bg-[rgba(24,40,70,0.92)] px-5 py-4">
+      {@render title("LATEST RESULTS")}
+      {#each latest as m (m.id)}
+        <div class="border-t border-white/[0.06] py-1.5">
+          <div class="flex items-center gap-2.5">
+            <span class="min-w-0 flex-1 truncate text-lg font-bold {m.winner_id === m.player1_id ? '' : 'text-[#7184A3]'}">{who.name(m.player1_id)}</span>
+            <span class="shrink-0 font-display text-2xl font-extrabold text-cyan-400 tabular-nums">{score(m, 1)} : {score(m, 2)}</span>
+            <span class="min-w-0 flex-1 truncate text-right text-lg font-bold {m.winner_id === m.player2_id ? '' : 'text-[#7184A3]'}">{who.name(m.player2_id)}</span>
           </div>
-        {/each}
-      </div>
+        </div>
+      {:else}
+        <p class="text-lg text-[#7184A3]">No results yet.</p>
+      {/each}
     </div>
   {/if}
 </aside>

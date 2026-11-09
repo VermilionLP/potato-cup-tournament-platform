@@ -1,4 +1,4 @@
-// The overlay's VS card (components/overlay/VersusScene.svelte): what it
+// The overlay's matchup preview (components/overlay/MatchupScene.svelte): what it
 // shows of each player, from their ladder page data (/ladder/players/:id)
 // and the event's matches. Pure.
 
@@ -45,4 +45,33 @@ export function meetings(ladder1, opponentId) {
   const hi = Math.max(Number(g.score_for) || 0, Number(g.score_against) || 0);
   const lo = Math.min(Number(g.score_for) || 0, Number(g.score_against) || 0);
   return { won: h.won, lost: h.lost, last: { event: g.tournament_name || "", score: `${hi} : ${lo}`, won: Boolean(g.won) } };
+}
+
+/**
+ * Head to head for the matchup preview, from player 1's history (newest
+ * first): { won, lost, mapsFor, mapsAgainst, recent: [{ event, date, for,
+ * against, won }] } with the last `n` meetings; null when they never met.
+ */
+export function headToHeadRecent(ladder1, opponentId, n = 5) {
+  if (!ladder1?.history?.length || !opponentId) return null;
+  const h = headToHead(ladder1.history, opponentId);
+  if (!h.games.length) return null;
+  return {
+    won: h.won,
+    lost: h.lost,
+    mapsFor: h.mapsFor,
+    mapsAgainst: h.mapsAgainst,
+    recent: h.games.slice(0, n).map((g) => ({
+      event: g.tournament_name || "",
+      date: String(g.played_at || "").slice(0, 10),
+      for: Number(g.score_for) || 0,
+      against: Number(g.score_against) || 0,
+      won: Boolean(g.won),
+    })),
+  };
+}
+
+/** Events a player has ladder games in (their history's tournaments). */
+export function eventsPlayed(ladder) {
+  return new Set((ladder?.history || []).map((h) => h.tournament_id).filter(Boolean)).size;
 }

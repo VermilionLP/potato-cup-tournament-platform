@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { matchStageLabels, overlayStages, pickStage, playersStillIn } from "../src/lib/overlay.js";
+import * as labels from "../src/lib/overlay.js";
+import { matchStageLabels, overlayStages, pickStage, playersStillIn, tierEnglish } from "../src/lib/overlay.js";
 
 let id = 0;
 const m = (bracket, round, position, p1, p2, winner = null, status = winner ? "completed" : "pending") => ({
@@ -56,4 +57,23 @@ test("a finished event shows its last played stage, not an empty reset match", (
     m("gf", 1, 1, "a", "b", "a"), m("gf", 1, 2, null, null),
   ];
   assert.equal(pickStage(overlayStages(done), "6").key, "gf:1");
+});
+
+const pick = (l) => ({ en: l.en, tag: l.tag });
+
+test("overlays name stages and leagues in English", () => {
+  const totals = { wb: 3, lb: 4, main: 4 };
+  const { stageLabels } = labels;
+  assert.deepEqual(pick(stageLabels("wb", 3, totals)), { en: "Winners Round 1", tag: "WB R1" });
+  assert.deepEqual(pick(stageLabels("wb", 1, totals)), { en: "Winners Final", tag: "WB FINAL" });
+  assert.deepEqual(pick(stageLabels("lb", 3, totals)), { en: "Losers Round 2", tag: "LB R2" });
+  assert.deepEqual(pick(stageLabels("gf", 1, totals)), { en: "Grand Final", tag: "GRAND FINAL" });
+  assert.deepEqual(pick(stageLabels("main", 2, totals)), { en: "Semifinals", tag: "SF" });
+  assert.deepEqual(pick(stageLabels("sw", 3, totals)), { en: "Swiss Round 3", tag: "SWISS R3" });
+  // The Chinese labels stay for the site.
+  assert.equal(stageLabels("gf", 1, totals).label, "总决赛");
+  assert.equal(tierEnglish({ key: "diamond-3" }), "Diamond III");
+  assert.equal(tierEnglish({ key: "grandmaster" }), "Grandmaster");
+  assert.equal(tierEnglish({ key: "unrated" }), "Unranked");
+  assert.equal(tierEnglish(null), "Unranked");
 });
