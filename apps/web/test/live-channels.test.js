@@ -11,6 +11,8 @@ import {
   saveChannel,
   saveStreamMode,
   withChannel,
+  countdownState,
+  formatCountdown,
 } from "../src/lib/live-channels.js";
 
 const event = {
@@ -81,4 +83,19 @@ test("channel and stream mode are remembered per event", () => {
   } finally {
     delete globalThis.localStorage;
   }
+});
+
+test("match start countdown: time left on the server's clock", () => {
+  const end = "2026-11-10T12:05:00Z";
+  const now = Date.parse("2026-11-10T12:00:00Z");
+  assert.equal(countdownState(null, now), null);
+  assert.deepEqual(countdownState(end, now), { remaining: 300_000, over: false });
+  // This computer is 30 s behind the server: 30 s less to go.
+  assert.deepEqual(countdownState(end, now, 30_000), { remaining: 270_000, over: false });
+  assert.deepEqual(countdownState(end, now + 400_000), { remaining: 0, over: true });
+  assert.equal(formatCountdown(245_000), "4:05");
+  assert.equal(formatCountdown(244_100), "4:05", "rounded up: 0:00 only when over");
+  assert.equal(formatCountdown(3_723_000), "1:02:03");
+  assert.equal(formatCountdown(0), "0:00");
+  assert.equal(withChannel({ live_channels: [{ channel: 2, countdown_end: end }] }, 2).countdown_end, end);
 });

@@ -10,15 +10,18 @@
   // turns it off).
   // ?channel=N follows one live channel (its live match and scene), so
   // several streams of one event can each have their own overlay.
+  // A match start countdown set in the console shows in the top bar of
+  // every scene but the HUD (big in the last 10 s); when it runs out the
+  // overlay shows the HUD until the console picks a scene again.
   // Scenes live in #lib/components/overlay, layout maths in
   // #lib/overlay-layout.js.
-  import { onMount, untrack } from "svelte";
+  import { onMount, setContext, untrack } from "svelte";
   import { page } from "$app/state";
   import { API } from "#lib/api.js";
   import { buildMatchOrder } from "#lib/bracket.js";
   import { GROUP_STAGE_BRACKETS, matchStageLabels, overlayStages, pickStage, playersStillIn } from "#lib/overlay.js";
   import { isBye, isDecided, isPlayable, playerLookup } from "#lib/overlay-layout.js";
-  import { liveElsewhere, parseChannel, withChannel } from "#lib/live-channels.js";
+  import { countdownState, formatCountdown, liveElsewhere, parseChannel, withChannel } from "#lib/live-channels.js";
   import IntroScene from "#lib/components/overlay/IntroScene.svelte";
   import IngameScene from "#lib/components/overlay/IngameScene.svelte";
   import HybridScene from "#lib/components/overlay/HybridScene.svelte";
@@ -100,8 +103,35 @@
       .reverse(),
   );
 
+  // Match start countdown, on the server's clock (synced_at is the database
+  // time of the last read).
+  let clockOffset = $state(0);
+  $effect(() => {
+    const at = Date.parse(event?.synced_at || "");
+    if (Number.isFinite(at)) clockOffset = at - Date.now();
+  });
+  let now = $state(Date.now());
+  $effect(() => {
+    if (!tournament?.countdown_end) return;
+    now = Date.now();
+    const timer = setInterval(() => (now = Date.now()), 250);
+    return () => clearInterval(timer);
+  });
+  let countdown = $derived(countdownState(tournament?.countdown_end, now, clockOffset));
+  // The top bar of each scene reads it (OverlayTopBar).
+  setContext("overlay-countdown", {
+    get running() {
+      return Boolean(countdown && !countdown.over);
+    },
+    get text() {
+      return countdown ? formatCountdown(countdown.remaining) : "";
+    },
+  });
+
   let currentScene = $derived.by(() => {
     if (sceneParam && sceneParam !== "auto") return sceneParam;
+    // The countdown ran out: the match is on.
+    if (countdown?.over) return "ingame";
     if (tournament?.overlay_scene && tournament.overlay_scene !== "auto") return tournament.overlay_scene;
     if (activeMatch && bpPending(activeMatch)) return "banpick";
     return activeMatch ? "ingame" : "hybrid";
@@ -240,6 +270,16 @@
         {who}
       />
     {/if}
+
+    <!-- Last 10 seconds of the countdown: big, over any scene but the HUD. -->
+    {#if !loading && scene !== "ingame" && countdown && !countdown.over && countdown.remaining <= 10_000}
+      <div class="pointer-events-none absolute inset-0 z-40 flex flex-col items-center justify-center gap-4 bg-[#0A1630]/70 backdrop-blur-sm">
+        <span class="font-num text-[28px] font-bold tracking-[0.3em] text-cyan-200">MATCH STARTS IN</span>
+        {#key Math.ceil(countdown.remaining / 1000)}
+          <span class="countdown-tick font-display text-[320px] font-extrabold leading-none text-white drop-shadow-[0_0_40px_rgba(34,211,238,0.55)]">{Math.ceil(countdown.remaining / 1000)}</span>
+        {/key}
+      </div>
+    {/if}
   </div>
 </div>
 
@@ -252,6 +292,20 @@
     overflow: hidden;
     width: 100vw;
     height: 100vh;
+  }
+
+  .countdown-tick {
+    animation: countdown-tick 1s ease-out both;
+  }
+  @keyframes countdown-tick {
+    from {
+      transform: scale(1.25);
+      opacity: 0;
+    }
+    25% {
+      transform: scale(1);
+      opacity: 1;
+    }
   }
 
   /* The overlays' navy background (cyan style). */

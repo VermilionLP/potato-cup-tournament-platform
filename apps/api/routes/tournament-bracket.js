@@ -6,7 +6,7 @@ import { MatchRepo } from '../repositories/match-repo.js';
 import { LadderRepo } from '../repositories/ladder-repo.js';
 import { requireAdmin } from '../lib/admin.js';
 import { LiveChannelRepo } from '../repositories/live-channel-repo.js';
-import { MAX_LIVE_CHANNELS, OVERLAY_SCENES, OVERLAY_STAGE_RE, parseChannel } from '../lib/live-channels.js';
+import { MAX_LIVE_CHANNELS, OVERLAY_SCENES, OVERLAY_STAGE_RE, countdownEnd, parseChannel } from '../lib/live-channels.js';
 
 export default async function tournamentBracketRoutes(fastify) {
   const repo = TournamentRepo(fastify.db);
@@ -35,6 +35,21 @@ export default async function tournamentBracketRoutes(fastify) {
 
     const state = await channels.setOverlay(req.params.id, channel, overlay_scene, overlay_round, overlay_stage);
     fastify.tournamentEvents.emit(`update:${req.params.id}`, { type: 'overlay_state_updated', channel, overlay_scene, overlay_round, overlay_stage });
+    return state;
+  });
+
+  // Match start countdown of a channel: { seconds } from now or an { end }
+  // time; { clear: true } (or null) stops it. The overlays switch to the
+  // in-game HUD when it runs out.
+  fastify.post('/tournaments/:id/countdown', async (req) => {
+    requireAdmin(fastify, req);
+    const end = countdownEnd(req.body || {});
+    if (end === undefined) throw fastify.httpErrors.badRequest('Countdown must end within the next 24 hours');
+    const channel = channelOf(req);
+    const t = await repo.getById(req.params.id);
+    if (!t) throw fastify.httpErrors.notFound('Tournament not found');
+    const state = await channels.setCountdown(req.params.id, channel, end);
+    fastify.tournamentEvents.emit(`update:${req.params.id}`, { type: 'overlay_state_updated', channel, countdown_end: state.countdown_end });
     return state;
   });
 

@@ -5,7 +5,7 @@ import { emptyChannel } from '../lib/live-channels.js';
 export function LiveChannelRepo(db) {
   async function list(tournamentId) {
     const res = await db.query(`
-      SELECT channel, active_match_id, overlay_scene, overlay_round, overlay_stage
+      SELECT channel, active_match_id, overlay_scene, overlay_round, overlay_stage, countdown_end
       FROM axsuck.live_channels
       WHERE tournament_id = $1
       ORDER BY channel
@@ -15,7 +15,7 @@ export function LiveChannelRepo(db) {
 
   async function get(tournamentId, channel) {
     const res = await db.query(`
-      SELECT channel, active_match_id, overlay_scene, overlay_round, overlay_stage
+      SELECT channel, active_match_id, overlay_scene, overlay_round, overlay_stage, countdown_end
       FROM axsuck.live_channels
       WHERE tournament_id = $1 AND channel = $2
     `, [tournamentId, channel]);
@@ -64,10 +64,24 @@ export function LiveChannelRepo(db) {
         overlay_scene = EXCLUDED.overlay_scene,
         overlay_round = EXCLUDED.overlay_round,
         overlay_stage = CASE WHEN $5 THEN EXCLUDED.overlay_stage ELSE axsuck.live_channels.overlay_stage END,
+        -- A countdown that has run out has switched the overlay to the HUD;
+        -- picking a scene afterwards takes over again.
+        countdown_end = CASE WHEN axsuck.live_channels.countdown_end <= NOW() THEN NULL ELSE axsuck.live_channels.countdown_end END,
         updated_at = NOW()
     `, [tournamentId, channel, scene || 'auto', round || null, stage !== undefined, stage || null]);
     return get(tournamentId, channel);
   }
 
-  return { list, get, setActiveMatch, setOverlay };
+  /** Starts (a Date) or clears (null) the channel's match start countdown. */
+  async function setCountdown(tournamentId, channel, end) {
+    await db.query(`
+      INSERT INTO axsuck.live_channels (tournament_id, channel, countdown_end)
+      VALUES ($1, $2, $3)
+      ON CONFLICT (tournament_id, channel)
+      DO UPDATE SET countdown_end = EXCLUDED.countdown_end, updated_at = NOW()
+    `, [tournamentId, channel, end]);
+    return get(tournamentId, channel);
+  }
+
+  return { list, get, setActiveMatch, setOverlay, setCountdown };
 }

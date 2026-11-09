@@ -98,6 +98,8 @@ export const API = {
   // Live state is per channel (#lib/live-channels.js); channel 1 by default.
   setActiveMatch: (id, active_match_id, channel = 1) => request(`/tournaments/${enc(id)}/active-match`, { method: 'POST', body: JSON.stringify({ active_match_id, channel }) }),
   // overlay_stage ("wb:2", "sw:3"...) is left unchanged when omitted.
+  // body: { seconds } from now, { end } (ISO time) or { clear: true }.
+  setCountdown: (id, body, channel = 1) => request(`/tournaments/${enc(id)}/countdown`, { method: 'POST', body: JSON.stringify({ ...body, channel }) }),
   setOverlayState: (id, overlay_scene, overlay_round, overlay_stage, channel = 1) => request(`/tournaments/${enc(id)}/overlay-state`, { method: 'POST', body: JSON.stringify({ overlay_scene, overlay_round, overlay_stage, channel }) }),
 
   // Ladder
