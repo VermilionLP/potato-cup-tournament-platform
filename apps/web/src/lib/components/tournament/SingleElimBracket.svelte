@@ -102,7 +102,7 @@
   {#each rounds as r, colIdx (r.round)}
     <div class="shrink-0 flex flex-col justify-start h-full {bracketSpecs.cardWidth}">
       <!-- Round Header -->
-      <div class="text-xs text-neutral-200 bg-neutral-800/80 border border-neutral-700/50 py-1.5 px-3 font-bold text-center mb-4 tracking-wider shrink-0 rounded-md shadow-sm">
+      <div class="text-small text-secondary-foreground bg-secondary py-1.5 px-3 font-bold text-center mb-4 shrink-0 rounded-full">
         {roundLabel(r.round, totalRounds)}
       </div>
 
@@ -214,7 +214,7 @@
               {@const tpTop = gfPos.top + gfPos.height + 28}
               
               <!-- Third Place Match -->
-              <div class="absolute left-0 w-full text-[9px] font-bold text-center text-neutral-500 uppercase tracking-wider h-4 flex items-center justify-center"
+              <div class="absolute left-0 w-full text-label font-bold text-center text-muted-foreground uppercase tracking-wider h-4 flex items-center justify-center"
                    style="top: {tpTop - 18}px;">
                 三四名决赛
               </div>

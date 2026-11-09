@@ -18,7 +18,7 @@
       value={form.groupFormat}
       onpick={(id) => (form.groupFormat = id)}
     />
-    <p class="text-[10px] text-muted-foreground">
+    <p class="text-small text-muted-foreground">
       {GROUP_FORMATS.find((f) => f.id === form.groupFormat)?.hint}
       {#if form.groupFormat === "double_elim"}
         ；每组晋级 2 人 = 胜者组冠军 + 败者组冠军（可选 2、3、4、8 人）
@@ -53,16 +53,16 @@
     </label>
   </div>
   {#if problem}
-    <p class="text-[11px] font-semibold text-amber-600 dark:text-amber-400">⚠ {problem}</p>
+    <p class="text-small font-semibold text-amber-600 dark:text-amber-400">⚠ {problem}</p>
   {:else if preview}
-    <p class="rounded-lg bg-muted/40 px-2.5 py-1.5 text-[11px] text-foreground/80">
+    <p class="rounded-lg bg-muted/40 px-2.5 py-1.5 text-small text-foreground/80">
       若报满 {preview.players} 人：分 {preview.groups} 组（每组 {preview.smallest === preview.largest ? preview.smallest : `${preview.smallest}–${preview.largest}`} 人），共 <b>{preview.qualifiers}</b> 人进入淘汰赛。
     </p>
   {/if}
   {#if form.groupFormat === "swiss"}
     <SwissRoundsPicker bind:form />
   {:else}
-    <p class="text-[10px] leading-relaxed text-muted-foreground">
+    <p class="text-small leading-relaxed text-muted-foreground">
       每组各打一个{form.groupFormat === "double_elim" ? "双败（组内不打总决赛）" : "单败"}对阵，各组独立进行。
     </p>
   {/if}

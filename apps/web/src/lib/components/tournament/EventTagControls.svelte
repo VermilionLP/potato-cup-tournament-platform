@@ -3,6 +3,7 @@
   // the header, or (editable, in EventSettingsDialog for admins) labelled
   // selects that save on change. The Ban / Pick template is chosen on the
   // 载具池 tab (PoolTemplatePicker).
+  import { TAG_BASE, TAG_TONE } from "#lib/tags.js";
   import { toast } from "svelte-sonner";
   import { API } from "#lib/api.js";
   import {
@@ -81,7 +82,7 @@
   {@const field = "h-9 w-full rounded-md border border-border bg-background px-2 text-sm text-foreground cursor-pointer disabled:opacity-60"}
   <div class="grid grid-cols-2 gap-3">
     <label class="space-y-1">
-      <span class="block text-[11px] font-semibold text-muted-foreground">赛事等级</span>
+      <span class="block text-small font-semibold text-muted-foreground">赛事等级</span>
       <select value={tournament.tier || ""} disabled={savingTier} onchange={(e) => saveTier("tier", e.currentTarget.value)} class="{field} font-bold">
         <option value="">未分级</option>
         {#each EVENT_TIERS as tier (tier.id)}
@@ -90,7 +91,7 @@
       </select>
     </label>
     <label class="space-y-1">
-      <span class="block text-[11px] font-semibold text-muted-foreground">赛事性质</span>
+      <span class="block text-small font-semibold text-muted-foreground">赛事性质</span>
       <select value={tournament.event_kind || ""} disabled={savingTier} onchange={(e) => saveTier("event_kind", e.currentTarget.value)} class={field}>
         <option value="">未设置</option>
         {#each EVENT_KINDS as kind (kind.id)}
@@ -99,15 +100,15 @@
       </select>
     </label>
     <label class="space-y-1">
-      <span class="block text-[11px] font-semibold text-muted-foreground">比赛模式</span>
-      <select value={tournament.game_mode || "rb"} disabled={savingMode} onchange={(e) => saveGameMode(e.currentTarget.value)} class="{field} font-mono font-bold">
+      <span class="block text-small font-semibold text-muted-foreground">比赛模式</span>
+      <select value={tournament.game_mode || "rb"} disabled={savingMode} onchange={(e) => saveGameMode(e.currentTarget.value)} class="{field} num font-bold">
         {#each GAME_MODES as mode (mode.id)}
           <option value={mode.id}>{mode.code} · {mode.name}</option>
         {/each}
       </select>
     </label>
     <label class="space-y-1">
-      <span class="block text-[11px] font-semibold text-muted-foreground">比赛类型</span>
+      <span class="block text-small font-semibold text-muted-foreground">比赛类型</span>
       <select value={tournament.vehicle_pool} disabled={savingPool} onchange={(e) => saveEventPool(e.currentTarget.value)} class={field}>
         {#if !vehiclePoolLabel(tournament.vehicle_pool)}
           <option value={tournament.vehicle_pool}>未分类</option>
@@ -120,10 +121,10 @@
   </div>
 {:else}
   {#if tierTagText(tournament)}
-    <span class="rounded-md border px-2 py-0.5 font-bold {TIER_TAG[tournament.tier] || 'border-border bg-muted/60 text-muted-foreground'}" title="赛事等级">{tierTagText(tournament)}</span>
+    <span class="{TAG_BASE} {TIER_TAG[tournament.tier] || TAG_TONE.neutral}" title="赛事等级">{tierTagText(tournament)}</span>
   {/if}
-  <span class="rounded-md border border-border bg-muted/60 px-2 py-0.5 font-mono font-bold text-foreground/80" title={gameModeTitle(tournament.game_mode)}>{gameModeLabel(tournament.game_mode)}</span>
+  <span class="{TAG_BASE} {TAG_TONE.neutral} font-num" title={gameModeTitle(tournament.game_mode)}>{gameModeLabel(tournament.game_mode)}</span>
   {#if vehiclePoolLabel(tournament.vehicle_pool)}
-    <span class="rounded-md border px-2 py-0.5 font-semibold {POOL_TAG[tournament.vehicle_pool] || 'border-border bg-muted/60 text-muted-foreground'}">{vehiclePoolLabel(tournament.vehicle_pool)}</span>
+    <span class="{TAG_BASE} {POOL_TAG[tournament.vehicle_pool] || TAG_TONE.neutral}">{vehiclePoolLabel(tournament.vehicle_pool)}</span>
   {/if}
 {/if}

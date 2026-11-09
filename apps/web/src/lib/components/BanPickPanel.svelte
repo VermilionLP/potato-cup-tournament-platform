@@ -83,11 +83,11 @@
     <ol class="flex shrink-0 items-center justify-center gap-1 px-1">
       {#each steps as step, i (step.id)}
         <li
-          class="rounded-full px-2 py-0.5 text-[10px] font-semibold
+          class="rounded-full px-2 py-0.5 text-small font-semibold
             {i === stepIndex
             ? 'bg-primary text-primary-foreground'
             : i < stepIndex
-              ? 'bg-primary/15 text-primary'
+              ? 'bg-primary/15 text-brand-ink'
               : 'bg-muted text-muted-foreground'}"
         >
           {step.label}
@@ -103,7 +103,7 @@
   {/if}
 
   <!-- Vehicle groups -->
-  <div class="flex items-center justify-between gap-2 text-[10px] text-muted-foreground">
+  <div class="flex items-center justify-between gap-2 text-small text-muted-foreground">
     <span>
       {poolName ? `${poolName} · ` : ""}{grouped.length} 个大组 · {vehicleCount} 架 · {rulesSummary(rules)}
       {#if banning}· {turnText}{/if}

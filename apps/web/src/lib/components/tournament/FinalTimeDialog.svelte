@@ -45,7 +45,7 @@
   <Dialog.Content class="max-w-100 bg-card border border-border">
     <Dialog.Header>
       <Dialog.Title class="text-lg font-bold tracking-tight text-foreground flex items-center gap-2">
-        <ClockIcon class="w-5 h-5 text-primary" />
+        <ClockIcon class="w-5 h-5 text-brand-ink" />
         确定比赛时间
       </Dialog.Title>
       <Dialog.Description class="text-xs text-muted-foreground">
@@ -75,11 +75,11 @@
                 onclick={() => (value = displayTime)}
                 class="flex items-center justify-between px-3 py-2.5 rounded-xl border transition-all text-xs cursor-pointer text-left
                 {value === displayTime
-                  ? 'bg-primary/10 border-primary text-primary font-bold'
+                  ? 'bg-primary/10 border-primary text-brand-ink font-bold'
                   : 'bg-background/40 border-border hover:border-primary/40 hover:bg-background/80 text-foreground'}"
               >
                 <span>{displayTime}</span>
-                <Badge variant="secondary" class="bg-primary/20 text-primary font-bold text-[10px]">{opt.count} 票</Badge>
+                <Badge variant="secondary" class="bg-primary/20 text-brand-ink font-bold text-small">{opt.count} 票</Badge>
               </button>
             {/each}
           </div>

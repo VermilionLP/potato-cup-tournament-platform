@@ -9,7 +9,7 @@
 {#if left > 0}
   <div class="flex flex-wrap items-center justify-center gap-3 border-t border-border/60 px-3 py-2.5 text-xs">
     <span class="text-muted-foreground">显示 {shown} / {total} 名</span>
-    <button type="button" onclick={onmore} class="font-semibold text-primary hover:underline cursor-pointer">
+    <button type="button" onclick={onmore} class="font-semibold text-brand-ink hover:underline cursor-pointer">
       再显示 {Math.min(PAGE_SIZE, left)} 名
     </button>
     {#if left > PAGE_SIZE}

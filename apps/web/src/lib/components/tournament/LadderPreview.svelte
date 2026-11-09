@@ -21,23 +21,23 @@
   <div class="font-bold">天梯分预估<span class="ml-1.5 font-normal text-muted-foreground">{division} 分榜</span></div>
   <div class="grid grid-cols-[minmax(0,1fr)_auto_auto_auto] items-center gap-x-3 gap-y-1">
     <span></span>
-    <span class="text-[10px] text-muted-foreground text-right">当前</span>
-    <span class="text-[10px] text-right rounded px-1 {picked === 'a' ? 'bg-primary/15 font-bold text-primary' : 'text-muted-foreground'}">{playerName(match.player1_id, match)} 胜</span>
-    <span class="text-[10px] text-right rounded px-1 {picked === 'b' ? 'bg-primary/15 font-bold text-primary' : 'text-muted-foreground'}">{playerName(match.player2_id, match)} 胜</span>
+    <span class="text-small text-muted-foreground text-right">当前</span>
+    <span class="text-small text-right rounded px-1 {picked === 'a' ? 'bg-primary/15 font-bold text-brand-ink' : 'text-muted-foreground'}">{playerName(match.player1_id, match)} 胜</span>
+    <span class="text-small text-right rounded px-1 {picked === 'b' ? 'bg-primary/15 font-bold text-brand-ink' : 'text-muted-foreground'}">{playerName(match.player2_id, match)} 胜</span>
     {#each [["a", match.player1_id], ["b", match.player2_id]] as [key, id] (key)}
       {@const now = sim[key]}
       <span class="flex min-w-0 items-center gap-1.5">
         <span class="truncate font-semibold">{playerName(id, match)}</span>
-        {#if now.provisional}<span class="shrink-0 rounded border border-amber-500/40 px-1 text-[9px] text-amber-500" title="前 10 场分数变化更大">定级中</span>{/if}
+        {#if now.provisional}<span class="shrink-0 rounded border border-amber-500/40 px-1 text-small text-amber-500" title="前 10 场分数变化更大">定级中</span>{/if}
       </span>
-      <span class="font-mono text-right">{now.mmr}</span>
+      <span class="num text-right">{now.mmr}</span>
       {#each ["ifAWins", "ifBWins"] as which, col (which)}
         {@const r = sim[which][key]}
-        <span class="font-mono text-right rounded px-1 {picked === (col === 0 ? 'a' : 'b') ? 'bg-primary/10' : ''}">
+        <span class="num text-right rounded px-1 {picked === (col === 0 ? 'a' : 'b') ? 'bg-primary/10' : ''}">
           {r.after} <span class={tone(r.delta)}>{signed(r.delta)}</span>
         </span>
       {/each}
     {/each}
   </div>
-  <p class="text-[10px] text-muted-foreground">按胜负计算，与小比分无关；同时提交的其他比赛可能让结果略有不同。</p>
+  <p class="text-small text-muted-foreground">按胜负计算，与小比分无关；同时提交的其他比赛可能让结果略有不同。</p>
 </div>

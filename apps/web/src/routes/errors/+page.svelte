@@ -78,20 +78,20 @@
       {#each errors as e (e.id)}
         <div class="space-y-1 px-4 py-3">
           <div class="flex flex-wrap items-baseline justify-between gap-2">
-            <button type="button" class="min-w-0 text-left font-mono font-semibold text-foreground break-all cursor-pointer hover:text-primary" onclick={() => (open = open === e.id ? null : e.id)}>
+            <button type="button" class="min-w-0 text-left num font-semibold text-foreground break-all cursor-pointer hover:text-brand-ink" onclick={() => (open = open === e.id ? null : e.id)}>
               {e.message}
             </button>
             <span class="shrink-0 rounded-full bg-muted px-2 py-0.5 font-bold">{e.count} 次</span>
           </div>
-          <div class="flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground">
+          <div class="flex flex-wrap gap-x-3 gap-y-0.5 text-small text-muted-foreground">
             <span>最近 {formatInZone(new Date(e.last_at))}</span>
             {#if e.count > 1}<span>首次 {formatInZone(new Date(e.first_at))}</span>{/if}
-            {#if e.page}<a href={e.page} class="font-mono hover:text-primary">{e.page}</a>{/if}
-            {#if e.player_id}<a href="/player/{encodeURIComponent(e.player_id)}" class="hover:text-primary">选手 {e.player_id}</a>{/if}
+            {#if e.page}<a href={e.page} class="num hover:text-brand-ink">{e.page}</a>{/if}
+            {#if e.player_id}<a href="/player/{encodeURIComponent(e.player_id)}" class="hover:text-brand-ink">选手 {e.player_id}</a>{/if}
           </div>
           {#if open === e.id}
-            <pre class="mt-1 max-h-64 overflow-auto rounded-md bg-muted/50 p-2 text-[10px] leading-relaxed whitespace-pre-wrap break-all">{e.stack || "（没有堆栈）"}</pre>
-            <div class="text-[10px] text-muted-foreground break-all">{e.user_agent}</div>
+            <pre class="mt-1 max-h-64 overflow-auto rounded-md bg-muted/50 p-2 text-small leading-relaxed whitespace-pre-wrap break-all">{e.stack || "（没有堆栈）"}</pre>
+            <div class="text-small text-muted-foreground break-all">{e.user_agent}</div>
           {/if}
         </div>
       {/each}

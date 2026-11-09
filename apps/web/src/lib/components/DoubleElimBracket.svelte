@@ -136,7 +136,7 @@
 
 {#snippet bandHeader(label)}
   <div
-    class="flex h-7 items-center justify-center rounded-md border border-neutral-700/50 bg-neutral-800/85 px-2 text-[11px] font-bold tracking-wide text-neutral-100 shadow-sm"
+    class="flex h-7 items-center justify-center rounded-full bg-secondary px-3 text-small font-bold text-secondary-foreground"
   >
     {label}
   </div>
@@ -157,7 +157,7 @@
         stroke-linecap="round"
         class={path.active
           ? "stroke-primary/60"
-          : "stroke-neutral-400/45 dark:stroke-neutral-600/50"}
+          : "stroke-input"}
       />
     {/each}
   </svg>
@@ -182,7 +182,7 @@
   {#if !voided}
     {#if bye}
       <div
-        class="flex h-full items-center justify-center rounded-md border border-dashed border-neutral-300 bg-neutral-100/70 px-2 text-[10px] text-muted-foreground dark:border-neutral-700 dark:bg-neutral-900/40"
+        class="flex h-full items-center justify-center rounded-lg border border-dashed border-input px-2 text-small text-muted-foreground"
       >
         轮空 · {playerLabel(
           match,
@@ -215,10 +215,10 @@
     <section>
       <div class="mb-2 flex flex-wrap items-center gap-2">
         <span
-          class="rounded-full border border-sky-500/30 bg-sky-500/5 px-2 py-0.5 text-[10px] font-bold text-sky-500"
+          class="rounded-full border border-sky-500/30 bg-sky-500/5 px-2 py-0.5 text-small font-bold text-sky-500"
           >{isGroupSingle ? "单败淘汰" : "胜者组"}</span
         >
-        <span class="text-[10px] text-muted-foreground/70">
+        <span class="text-small text-muted-foreground/70">
           {#if isGroupSingle}
             整组打完，按最终名次取前 {perGroup} 名出线{perGroup >= 3 ? "（含三四名决赛）" : ""}
           {:else if isGroup}
@@ -250,7 +250,7 @@
       {#if thirdPlace.length}
         <div class="mt-3 space-y-1.5">
           <div
-            class="flex h-7 items-center justify-center rounded-md border border-neutral-700/50 bg-neutral-800/85 px-2 text-[11px] font-bold tracking-wide text-neutral-100 shadow-sm"
+            class="flex h-7 items-center justify-center rounded-full bg-secondary px-3 text-small font-bold text-secondary-foreground"
             style="width: {CARD_W}px"
           >
             三四名决赛
@@ -268,10 +268,10 @@
     <section>
       <div class="mb-2 flex flex-wrap items-center gap-2">
         <span
-          class="rounded-full border border-purple-500/30 bg-purple-500/5 px-2 py-0.5 text-[10px] font-bold text-purple-400"
+          class="rounded-full border border-sky-500/30 bg-sky-500/5 px-2 py-0.5 text-small font-bold text-sky-600 dark:text-sky-400"
           >败者组</span
         >
-        <span class="text-[10px] text-muted-foreground/70"
+        <span class="text-small text-muted-foreground/70"
           >{isGroup
             ? "输一场仍可继续，再输即淘汰；败者组出线战胜者出线"
             : "输一场仍可继续，再输即淘汰；败者组决赛胜者进入总决赛"}</span
@@ -300,7 +300,7 @@
     {/if}
 
     {#if grandFinalReset}
-      <p class="text-[10px] text-muted-foreground/60">
+      <p class="text-small text-muted-foreground/60">
         总决赛重置已开启：若败者组冠军赢下首场，会自动加赛一场决定冠军。
       </p>
     {/if}

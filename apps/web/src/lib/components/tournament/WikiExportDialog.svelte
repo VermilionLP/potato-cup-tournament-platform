@@ -100,8 +100,8 @@
   }
 
   const field = "h-8 w-full rounded-md border border-border bg-background px-2 text-xs text-foreground focus:border-primary focus:outline-none";
-  const area = "w-full rounded-md border border-border bg-background p-2 font-mono text-[11px] text-foreground focus:border-primary focus:outline-none";
-  const label = "text-[11px] font-semibold text-muted-foreground";
+  const area = "w-full rounded-md border border-border bg-background p-2 num text-small text-foreground focus:border-primary focus:outline-none";
+  const label = "text-small font-semibold text-muted-foreground";
 </script>
 
 {#snippet boSelect(key, title)}
@@ -118,7 +118,7 @@
   <Dialog.Content class="sm:max-w-3xl max-h-[90vh] flex flex-col gap-3 bg-card border border-border">
     <Dialog.Header class="shrink-0">
       <Dialog.Title class="text-lg font-bold text-foreground flex items-center gap-2">
-        <FileTextIcon class="w-5 h-5 text-primary" />
+        <FileTextIcon class="w-5 h-5 text-brand-ink" />
         Liquipedia Wiki 代码导出
       </Dialog.Title>
       <Dialog.Description class="text-xs text-muted-foreground">
@@ -148,7 +148,7 @@
     {:else if tab === "code"}
       <div class="min-h-0 flex-1 flex flex-col gap-3">
         {#each warnings as w (w)}
-          <p class="flex items-start gap-1.5 rounded-md bg-amber-500/10 px-2.5 py-1.5 text-[11px] text-amber-700 dark:text-amber-300">
+          <p class="flex items-start gap-1.5 rounded-md bg-amber-500/10 px-2.5 py-1.5 text-small text-amber-700 dark:text-amber-300">
             <TriangleAlertIcon class="mt-0.5 h-3.5 w-3.5 shrink-0" />{w}
           </p>
         {/each}
@@ -163,7 +163,7 @@
     {:else if draft}
       <div class="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain -mx-4 px-4 pb-1 text-xs">
         <section class="space-y-2">
-          <h3 class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">页面</h3>
+          <h3 class="text-label font-bold uppercase tracking-wider text-muted-foreground">页面</h3>
           <div class="grid gap-2 sm:grid-cols-2">
             <label class="space-y-1"><span class={label}>页面名称（留空：周赛用 Potato Cup Weekly #编号，其他用赛事名）</span><input class={field} bind:value={draft.name} /></label>
             <label class="space-y-1"><span class={label}>简称 tickername（留空同名称）</span><input class={field} bind:value={draft.tickername} placeholder="PC 2026 Aug - AS" /></label>
@@ -185,7 +185,7 @@
         </section>
 
         <section class="space-y-2">
-          <h3 class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">赛制</h3>
+          <h3 class="text-label font-bold uppercase tracking-wider text-muted-foreground">赛制</h3>
           <div class="grid gap-2 sm:grid-cols-3">
             {@render boSelect("group", "小组赛 / 瑞士轮")}
             {@render boSelect("playoff", "淘汰赛")}
@@ -198,8 +198,8 @@
         </section>
 
         <section class="space-y-2">
-          <h3 class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">奖金</h3>
-          <p class="text-[11px] text-muted-foreground">积分自动取赛事的积分表，这里只填奖金和实物奖励；名次写法 1、2、3-4。</p>
+          <h3 class="text-label font-bold uppercase tracking-wider text-muted-foreground">奖金</h3>
+          <p class="text-small text-muted-foreground">积分自动取赛事的积分表，这里只填奖金和实物奖励；名次写法 1、2、3-4。</p>
           <div class="grid gap-2 sm:grid-cols-3">
             <label class="space-y-1"><span class={label}>总奖金</span><input class={field} inputmode="decimal" bind:value={draft.prizepool} /></label>
             <label class="space-y-1">
@@ -223,7 +223,7 @@
                 </button>
               </div>
             {/each}
-            <Button variant="outline" size="sm" class="h-7 gap-1 text-[11px] cursor-pointer" onclick={() => draft.prizes.push({ place: "", localprize: "", freetext: "" })}>
+            <Button variant="outline" size="sm" class="h-7 gap-1 text-small cursor-pointer" onclick={() => draft.prizes.push({ place: "", localprize: "", freetext: "" })}>
               <PlusIcon class="h-3.5 w-3.5" /> 添加名次
             </Button>
           </div>
@@ -235,7 +235,7 @@
         </section>
 
         <section class="space-y-2">
-          <h3 class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">解说与直播</h3>
+          <h3 class="text-label font-bold uppercase tracking-wider text-muted-foreground">解说与直播</h3>
           {#each draft.talents as g, i (i)}
             <div class="grid gap-2 rounded-lg border border-border/60 p-2 sm:grid-cols-[9rem_8rem_1fr_2rem]">
               <select class="{field} cursor-pointer" bind:value={g.position}>
@@ -248,7 +248,7 @@
               </button>
             </div>
           {/each}
-          <Button variant="outline" size="sm" class="h-7 gap-1 text-[11px] cursor-pointer" onclick={() => draft.talents.push({ position: "Commentator", lang: "", peopleText: "" })}>
+          <Button variant="outline" size="sm" class="h-7 gap-1 text-small cursor-pointer" onclick={() => draft.talents.push({ position: "Commentator", lang: "", peopleText: "" })}>
             <PlusIcon class="h-3.5 w-3.5" /> 添加一组
           </Button>
           <label class="block space-y-1">

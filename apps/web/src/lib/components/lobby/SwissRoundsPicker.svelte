@@ -37,12 +37,12 @@
       />
       <span class="text-xs text-muted-foreground">轮</span>
     {:else if basis}
-      <span class="text-xs font-semibold text-primary">每组 {basis} 人 → {autoSwissRounds(basis)} 轮</span>
+      <span class="text-xs font-semibold text-brand-ink">每组 {basis} 人 → {autoSwissRounds(basis)} 轮</span>
     {:else}
-      <span class="text-xs font-semibold text-primary">按开赛人数自动计算</span>
+      <span class="text-xs font-semibold text-brand-ink">按开赛人数自动计算</span>
     {/if}
   </div>
-  <p class="text-[10px] leading-relaxed text-muted-foreground">
+  <p class="text-small leading-relaxed text-muted-foreground">
     {#if form.swissRoundsMode === "auto"}
       自动 = 单循环：每位选手和{basis ? "同组" : ""}其他所有人各打一场（偶数人打 人数−1 轮，奇数人每人轮空一次、打 人数 轮{basis ? "" : "；最多 15 轮"}）。
     {:else}

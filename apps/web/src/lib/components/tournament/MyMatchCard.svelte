@@ -82,10 +82,10 @@
   >
     <div class="flex flex-wrap items-center justify-between gap-2">
       <h2 class="text-sm font-bold flex items-center gap-1.5">
-        <SwordsIcon class="w-4 h-4 text-primary" />
+        <SwordsIcon class="w-4 h-4 text-brand-ink" />
         我的比赛
       </h2>
-      <span class="text-xs font-semibold {info.state === 'play' || info.state === 'confirm' ? 'text-primary' : 'text-muted-foreground'}">
+      <span class="text-xs font-semibold {info.state === 'play' || info.state === 'confirm' ? 'text-brand-ink' : 'text-muted-foreground'}">
         {TEXT[info.state]}
       </span>
     </div>
@@ -106,13 +106,13 @@
     {:else if info.match}
       <div class="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-center">
         <div class="space-y-1.5 min-w-0">
-          <div class="text-[11px] text-muted-foreground">
+          <div class="text-small text-muted-foreground">
             {roundLabel(info.match)}{matchOrder?.get?.(info.match.id) ? ` · 第 ${matchOrder.get(info.match.id)} 场` : ""}
           </div>
           <div class="flex flex-wrap items-center gap-2 text-sm">
             <span class="text-muted-foreground">对手</span>
             {#if info.opponent}
-              <a href="/player/{encodeURIComponent(info.opponent.id)}" class="flex items-center gap-1.5 font-bold hover:text-primary">
+              <a href="/player/{encodeURIComponent(info.opponent.id)}" class="flex items-center gap-1.5 font-bold hover:text-brand-ink">
                 <Flag code={info.opponent.flag} size={16} />
                 {info.opponent.display_name || info.opponent.id}
               </a>
@@ -124,20 +124,20 @@
             <div class="flex flex-wrap items-center gap-1.5">
               <ContactBadges tags={info.opponent.battle_tags} compact empty="对手没有填写联系方式" />
               {#if contact.qq}
-                <button type="button" class="text-[10px] text-primary hover:underline cursor-pointer" onclick={() => copy(contact.qq)}>复制 QQ</button>
+                <button type="button" class="text-small text-brand-ink hover:underline cursor-pointer" onclick={() => copy(contact.qq)}>复制 QQ</button>
               {/if}
               {#if contact.discord}
-                <button type="button" class="text-[10px] text-primary hover:underline cursor-pointer" onclick={() => copy(contact.discord)}>复制 Discord</button>
+                <button type="button" class="text-small text-brand-ink hover:underline cursor-pointer" onclick={() => copy(contact.discord)}>复制 Discord</button>
               {/if}
             </div>
           {/if}
           {#if info.report}
             <div class="text-xs">
               <span class="text-muted-foreground">{playerName(info.report.by)} 提交：</span>
-              <span class="font-mono font-semibold">{formatReport(info.match, info.match.pending_report, playerName)}</span>
+              <span class="num font-semibold">{formatReport(info.match, info.match.pending_report, playerName)}</span>
               {#if info.match.pending_report?.counter}
                 <span class="text-muted-foreground"> · {playerName(info.match.pending_report.counter.by)} 提交：</span>
-                <span class="font-mono font-semibold">{formatReport(info.match, info.match.pending_report.counter, playerName)}</span>
+                <span class="num font-semibold">{formatReport(info.match, info.match.pending_report.counter, playerName)}</span>
               {/if}
             </div>
           {/if}

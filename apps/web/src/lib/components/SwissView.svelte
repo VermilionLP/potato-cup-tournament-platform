@@ -67,7 +67,7 @@
 {#snippet matchCard(match)}
   {#if isBye(match)}
     <div
-      class="flex h-[76px] items-center justify-center rounded-md border border-dashed border-neutral-300 bg-neutral-100/70 px-2 text-center text-[10px] text-muted-foreground dark:border-neutral-700 dark:bg-neutral-900/40"
+      class="flex h-[76px] items-center justify-center rounded-lg border border-dashed border-input px-2 text-center text-small text-muted-foreground"
     >
       轮空 · {nameOf(match.player1_id || match.player2_id)} 记一胜
     </div>
@@ -93,8 +93,8 @@
 {/snippet}
 
 <div class="space-y-6 py-1">
-  <div class="flex flex-wrap items-center gap-2 text-[11px]">
-    <span class="rounded-full border border-primary/30 bg-primary/5 px-2 py-0.5 font-bold text-primary">
+  <div class="flex flex-wrap items-center gap-2 text-small">
+    <span class="rounded-full border border-primary/30 bg-primary/5 px-2 py-0.5 font-bold text-brand-ink">
       共 {roundsTotal ?? "?"} 轮
     </span>
     {#if currentRound > 0}
@@ -138,13 +138,13 @@
       <div class="mb-2 flex items-center gap-2 text-xs font-bold text-foreground">
         {activeGroup && hasGroups ? `${activeGroup.label} 组积分榜` : "积分榜"}
         {#if perGroup}
-          <span class="text-[10px] font-normal text-muted-foreground">前 {perGroup} 名晋级淘汰赛</span>
+          <span class="text-small font-normal text-muted-foreground">前 {perGroup} 名晋级淘汰赛</span>
         {/if}
       </div>
       <div class="overflow-x-auto rounded-xl border border-border/50 bg-background/25">
         <table class="w-full border-collapse text-left text-xs text-foreground/95">
           <thead>
-            <tr class="border-b border-border/50 bg-muted/20 text-[10px] font-bold uppercase text-muted-foreground">
+            <tr class="border-b border-border/50 bg-muted/20 text-label font-bold uppercase text-muted-foreground">
               <th class="w-12 px-3 py-2 text-center">名次</th>
               <th class="px-3 py-2">选手</th>
               <th class="w-16 px-3 py-2 text-center">胜-负</th>
@@ -159,7 +159,7 @@
                 class="{row.player_id === userId ? 'bg-primary/5' : ''} hover:bg-background/40
                   {perGroup && row.rank === perGroup ? 'border-b-2 border-dashed border-b-emerald-500/50' : ''}"
               >
-                <td class="px-3 py-2 text-center font-bold {row.rank === 1 && finished ? 'text-amber-500' : 'text-primary'}">
+                <td class="px-3 py-2 text-center font-bold {row.rank === 1 && finished ? 'text-amber-500' : 'text-brand-ink'}">
                   {row.rank}
                 </td>
                 <td class="px-3 py-2">
@@ -170,17 +170,17 @@
                       <CrownIcon class="h-3 w-3 text-amber-500" />
                     {/if}
                     {#if perGroup && row.rank <= perGroup}
-                      <span class="rounded bg-emerald-500/15 px-1 text-[9px] font-bold text-emerald-600 dark:text-emerald-400">晋级</span>
+                      <span class="rounded bg-emerald-500/15 px-1 text-small font-bold text-emerald-600 dark:text-emerald-400">晋级</span>
                     {/if}
                     {#if row.byes > 0}
-                      <span class="text-[9px] text-muted-foreground" title="轮空计一胜">轮空</span>
+                      <span class="text-small text-muted-foreground" title="轮空计一胜">轮空</span>
                     {/if}
                   </div>
                 </td>
-                <td class="px-3 py-2 text-center font-mono">{row.wins}-{row.losses}</td>
-                <td class="px-3 py-2 text-center font-mono font-bold">{row.points}</td>
-                <td class="px-3 py-2 text-center font-mono">{signed(row.game_diff)}</td>
-                <td class="px-3 py-2 text-center font-mono">{row.buchholz}</td>
+                <td class="px-3 py-2 text-center num">{row.wins}-{row.losses}</td>
+                <td class="px-3 py-2 text-center num font-bold">{row.points}</td>
+                <td class="px-3 py-2 text-center num">{signed(row.game_diff)}</td>
+                <td class="px-3 py-2 text-center num">{row.buchholz}</td>
               </tr>
             {/each}
           </tbody>
@@ -193,7 +193,7 @@
     <section>
       <div class="mb-2 flex items-center gap-2">
         <span class="text-xs font-bold text-foreground">第 {r.round} 轮</span>
-        <span class="text-[10px] text-muted-foreground">
+        <span class="text-small text-muted-foreground">
           {r.matches.filter((m) => m.status !== "pending").length} / {r.matches.length} 场已完成
         </span>
       </div>

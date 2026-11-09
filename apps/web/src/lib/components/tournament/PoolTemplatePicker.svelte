@@ -29,7 +29,7 @@
 </script>
 
 <div class="flex flex-wrap items-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-3 py-2 text-xs">
-  <span class="font-semibold text-primary">管理员 · Ban / Pick 载具池模板</span>
+  <span class="font-semibold text-brand-ink">管理员 · Ban / Pick 载具池模板</span>
   <select
     aria-label="载具池模板"
     value={tournament?.vehicle_template || ""}
@@ -46,5 +46,5 @@
     {/each}
   </select>
   <span class="text-muted-foreground">只列出「{vehiclePoolLabel(tournament?.vehicle_pool)}」类型的模板</span>
-  <a href={bpTemplate ? `/pools?template=${encodeURIComponent(bpTemplate.id)}` : "/pools"} class="ml-auto text-primary hover:underline">编辑模板 →</a>
+  <a href={bpTemplate ? `/pools?template=${encodeURIComponent(bpTemplate.id)}` : "/pools"} class="ml-auto text-brand-ink hover:underline">编辑模板 →</a>
 </div>

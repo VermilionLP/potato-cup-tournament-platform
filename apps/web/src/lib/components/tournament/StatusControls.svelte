@@ -32,7 +32,7 @@
     {#if consoleHref && (status === "registration" || status === "in_progress")}
       <a
         href={consoleHref}
-        class="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-background px-3 text-xs font-semibold text-foreground hover:border-primary/50 hover:text-primary transition-colors"
+        class="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-background px-3 text-xs font-semibold text-foreground hover:border-primary/50 hover:text-brand-ink transition-colors"
         title="一屏查看可开打、待确认、有争议的比赛和签到情况"
       >
         <MonitorIcon class="h-3.5 w-3.5" />
@@ -48,10 +48,10 @@
     {/if}
   </div>
   {#if startBlocked && status === "registration"}
-    <span class="text-[11px] text-muted-foreground sm:text-right">{startBlocked}</span>
+    <span class="text-small text-muted-foreground sm:text-right">{startBlocked}</span>
   {/if}
   {#if back}
-    <button type="button" onclick={back.run} class="self-start text-[11px] text-muted-foreground hover:text-foreground hover:underline cursor-pointer sm:self-end">
+    <button type="button" onclick={back.run} class="self-start text-small text-muted-foreground hover:text-foreground hover:underline cursor-pointer sm:self-end">
       {back.label}
     </button>
   {/if}

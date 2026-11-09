@@ -79,7 +79,7 @@
       <button
         type="button"
         onclick={resetKey}
-        class="rounded-md border px-2 py-1 text-[11px] font-semibold cursor-pointer transition-colors
+        class="rounded-md border px-2 py-1 text-small font-semibold cursor-pointer transition-colors
           {pendingAction === 'reset-key' ? 'border-red-500 bg-red-500 text-white' : 'border-border text-muted-foreground hover:text-foreground'}"
         title="选手换了设备又找不到原密钥时使用；重置后第一个用这个 ID 的设备会重新绑定"
       >
@@ -118,7 +118,7 @@
   {#if pendingAction === "merge"}
     <div class="rounded-lg border border-amber-500/40 bg-amber-500/10 p-2.5 space-y-2">
       <p class="text-xs font-semibold text-amber-600 dark:text-amber-400">
-        确定将 <span class="font-mono">{playerId}</span> 合并到 <span class="font-mono">{mergeTargetId}</span>？合并后 {playerId} 将被删除，无法撤销。
+        确定将 <span class="num">{playerId}</span> 合并到 <span class="num">{mergeTargetId}</span>？合并后 {playerId} 将被删除，无法撤销。
       </p>
       <div class="flex gap-2 justify-end">
         <Button variant="outline" size="sm" class="h-7 text-xs" onclick={() => (pendingAction = null)}>取消</Button>
@@ -129,7 +129,7 @@
       </div>
     </div>
   {/if}
-  <p class="text-[10px] text-muted-foreground/60">
+  <p class="text-small text-muted-foreground/60">
     合并后此选手的所有对阵、报名、投票和赛事账号转移到目标选手；目标选手没填的国籍、战队、联系方式和 Liquipedia 链接用此选手的补上；然后删除此选手。
   </p>
 </div>

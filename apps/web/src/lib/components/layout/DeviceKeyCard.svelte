@@ -42,7 +42,7 @@
     设备密钥
   </div>
   {#if userState.key}
-    <p class="text-[11px] text-muted-foreground">
+    <p class="text-small text-muted-foreground">
       这个 ID 已绑定到本设备。换设备或浏览器时，把密钥复制过去导入即可；不要发给别人，拿到密钥的人可以用你的 ID 报名和修改资料。
     </p>
     <div class="flex gap-2">
@@ -50,20 +50,20 @@
         readonly
         value={showKey ? userState.key : "•".repeat(16)}
         aria-label="设备密钥"
-        class="flex-1 min-w-0 h-8 rounded-md border border-border bg-background px-2 font-mono text-[11px] text-foreground"
+        class="flex-1 min-w-0 h-8 rounded-md border border-border bg-background px-2 num text-small text-foreground"
         onfocus={(e) => showKey && e.currentTarget.select()}
       />
       <Button variant="outline" size="sm" class="h-8 text-xs" onclick={() => (showKey = !showKey)}>{showKey ? "隐藏" : "显示"}</Button>
       <Button variant="outline" size="sm" class="h-8 text-xs" onclick={copyKey}>复制</Button>
     </div>
   {:else}
-    <p class="text-[11px] {userState.keyConflict ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground'}">
+    <p class="text-small {userState.keyConflict ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground'}">
       {userState.keyConflict
         ? "这个 ID 已绑定其他设备。请在那台设备的「个人资料」里复制设备密钥，粘贴到下面导入；找不到原设备请联系管理员重置。"
         : "本设备还没有这个 ID 的密钥。如果你在别的设备上用过这个 ID，请把那边的密钥导入。"}
     </p>
     <div class="flex gap-2">
-      <Input bind:value={keyImport} placeholder="粘贴设备密钥" class="h-8 flex-1 font-mono text-[11px]" />
+      <Input bind:value={keyImport} placeholder="粘贴设备密钥" class="h-8 flex-1 num text-small" />
       <Button size="sm" class="h-8 text-xs" disabled={busy || !keyImport.trim()} onclick={importKey}>导入</Button>
     </div>
   {/if}

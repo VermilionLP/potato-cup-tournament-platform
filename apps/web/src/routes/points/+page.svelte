@@ -2,6 +2,7 @@
   // Potato Cup points leaderboard (积分榜): per season (year) and event type,
   // the points players earned in finished events with a points table. The
   // board is PointsBoard; admins also get SeasonAdmin (loaded on demand).
+  import { Chip } from "#lib/components/ui/chip/index.js";
   import PageHeader from "#lib/components/PageHeader.svelte";
   import PageSkeleton from "#lib/components/PageSkeleton.svelte";
   import { onMount } from "svelte";
@@ -108,33 +109,15 @@
     </div>
   {:else}
     <div class="flex flex-wrap items-center gap-3">
-      <div class="inline-flex rounded-lg border border-border bg-muted/30 p-0.5 text-[11px]" role="group" aria-label="赛季">
+      <div class="flex flex-wrap items-center gap-2" role="group" aria-label="赛季">
         {#each data.seasons as season (season)}
-          <button
-            type="button"
-            class="px-2.5 py-1 rounded-md transition-colors cursor-pointer {data.season === season
-              ? 'bg-background text-foreground shadow-sm font-semibold'
-              : 'text-muted-foreground hover:text-foreground'}"
-            aria-pressed={data.season === season}
-            onclick={() => pickSeason(season)}
-          >
-            {season} 赛季{season === data.current ? " · 当前" : ""}
-          </button>
+          <Chip selected={data.season === season} onclick={() => pickSeason(season)}>{season} 赛季{season === data.current ? " · 当前" : ""}</Chip>
         {/each}
       </div>
       {#if data.boards.length}
-        <div class="inline-flex flex-wrap rounded-lg border border-border bg-muted/30 p-0.5 text-[11px]" role="group" aria-label="比赛类型">
+        <div class="flex flex-wrap items-center gap-2" role="group" aria-label="比赛类型">
           {#each VEHICLE_POOLS.filter((p) => data.boards.some((b) => b.pool === p.id)) as opt (opt.id)}
-            <button
-              type="button"
-              class="px-2.5 py-1 rounded-md transition-colors cursor-pointer {board?.pool === opt.id
-                ? 'bg-background text-foreground shadow-sm font-semibold'
-                : 'text-muted-foreground hover:text-foreground'}"
-              aria-pressed={board?.pool === opt.id}
-              onclick={() => pickPool(opt.id)}
-            >
-              {opt.name}
-            </button>
+            <Chip selected={board?.pool === opt.id} onclick={() => pickPool(opt.id)}>{opt.name}</Chip>
           {/each}
         </div>
       {/if}
@@ -145,13 +128,13 @@
     </div>
 
     <!-- Season status; admins set the current season and end / reopen one. -->
-    <div class="flex flex-wrap items-center gap-2 text-[11px]">
+    <div class="flex flex-wrap items-center gap-2 text-small">
       {#if isEnded}
         <span class="rounded-full border border-border bg-muted/50 px-2.5 py-0.5 font-semibold text-foreground">
           {data.season} 赛季已结束 · {new Date(data.ended_at).toLocaleDateString("zh-CN")} · 积分和名单已锁定
         </span>
       {:else if data.season === data.current}
-        <span class="rounded-full border border-primary/40 bg-primary/10 px-2.5 py-0.5 font-semibold text-primary">当前赛季 · 进行中</span>
+        <span class="rounded-full border border-primary/40 bg-primary/10 px-2.5 py-0.5 font-semibold text-brand-ink">当前赛季 · 进行中</span>
       {:else}
         <span class="rounded-full border border-border px-2.5 py-0.5 text-muted-foreground">进行中</span>
       {/if}

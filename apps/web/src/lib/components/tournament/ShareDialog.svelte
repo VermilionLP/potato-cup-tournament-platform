@@ -157,7 +157,7 @@
 
       {#if kind === "results" && tournament?.status === "completed" && standings.length}
         <div class="space-y-1.5 rounded-lg border border-border/70 bg-muted/20 p-2">
-          <div class="flex flex-wrap items-center justify-between gap-2 text-[11px]">
+          <div class="flex flex-wrap items-center justify-between gap-2 text-small">
             <span class="inline-flex items-center gap-1 font-semibold"><ImageIcon class="h-3.5 w-3.5" />结果图（1080 × 1350）</span>
             <span class="flex gap-1.5">
               <Button size="sm" variant="outline" disabled={!imageUrl} onclick={copyImage} class="h-7 gap-1 text-xs"><CopyIcon class="h-3.5 w-3.5" />复制图片</Button>
@@ -167,24 +167,24 @@
           {#if imageUrl}
             <img src={imageUrl} alt="比赛结果图" class="mx-auto max-h-72 rounded-md border border-border" />
           {:else}
-            <p class="py-6 text-center text-[11px] text-muted-foreground">正在生成…</p>
+            <p class="py-6 text-center text-small text-muted-foreground">正在生成…</p>
           {/if}
         </div>
       {/if}
 
       <div class="space-y-1">
-        <div class="flex items-center justify-between text-[11px] text-muted-foreground">
+        <div class="flex items-center justify-between text-small text-muted-foreground">
           <span>文字（可以直接修改）</span>
           <span class={text.length > DISCORD_LIMIT ? "text-amber-500 font-semibold" : ""}>
             {text.length} 字{text.length > DISCORD_LIMIT ? ` · 超过 Discord 单条 ${DISCORD_LIMIT} 字，已分成 ${parts.length} 条` : ""}
           </span>
         </div>
-        <textarea bind:value={text} rows="12" class="w-full rounded-md border border-border bg-background p-2 font-mono text-[11px] leading-relaxed"></textarea>
+        <textarea bind:value={text} rows="12" class="w-full rounded-md border border-border bg-background p-2 num text-small leading-relaxed"></textarea>
       </div>
 
       <div class="space-y-1">
-        <div class="text-[11px] text-muted-foreground">时间预览（按你的时区）</div>
-        <pre class="whitespace-pre-wrap rounded-md border border-border/60 bg-muted/30 p-2 text-[11px] leading-relaxed">{preview}</pre>
+        <div class="text-small text-muted-foreground">时间预览（按你的时区）</div>
+        <pre class="whitespace-pre-wrap rounded-md border border-border/60 bg-muted/30 p-2 text-small leading-relaxed">{preview}</pre>
       </div>
     </div>
 

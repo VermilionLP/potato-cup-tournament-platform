@@ -72,13 +72,13 @@
 </script>
 
 <div class="space-y-2 rounded-xl border border-border bg-card/40 p-3 text-xs">
-  <div class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">赛季管理</div>
+  <div class="text-label font-bold uppercase tracking-wider text-muted-foreground">赛季管理</div>
   <div class="flex flex-wrap items-center gap-2">
     <label class="flex items-center gap-1.5">
       当前赛季
       <input
         aria-label="当前赛季"
-        class="h-7 w-16 rounded border border-border bg-background px-1.5 font-mono text-xs text-foreground focus:border-primary focus:outline-none"
+        class="h-7 w-16 rounded border border-border bg-background px-1.5 num text-xs text-foreground focus:border-primary focus:outline-none"
         inputmode="numeric"
         maxlength="4"
         bind:value={currentDraft}
@@ -86,7 +86,7 @@
     </label>
     <button type="button" disabled={seasonBusy || !validSeason(currentDraft) || currentDraft.trim() === data.current} onclick={saveCurrentSeason}
       class="h-7 rounded-md border border-border px-2.5 font-semibold hover:bg-muted cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">设为当前赛季</button>
-    <span class="text-[10px] text-muted-foreground">新建赛事默认计入当前赛季{data.current ? `（现在是 ${data.current}）` : "（未设置时按当年年份）"}。</span>
+    <span class="text-small text-muted-foreground">新建赛事默认计入当前赛季{data.current ? `（现在是 ${data.current}）` : "（未设置时按当年年份）"}。</span>
   </div>
   <div class="flex flex-wrap items-center gap-2 border-t border-border/50 pt-2">
     {#if isEnded}
@@ -111,7 +111,7 @@
       {/if}
     {:else}
       <button type="button" onclick={() => (confirmEnd = true)} class="h-7 rounded-md border border-red-500/40 px-2.5 font-semibold text-red-600 hover:bg-red-500/10 dark:text-red-400 cursor-pointer">结束 {data.season} 赛季</button>
-      <span class="text-[10px] text-muted-foreground">结束后积分榜和冬季总决赛名单固定，不再随修改变化；需要时可以重新开放。</span>
+      <span class="text-small text-muted-foreground">结束后积分榜和冬季总决赛名单固定，不再随修改变化；需要时可以重新开放。</span>
     {/if}
   </div>
 </div>

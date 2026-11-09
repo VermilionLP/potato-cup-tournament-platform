@@ -16,7 +16,7 @@
     class="max-w-2xl bg-card border border-primary/30"
   >
     <Dialog.Header>
-      <Dialog.Title class="text-base font-bold text-primary flex items-center gap-2">
+      <Dialog.Title class="text-base font-bold text-brand-ink flex items-center gap-2">
         <PlayIcon class="w-4 h-4" /> 请选择下一场直播对局
       </Dialog.Title>
       <Dialog.Description class="text-xs text-muted-foreground">
@@ -35,7 +35,7 @@
             <span class="text-xs font-semibold text-foreground">
               #{matchOrder.get(m.id)} · {roundLabel(m)} · 场次 {m.position}
             </span>
-            <Badge variant="outline" class="text-[10px]">待赛</Badge>
+            <Badge variant="outline" class="text-small">待赛</Badge>
           </div>
           <div class="mt-1 text-xs text-foreground/90">
             {playerName(m.player1_id)}

@@ -8,7 +8,7 @@
 
 <Badge
   variant="outline"
-  class="gap-1 text-[9px] px-1.5 py-0 tracking-wider {tierBadgeClass(tier?.group)} {className}"
+  class="gap-1 text-label px-1.5 py-0 tracking-wider {tierBadgeClass(tier?.group)} {className}"
 >
   {#if leagueIcon(tier?.group)}
     <img

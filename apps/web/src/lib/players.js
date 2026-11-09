@@ -29,11 +29,11 @@ export function wikiUrl(link) {
 
 const GRADIENTS = [
   "from-amber-500 to-orange-500",
-  "from-purple-500 to-indigo-500",
+  "from-sky-500 to-blue-600",
   "from-blue-500 to-cyan-500",
   "from-emerald-500 to-teal-500",
   "from-rose-500 to-pink-500",
-  "from-violet-500 to-fuchsia-500",
+  "from-slate-500 to-slate-700",
 ];
 
 /** Avatar gradient for a player, stable per ID. */

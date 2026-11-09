@@ -63,7 +63,7 @@
     type="button"
     onclick={() => pick(p)}
     title={p.last_seen_at ? `最近活跃: ${new Date(p.last_seen_at).toLocaleDateString("zh-CN")}` : "无登录记录"}
-    class="text-[11px] px-2 py-0.5 rounded {muted ? 'bg-muted/70' : 'bg-muted'} hover:bg-primary hover:text-primary-foreground border border-border/80 transition-colors cursor-pointer
+    class="text-small px-2 py-0.5 rounded {muted ? 'bg-muted/70' : 'bg-muted'} hover:bg-primary hover:text-primary-foreground border border-border/80 transition-colors cursor-pointer
       {idInput === p.id ? 'bg-primary text-primary-foreground border-primary font-bold' : muted ? 'text-muted-foreground' : 'text-foreground'}"
   >
     {p.display_name}
@@ -80,11 +80,11 @@
       class="bg-background border-border text-foreground"
       onkeydown={onEnter}
     />
-    <p class="text-[10px] text-muted-foreground/70">
+    <p class="text-small text-muted-foreground/70">
       赛务联系用，报名和投票前必须填写。纯数字视为 QQ 号，其余视为 Discord 用户名；会写入选手资料。
     </p>
     {#if contactError}
-      <p class="text-[10px] text-destructive font-medium animate-pulse">{contactError}</p>
+      <p class="text-small text-destructive font-medium animate-pulse">{contactError}</p>
     {/if}
   </div>
 
@@ -102,7 +102,7 @@
   {#if current}
     {@const exact = current.exact}
     {#if exact}
-      <div class="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-2.5 text-[11px] text-emerald-700 dark:text-emerald-300 space-y-1">
+      <div class="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-2.5 text-small text-emerald-700 dark:text-emerald-300 space-y-1">
         <p class="flex items-center gap-1.5 font-semibold"><CircleCheckIcon class="w-3.5 h-3.5 shrink-0" />已有选手「{exact.id}」的记录</p>
         <p><span>{eventsText(exact)}</span>{#if exact.last_event}<span>，最近一场：{exact.last_event}</span>{/if}<span>。如果这是你，直接保存即可，以前的战绩都会算在你名下。</span></p>
         {#if exact.key_bound}
@@ -110,7 +110,7 @@
         {/if}
       </div>
     {:else if current.alias}
-      <div class="rounded-lg border border-sky-500/30 bg-sky-500/10 p-2.5 text-[11px] text-sky-700 dark:text-sky-300 space-y-1.5">
+      <div class="rounded-lg border border-sky-500/30 bg-sky-500/10 p-2.5 text-small text-sky-700 dark:text-sky-300 space-y-1.5">
         <p class="flex items-center gap-1.5 font-semibold"><InfoIcon class="w-3.5 h-3.5 shrink-0" />「{current.alias.alias}」已经改名为「{current.alias.player.id}」</p>
         <p><span>{eventsText(current.alias.player)}</span><span>。如果是你，请改用新的 ID，战绩都在那里。</span></p>
         <button type="button" onclick={() => useId(current.alias.player.id)} class="rounded-md border border-sky-500/40 px-2 py-0.5 font-semibold hover:bg-sky-500/20 cursor-pointer">
@@ -119,7 +119,7 @@
       </div>
     {/if}
     {#if !exact && current.similar.length}
-      <div class="rounded-lg border border-amber-500/30 bg-amber-500/10 p-2.5 text-[11px] text-amber-700 dark:text-amber-300 space-y-1.5">
+      <div class="rounded-lg border border-amber-500/30 bg-amber-500/10 p-2.5 text-small text-amber-700 dark:text-amber-300 space-y-1.5">
         <p class="flex items-center gap-1.5 font-semibold"><InfoIcon class="w-3.5 h-3.5 shrink-0" />已有相似的选手 ID，是你吗？</p>
         <p>选手 ID 区分大小写。用已有的 ID 登录，以前的比赛和天梯分数才会算在你名下；新建 ID 会变成另一位选手。</p>
         <div class="flex flex-wrap gap-1.5">
@@ -137,7 +137,7 @@
         </div>
       </div>
     {:else if !exact && !current.alias}
-      <p class="text-[10px] text-muted-foreground">没有找到这个 ID，保存后会创建新的选手资料。</p>
+      <p class="text-small text-muted-foreground">没有找到这个 ID，保存后会创建新的选手资料。</p>
     {/if}
   {/if}
 
@@ -148,12 +148,12 @@
         {#each active as p (p.id)}
           {@render playerChip(p, false)}
         {:else}
-          <span class="text-[10px] text-muted-foreground/60 italic px-1">暂无最近一年活跃的选手</span>
+          <span class="text-small text-muted-foreground/60 italic px-1">暂无最近一年活跃的选手</span>
         {/each}
       </div>
       {#if inactive.length > 0}
         <details class="mt-1 rounded-lg border border-border/60 bg-muted/20 px-2 py-1.5" bind:open={showInactive}>
-          <summary class="text-[10px] text-muted-foreground cursor-pointer select-none">
+          <summary class="text-small text-muted-foreground cursor-pointer select-none">
             显示一年未登录的选手（{inactive.length}）
           </summary>
           <div class="flex flex-wrap gap-1.5 max-h-25 overflow-y-auto pr-1 mt-1.5">

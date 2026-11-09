@@ -117,7 +117,7 @@
   </Card.Header>
 
   {#if isMobileViewport && eliminationShown}
-    <div class="flex items-center gap-1 px-3 pt-3 text-[11px]">
+    <div class="flex items-center gap-1 px-3 pt-3 text-small">
       {#each [["list", "按轮次"], ["bracket", "对阵图"]] as [value, label] (value)}
         <button
           type="button"
@@ -132,7 +132,7 @@
 
   {#if sections.sectionCount > 1 && !isDoubleElim && !swissShown && !groupBracketsShown && !listShown}
     <div class="flex flex-wrap items-center gap-2 px-3 sm:px-6 pt-4">
-      <Badge variant="outline" class="text-[10px] font-mono">
+      <Badge variant="outline" class="text-small num">
         第 {sectionIndex + 1} / {sections.sectionCount} 组 · {sections.sectionFirstMatches * 2} 人
       </Badge>
       <Button
@@ -143,7 +143,7 @@
           viewMode = "sections";
           sectionIndex = Math.max(0, sectionIndex - 1);
         }}
-        class="h-7 text-[10px] px-2"
+        class="h-7 text-small px-2"
       >
         上一组
       </Button>
@@ -155,17 +155,17 @@
           viewMode = "sections";
           sectionIndex = Math.min(sections.sectionCount - 1, sectionIndex + 1);
         }}
-        class="h-7 text-[10px] px-2"
+        class="h-7 text-small px-2"
       >
         下一组
       </Button>
-      <Button variant={sections.showFinalStage ? "default" : "outline"} size="sm" onclick={() => (viewMode = "final")} class="h-7 text-[10px] px-2">
+      <Button variant={sections.showFinalStage ? "default" : "outline"} size="sm" onclick={() => (viewMode = "final")} class="h-7 text-small px-2">
         决赛阶段
       </Button>
-      <Button variant={sections.showFinalStage ? "outline" : "default"} size="sm" onclick={() => (viewMode = "sections")} class="h-7 text-[10px] px-2">
+      <Button variant={sections.showFinalStage ? "outline" : "default"} size="sm" onclick={() => (viewMode = "sections")} class="h-7 text-small px-2">
         分组
       </Button>
-      <span class="text-[10px] text-muted-foreground/70">手机每 16 人一组，桌面每 32 人一组</span>
+      <span class="text-small text-muted-foreground/70">手机每 16 人一组，桌面每 32 人一组</span>
     </div>
   {/if}
 

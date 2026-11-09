@@ -27,13 +27,13 @@
   />
   <div class="rounded-xl border p-3 transition-colors {form.ladderLimit ? 'border-primary/40 bg-primary/5' : 'border-border bg-background/40'}">
     <div class="flex items-start gap-3">
-      <span class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg {form.ladderLimit ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground'}">
+      <span class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg {form.ladderLimit ? 'bg-primary/15 text-brand-ink' : 'bg-muted text-muted-foreground'}">
         <TrendingUpIcon class="h-4 w-4" />
       </span>
       <div class="min-w-0 flex-1 space-y-2">
         <div>
           <span class="block text-sm font-semibold text-foreground">天梯限制</span>
-          <span class="mt-0.5 block text-[11px] leading-relaxed text-muted-foreground">
+          <span class="mt-0.5 block text-small leading-relaxed text-muted-foreground">
             按本场比赛的天梯（{gameModeLabel(form.gameMode)} · {vehiclePoolLabel(form.eventPool)}）计算；超过上限、未定级或定级中（不足 10 场）的选手不能自行报名，管理员仍可代报。
           </span>
         </div>

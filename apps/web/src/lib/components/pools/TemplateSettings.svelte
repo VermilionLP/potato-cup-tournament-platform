@@ -30,7 +30,7 @@
       </label>
       <label class="space-y-1 text-xs" title="同类型有多个模板都匹配时，数字小的优先">
         <span class="font-semibold text-foreground">排序</span>
-        <input class="{fieldInput} w-full font-mono" type="number" min="0" max="9999" value={current.sort_order} oninput={(e) => onfield("sort_order", e.currentTarget.value)} />
+        <input class="{fieldInput} w-full num" type="number" min="0" max="9999" value={current.sort_order} oninput={(e) => onfield("sort_order", e.currentTarget.value)} />
       </label>
     </div>
     <div class="space-y-1 text-xs">
@@ -39,7 +39,7 @@
         {#each GAME_MODES as mode (mode.id)}
           <label class="inline-flex items-center gap-1.5 cursor-pointer" title={mode.name}>
             <input type="checkbox" class="cursor-pointer" checked={current.game_modes.includes(mode.id)} onchange={() => ontogglemode(mode.id)} />
-            <span class="font-mono font-semibold">{mode.code}</span>
+            <span class="num font-semibold">{mode.code}</span>
           </label>
         {/each}
         <span class="text-muted-foreground">{current.game_modes.length ? "" : "都不勾选 = 全部模式"}</span>
@@ -63,13 +63,13 @@
       <div class="flex flex-wrap items-center gap-x-3 gap-y-1.5">
         <label class="inline-flex items-center gap-1.5" title="留空 = 不限次数（可随时重抽）">
           大组可移出
-          <input class="{fieldInput} h-7 w-14 font-mono" type="number" min="0" max="20" placeholder="不限" value={limitValue(current.rules.groupRerolls)} oninput={(e) => onrule("groupRerolls", parseLimit(e.currentTarget.value))} />
+          <input class="{fieldInput} h-7 w-14 num" type="number" min="0" max="20" placeholder="不限" value={limitValue(current.rules.groupRerolls)} oninput={(e) => onrule("groupRerolls", parseLimit(e.currentTarget.value))} />
           次
         </label>
         {#if current.rules.drawVehicle}
           <label class="inline-flex items-center gap-1.5" title="留空 = 不限次数（可随时重抽）">
             载具可移出
-            <input class="{fieldInput} h-7 w-14 font-mono" type="number" min="0" max="20" placeholder="不限" value={limitValue(current.rules.vehicleRerolls)} oninput={(e) => onrule("vehicleRerolls", parseLimit(e.currentTarget.value))} />
+            <input class="{fieldInput} h-7 w-14 num" type="number" min="0" max="20" placeholder="不限" value={limitValue(current.rules.vehicleRerolls)} oninput={(e) => onrule("vehicleRerolls", parseLimit(e.currentTarget.value))} />
             次
           </label>
         {/if}
@@ -81,7 +81,7 @@
     <div class="flex flex-wrap items-center gap-1.5">
       <span class="text-base font-bold text-foreground">{current.name}</span>
       <span class="rounded-md border px-2 py-0.5 font-semibold {POOL_TAG[current.event_type] || 'border-border'}">{VEHICLE_POOLS.find((t) => t.id === current.event_type)?.name || current.event_type}</span>
-      <span class="rounded-md border border-border bg-muted/60 px-2 py-0.5 font-mono font-semibold text-muted-foreground">{modesLabel(current.game_modes)}</span>
+      <span class="rounded-md border border-border bg-muted/60 px-2 py-0.5 num font-semibold text-muted-foreground">{modesLabel(current.game_modes)}</span>
     </div>
     <p class="text-muted-foreground">Ban / Pick：{rulesSummary(current.rules)}</p>
   </div>

@@ -2,7 +2,7 @@
   // One finished event in the lobby's history list.
   import { goto } from "$app/navigation";
   import { beijingTitle, eventDate, relativeDay, startTimeLabel } from "#lib/lobby.js";
-  import { Badge } from "#lib/components/ui/badge/index.js";
+  import { Tag } from "#lib/components/ui/tag/index.js";
   import { Button } from "#lib/components/ui/button/index.js";
   import EventTags from "./EventTags.svelte";
   import ClockIcon from "@lucide/svelte/icons/clock";
@@ -30,10 +30,10 @@
     </div>
     <div class="min-w-0">
       <div class="flex items-center gap-2 flex-wrap">
-        <h3 class="font-bold text-sm text-foreground group-hover:text-primary transition-colors truncate max-w-[240px] sm:max-w-[360px]">
+        <h3 class="font-bold text-sm text-foreground group-hover:text-brand-ink transition-colors truncate max-w-[240px] sm:max-w-[360px]">
           {t.name}
         </h3>
-        <Badge variant="outline" class="text-[9px] px-1.5 py-0 bg-zinc-500/10 text-zinc-400 border-zinc-500/20 shrink-0">已完结</Badge>
+        <Tag>已完结</Tag>
       </div>
       <EventTags {t} />
     </div>
@@ -42,7 +42,7 @@
   <div class="flex items-center justify-between sm:justify-end gap-4 shrink-0 flex-wrap sm:flex-nowrap border-t sm:border-t-0 border-border/40 pt-2.5 sm:pt-0">
     <div class="text-right sm:text-left">
       <div class="grid grid-cols-1 sm:grid-cols-[205px_105px_110px] items-center gap-x-3 gap-y-1 text-xs text-muted-foreground/80">
-        <div class="flex items-center sm:justify-start justify-end gap-1 text-primary font-bold whitespace-nowrap tabular-nums">
+        <div class="flex items-center sm:justify-start justify-end gap-1 text-brand-ink font-bold whitespace-nowrap tabular-nums">
           <ClockIcon class="w-3.5 h-3.5 shrink-0" />
           <span title={beijingTitle(t.scheduled_time, false)}>{startTimeLabel(t.scheduled_time) || "时间未记录"}</span>
         </div>
@@ -50,12 +50,12 @@
           <UsersIcon class="w-3 h-3 text-muted-foreground/50 shrink-0" />
           <span>{t.player_count || 0} 人参赛</span>
         </div>
-        <div class="flex items-center sm:justify-start justify-end gap-1 font-semibold text-zinc-400 whitespace-nowrap">
+        <div class="flex items-center sm:justify-start justify-end gap-1 font-semibold text-muted-foreground whitespace-nowrap">
           <span class="text-xs">✓</span>
           <span>{relativeDay(eventDate(t))}完赛</span>
         </div>
       </div>
-      <div class="text-[10px] text-muted-foreground/50 mt-1 font-mono">
+      <div class="text-small text-muted-foreground/50 mt-1 num">
         创建于 {new Date(t.created_at).toLocaleDateString("zh-CN")}
       </div>
     </div>

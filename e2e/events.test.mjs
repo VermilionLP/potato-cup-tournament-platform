@@ -270,7 +270,7 @@ test('live updates: a result elsewhere shows up as a small delta, not a full rel
     await page.waitForTimeout(800);
     assert.equal(requests.filter((p) => p === `/api/tournaments/${id}`).length, before, 'no full reload');
     // The match card (both players' names) now shows the 2 and the 1.
-    const card = page.locator('div.rounded-md', { hasText: match.player1_id }).filter({ hasText: match.player2_id }).last();
+    const card = page.locator('[data-match-card]', { hasText: match.player1_id }).filter({ hasText: match.player2_id }).last();
     const text = await card.innerText();
     assert.ok(/(^|\n)\s*2\s*(\n|$)/.test(text) && /(^|\n)\s*1\s*(\n|$)/.test(text), `score on the card: ${JSON.stringify(text)}`);
     assert.deepEqual(errors, [], 'no uncaught errors in the page');

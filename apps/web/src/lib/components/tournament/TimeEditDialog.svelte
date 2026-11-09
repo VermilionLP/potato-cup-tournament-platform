@@ -41,7 +41,7 @@
   <Dialog.Content class="sm:max-w-[520px] bg-card border border-border">
     <Dialog.Header>
       <Dialog.Title class="text-base font-bold text-foreground flex items-center gap-2">
-        <ClockIcon class="w-4 h-4 text-primary" />
+        <ClockIcon class="w-4 h-4 text-brand-ink" />
         调整比赛时间
       </Dialog.Title>
       <Dialog.Description class="text-xs text-muted-foreground">

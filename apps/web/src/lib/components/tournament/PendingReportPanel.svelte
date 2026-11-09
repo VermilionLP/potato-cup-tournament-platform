@@ -21,12 +21,12 @@
     </div>
     <div>
       <span class="text-muted-foreground">{playerName(r.by)} 提交：</span>
-      <span class="font-mono font-semibold">{formatReport(match, r, playerName)}</span>
+      <span class="num font-semibold">{formatReport(match, r, playerName)}</span>
     </div>
     {#if r.counter}
       <div>
         <span class="text-muted-foreground">{playerName(r.counter.by)} 提交：</span>
-        <span class="font-mono font-semibold">{formatReport(match, r.counter, playerName)}</span>
+        <span class="num font-semibold">{formatReport(match, r.counter, playerName)}</span>
       </div>
     {/if}
     {#if !r.disputed && r.kind === "score"}

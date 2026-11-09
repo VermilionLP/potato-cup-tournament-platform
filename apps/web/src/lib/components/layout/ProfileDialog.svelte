@@ -217,7 +217,7 @@
   <Dialog.Content class="{userState.id ? 'max-w-125' : 'max-w-85 sm:max-w-95'} bg-card border border-border">
     <Dialog.Header>
       <Dialog.Title class="text-lg font-bold tracking-tight text-foreground flex items-center gap-2">
-        <UserRoundIcon class="w-5 h-5 text-primary" />
+        <UserRoundIcon class="w-5 h-5 text-brand-ink" />
         {userState.id ? "完善个人资料" : "身份与联系方式验证"}
       </Dialog.Title>
       <Dialog.Description class="text-xs text-muted-foreground">

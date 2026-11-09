@@ -53,7 +53,7 @@
   <Dialog.Content class="max-w-85 sm:max-w-95 bg-card border border-border">
     <Dialog.Header>
       <Dialog.Title class="text-lg font-bold tracking-tight text-foreground flex items-center gap-2">
-        <ShieldCheckIcon class="w-5 h-5 text-primary" />
+        <ShieldCheckIcon class="w-5 h-5 text-brand-ink" />
         管理员权限
       </Dialog.Title>
       <Dialog.Description class="text-xs text-muted-foreground">
@@ -82,7 +82,7 @@
             }
           }}
         />
-        <p class="text-[10px] text-muted-foreground/60">
+        <p class="text-small text-muted-foreground/60">
           令牌由部署者在 <code>apps/api/.env</code> 的 ADMIN_TOKEN 中设置。
         </p>
       </div>

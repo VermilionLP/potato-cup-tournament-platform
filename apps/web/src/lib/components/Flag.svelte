@@ -30,7 +30,7 @@
   />
 {:else}
   <span
-    class="inline-flex shrink-0 items-center justify-center rounded-[3px] bg-muted text-[9px] font-semibold leading-none text-muted-foreground ring-1 ring-border {className}"
+    class="inline-flex shrink-0 items-center justify-center rounded-[3px] bg-muted text-small font-semibold leading-none text-muted-foreground ring-1 ring-border {className}"
     style="width:{size}px;height:{height}px"
     title={label || "未知国籍"}
   >

@@ -21,7 +21,7 @@
 </script>
 
 <div class="space-y-3">
-  <p class="text-[11px] text-muted-foreground">
+  <p class="text-small text-muted-foreground">
     <span>{dirty ? "比赛里打开 Ban / Pick 时看到的样子，包含未保存的修改。" : "比赛里打开 Ban / Pick 时看到的样子。"}</span>
     <span>可以直接禁用、抽取试一遍，不会保存，也不影响任何比赛；改动模板后会自动重置。</span>
   </p>
@@ -37,7 +37,7 @@
     </div>
     <div class="overflow-x-auto rounded-lg border border-border/60">
       <table class="w-full min-w-[480px] text-xs">
-        <thead class="bg-muted/40 text-[10px] uppercase tracking-wider text-muted-foreground">
+        <thead class="bg-muted/40 text-label uppercase tracking-wider text-muted-foreground">
           <tr>
             <th class="px-2 py-2 text-left font-semibold">分组</th>
             <th class="w-16 px-2 py-2 text-right font-semibold">载具</th>
@@ -49,8 +49,8 @@
           {#each summary as g (g.group)}
             <tr class="hover:bg-muted/20">
               <td class="px-2 py-1.5 font-semibold text-foreground">{g.group}</td>
-              <td class="px-2 py-1.5 text-right font-mono text-muted-foreground">{g.count}</td>
-              <td class="px-2 py-1.5 font-mono text-muted-foreground">{brRange(g)}</td>
+              <td class="px-2 py-1.5 text-right num text-muted-foreground">{g.count}</td>
+              <td class="px-2 py-1.5 num text-muted-foreground">{brRange(g)}</td>
               <td class="px-2 py-1.5 text-muted-foreground">{g.nations.join(" / ") || "—"}</td>
             </tr>
           {/each}

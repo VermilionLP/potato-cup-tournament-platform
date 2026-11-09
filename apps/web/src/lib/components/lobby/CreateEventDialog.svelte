@@ -125,7 +125,7 @@
     <div class="shrink-0 space-y-3 border-b border-border bg-muted/20 px-5 pb-4 pt-5">
       <Dialog.Header class="space-y-1 text-left">
         <Dialog.Title class="flex items-center gap-2 text-lg font-bold tracking-tight text-foreground">
-          <span class="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/15 text-primary"><SparklesIcon class="h-4 w-4" /></span>
+          <span class="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/15 text-brand-ink"><SparklesIcon class="h-4 w-4" /></span>
           创建新赛事
         </Dialog.Title>
         <Dialog.Description class="text-xs text-muted-foreground">
@@ -134,15 +134,15 @@
       </Dialog.Header>
       {#if copyChoices.length}
         <div class="flex flex-wrap items-center gap-1.5">
-          <span class="inline-flex items-center gap-1 text-[11px] font-semibold text-muted-foreground"><CopyIcon class="h-3.5 w-3.5" />复制</span>
+          <span class="inline-flex items-center gap-1 text-small font-semibold text-muted-foreground"><CopyIcon class="h-3.5 w-3.5" />复制</span>
           {#each quickCopies as t (t.id)}
             <button
               type="button"
               onclick={() => copyFrom(t.id)}
               aria-pressed={copySource === t.id}
               title={t.scheduled_time ? formatScheduled(t.scheduled_time) : ""}
-              class="max-w-[13rem] truncate rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-colors cursor-pointer
-                {copySource === t.id ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-background hover:border-primary/50 hover:text-primary'}"
+              class="max-w-[13rem] truncate rounded-full border px-2.5 py-1 text-small font-semibold transition-colors cursor-pointer
+                {copySource === t.id ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-background hover:border-primary/50 hover:text-brand-ink'}"
             >
               {t.name}
             </button>
@@ -153,7 +153,7 @@
               aria-label="复制已有赛事"
               value={quickCopies.some((t) => t.id === copySource) ? "" : copySource}
               onchange={(e) => e.currentTarget.value && copyFrom(e.currentTarget.value)}
-              class="h-7 max-w-[11rem] rounded-full border border-border bg-background px-2 text-[11px] text-muted-foreground cursor-pointer"
+              class="h-7 max-w-[11rem] rounded-full border border-border bg-background px-2 text-small text-muted-foreground cursor-pointer"
             >
               <option value="">更多…</option>
               {#each copyChoices.slice(quickCopies.length) as t (t.id)}
@@ -162,7 +162,7 @@
             </select>
           {/if}
           {#if copySource}
-            <button type="button" onclick={() => copyFrom("")} class="text-[11px] text-muted-foreground hover:text-foreground hover:underline cursor-pointer">从头填写</button>
+            <button type="button" onclick={() => copyFrom("")} class="text-small text-muted-foreground hover:text-foreground hover:underline cursor-pointer">从头填写</button>
           {/if}
         </div>
       {/if}
@@ -184,14 +184,14 @@
                   {i === stepIndex ? 'bg-primary/10 ring-1 ring-primary/30' : 'hover:bg-muted/50'}"
               >
                 <span
-                  class="mt-px flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold
-                    {i === stepIndex ? 'bg-primary text-primary-foreground' : done ? 'bg-primary/20 text-primary' : error && triedStep >= i ? 'bg-destructive/15 text-destructive' : 'bg-muted text-muted-foreground'}"
+                  class="mt-px flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-small font-bold
+                    {i === stepIndex ? 'bg-primary text-primary-foreground' : done ? 'bg-primary/20 text-brand-ink' : error && triedStep >= i ? 'bg-destructive/15 text-destructive' : 'bg-muted text-muted-foreground'}"
                 >
                   {#if done}<CheckIcon class="h-3 w-3" />{:else}{i + 1}{/if}
                 </span>
                 <span class="min-w-0">
                   <span class="block whitespace-nowrap text-xs font-semibold {i === stepIndex ? 'text-foreground' : 'text-foreground/80'}">{s.label}</span>
-                  <span class="hidden max-w-[9.5rem] truncate text-[10px] text-muted-foreground sm:block" title={stepSummary(form, s.id)}>{stepSummary(form, s.id)}</span>
+                  <span class="hidden max-w-[9.5rem] truncate text-small text-muted-foreground sm:block" title={stepSummary(form, s.id)}>{stepSummary(form, s.id)}</span>
                 </span>
               </button>
             </li>
@@ -203,7 +203,7 @@
       <div class="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-4">
         <div class="mb-4">
           <h3 class="text-base font-bold text-foreground">{STEP_INFO[stepId]?.title}</h3>
-          <p class="mt-0.5 text-[11px] text-muted-foreground">{STEP_INFO[stepId]?.hint}</p>
+          <p class="mt-0.5 text-small text-muted-foreground">{STEP_INFO[stepId]?.hint}</p>
         </div>
         {#if stepId === "basics"}
           <CreateStepBasics bind:form />
@@ -224,9 +224,9 @@
     <!-- Footer: problem hint, back / next, and 创建赛事 from any step -->
     <div class="shrink-0 flex flex-col gap-2 border-t border-border bg-muted/20 px-5 py-3 sm:flex-row sm:items-center">
       {#if currentError && triedStep === stepIndex}
-        <span class="text-[11px] text-amber-600 dark:text-amber-400 sm:mr-auto">{currentError}</span>
+        <span class="text-small text-amber-600 dark:text-amber-400 sm:mr-auto">{currentError}</span>
       {:else}
-        <span class="hidden text-[11px] text-muted-foreground sm:mr-auto sm:block">
+        <span class="hidden text-small text-muted-foreground sm:mr-auto sm:block">
           {problem ? `还需要：${problem.error}` : "设置已完整，可以直接创建。"}
         </span>
       {/if}

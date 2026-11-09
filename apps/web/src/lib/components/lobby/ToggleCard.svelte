@@ -7,13 +7,13 @@
 <div class="rounded-xl border transition-colors {checked ? 'border-primary/40 bg-primary/5' : 'border-border bg-background/40'}">
   <label class="flex cursor-pointer items-start gap-3 p-3">
     {#if Icon}
-      <span class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg {checked ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground'}">
+      <span class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg {checked ? 'bg-primary/15 text-brand-ink' : 'bg-muted text-muted-foreground'}">
         <Icon class="h-4 w-4" />
       </span>
     {/if}
     <span class="min-w-0 flex-1">
       <span class="block text-sm font-semibold text-foreground">{title}</span>
-      {#if description}<span class="mt-0.5 block text-[11px] leading-relaxed text-muted-foreground">{description}</span>{/if}
+      {#if description}<span class="mt-0.5 block text-small leading-relaxed text-muted-foreground">{description}</span>{/if}
     </span>
     <input type="checkbox" bind:checked class="peer sr-only" />
     <span

@@ -36,7 +36,7 @@
 
 <div class="overflow-x-auto rounded-lg border border-border/60">
   <table class="w-full min-w-[780px] text-xs">
-    <thead class="bg-muted/40 text-[10px] uppercase tracking-wider text-muted-foreground">
+    <thead class="bg-muted/40 text-label uppercase tracking-wider text-muted-foreground">
       <tr>
         <th class="w-8 px-2 py-2 text-right font-semibold">#</th>
         <th class="px-2 py-2 text-left font-semibold">载具名称</th>
@@ -51,17 +51,17 @@
     <tbody class="divide-y divide-border/50">
       {#each shownRows as { v, i } (i)}
         <tr class="hover:bg-muted/20">
-          <td class="px-2 py-1 text-right font-mono text-[10px] text-muted-foreground">{i + 1}</td>
+          <td class="px-2 py-1 text-right num text-small text-muted-foreground">{i + 1}</td>
           {#if isAdmin}
             <td class="px-1 py-0.5"><input aria-label="载具名称" class="{cellInput} font-semibold" value={v.name} oninput={(e) => onedit(i, "name", e.currentTarget.value)} /></td>
             <td class="px-1 py-0.5"><input aria-label="国家" class={cellInput} value={v.nation} oninput={(e) => onedit(i, "nation", e.currentTarget.value)} /></td>
-            <td class="px-1 py-0.5"><input aria-label="BR" inputmode="decimal" class="{cellInput} font-mono" value={v.br ?? ""} oninput={(e) => onedit(i, "br", e.currentTarget.value)} /></td>
+            <td class="px-1 py-0.5"><input aria-label="BR" inputmode="decimal" class="{cellInput} num" value={v.br ?? ""} oninput={(e) => onedit(i, "br", e.currentTarget.value)} /></td>
             <td class="px-1 py-0.5"><input aria-label="类型" class={cellInput} value={v.type} oninput={(e) => onedit(i, "type", e.currentTarget.value)} /></td>
             <td class="px-1 py-0.5"><input aria-label="分组" class={cellInput} value={v.group} placeholder={v.name} oninput={(e) => onedit(i, "group", e.currentTarget.value)} /></td>
             <td class="px-1 py-0.5">
               <input
                 aria-label="Wiki ID"
-                class="{cellInput} font-mono {v.wiki || autoId(v) ? '' : 'placeholder:text-amber-500'}"
+                class="{cellInput} num {v.wiki || autoId(v) ? '' : 'placeholder:text-amber-500'}"
                 value={v.wiki ?? ""}
                 placeholder={autoId(v) || (unitIndex ? "未匹配，请填写" : "")}
                 oninput={(e) => onedit(i, "wiki", e.currentTarget.value.trim().toLowerCase())}
@@ -75,12 +75,12 @@
           {:else}
             <td class="px-2 py-1.5 font-semibold text-foreground">{v.name}</td>
             <td class="px-2 py-1.5 text-muted-foreground">{v.nation}</td>
-            <td class="px-2 py-1.5 font-mono text-muted-foreground">{v.br ?? ""}</td>
+            <td class="px-2 py-1.5 num text-muted-foreground">{v.br ?? ""}</td>
             <td class="px-2 py-1.5 text-muted-foreground">{v.type}</td>
             <td class="px-2 py-1.5 text-muted-foreground">{v.group}</td>
-            <td class="px-2 py-1.5 font-mono text-[10px]">
+            <td class="px-2 py-1.5 num text-small">
               {#if v.wiki || autoId(v)}
-                <a href={wikiPage(v.wiki || autoId(v))} target="_blank" rel="noopener" class="{v.wiki ? 'text-primary' : 'text-muted-foreground'} hover:underline">{v.wiki || autoId(v)}</a>
+                <a href={wikiPage(v.wiki || autoId(v))} target="_blank" rel="noopener" class="{v.wiki ? 'text-brand-ink' : 'text-muted-foreground'} hover:underline">{v.wiki || autoId(v)}</a>
               {/if}
             </td>
           {/if}
@@ -95,7 +95,7 @@
     </tbody>
   </table>
 </div>
-<p class="text-[10px] text-muted-foreground">
-  导入格式：JSON 数组 <code class="font-mono">[{"{"}"name", "nation", "br", "type", "group", "wiki"{"}"}]</code>，或第一行为列名
-  <code class="font-mono">name,nation,br,type,group,wiki</code> 的 CSV；只有 name 必填，分组留空时等于载具名称，wiki（War Thunder Wiki 单位 ID，决定载具图片）留空时按名称自动匹配。导入只替换载具表，模板设置不变。
+<p class="text-small text-muted-foreground">
+  导入格式：JSON 数组 <code class="num">[{"{"}"name", "nation", "br", "type", "group", "wiki"{"}"}]</code>，或第一行为列名
+  <code class="num">name,nation,br,type,group,wiki</code> 的 CSV；只有 name 必填，分组留空时等于载具名称，wiki（War Thunder Wiki 单位 ID，决定载具图片）留空时按名称自动匹配。导入只替换载具表，模板设置不变。
 </p>

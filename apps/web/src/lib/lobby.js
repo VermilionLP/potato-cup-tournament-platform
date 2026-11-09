@@ -1,6 +1,7 @@
 // Labels for the event lists in the lobby (routes/+page.svelte). Pure
 // helpers, tested with node --test.
 
+import { STATUS_TONE, TAG_TONE } from "./tags.js";
 import { formatInZone, toInstant } from "./datetime.js";
 
 /** "今天" / "明天" / "昨天" / "3 天后" / "5 天前" for a date. */
@@ -97,12 +98,12 @@ export function eventDate(t) {
 }
 
 const GRADIENTS = [
-  "from-amber-500 to-orange-500",
-  "from-purple-500 to-indigo-500",
-  "from-blue-500 to-cyan-500",
-  "from-emerald-500 to-teal-500",
-  "from-rose-500 to-pink-500",
-  "from-violet-500 to-fuchsia-500",
+  "from-orange-500 to-amber-500",
+  "from-sky-500 to-blue-600",
+  "from-slate-500 to-slate-700",
+  "from-emerald-500 to-teal-600",
+  "from-rose-500 to-red-600",
+  "from-amber-500 to-orange-600",
 ];
 
 /** Avatar gradient for an event, stable per ID. */
@@ -113,14 +114,16 @@ export function eventGradient(id) {
 }
 
 const STATUS = {
-  registration: { label: "报名中", style: "bg-sky-500/10 text-sky-400 border-sky-500/30" },
-  voting: { label: "投票中", style: "bg-purple-500/10 text-purple-400 border-purple-500/30" },
-  in_progress: { label: "比赛进行中", style: "bg-amber-500/10 text-primary border-primary/30" },
-  completed: { label: "已结束", style: "bg-zinc-500/10 text-zinc-400 border-zinc-500/30" },
+  registration: { label: "报名中" },
+  voting: { label: "投票中" },
+  in_progress: { label: "比赛进行中" },
+  completed: { label: "已结束" },
 };
 
 export const statusLabel = (status) => STATUS[status]?.label || status;
-export const statusStyle = (status) => STATUS[status]?.style || "bg-zinc-500/10 text-zinc-400";
+/** Tag tone for an event status (#lib/tags.js). */
+export const statusTone = (status) => STATUS_TONE[status] || "neutral";
+export const statusStyle = (status) => TAG_TONE[statusTone(status)];
 
 /**
  * The event the lobby puts on top: one being played, else the next one

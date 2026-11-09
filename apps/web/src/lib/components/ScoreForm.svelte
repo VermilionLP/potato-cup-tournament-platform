@@ -40,10 +40,10 @@
   {@const leading = outcome.winner === slot}
   {@const value = slot === 1 ? score1 : score2}
   <div class="flex min-w-0 flex-col items-center gap-2 {slot === 2 ? 'sm:items-center' : ''}">
-    <div class="flex h-4 items-center gap-1 text-[10px]">
+    <div class="flex h-4 items-center gap-1 text-small">
       {#if leading}
         <CrownIcon class="h-3.5 w-3.5 text-amber-500" />
-        <span class="font-bold text-primary">领先</span>
+        <span class="font-bold text-brand-ink">领先</span>
       {:else if player.seed}
         <span class="text-muted-foreground">种子 #{player.seed}</span>
       {/if}
@@ -63,8 +63,8 @@
       onblur={() => (slot === 1 ? (score1 = clamp(score1)) : (score2 = clamp(score2)))}
       onfocus={(e) => e.currentTarget.select()}
       aria-label="{player.name} 的比分"
-      class="score-input h-20 w-24 rounded-2xl border-2 bg-background text-center font-mono text-5xl font-black tabular-nums transition-colors focus:outline-none
-        {leading ? 'border-primary text-primary' : 'border-border text-foreground focus:border-primary/60'}"
+      class="score-input h-20 w-24 rounded-2xl border-2 bg-background text-center num text-5xl font-black tabular-nums transition-colors focus:outline-none
+        {leading ? 'border-primary text-brand-ink' : 'border-border text-foreground focus:border-primary/60'}"
     />
     <div class="flex items-center gap-2">
       <button
@@ -80,7 +80,7 @@
         type="button"
         {disabled}
         onclick={() => step(slot, 1)}
-        class="flex h-9 w-11 items-center justify-center rounded-lg border border-primary/40 bg-primary/10 text-primary transition-colors hover:bg-primary hover:text-primary-foreground disabled:opacity-40 cursor-pointer"
+        class="flex h-9 w-11 items-center justify-center rounded-lg border border-primary/40 bg-primary/10 text-brand-ink transition-colors hover:bg-primary hover:text-primary-foreground disabled:opacity-40 cursor-pointer"
         aria-label="{player.name} 加 1 分"
       >
         <PlusIcon class="h-4 w-4" />
@@ -95,7 +95,7 @@
     <div class="grid grid-cols-[1fr_auto_1fr] items-start gap-2">
       {@render side(1, player1)}
       <div class="flex h-full flex-col items-center justify-center pt-12">
-        <span class="font-mono text-3xl font-black text-muted-foreground/60">:</span>
+        <span class="num text-3xl font-black text-muted-foreground/60">:</span>
       </div>
       {@render side(2, player2)}
     </div>
@@ -109,7 +109,7 @@
         type="button"
         {disabled}
         onclick={() => preset(p)}
-        class="rounded-lg border px-3 py-1 font-mono text-xs font-semibold transition-colors cursor-pointer
+        class="rounded-lg border px-3 py-1 num text-xs font-semibold transition-colors cursor-pointer
           {active ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-background text-foreground/80 hover:border-primary/50'}"
       >
         {p[0]} : {p[1]}
@@ -126,9 +126,9 @@
       {liveHint ? "比分持平：可以保存为实时比分；提交最终比分需要分出胜负" : "比分相同，无法判定胜者，请调整比分"}
     {:else if outcome.advancer !== outcome.winner}
       <span class="font-bold">{nameOf(outcome.winner)}</span> 获胜 ·
-      <span class="font-bold text-primary">{nameOf(outcome.advancer)}</span> 晋级（败者晋级规则）
+      <span class="font-bold text-brand-ink">{nameOf(outcome.advancer)}</span> 晋级（败者晋级规则）
     {:else}
-      <span class="font-bold text-primary">{nameOf(outcome.winner)}</span> 获胜
+      <span class="font-bold text-brand-ink">{nameOf(outcome.winner)}</span> 获胜
     {/if}
   </div>
 </div>

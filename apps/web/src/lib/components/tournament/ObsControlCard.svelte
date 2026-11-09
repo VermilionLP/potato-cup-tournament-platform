@@ -93,7 +93,7 @@
 <Card.Root class="border-border bg-card/40">
   <Card.Header class="p-5 pb-3">
     <Card.Title class="text-sm font-bold flex items-center gap-2">
-      <SettingsIcon class="w-4 h-4 text-primary" />
+      <SettingsIcon class="w-4 h-4 text-brand-ink" />
       <span>OBS 直播大屏控制</span>
     </Card.Title>
   </Card.Header>
@@ -112,7 +112,7 @@
             {/each}
           </select>
         </div>
-        <p class="text-[10px] text-muted-foreground leading-normal">
+        <p class="text-small text-muted-foreground leading-normal">
           每个频道有自己的直播对局和大屏，下面的操作只影响当前频道。多路直播要共用一块大屏就选同一个频道，要各自独立就选不同频道。
         </p>
       </div>
@@ -121,8 +121,8 @@
         <div class="flex items-center gap-2.5">
           <RadioIcon class="w-4 h-4 shrink-0 {streamMode ? 'text-red-500 animate-pulse' : 'text-muted-foreground'}" />
           <div>
-            <div class="text-[11px] font-bold">{streamMode ? "直播状态已激活" : "直播状态未激活"}</div>
-            <div class="text-[10px] text-muted-foreground leading-normal">
+            <div class="text-small font-bold">{streamMode ? "直播状态已激活" : "直播状态未激活"}</div>
+            <div class="text-small text-muted-foreground leading-normal">
               激活后本页会强制选择下一场对局并自动切换大屏；仅影响本机，不影响其他访问者。
             </div>
           </div>
@@ -154,13 +154,13 @@
             {/each}
           </select>
           {#if liveMatch}
-            <div class="p-2 rounded bg-primary/5 border border-primary/20 text-[11px] text-primary flex items-center justify-between">
+            <div class="p-2 rounded bg-primary/5 border border-primary/20 text-small text-brand-ink flex items-center justify-between">
               <span class="font-medium">直播中: {playerName(liveMatch.player1_id)} vs {playerName(liveMatch.player2_id)}</span>
               <button onclick={() => setActive(null)} class="hover:text-destructive font-bold text-xs shrink-0 cursor-pointer">清除</button>
             </div>
           {/if}
         {:else}
-          <p class="text-muted-foreground text-[11px]">暂无对局，请先生成 Bracket</p>
+          <p class="text-muted-foreground text-small">暂无对局，请先生成 Bracket</p>
         {/if}
       </div>
 
@@ -168,9 +168,9 @@
         <span class="font-semibold text-muted-foreground block">直播大屏控制 (Overlay Control):</span>
         <div class="flex flex-col gap-2.5 bg-primary/5 p-3 rounded-xl border border-primary/20">
           <div class="flex items-center justify-between gap-2">
-            <span class="font-bold text-primary block text-[11px] shrink-0">当前显示大屏:</span>
+            <span class="font-bold text-brand-ink block text-small shrink-0">当前显示大屏:</span>
             <select
-              class="flex h-8 rounded border border-primary/30 bg-background px-2 py-1 text-[10px] text-primary font-bold shadow-sm focus-visible:outline-none cursor-pointer"
+              class="flex h-8 rounded border border-primary/30 bg-background px-2 py-1 text-small text-brand-ink font-bold shadow-sm focus-visible:outline-none cursor-pointer"
               value={tournament.overlay_scene || "auto"}
               onchange={(e) => setScene(e.currentTarget.value)}
             >
@@ -186,9 +186,9 @@
 
           {#if tournament.overlay_scene === "intro"}
             <div class="flex items-center justify-between gap-2 pt-2 border-t border-primary/10">
-              <span class="text-[11px] font-semibold text-muted-foreground shrink-0">展示轮次:</span>
+              <span class="text-small font-semibold text-muted-foreground shrink-0">展示轮次:</span>
               <select
-                class="h-7 rounded border border-input bg-background px-2 text-[10px] cursor-pointer"
+                class="h-7 rounded border border-input bg-background px-2 text-small cursor-pointer"
                 value={overlayShownStage?.key || ""}
                 onchange={(e) => setStage(e.currentTarget.value)}
               >
@@ -209,15 +209,15 @@
 
       <div class="space-y-2.5">
         <div class="space-y-1.5 p-2.5 rounded-xl border border-primary/20 bg-primary/5">
-          <span class="font-bold text-primary block text-[11px]">✨ 推荐：全自动智能切换直播源 (Unified Auto)</span>
-          <span class="text-[10px] text-muted-foreground block leading-normal mb-1">
+          <span class="font-bold text-brand-ink block text-small">✨ 推荐：全自动智能切换直播源 (Unified Auto)</span>
+          <span class="text-small text-muted-foreground block leading-normal mb-1">
             放入 OBS 浏览器源即可，跟随上面「当前显示大屏」的选择。选 Auto 时：直播对局开启了 Ban/Pick 且结果未确认时显示 Ban/Pick 画面，确认后（或已保存实时比分时）显示游戏 HUD（透明底）；无直播对局时显示场间对阵大屏（深色底）。
           </span>
           <div class="flex items-center gap-1.5">
             <input
               type="text"
               readonly
-              class="flex-1 h-7 px-2 border border-primary/25 rounded bg-background text-[10px] select-all cursor-default text-primary font-mono"
+              class="flex-1 h-7 px-2 border border-primary/25 rounded bg-background text-small select-all cursor-default text-brand-ink num"
               value={autoUrl}
             />
             <Button
@@ -231,7 +231,7 @@
         </div>
 
         <div class="h-px bg-border/40 my-2"></div>
-        <span class="text-[10px] font-bold text-muted-foreground block">特定单场景链接 (如有需要手动配置):</span>
+        <span class="text-small font-bold text-muted-foreground block">特定单场景链接 (如有需要手动配置):</span>
 
         {#each sceneLinks as link (link.key)}
           <div class="space-y-1">
@@ -239,8 +239,8 @@
               <span class="font-medium">{link.title}</span>
               {#if link.key === "intro"}
                 <div class="flex items-center gap-1">
-                  <span class="text-[10px] text-muted-foreground">轮次:</span>
-                  <select class="h-5 rounded border border-input bg-background px-1 text-[10px]" bind:value={introStage}>
+                  <span class="text-small text-muted-foreground">轮次:</span>
+                  <select class="h-5 rounded border border-input bg-background px-1 text-small" bind:value={introStage}>
                     <option value="">当前轮次（自动）</option>
                     {#each overlayStageList as st (st.key)}
                       <option value={st.key}>{st.label}</option>
@@ -253,7 +253,7 @@
               <input
                 type="text"
                 readonly
-                class="flex-1 h-7 px-2 border border-input rounded bg-muted/30 text-[10px] select-all cursor-default"
+                class="flex-1 h-7 px-2 border border-input rounded bg-muted/30 text-small select-all cursor-default"
                 value={link.url}
               />
               <Button size="icon-xs" variant="outline" class="h-7 w-7 cursor-pointer shrink-0" onclick={() => copy(link.url, link.copied)}>

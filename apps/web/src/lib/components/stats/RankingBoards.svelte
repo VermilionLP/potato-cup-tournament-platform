@@ -1,6 +1,8 @@
 <script>
   // Top-five boards: titles and runner-ups (each with counts per tier), win
   // rate (5+ matches), matches played and walkovers.
+  import { EmptyState } from "#lib/components/ui/empty-state/index.js";
+  import { TAG_BASE, TAG_TONE } from "#lib/tags.js";
   import Flag from "#lib/components/Flag.svelte";
   import { TIER_TAG, tierBreakdown } from "#lib/tournament.js";
   import TrendingUpIcon from "@lucide/svelte/icons/trending-up";
@@ -23,22 +25,22 @@
       {#each rankings.by_championships || [] as p, idx (p.id)}
         <div class="flex items-center justify-between p-2 rounded-lg bg-muted/10 border border-border/40 text-xs">
           <div class="flex items-center gap-2">
-            <span class="w-5 h-5 rounded-full bg-amber-500/10 text-amber-500 flex items-center justify-center font-mono font-bold text-[10px]">{idx + 1}</span>
+            <span class="w-5 h-5 rounded-full bg-amber-500/10 text-amber-500 flex items-center justify-center num font-bold text-small">{idx + 1}</span>
             <Flag code={p.flag} size={18} />
             <span class="font-bold truncate max-w-28">{p.display_name}</span>
           </div>
           <div class="flex flex-col items-end gap-0.5">
-            <span class="font-mono font-black text-amber-500">{p.championships} <span class="text-[9px] font-normal text-muted-foreground">次冠军</span></span>
+            <span class="num font-black text-amber-500">{p.championships} <span class="text-small font-normal text-muted-foreground">次冠军</span></span>
             <span class="flex flex-wrap justify-end gap-0.5">
               {#each tierBreakdown(p.championships_by_tier) as t (t.id)}
-                <span class="rounded border px-1 text-[9px] font-bold leading-tight {TIER_TAG[t.id] || 'border-border text-muted-foreground'}">{t.id === "none" ? "未分级" : t.id} ×{t.count}</span>
+                <span class="{TAG_BASE} {TIER_TAG[t.id] || TAG_TONE.neutral}">{t.id === "none" ? "未分级" : t.id} ×{t.count}</span>
               {/each}
             </span>
           </div>
         </div>
       {/each}
       {#if !rankings.by_championships?.length}
-        <div class="text-center py-4 text-[10px] text-muted-foreground italic">暂无冠军记录</div>
+        <EmptyState compact title="暂无冠军记录" />
       {/if}
     </div>
   </div>
@@ -53,22 +55,22 @@
       {#each rankings.by_runner_ups || [] as p, idx (p.id)}
         <div class="flex items-center justify-between p-2 rounded-lg bg-muted/10 border border-border/40 text-xs">
           <div class="flex items-center gap-2">
-            <span class="w-5 h-5 rounded-full bg-slate-400/10 text-slate-400 flex items-center justify-center font-mono font-bold text-[10px]">{idx + 1}</span>
+            <span class="w-5 h-5 rounded-full bg-slate-400/10 text-slate-400 flex items-center justify-center num font-bold text-small">{idx + 1}</span>
             <Flag code={p.flag} size={18} />
             <span class="font-bold truncate max-w-28">{p.display_name}</span>
           </div>
           <div class="flex flex-col items-end gap-0.5">
-            <span class="font-mono font-black text-slate-400">{p.runner_ups} <span class="text-[9px] font-normal text-muted-foreground">次亚军</span></span>
+            <span class="num font-black text-slate-400">{p.runner_ups} <span class="text-small font-normal text-muted-foreground">次亚军</span></span>
             <span class="flex flex-wrap justify-end gap-0.5">
               {#each tierBreakdown(p.runner_ups_by_tier) as t (t.id)}
-                <span class="rounded border px-1 text-[9px] font-bold leading-tight {TIER_TAG[t.id] || 'border-border text-muted-foreground'}">{t.id === "none" ? "未分级" : t.id} ×{t.count}</span>
+                <span class="{TAG_BASE} {TIER_TAG[t.id] || TAG_TONE.neutral}">{t.id === "none" ? "未分级" : t.id} ×{t.count}</span>
               {/each}
             </span>
           </div>
         </div>
       {/each}
       {#if !rankings.by_runner_ups?.length}
-        <div class="text-center py-4 text-[10px] text-muted-foreground italic">暂无亚军记录</div>
+        <EmptyState compact title="暂无亚军记录" />
       {/if}
     </div>
   </div>
@@ -83,15 +85,15 @@
       {#each rankings.by_win_rate as p, idx (p.id)}
         <div class="flex items-center justify-between p-2 rounded-lg bg-muted/10 border border-border/40 text-xs">
           <div class="flex items-center gap-2">
-            <span class="w-5 h-5 rounded-full bg-emerald-500/10 text-emerald-500 flex items-center justify-center font-mono font-bold text-[10px]">{idx + 1}</span>
+            <span class="w-5 h-5 rounded-full bg-emerald-500/10 text-emerald-500 flex items-center justify-center num font-bold text-small">{idx + 1}</span>
             <Flag code={p.flag} size={18} />
             <span class="font-bold truncate max-w-28">{p.display_name}</span>
           </div>
-          <span class="font-mono font-black text-emerald-500">{Math.round(p.match_win_rate * 100)}% <span class="text-[9px] font-normal text-muted-foreground">({p.matches_won}/{p.matches_played})</span></span>
+          <span class="num font-black text-emerald-500">{Math.round(p.match_win_rate * 100)}% <span class="text-small font-normal text-muted-foreground">({p.matches_won}/{p.matches_played})</span></span>
         </div>
       {/each}
       {#if rankings.by_win_rate.length === 0}
-        <div class="text-center py-4 text-[10px] text-muted-foreground italic">暂无胜率排行（至少 5 场）</div>
+        <EmptyState compact title="暂无胜率排行（至少 5 场）" />
       {/if}
     </div>
   </div>
@@ -106,15 +108,15 @@
       {#each rankings.by_played as p, idx}
         <div class="flex items-center justify-between p-2 rounded-lg bg-muted/10 border border-border/40 text-xs">
           <div class="flex items-center gap-2">
-            <span class="w-5 h-5 rounded-full bg-blue-500/10 text-blue-400 flex items-center justify-center font-mono font-bold text-[10px]">{idx + 1}</span>
+            <span class="w-5 h-5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center num font-bold text-small">{idx + 1}</span>
             <Flag code={p.flag} size={18} />
             <span class="font-bold truncate max-w-28">{p.display_name}</span>
           </div>
-          <span class="font-mono font-black text-blue-400">{p.matches_played} <span class="text-[9px] font-normal text-muted-foreground">场</span></span>
+          <span class="num font-black text-blue-600 dark:text-blue-400">{p.matches_played} <span class="text-small font-normal text-muted-foreground">场</span></span>
         </div>
       {/each}
       {#if rankings.by_played.length === 0}
-        <div class="text-center py-4 text-[10px] text-muted-foreground italic">暂无场数排行</div>
+        <EmptyState compact title="暂无场数排行" />
       {/if}
     </div>
   </div>
@@ -122,22 +124,22 @@
   <!-- Board 4: Walkovers Ranking -->
   <div class="bg-card border border-border rounded-xl p-4.5 shadow-sm space-y-4">
     <h3 class="text-xs font-black text-foreground uppercase tracking-wider flex items-center gap-1.5">
-      <ShieldAlertIcon class="w-4 h-4 text-purple-500" />
+      <ShieldAlertIcon class="w-4 h-4 text-sky-500" />
       和平鸽子王 (弃权)
     </h3>
     <div class="space-y-3">
       {#each rankings.by_walkover as p, idx}
         <div class="flex items-center justify-between p-2 rounded-lg bg-muted/10 border border-border/40 text-xs">
           <div class="flex items-center gap-2">
-            <span class="w-5 h-5 rounded-full bg-purple-500/10 text-purple-400 flex items-center justify-center font-mono font-bold text-[10px]">{idx + 1}</span>
+            <span class="w-5 h-5 rounded-full bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center num font-bold text-small">{idx + 1}</span>
             <Flag code={p.flag} size={18} />
             <span class="font-bold truncate max-w-28">{p.display_name}</span>
           </div>
-          <span class="font-mono font-black text-purple-400">{p.walkover_losses} <span class="text-[9px] font-normal text-muted-foreground">次</span></span>
+          <span class="num font-black text-sky-600 dark:text-sky-400">{p.walkover_losses} <span class="text-small font-normal text-muted-foreground">次</span></span>
         </div>
       {/each}
       {#if rankings.by_walkover.length === 0}
-        <div class="text-center py-4 text-[10px] text-muted-foreground italic">暂无弃权排行</div>
+        <EmptyState compact title="暂无弃权排行" />
       {/if}
     </div>
   </div>

@@ -1,11 +1,11 @@
 const TIER_CLASSES = {
-  grandmaster: "border-red-500/30 bg-red-500/10 text-red-400",
-  master: "border-purple-500/30 bg-purple-500/10 text-purple-400",
-  diamond: "border-sky-500/30 bg-sky-500/10 text-sky-400",
-  platinum: "border-teal-500/30 bg-teal-500/10 text-teal-400",
-  gold: "border-yellow-500/30 bg-yellow-500/10 text-yellow-500",
-  silver: "border-zinc-400/30 bg-zinc-400/10 text-zinc-300",
-  bronze: "border-amber-700/40 bg-amber-700/10 text-amber-600",
+  grandmaster: "border-red-500/30 bg-red-500/10 text-red-600 dark:text-red-400",
+  master: "border-purple-500/30 bg-purple-500/10 text-purple-700 dark:text-purple-400",
+  diamond: "border-sky-500/30 bg-sky-500/10 text-sky-600 dark:text-sky-400",
+  platinum: "border-teal-500/30 bg-teal-500/10 text-teal-600 dark:text-teal-400",
+  gold: "border-yellow-500/30 bg-yellow-500/10 text-yellow-700 dark:text-yellow-500",
+  silver: "border-zinc-400/30 bg-zinc-400/10 text-zinc-600 dark:text-zinc-300",
+  bronze: "border-amber-700/40 bg-amber-700/10 text-amber-800 dark:text-amber-600",
   unrated: "border-border bg-muted/40 text-muted-foreground",
 };
 

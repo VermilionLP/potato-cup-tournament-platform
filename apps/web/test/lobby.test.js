@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { createEventBody, createSteps, eventIdFromName, firstProblem, groupPreview, newEventForm, stepError, stepSummary } from "../src/lib/create-event.js";
-import { actionLabel, countdownLabel, displayCapacity, relativeDay, statusLabel, statusStyle } from "../src/lib/lobby.js";
+import { actionLabel, countdownLabel, displayCapacity, relativeDay, statusLabel, statusStyle, statusTone } from "../src/lib/lobby.js";
 
 test("relativeDay counts calendar days both ways", () => {
   const now = new Date(2026, 9, 28, 15, 0);
@@ -23,7 +23,10 @@ test("countdownLabel and capacity labels", () => {
   assert.equal(actionLabel({ status: "voting" }), "去投票");
   assert.equal(statusLabel("in_progress"), "比赛进行中");
   assert.equal(statusLabel("odd"), "odd");
-  assert.match(statusStyle("odd"), /zinc/);
+  // Unknown statuses get the neutral tag; live events the red one.
+  assert.equal(statusTone("odd"), "neutral");
+  assert.equal(statusTone("in_progress"), "live");
+  assert.match(statusStyle("odd"), /bg-secondary/);
 });
 
 test("the wizard has two extra pages for two-stage events", () => {

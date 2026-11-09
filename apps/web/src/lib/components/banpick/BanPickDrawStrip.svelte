@@ -94,15 +94,15 @@
 >
   <div class="grid flex-1 grid-cols-2 gap-3">
     <div class="min-w-0">
-      <div class="text-[10px] text-muted-foreground">大组</div>
+      <div class="text-small text-muted-foreground">大组</div>
       <div class="flex min-w-0 items-center gap-1.5 text-base font-black text-foreground {rolling && rollingPhase === 'drawGroup' ? 'opacity-60' : ''}">
         <span class="truncate">{shownGroup || "待抽取"}</span>
       </div>
     </div>
     <div class="min-w-0">
-      <div class="text-[10px] text-muted-foreground">载具</div>
+      <div class="text-small text-muted-foreground">载具</div>
       <div
-        class="truncate text-base font-black {bp.vehicle ? 'text-primary' : 'text-foreground'}
+        class="truncate text-base font-black {bp.vehicle ? 'text-brand-ink' : 'text-foreground'}
           {rolling && rollingPhase === 'drawVehicle' ? 'opacity-60' : ''}"
       >
         {#if shownVehicle}
@@ -119,7 +119,7 @@
     {#if bp.phase === "done"}
       <span class="rounded-full bg-primary px-3 py-1 text-xs font-bold text-primary-foreground">已确认</span>
     {:else if !actor}
-      <span class="rounded-full border border-border px-3 py-1 text-[11px] text-muted-foreground">观战中</span>
+      <span class="rounded-full border border-border px-3 py-1 text-small text-muted-foreground">观战中</span>
     {:else if bp.phase === "drawGroup"}
       {#if !bp.group || freeGroupRedraw}
         <button
@@ -145,7 +145,7 @@
             type="button"
             disabled={busy || rolling}
             onclick={() => run("confirmGroup")}
-            class="rounded-full border border-primary/50 px-3 py-1 text-xs font-bold text-primary hover:bg-primary/10 disabled:opacity-50 cursor-pointer"
+            class="rounded-full border border-primary/50 px-3 py-1 text-xs font-bold text-brand-ink hover:bg-primary/10 disabled:opacity-50 cursor-pointer"
           >
             使用该组
           </button>
@@ -187,7 +187,7 @@
 </div>
 {#if bp.group && groupVehiclesShown.length && (bp.phase === "drawVehicle" || !rules.drawVehicle)}
   <div class="space-y-1">
-    <div class="text-[10px] text-muted-foreground">
+    <div class="text-small text-muted-foreground">
       {rules.drawVehicle ? `${bp.group} 组的载具` : `${bp.group} 组内任选一辆`}
     </div>
     <div class="grid grid-cols-2 gap-1.5 sm:grid-cols-3 md:grid-cols-4">
@@ -198,7 +198,7 @@
   </div>
 {/if}
 {#if bp.phase === "drawGroup" && !groupsLeft.length}
-  <p class="text-center text-[11px] text-destructive">没有可抽的大组了，可以点"重置"重新开始。</p>
+  <p class="text-center text-small text-destructive">没有可抽的大组了，可以点"重置"重新开始。</p>
 {:else if bp.phase === "drawVehicle" && !vehiclesLeft.length}
-  <p class="text-center text-[11px] text-destructive">该组载具已全部移出，{canGoBack ? "请返回大组重新抽取" : "可以点\"重置\"重新开始"}。</p>
+  <p class="text-center text-small text-destructive">该组载具已全部移出，{canGoBack ? "请返回大组重新抽取" : "可以点\"重置\"重新开始"}。</p>
 {/if}

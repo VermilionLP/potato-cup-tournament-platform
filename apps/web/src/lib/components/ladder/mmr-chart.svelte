@@ -134,7 +134,7 @@
         x={PAD.left - 8}
         y={tick.y + 3}
         text-anchor="end"
-        class="fill-muted-foreground text-[9px] font-mono"
+        class="fill-muted-foreground text-small num"
       >
         {tick.value}
       </text>
@@ -155,14 +155,14 @@
         x={tick.x}
         y={H - 8}
         text-anchor="middle"
-        class="fill-muted-foreground text-[9px]"
+        class="fill-muted-foreground text-small"
       >
         {tick.label}
       </text>
     {/each}
 
     <!-- Area + line -->
-    <path d={areaPath} fill="url(#mmr-area)" class="text-primary" />
+    <path d={areaPath} fill="url(#mmr-area)" class="text-brand-ink" />
     <path
       d={linePath}
       fill="none"
