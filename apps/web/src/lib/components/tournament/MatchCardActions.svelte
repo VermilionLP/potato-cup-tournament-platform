@@ -1,7 +1,8 @@
 <script>
   // Right side of a match card's header bar, the same in Swiss, single and
   // double elimination views: the live-channel badge or the admin's "go
-  // live" toggle, Ban / Pick, a pending report ("待确认" / "有争议"), "my
+  // live" toggle, Ban / Pick (named after the drawn vehicle once there is
+  // one), a pending report ("待确认" / "有争议"), "my
   // match" and the correction marker.
   import { reportBadge } from "#lib/match-card.js";
 
@@ -14,6 +15,8 @@
     banpickEnabled = false,
     mine = false, // the viewer plays in it and it's pending
     correctable = false,
+    vehicle = "", // the Ban / Pick result: shown on the BP button
+
     gap = "gap-1",
     ontoggleactive = () => {},
     onbanpick = () => {},
@@ -45,10 +48,11 @@
         e.stopPropagation();
         onbanpick(match);
       }}
-      class="rounded border border-primary/40 chip px-1 text-small font-bold text-brand-ink transition-all cursor-pointer hover:bg-primary hover:text-primary-foreground"
-      title="打开 Ban / Pick"
+      class="rounded chip px-1 text-small font-bold transition-all cursor-pointer hover:bg-primary hover:text-primary-foreground
+        {vehicle ? 'bg-brand-soft text-brand-soft-foreground' : 'border border-primary/40 text-brand-ink'}"
+      title={vehicle || "打开 Ban / Pick"}
     >
-      BP
+      <span class="max-w-[150px] truncate">{vehicle || "BP"}</span>
     </button>
   {/if}
   {#if badge}

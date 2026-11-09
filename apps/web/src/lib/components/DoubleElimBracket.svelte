@@ -126,11 +126,10 @@
 
   function cardTitle(match) {
     const number = matchNumbers.get(match.id);
-    const label =
-      match.bracket === "gf" && match.position === 2
-        ? "重置赛"
-        : `场次 ${match.position}`;
-    return number ? `#${number} · ${label}` : label;
+    // Only the number; the grand final reset says so.
+    const reset = match.bracket === "gf" && match.position === 2;
+    const label = number ? `#${number}` : `#${match.position}`;
+    return reset ? `${label} · 重置赛` : label;
   }
 </script>
 

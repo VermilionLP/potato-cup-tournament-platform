@@ -58,8 +58,9 @@
   >
     <span class="flex min-w-0 items-center gap-1">
       <span class="shrink-0 whitespace-nowrap">{title}</span>
-      {#if bpResult(match)}
-        <span class="min-w-0 truncate rounded-full bg-brand-soft px-1.5 leading-[15px] font-bold text-brand-soft-foreground" title="本场载具（Ban/Pick 结果）">{bpResult(match)}</span>
+      <!-- The drawn vehicle; on the BP button instead when there is one. -->
+      {#if bpResult(match) && !(banpickEnabled && playable)}
+        <span class="min-w-0 truncate rounded-full bg-brand-soft px-1.5 leading-[15px] font-bold text-brand-soft-foreground" title={bpResult(match)}>{bpResult(match)}</span>
       {:else if bpUnderWay(match)}
         <span class="shrink-0 whitespace-nowrap rounded-full border border-dashed border-brand-300 px-1.5 leading-[13px] font-bold text-brand-ink" title="Ban/Pick 进行中">BP 中</span>
       {/if}
@@ -78,6 +79,7 @@
       {banpickEnabled}
       mine={isMine(match, userId)}
       correctable={editable}
+      vehicle={banpickEnabled && playable ? bpResult(match) || "" : ""}
       {ontoggleactive}
       {onbanpick}
     />
