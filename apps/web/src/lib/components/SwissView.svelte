@@ -74,7 +74,7 @@
   {:else}
     <BracketMatchCard
       {match}
-      title="第 {match.round} 轮 · 场次 {match.position}"
+      title="#{match.position}"
       {status}
       {locked}
       nameOf={(m, slot) => nameOf(slot === 1 ? m.player1_id : m.player2_id)}

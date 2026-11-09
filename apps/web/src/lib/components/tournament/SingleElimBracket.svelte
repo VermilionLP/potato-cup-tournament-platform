@@ -120,7 +120,7 @@
             {:else}
               <BracketMatchCard
                 match={m}
-                title="#{matchOrder.get(m.id)} · 场次 {m.position}"
+                title="#{matchOrder.get(m.id)}"
                 status={tournament.status}
                 nameOf={(mm, slot) => playerName(slot === 1 ? mm.player1_id : mm.player2_id, mm)}
                 {flagOf}
@@ -221,7 +221,7 @@
               <div class="absolute left-0 w-full" style="top: {tpTop}px; height: {gfPos.height}px;">
                 <BracketMatchCard
                   match={thirdPlaceMatch}
-                  title="#{matchOrder.get(thirdPlaceMatch.id) ?? "?"} · 场次 {thirdPlaceMatch.position}"
+                  title="#{matchOrder.get(thirdPlaceMatch.id) ?? "?"}"
                   status={tournament.status}
                   nameOf={(mm, slot) => playerName(slot === 1 ? mm.player1_id : mm.player2_id, mm)}
                   {flagOf}
