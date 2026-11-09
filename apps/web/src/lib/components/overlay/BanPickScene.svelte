@@ -15,7 +15,7 @@
   import { fade } from "svelte/transition";
   import { availableGroups, availableVehicles, bansOf, effectiveLog, groupVehicles, initialBanPick } from "#lib/banpick.js";
   import { matchStageLabels, tierEnglish } from "#lib/overlay.js";
-  import { slotImage, slotImageDirect } from "#lib/wt-units.js";
+  import { slotImage, slotImageDirect, unitImage, unitImageDirect } from "#lib/wt-units.js";
   import { loadVehicleSpecs, specCards } from "#lib/vehicle-specs.js";
   import Flag from "#lib/components/Flag.svelte";
   import OverlayTopBar from "./OverlayTopBar.svelte";
@@ -129,11 +129,16 @@
     bp.phase === "ban" ? `${turn} BANNING` : bp.phase === "drawGroup" ? "GROUP DRAW" : bp.phase === "drawVehicle" ? "VEHICLE DRAW" : "LOCKED IN",
   );
 
+  // Pictures: the wiki's large unit picture (through this server, then the
+  // wiki), else the small tech-tree slot picture.
+  const pictures = (unit) => [unitImage(unit), unitImageDirect(unit), slotImage(unit), slotImageDirect(unit)];
   function fallback(e, unit) {
     const img = e.currentTarget;
-    if (img.dataset.tried !== "1" && unit) {
-      img.dataset.tried = "1";
-      img.src = slotImageDirect(unit);
+    const next = Number(img.dataset.tried || 0) + 1;
+    const list = pictures(unit);
+    if (unit && next < list.length) {
+      img.dataset.tried = String(next);
+      img.src = list[next];
     } else img.style.visibility = "hidden";
   }
   const EASE = "cubic-bezier(.65,0,.25,1)";
@@ -185,9 +190,10 @@
 {/snippet}
 
 {#snippet vehicleImage(v, cls)}
-  {#if v?.unit}
+  {@const unit = unitOf(v)}
+  {#if unit}
     {#key v.name}
-      <img src={slotImage(v.unit)} alt="" class={cls} onerror={(e) => fallback(e, v.unit)} />
+      <img src={unitImage(unit)} alt="" class={cls} onerror={(e) => fallback(e, unit)} />
     {/key}
   {/if}
 {/snippet}

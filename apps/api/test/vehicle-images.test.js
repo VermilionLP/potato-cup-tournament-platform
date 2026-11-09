@@ -7,6 +7,7 @@ import { imageSource, vehicleImageStore } from '../lib/vehicle-images.js';
 
 test('only wiki slot images and flags, with safe names', () => {
   assert.deepEqual(imageSource('slots', 'p-47d-28.png'), { url: 'https://static.encyclopedia.warthunder.com/slots/p-47d-28.png', file: 'slots/p-47d-28.png' });
+  assert.equal(imageSource('images', 'p-39n.png').url, 'https://static.encyclopedia.warthunder.com/images/p-39n.png');
   assert.equal(imageSource('country', 'usa.png').url, 'https://static.encyclopedia.warthunder.com/unit_tooltip/country_usa.png');
   for (const [kind, file] of [['slots', '../etc/passwd.png'], ['slots', 'a/b.png'], ['slots', 'x.svg'], ['other', 'x.png'], ['country', 'u-s.png']]) {
     assert.equal(imageSource(kind, file), null, `${kind}/${file}`);

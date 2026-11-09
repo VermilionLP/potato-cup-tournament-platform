@@ -62,6 +62,9 @@ export function unitIdOf(vehicle, index) {
 export const WIKI_STATIC = "https://static.encyclopedia.warthunder.com";
 export const slotImage = (id) => `/api/vehicle-images/slots/${encodeURIComponent(id)}.png`;
 export const slotImageDirect = (id) => `${WIKI_STATIC}/slots/${encodeURIComponent(id)}.png`;
+// The wiki's large picture of the unit (a few hundred px wide), for the overlays.
+export const unitImage = (id) => `/api/vehicle-images/images/${encodeURIComponent(id)}.png`;
+export const unitImageDirect = (id) => `${WIKI_STATIC}/images/${encodeURIComponent(id)}.png`;
 export const wikiPage = (id) => `https://wiki.warthunder.com/unit/${encodeURIComponent(id)}`;
 
 const NATION_FILES = { usa: "usa", germany: "germany", ussr: "ussr", britain: "britain", japan: "japan", italy: "italy", france: "france", china: "china", sweden: "sweden", israel: "israel" };
