@@ -1,6 +1,7 @@
 // Vehicle pictures for the vehicle pool view: the War Thunder wiki's
-// tech-tree slot images (static.encyclopedia.warthunder.com/slots/<unit>.png)
-// and country flags, downloaded once and kept on disk so players load them
+// tech-tree slot images (static.encyclopedia.warthunder.com/slots/<unit>.png),
+// its large unit pictures (images/<unit>.png, for the overlays) and country
+// flags, downloaded once and kept on disk so players load them
 // from this server. Misses are remembered for an hour.
 
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
@@ -8,18 +9,19 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 export const WIKI_STATIC = 'https://static.encyclopedia.warthunder.com';
-const MAX_BYTES = 2 * 1024 * 1024;
+const MAX_BYTES = 8 * 1024 * 1024;
 const MISS_MS = 60 * 60 * 1000;
 
 export const defaultCacheDir = () =>
   process.env.VEHICLE_IMAGE_CACHE || join(dirname(fileURLToPath(import.meta.url)), '..', '.cache', 'vehicle-images');
 
-/** { url, file } for a request (kind 'slots' or 'country', file "<id>.png"), or null. */
+/** { url, file } for a request (kind 'slots', 'images' or 'country', file "<id>.png"), or null. */
 export function imageSource(kind, file) {
   const m = /^([a-z0-9][a-z0-9_.-]{0,80})\.png$/i.exec(String(file || ''));
   if (!m || m[1].includes('..')) return null;
   const id = m[1];
   if (kind === 'slots') return { url: `${WIKI_STATIC}/slots/${id}.png`, file: `slots/${id}.png` };
+  if (kind === 'images') return { url: `${WIKI_STATIC}/images/${id}.png`, file: `images/${id}.png` };
   if (kind === 'country') return /^[a-z]+$/.test(id) ? { url: `${WIKI_STATIC}/unit_tooltip/country_${id}.png`, file: `country/${id}.png` } : null;
   return null;
 }
