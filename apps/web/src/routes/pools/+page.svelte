@@ -15,7 +15,7 @@
   import { userState } from "#lib/user.svelte.js";
   import { groupVehicles, rulesSummary } from "#lib/banpick.js";
   import { VEHICLE_POOLS } from "#lib/tournament.js";
-  import { parsePoolFile, poolToCsv, poolToJson } from "#lib/vehicle-pools.js";
+  import { modesLabel, parsePoolFile, poolToCsv, poolToJson } from "#lib/vehicle-pools.js";
   import { NEW_ID, draftOf, draftProblem, emptyVehicle, newDraft, saveBody, templatesByType, toggleMode as toggled } from "#lib/pool-editor.js";
   import { downloadText } from "#lib/download.js";
   import TemplatePicker from "#lib/components/pools/TemplatePicker.svelte";
@@ -23,6 +23,9 @@
   import VehicleTable from "#lib/components/pools/VehicleTable.svelte";
   import PoolPreview from "#lib/components/pools/PoolPreview.svelte";
   import { Button } from "#lib/components/ui/button/index.js";
+  import { Input } from "#lib/components/ui/input/index.js";
+  import { Tag } from "#lib/components/ui/tag/index.js";
+  import SearchIcon from "@lucide/svelte/icons/search";
   import PlaneIcon from "@lucide/svelte/icons/plane";
   import DownloadIcon from "@lucide/svelte/icons/download";
   import UploadIcon from "@lucide/svelte/icons/upload";
@@ -213,79 +216,108 @@
     <TemplatePicker {byType} {activeId} {drafts} {isAdmin} newId={NEW_ID} {isNew} onpick={pick} onnew={() => startNew(null)} />
 
     {#if current}
-      <div class="space-y-3 rounded-xl border border-border bg-card/40 p-3 sm:p-4">
-        <!-- Template settings -->
-        <TemplateSettings {current} {isAdmin} onfield={setField} onrule={setRule} ontogglemode={toggleMode} />
-
-        <div class="flex flex-wrap items-center gap-2 border-t border-border/50 pt-3">
-          <div class="min-w-0 flex-1 text-xs text-muted-foreground">
-            <span class="font-semibold text-foreground">{rows.length}</span> 辆载具 ·
-            <span class="font-semibold text-foreground">{groupCount}</span> 个分组
-            {#if dirty}
-              · <span class="font-semibold text-amber-600 dark:text-amber-400">{isNew ? "新模板，尚未保存" : "有未保存的修改"}</span>
-            {:else if saved?.updated_at}
-              · 更新于 {new Date(saved.updated_at).toLocaleString("zh-CN")}
-            {/if}
-            {#if isAdmin}
-              <span class="block pt-0.5">Ban / Pick：{rulesSummary(current.rules)}</span>
+      <div class="rounded-xl border border-border bg-card/40">
+        <!-- Header: the template, its tags and counts; export / import, copy, delete -->
+        <div class="flex flex-wrap items-start gap-3 border-b border-border/60 px-3 py-3 sm:px-4">
+          <div class="w-full min-w-0 space-y-1 sm:w-auto sm:flex-1">
+            <div class="flex flex-wrap items-center gap-2">
+              <h2 class="truncate font-display text-2xl font-extrabold uppercase leading-tight">{current.name || "未命名模板"}</h2>
+              <Tag>{VEHICLE_POOLS.find((t) => t.id === current.event_type)?.name || current.event_type}</Tag>
+              <Tag class="num">{modesLabel(current.game_modes)}</Tag>
+              {#if dirty}<Tag tone="prize">{isNew ? "新模板 · 未保存" : "未保存"}</Tag>{/if}
+            </div>
+            <p class="text-small text-muted-foreground">
+              <span class="num font-bold text-foreground">{rows.length}</span> 辆载具 ·
+              <span class="num font-bold text-foreground">{groupCount}</span> 个分组
+              {#if !dirty && saved?.updated_at}· 更新于 {new Date(saved.updated_at).toLocaleString("zh-CN")}{/if}
+              {#if !isAdmin}· Ban / Pick：{rulesSummary(current.rules)}{/if}
+            </p>
+          </div>
+          <div class="flex flex-wrap items-center gap-1.5">
+            <div class="inline-flex overflow-hidden rounded-md border border-border">
+              <button type="button" class="inline-flex h-8 items-center gap-1.5 px-2.5 text-xs font-semibold hover:bg-muted cursor-pointer" onclick={() => download("json")} title="导出 JSON">
+                <DownloadIcon class="h-3.5 w-3.5" /> JSON
+              </button>
+              <button type="button" class="inline-flex h-8 items-center gap-1.5 border-l border-border px-2.5 text-xs font-semibold hover:bg-muted cursor-pointer" onclick={() => download("csv")} title="导出 CSV">
+                <DownloadIcon class="h-3.5 w-3.5" /> CSV
+              </button>
+              {#if isAdmin}
+                <input bind:this={fileInput} type="file" accept=".json,.csv,application/json,text/csv" class="hidden" onchange={importFile} />
+                <button type="button" class="inline-flex h-8 items-center gap-1.5 border-l border-border px-2.5 text-xs font-semibold hover:bg-muted cursor-pointer" onclick={() => fileInput?.click()} title="导入载具表（JSON / CSV），只替换载具">
+                  <UploadIcon class="h-3.5 w-3.5" /> 导入
+                </button>
+              {/if}
+            </div>
+            {#if isAdmin && !isNew}
+              <Button
+                variant="outline"
+                size="icon-sm"
+                class="h-8 w-8 cursor-pointer"
+                disabled={!!drafts[NEW_ID]}
+                title={drafts[NEW_ID] ? "先保存或取消正在新建的模板" : "复制为新模板"}
+                aria-label="复制为新模板"
+                onclick={() => startNew(current)}
+              >
+                <CopyIcon class="h-3.5 w-3.5" />
+              </Button>
+              <Button variant="outline" size="icon-sm" class="h-8 w-8 cursor-pointer hover:text-red-500" disabled={saving} title="删除模板" aria-label="删除模板" onclick={() => (confirmDelete = true)}>
+                <Trash2Icon class="h-3.5 w-3.5" />
+              </Button>
             {/if}
           </div>
-          <Button variant="outline" size="sm" class="h-8 gap-1.5 text-xs cursor-pointer" onclick={() => download("json")}>
-            <DownloadIcon class="h-3.5 w-3.5" /> 导出 JSON
-          </Button>
-          <Button variant="outline" size="sm" class="h-8 gap-1.5 text-xs cursor-pointer" onclick={() => download("csv")}>
-            <DownloadIcon class="h-3.5 w-3.5" /> 导出 CSV
-          </Button>
-          {#if isAdmin}
-            <input bind:this={fileInput} type="file" accept=".json,.csv,application/json,text/csv" class="hidden" onchange={importFile} />
-            <Button variant="outline" size="sm" class="h-8 gap-1.5 text-xs cursor-pointer" onclick={() => fileInput?.click()}>
-              <UploadIcon class="h-3.5 w-3.5" /> 导入载具表
-            </Button>
+          {#if confirmDelete && !isNew}
+            <div class="flex w-full flex-wrap items-center gap-2 rounded-md border border-red-500/30 bg-red-500/5 px-3 py-2 text-xs">
+              <span class="flex-1 text-foreground">删除「{saved.name}」？指定了它的比赛会改回自动匹配。</span>
+              <Button variant="destructive" size="sm" class="h-7 text-xs cursor-pointer" disabled={saving} onclick={remove}>确认删除</Button>
+              <Button variant="outline" size="sm" class="h-7 text-xs cursor-pointer" onclick={() => (confirmDelete = false)}>取消</Button>
+            </div>
           {/if}
         </div>
 
-        {#if isAdmin}
+        <div class="space-y-4 p-3 sm:p-4">
+          {#if isAdmin}
+            <TemplateSettings {current} {isAdmin} onfield={setField} onrule={setRule} ontogglemode={toggleMode} />
+          {/if}
+
+          <!-- Vehicles: table or Ban / Pick preview -->
           <div class="flex flex-wrap items-center gap-2">
-            <Button size="sm" class="h-8 gap-1.5 text-xs cursor-pointer" disabled={!dirty || !!problem || saving} onclick={save}>
-              <CheckIcon class="h-3.5 w-3.5" /> {isNew ? "创建模板" : "保存"}
-            </Button>
-            {#if dirty}
-              <Button variant="outline" size="sm" class="h-8 gap-1.5 text-xs cursor-pointer" disabled={saving} onclick={discard}>
-                <XIcon class="h-3.5 w-3.5" /> {isNew ? "取消新建" : "放弃修改"}
-              </Button>
-            {/if}
-            <Button variant="outline" size="sm" class="h-8 gap-1.5 text-xs cursor-pointer" onclick={addRow}>
-              <PlusIcon class="h-3.5 w-3.5" /> 添加载具
-            </Button>
-            {#if !isNew}
-              <Button variant="outline" size="sm" class="h-8 gap-1.5 text-xs cursor-pointer" disabled={!!drafts[NEW_ID]} title={drafts[NEW_ID] ? "先保存或取消正在新建的模板" : "以此模板为基础新建"} onclick={() => startNew(current)}>
-                <CopyIcon class="h-3.5 w-3.5" /> 复制为新模板
-              </Button>
-              {#if confirmDelete}
-                <span class="text-xs text-foreground">删除「{saved.name}」？指定了它的比赛会改回自动匹配。</span>
-                <Button variant="destructive" size="sm" class="h-8 text-xs cursor-pointer" disabled={saving} onclick={remove}>确认删除</Button>
-                <Button variant="outline" size="sm" class="h-8 text-xs cursor-pointer" onclick={() => (confirmDelete = false)}>取消</Button>
-              {:else}
-                <Button variant="outline" size="sm" class="h-8 gap-1.5 text-xs cursor-pointer hover:text-red-500" disabled={saving} onclick={() => (confirmDelete = true)}>
-                  <Trash2Icon class="h-3.5 w-3.5" /> 删除模板
+            <div class="flex gap-1.5">
+              <Chip selected={view === "table"} onclick={() => (view = "table")}><TableIcon class="h-3.5 w-3.5" /> 载具表</Chip>
+              <Chip selected={view === "preview"} onclick={() => (view = "preview")}><EyeIcon class="h-3.5 w-3.5" /> Ban / Pick 预览</Chip>
+            </div>
+            {#if view === "table"}
+              <div class="relative ml-auto w-full sm:w-64">
+                <SearchIcon class="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                <Input bind:value={query} placeholder="搜索载具、国家、类型或分组..." class="h-8 pl-8 text-xs" />
+              </div>
+              {#if isAdmin}
+                <Button variant="outline" size="sm" class="h-8 gap-1.5 text-xs cursor-pointer" onclick={addRow}>
+                  <PlusIcon class="h-3.5 w-3.5" /> 添加载具
                 </Button>
               {/if}
             {/if}
-            {#if problem}
-              <span class="text-xs text-amber-600 dark:text-amber-400">{problem}</span>
-            {/if}
           </div>
-        {/if}
 
-        <div class="flex gap-1.5">
-          <Chip selected={view === "table"} onclick={() => (view = "table")}><TableIcon class="h-3.5 w-3.5" /> 载具表</Chip>
-          <Chip selected={view === "preview"} onclick={() => (view = "preview")}><EyeIcon class="h-3.5 w-3.5" /> Ban / Pick 预览</Chip>
+          {#if view === "preview"}
+            <PoolPreview templateId={activeId} {current} {rows} {dirty} />
+          {:else}
+            <VehicleTable {rows} {isAdmin} {query} onedit={editCell} onremove={removeRow} />
+          {/if}
         </div>
 
-        {#if view === "preview"}
-          <PoolPreview templateId={activeId} {current} {rows} {dirty} />
-        {:else}
-        <VehicleTable {rows} {isAdmin} bind:query onedit={editCell} onremove={removeRow} />
+        <!-- Unsaved changes: save bar pinned to the bottom of the window -->
+        {#if isAdmin && dirty}
+          <div class="sticky bottom-[calc(3.35rem+env(safe-area-inset-bottom))] z-30 flex flex-wrap items-center gap-2 rounded-b-xl border-t border-amber-500/30 bg-amber-50/95 px-3 py-2.5 backdrop-blur md:bottom-0 sm:px-4 dark:bg-amber-950/80">
+            <span class="flex-1 text-xs font-semibold text-amber-800 dark:text-amber-200">
+              {problem || (isNew ? "新模板还没有创建" : "有未保存的修改")}
+            </span>
+            <Button variant="outline" size="sm" class="h-8 gap-1.5 text-xs cursor-pointer" disabled={saving} onclick={discard}>
+              <XIcon class="h-3.5 w-3.5" /> {isNew ? "取消新建" : "放弃修改"}
+            </Button>
+            <Button size="sm" class="h-8 gap-1.5 text-xs cursor-pointer" disabled={!!problem || saving} onclick={save}>
+              <CheckIcon class="h-3.5 w-3.5" /> {isNew ? "创建模板" : "保存"}
+            </Button>
+          </div>
         {/if}
       </div>
     {:else}
