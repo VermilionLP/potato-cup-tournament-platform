@@ -1,7 +1,9 @@
 <script>
-  // Statistics page, two tabs: player records over the events of a tier / kind
-  // (GET /players/statistics, computed on the server). Clicking a player
-  // opens their details under the row; and 名人堂 (HallOfFame). Parts are in
+  // Statistics page, three tabs: player records over the events of a tier /
+  // kind (GET /players/statistics, computed on the server; clicking a player
+  // opens their details under the row), 载具 (Ban / Pick statistics, same
+  // filter) and 名人堂 (HallOfFame plus the career boards: titles,
+  // runner-ups, win rate, matches, walkovers over every event). Parts are in
   // #lib/components/stats.
   import PageHeader from "#lib/components/PageHeader.svelte";
   import ChartIcon from "@lucide/svelte/icons/chart-column";
@@ -19,13 +21,30 @@
   import HallOfFame from "#lib/components/stats/HallOfFame.svelte";
   import CrownIcon from "@lucide/svelte/icons/crown";
   import UsersIcon from "@lucide/svelte/icons/users";
+  import CarIcon from "@lucide/svelte/icons/car-front";
+  import TrophyIcon from "@lucide/svelte/icons/trophy";
 
-  // Tabs: player data (with the tier / kind filter) and 名人堂, kept in the hash.
-  let tab = $state(typeof window !== "undefined" && window.location.hash === "#hall" ? "hall" : "players");
+  // Tabs, kept in the hash (#vehicles, #hall; none = player data).
+  const TABS = [
+    ["players", "选手数据", UsersIcon],
+    ["vehicles", "载具", CarIcon],
+    ["hall", "名人堂", CrownIcon],
+  ];
+  const fromHash = (h) => (h === "#hall" ? "hall" : h === "#vehicles" ? "vehicles" : "players");
+  let tab = $state(typeof window !== "undefined" ? fromHash(window.location.hash) : "players");
   function setTab(t) {
     tab = t;
-    replaceState(t === "hall" ? "#hall" : window.location.pathname + window.location.search, {});
+    replaceState(t === "players" ? window.location.pathname + window.location.search : `#${t}`, {});
   }
+
+  // 名人堂's career boards cover every event, whatever the filter says.
+  let careerRankings = $state(null);
+  $effect(() => {
+    if (tab !== "hall" || careerRankings) return;
+    API.getPlayerStatistics({})
+      .then((d) => (careerRankings = d?.rankings || null))
+      .catch((e) => toast.error("加载生涯榜单失败: " + e.message));
+  });
 
   let statsData = $state(null);
   let statsLoading = $state(true);
@@ -65,7 +84,7 @@
   <PageHeader title="数据统计" icon={ChartIcon} description="选手生涯战绩、趣味榜单、载具统计和名人堂" />
 
   <div class="flex gap-1 border-b border-border" role="tablist">
-    {#each [["players", "选手数据", UsersIcon], ["hall", "名人堂", CrownIcon]] as [id, label, Icon] (id)}
+    {#each TABS as [id, label, Icon] (id)}
       <button
         type="button"
         role="tab"
@@ -80,7 +99,23 @@
   </div>
 
   {#if tab === "hall"}
+    <!-- Career boards first (titles are what people look for), then the
+         records and every finished event (HallOfFame). -->
+    <section class="space-y-3">
+      <div>
+        <h2 class="flex items-center gap-1.5 text-heading font-bold"><TrophyIcon class="h-4 w-4 text-amber-500" />生涯榜单</h2>
+        <p class="text-small text-muted-foreground">全部赛事的冠军、亚军、胜率、场数和弃权排行</p>
+      </div>
+      {#if careerRankings}
+        <RankingBoards rankings={careerRankings} class="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3" />
+      {:else}
+        <PageSkeleton kind="stats" label="正在整理生涯榜单..." />
+      {/if}
+    </section>
     <HallOfFame />
+  {:else if tab === "vehicles"}
+    <StatsScopeFilter tier={statsTier} kind={statsKind} disabled={statsLoading} onchange={setScope} />
+    <BanPickStats tier={statsTier} kind={statsKind} />
   {:else}
   <!-- Event tier / kind filter -->
   <StatsScopeFilter tier={statsTier} kind={statsKind} disabled={statsLoading} onchange={setScope} />
@@ -91,22 +126,12 @@
     {#if statsData}
       <StatsOverview global={statsData.global} />
 
-      <!-- Main statistics layout -->
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <!-- Left + Mid: player table and the selected player -->
-        <div class="lg:col-span-2 space-y-6">
-          <PlayerStatsTable players={statsData.players} bind:selected={selectedStatPlayer}>
-            {#snippet detail(p)}
-              <PlayerDetailCard player={p} />
-            {/snippet}
-          </PlayerStatsTable>
-        </div>
-
-        <!-- Right: Rankings & Boards -->
-        <RankingBoards rankings={statsData.rankings} />
-      </div>
-
-      <BanPickStats tier={statsTier} kind={statsKind} />
+      <!-- Player table; the selected player's details open under the row -->
+      <PlayerStatsTable players={statsData.players} bind:selected={selectedStatPlayer}>
+        {#snippet detail(p)}
+          <PlayerDetailCard player={p} />
+        {/snippet}
+      </PlayerStatsTable>
     {/if}
   {/if}
   {/if}

@@ -19,10 +19,14 @@ const ranked = (map, field) => [...map.values()].filter((x) => x[field] > 0).sor
 
 /**
  * rows: [{ banpick, vehicle_pool, player1_id, player2_id, winner_id, status }]
- * Returns { types: [{ type, matches }], type, matches, confirmed, groups,
- * vehicles, player? } for `type` (default: the type with the most matches);
- * with `player`, that player's bans and played vehicles (with wins), over
- * every type.
+ * Returns { types: [{ type, matches }], type, matches, confirmed, bans,
+ * passes, groups, vehicles, banners, player? } for `type` (default: the type
+ * with the most matches); with `player`, that player's bans and played
+ * vehicles (with wins), over every type.
+ *
+ * groups.table / vehicles.table list every group / played vehicle (the
+ * statistics page's vehicle tab); banners are the players who banned most
+ * in this type, each with their most banned groups.
  */
 export function buildBanpickStats(rows = [], { type = '', player = '' } = {}) {
   const withBp = rows.filter((r) => r.banpick?.state && effectiveEntries(r.banpick.log).length);
@@ -35,6 +39,9 @@ export function buildBanpickStats(rows = [], { type = '', player = '' } = {}) {
   const groups = new Map();
   const vehicles = new Map();
   let confirmed = 0;
+  let bans = 0;
+  let passes = 0;
+  const banners = new Map();
   const mine = { bans: new Map(), vehicles: new Map() };
 
   for (const r of scoped) {
@@ -46,6 +53,20 @@ export function buildBanpickStats(rows = [], { type = '', player = '' } = {}) {
       else if (e.action === 'removeGroup') bump(groups, e.group, 'removed', { name: e.group });
       else if (e.action === 'drawVehicle') bump(vehicles, e.vehicle, 'drawn', { name: e.vehicle, group: e.group });
       else if (e.action === 'removeVehicle') bump(vehicles, e.vehicle, 'removed', { name: e.vehicle, group: e.group });
+    }
+    // Who banned what (the state's bans: undone ones are already gone).
+    for (const b of state.bans || []) {
+      const id = b.by === 'A' ? r.player1_id : b.by === 'B' ? r.player2_id : null;
+      if (!b.group) {
+        passes += 1;
+        continue;
+      }
+      bans += 1;
+      if (!id) continue;
+      if (!banners.has(id)) banners.set(id, { id, bans: 0, groups: new Map() });
+      const who = banners.get(id);
+      who.bans += 1;
+      who.groups.set(b.group, (who.groups.get(b.group) || 0) + 1);
     }
     if (state.phase === 'done') {
       confirmed += 1;
@@ -75,20 +96,33 @@ export function buildBanpickStats(rows = [], { type = '', player = '' } = {}) {
     }
   }
 
+  const byName = (a, b) => String(a.name).localeCompare(String(b.name));
   const out = {
     types,
     type: chosen,
     matches: scoped.length,
     confirmed,
+    bans,
+    passes,
     groups: {
       banned: ranked(groups, 'bans').slice(0, 10),
       drawn: ranked(groups, 'drawn').slice(0, 10),
       played: ranked(groups, 'played').slice(0, 10),
+      table: [...groups.values()].sort((a, b) => b.bans - a.bans || b.played - a.played || byName(a, b)),
     },
     vehicles: {
       played: ranked(vehicles, 'played').slice(0, 10),
       removed: ranked(vehicles, 'removed').slice(0, 10),
+      table: ranked(vehicles, 'played'),
     },
+    banners: [...banners.values()]
+      .map((b) => ({
+        id: b.id,
+        bans: b.bans,
+        top: [...b.groups.entries()].map(([group, n]) => ({ group, n })).sort((x, y) => y.n - x.n || x.group.localeCompare(y.group)).slice(0, 3),
+      }))
+      .sort((a, b) => b.bans - a.bans || a.id.localeCompare(b.id))
+      .slice(0, 10),
   };
   if (player) {
     out.player = {

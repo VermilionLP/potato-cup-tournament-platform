@@ -32,6 +32,14 @@ test('counts bans, draws, removals and played vehicles; undone steps do not coun
   assert.deepEqual(s.groups.banned.map((g) => [g.name, g.bans]), [['GA', 1], ['GB', 1], ['GC', 1]]);
   assert.deepEqual(s.vehicles.played.map((v) => [v.name, v.played]), [['a1', 1], ['c2', 1]]);
   assert.deepEqual(s.vehicles.removed.map((v) => [v.name, v.removed]), [['c1', 1]]);
+  // Every group and played vehicle for the vehicle tab; bans and passes.
+  assert.deepEqual(s.groups.table.map((g) => g.name).sort(), ['GA', 'GB', 'GC']);
+  assert.deepEqual(s.vehicles.table.map((v) => v.name).sort(), ['a1', 'c2']);
+  assert.equal(s.bans, 3);
+  assert.equal(s.passes, 1);
+  // p1 banned GA (match one, side A); p2 banned GB (one, B) and GC (two, A).
+  assert.deepEqual(s.banners.map((b) => [b.id, b.bans]), [['p2', 2], ['p1', 1]]);
+  assert.deepEqual(s.banners[0].top.map((t) => t.group), ['GB', 'GC']);
   // p1 banned GA in match one (side A) and nothing in match two (side B passed).
   assert.deepEqual(s.player.bans, [{ group: 'GA', n: 1 }]);
   const won = s.player.vehicles.find((v) => v.name === 'c2');
@@ -42,4 +50,6 @@ test('no data: empty boards', () => {
   const s = buildBanpickStats([]);
   assert.equal(s.matches, 0);
   assert.deepEqual(s.groups.banned, []);
+  assert.deepEqual(s.groups.table, []);
+  assert.deepEqual(s.banners, []);
 });
