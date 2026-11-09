@@ -1,4 +1,5 @@
 <script>
+  import { EmptyState } from "#lib/components/ui/empty-state/index.js";
   // Event page: wires the event's data (#lib/event-data.svelte.js: loading,
   // live updates, templates, players) to its sections and actions
   // (#lib/event-registration.js, #lib/event-stage.js; reporting is
@@ -373,7 +374,7 @@
       />
     {:else if activeTab === "bracket"}
       {#if tournament.status === "registration" && (tournament.players?.length || 0) < (isDoubleElim ? 4 : 2)}
-        <p class="py-12 text-center text-xs italic text-muted-foreground">报名人数够了之后这里会显示对阵预览。</p>
+        <EmptyState title="还没有对阵" hint="报名人数够了之后这里会显示对阵预览。" />
       {:else}
         {@render bracket()}
       {/if}

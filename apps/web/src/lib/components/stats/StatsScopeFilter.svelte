@@ -2,19 +2,14 @@
   // Statistics filter: event tier and kind ("" = all, "none" = not set).
   // The page reloads the statistics for the choice.
   import { EVENT_KINDS, EVENT_TIERS } from "#lib/tournament.js";
-  import { Chip } from "#lib/components/ui/chip/index.js";
+  import { FilterBar, FilterGroup } from "#lib/components/ui/filter-group/index.js";
 
   let { tier = "", kind = "", disabled = false, onchange } = $props();
-  const tierChips = [{ id: "", name: "全部等级" }, ...EVENT_TIERS, { id: "none", name: "未分级" }];
-  const kindChips = [{ id: "", name: "全部性质" }, ...EVENT_KINDS];
+  const tierOptions = [{ id: "", label: "全部" }, ...EVENT_TIERS.map((t) => ({ id: t.id, label: t.id, title: t.name })), { id: "none", label: "未分级" }];
+  const kindOptions = [{ id: "", label: "全部" }, ...EVENT_KINDS.map((k) => ({ id: k.id, label: k.name }))];
 </script>
 
-<div class="space-y-1.5">
-  {#each [{ chips: tierChips, value: tier, set: (id) => onchange?.(id, kind) }, { chips: kindChips, value: kind, set: (id) => onchange?.(tier, id) }] as row, r (r)}
-    <div class="flex flex-wrap items-center gap-2">
-      {#each row.chips as chip (chip.id)}
-        <Chip selected={row.value === chip.id} onclick={() => row.set(chip.id)} {disabled}>{chip.name}</Chip>
-      {/each}
-    </div>
-  {/each}
-</div>
+<FilterBar>
+  <FilterGroup label="等级" value={tier} {disabled} onpick={(id) => onchange?.(id, kind)} options={tierOptions} />
+  <FilterGroup label="性质" value={kind} {disabled} onpick={(id) => onchange?.(tier, id)} options={kindOptions} />
+</FilterBar>

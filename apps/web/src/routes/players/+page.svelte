@@ -6,6 +6,7 @@
   import UsersIcon from "@lucide/svelte/icons/users";
   import PageSkeleton from "#lib/components/PageSkeleton.svelte";
   import { onMount } from "svelte";
+  import { PAGE_SIZE } from "#lib/expand-row.js";
   import { toast } from "svelte-sonner";
   import { API } from "#lib/api.js";
   import { userState } from "#lib/user.svelte.js";
@@ -38,6 +39,13 @@
   let inactivePlayers = $derived(filteredPlayers.filter((p) => !isRecentlySeen(p)));
   let searching = $derived(searchQuery.trim() !== "");
   let shownPlayers = $derived(searching || showInactive ? [...activePlayers, ...inactivePlayers] : activePlayers);
+  // 30 at a time (#lib/expand-row.js PAGE_SIZE); a new search starts over.
+  let limit = $state(PAGE_SIZE);
+  $effect(() => {
+    searchQuery;
+    limit = PAGE_SIZE;
+  });
+  let pagedPlayers = $derived(shownPlayers.slice(0, limit));
   let emptyText = $derived(searchQuery ? "没有找到符合条件的选手" : inactivePlayers.length ? "最近一年没有活跃选手" : "暂无选手数据");
 
   onMount(load);
@@ -63,7 +71,15 @@
 <svelte:head><title>选手列表 · Potato Cup</title></svelte:head>
 
 {#snippet listFooter()}
-  <span>显示 {shownPlayers.length} / {players.length} 名选手</span>
+  <span class="inline-flex flex-wrap items-center gap-3">
+    <span>显示 {pagedPlayers.length} / {shownPlayers.length} 名选手</span>
+    {#if shownPlayers.length > pagedPlayers.length}
+      <button type="button" onclick={() => (limit += PAGE_SIZE)} class="font-semibold text-brand-ink hover:underline cursor-pointer">
+        再显示 {Math.min(PAGE_SIZE, shownPlayers.length - pagedPlayers.length)} 名
+      </button>
+      <button type="button" onclick={() => (limit = Infinity)} class="text-muted-foreground hover:text-foreground hover:underline cursor-pointer">全部显示</button>
+    {/if}
+  </span>
   {#if inactivePlayers.length && !searching}
     <button
       type="button"
@@ -115,8 +131,8 @@
   {#if loading}
     <PageSkeleton kind="table" label="正在加载选手数据..." rows={10} />
   {:else}
-    <PlayerTable players={shownPlayers} {isAdmin} {emptyText} onedit={openEdit} footer={filteredPlayers.length ? listFooter : null} />
-    <PlayerCards players={shownPlayers} {isAdmin} {emptyText} onedit={openEdit} footer={filteredPlayers.length ? listFooter : null} />
+    <PlayerTable players={pagedPlayers} {isAdmin} {emptyText} onedit={openEdit} footer={filteredPlayers.length ? listFooter : null} />
+    <PlayerCards players={pagedPlayers} {isAdmin} {emptyText} onedit={openEdit} footer={filteredPlayers.length ? listFooter : null} />
   {/if}
 </div>
 

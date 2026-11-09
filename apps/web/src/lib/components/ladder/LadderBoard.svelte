@@ -1,4 +1,5 @@
 <script>
+  import { EmptyState } from "#lib/components/ui/empty-state/index.js";
   // The leaderboard: scoring window, inactive players, minimum games and
   // search; table on wide screens, cards on phones. Clicking a player
   // opens `detail` (snippet, given the player) under their row; clicking
@@ -67,6 +68,7 @@
       </Card.Title>
       <Card.Description class="text-small">
         段位按大师 4%、钻石/白金/黄金/白银各 23%、青铜 4%；大段内按名次分 I/II/III；宗师为区域前 200，小池子不设。
+        <span class="inline-flex items-center gap-1 whitespace-nowrap"><span class="size-1.5 rounded-full bg-amber-400"></span>定级中（前 10 场）</span>
       </Card.Description>
     </div>
     <div class="flex flex-wrap items-center gap-3 w-full sm:w-auto">
@@ -147,7 +149,7 @@
                   {/if}
                   <span class="truncate">{p.display_name}</span>
                   {#if p.provisional}
-                    <span class="text-small text-muted-foreground/70 shrink-0">定级中</span>
+                    <span class="size-1.5 shrink-0 rounded-full bg-amber-400" title="定级中：前 10 场，分数变化更大" aria-label="定级中"></span>
                   {/if}
                   {#if p.active === false}
                     <span class="text-small text-amber-500/80 shrink-0">不活跃</span>
@@ -178,8 +180,8 @@
           {/each}
           {#if filteredPlayers.length === 0}
             <tr>
-              <td colspan="8" class="py-10 text-center text-xs text-muted-foreground italic">
-                暂无天梯记录。完成一场赛事对局后就会自动计入。
+              <td colspan="8" class="p-3">
+                <EmptyState compact title="暂无天梯记录" hint="完成一场赛事对局后就会自动计入。" />
               </td>
             </tr>
           {/if}
@@ -210,7 +212,7 @@
               {/if}
               <span class="truncate font-semibold text-sm">{p.display_name}</span>
               {#if p.provisional}
-                <span class="text-small text-muted-foreground/70 shrink-0">定级中</span>
+                <span class="size-1.5 shrink-0 rounded-full bg-amber-400" title="定级中：前 10 场，分数变化更大" aria-label="定级中"></span>
               {/if}
               {#if p.active === false}
                 <span class="text-small text-amber-500/80 shrink-0">不活跃</span>
@@ -234,9 +236,7 @@
         {/if}
       {/each}
       {#if filteredPlayers.length === 0}
-        <div class="py-10 text-center text-xs text-muted-foreground italic">
-          暂无天梯记录。完成一场赛事对局后就会自动计入。
-        </div>
+        <EmptyState compact class="m-3" title="暂无天梯记录" hint="完成一场赛事对局后就会自动计入。" />
       {/if}
     </div>
     <ShowMoreRows shown={shownPlayers.length} total={filteredPlayers.length} onmore={() => (limit = shownPlayers.length + PAGE_SIZE)} onall={() => (limit = Infinity)} />

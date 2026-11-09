@@ -107,7 +107,8 @@
         <p class="text-small text-muted-foreground">全部赛事的冠军、亚军、胜率、场数和弃权排行</p>
       </div>
       {#if careerRankings}
-        <RankingBoards rankings={careerRankings} class="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3" />
+        <!-- Masonry columns: each board as tall as its list. -->
+        <RankingBoards rankings={careerRankings} class="columns-1 gap-5 md:columns-2 xl:columns-3 [&>*]:mb-5 [&>*]:break-inside-avoid" />
       {:else}
         <PageSkeleton kind="stats" label="正在整理生涯榜单..." />
       {/if}

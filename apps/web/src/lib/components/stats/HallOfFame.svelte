@@ -77,7 +77,7 @@
     <PageSkeleton kind="stats" label="正在整理历届冠军..." />
   {:else if data}
     <!-- All-time records -->
-    <section class="grid grid-cols-1 gap-3 md:grid-cols-3">
+    <section class="grid grid-cols-1 items-start gap-3 md:grid-cols-3">
       {#each BOARDS as b (b.key)}
         {@const rows = data.records[b.key] || []}
         <div class="rounded-xl border border-border bg-card p-4 shadow-sm">

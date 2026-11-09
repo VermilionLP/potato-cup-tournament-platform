@@ -1,7 +1,8 @@
 <script>
   // Lobby: the event that matters now on top (LobbyHero), the other upcoming
-  // / running events, then finished ones filtered by event type. Rows and the create-event wizard live in #lib/components/lobby.
-  import { Chip } from "#lib/components/ui/chip/index.js";
+  // / running events (filtered by status, 8 at a time), then finished ones
+  // filtered by event type and tier (10 at a time). Rows and the create-event wizard live in #lib/components/lobby.
+  import { FilterBar, FilterGroup } from "#lib/components/ui/filter-group/index.js";
   import PageHeader from "#lib/components/PageHeader.svelte";
   import PageSkeleton from "#lib/components/PageSkeleton.svelte";
   import { onMount } from "svelte";
@@ -35,6 +36,24 @@
   // The event on top (LobbyHero); the list below shows the others.
   let featured = $derived(featuredEvent(activeTournaments));
   let otherActive = $derived(activeTournaments.filter((t) => t.id !== featured?.id));
+  // Other active events by status ("" = all); statuses with none are hidden.
+  let activeStatus = $state("");
+  const ACTIVE_STATUSES = [
+    { id: "in_progress", name: "进行中" },
+    { id: "registration", name: "报名中" },
+    { id: "voting", name: "投票中" },
+  ];
+  let statusChips = $derived([
+    { id: "", name: "全部", count: otherActive.length },
+    ...ACTIVE_STATUSES.map((st) => ({ ...st, count: otherActive.filter((t) => t.status === st.id).length })).filter((c) => c.count > 0 || c.id === activeStatus),
+  ]);
+  let filteredActive = $derived(activeStatus ? otherActive.filter((t) => t.status === activeStatus) : otherActive);
+  const ACTIVE_PAGE = 8;
+  const HISTORY_PAGE = 10;
+  let activeLimit = $state(ACTIVE_PAGE);
+  let historyLimit = $state(HISTORY_PAGE);
+  let shownActive = $derived(filteredActive.slice(0, activeLimit));
+
   // History filter by event type ("" = all).
   let historyPool = $state("");
   let historyChips = $derived([
@@ -48,14 +67,15 @@
   );
   let tierChips = $derived(
     [
-      { id: "", name: "全部等级", count: poolHistory.length },
+      { id: "", name: "全部", count: poolHistory.length },
       ...EVENT_TIERS.map((tier) => ({ ...tier, count: poolHistory.filter((t) => t.tier === tier.id).length })),
       { id: "none", name: "未分级", count: poolHistory.filter((t) => !t.tier).length },
     ].filter((chip) => chip.id === "" || chip.count > 0 || chip.id === historyTier),
   );
-  let shownHistory = $derived(
+  let filteredHistory = $derived(
     historyTier ? poolHistory.filter((t) => (historyTier === "none" ? !t.tier : t.tier === historyTier)) : poolHistory,
   );
+  let shownHistory = $derived(filteredHistory.slice(0, historyLimit));
 
   onMount(() => {
     load();
@@ -112,6 +132,16 @@
     }
   }
 </script>
+
+{#snippet more(total, shown, onmore, onall, step)}
+  {#if total > shown}
+    <div class="flex items-center justify-center gap-3 text-xs text-muted-foreground">
+      <span class="num">显示 {shown} / {total} 场</span>
+      <button type="button" class="font-bold text-brand-ink hover:underline cursor-pointer" onclick={onmore}>再显示 {Math.min(step, total - shown)} 场</button>
+      <button type="button" class="hover:text-foreground hover:underline cursor-pointer" onclick={onall}>全部显示</button>
+    </div>
+  {/if}
+{/snippet}
 
 <svelte:head><title>赛事大厅 · Potato Cup</title></svelte:head>
 
@@ -180,10 +210,27 @@
         <LobbyHero t={featured} onchanged={load} {isAdmin} ondelete={deleteTournament} />
       {/if}
       {#if otherActive.length}
-        <div class="divide-y divide-border border border-border bg-card/30 rounded-2xl overflow-hidden shadow-sm">
-          {#each otherActive as t (t.id)}
-            <ActiveEventRow {t} {isAdmin} ondelete={deleteTournament} />
-          {/each}
+        <div class="space-y-3">
+          <div class="flex items-center gap-3">
+            <h2 class="text-sm font-bold text-muted-foreground uppercase tracking-wider">其他赛事</h2>
+            <div class="flex-1 h-px bg-border/60"></div>
+          </div>
+          {#if statusChips.length > 2}
+            <FilterBar>
+              <FilterGroup
+                label="状态"
+                value={activeStatus}
+                onpick={(id) => ((activeStatus = id), (activeLimit = ACTIVE_PAGE))}
+                options={statusChips.map((c) => ({ id: c.id, label: c.name, count: c.count }))}
+              />
+            </FilterBar>
+          {/if}
+          <div class="divide-y divide-border border border-border bg-card/30 rounded-2xl overflow-hidden shadow-sm">
+            {#each shownActive as t (t.id)}
+              <ActiveEventRow {t} {isAdmin} ondelete={deleteTournament} />
+            {/each}
+          </div>
+          {@render more(filteredActive.length, shownActive.length, () => (activeLimit += ACTIVE_PAGE), () => (activeLimit = Infinity), ACTIVE_PAGE)}
         </div>
       {/if}
     {/if}
@@ -195,25 +242,32 @@
           <h2 class="text-sm font-bold text-muted-foreground uppercase tracking-wider">历史记录</h2>
           <div class="flex-1 h-px bg-border/60"></div>
         </div>
-        <!-- Filter by vehicle pool -->
-        <div class="flex flex-wrap items-center gap-1.5 mb-3">
-          {#each historyChips as chip (chip.id)}
-            <Chip selected={historyPool === chip.id} onclick={() => (historyPool = chip.id)}>{chip.name}
-              <span class="text-small font-normal opacity-75 tabular-nums">{chip.count}</span></Chip>
-          {/each}
+        <!-- Filter by event type and tier -->
+        <div class="mb-3">
+          <FilterBar>
+            <FilterGroup
+              label="类型"
+              value={historyPool}
+              onpick={(id) => ((historyPool = id), (historyLimit = HISTORY_PAGE))}
+              options={historyChips.map((c) => ({ id: c.id, label: c.name, count: c.count }))}
+            />
+            {#if tierChips.length > 2}
+              <FilterGroup
+                label="等级"
+                value={historyTier}
+                onpick={(id) => ((historyTier = id), (historyLimit = HISTORY_PAGE))}
+                options={tierChips.map((c) => ({ id: c.id, label: c.id && c.id !== "none" ? c.id : c.name, count: c.count, title: c.name }))}
+              />
+            {/if}
+          </FilterBar>
         </div>
-        {#if tierChips.length > 2}
-          <div class="flex flex-wrap items-center gap-1.5 -mt-1 mb-3">
-            {#each tierChips as chip (chip.id)}
-              <Chip selected={historyTier === chip.id} onclick={() => (historyTier = chip.id)}>{chip.name}
-                <span class="text-small font-normal opacity-75 tabular-nums">{chip.count}</span></Chip>
-            {/each}
-          </div>
-        {/if}
         <div class="divide-y divide-border border border-border bg-card/15 rounded-2xl overflow-hidden shadow-sm">
           {#each shownHistory as t (t.id)}
             <HistoryEventRow {t} {isAdmin} ondelete={deleteTournament} onexport={exportTournament} />
           {/each}
+        </div>
+        <div class="pt-3">
+          {@render more(filteredHistory.length, shownHistory.length, () => (historyLimit += HISTORY_PAGE), () => (historyLimit = Infinity), HISTORY_PAGE)}
         </div>
       </div>
     {/if}

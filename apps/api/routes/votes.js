@@ -1,7 +1,8 @@
 import { VoteRepo } from '../repositories/vote-repo.js';
 import { TournamentRepo } from '../repositories/tournament-repo.js';
 import { PlayerRepo } from '../repositories/player-repo.js';
-import { requireAdmin, requireSelfOrAdmin } from '../lib/admin.js';
+import { canSeeContactsRequest, requireAdmin, requireSelfOrAdmin } from '../lib/admin.js';
+import { contactFor } from '../lib/player-privacy.js';
 import { requireContact } from '../lib/contact.js';
 
 export default async function votesRoutes(fastify) {
@@ -12,7 +13,8 @@ export default async function votesRoutes(fastify) {
   fastify.get('/tournaments/:id/votes', async (req) => {
     const t = await tourneyRepo.getById(req.params.id);
     if (!t) throw fastify.httpErrors.notFound('Tournament not found');
-    return await repo.getByTournament(req.params.id);
+    const contacts = await canSeeContactsRequest(fastify, req);
+    return (await repo.getByTournament(req.params.id)).map((v) => contactFor(v, contacts));
   });
 
   fastify.post('/tournaments/:id/vote', async (req) => {
@@ -67,6 +69,7 @@ export default async function votesRoutes(fastify) {
     // Trigger real-time broadcast
     fastify.tournamentEvents.emit(`update:${req.params.id}`, { type: 'vote_removed', player_id });
 
-    return await repo.getByTournament(req.params.id);
+    const contacts = await canSeeContactsRequest(fastify, req);
+    return (await repo.getByTournament(req.params.id)).map((v) => contactFor(v, contacts));
   });
 }

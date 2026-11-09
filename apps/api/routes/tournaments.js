@@ -9,7 +9,8 @@ import { LadderRepo } from '../repositories/ladder-repo.js';
 import { LiveChannelRepo } from '../repositories/live-channel-repo.js';
 import { Readable } from 'stream';
 import { buildCalendarFeed, buildTournamentIcs } from '../lib/calendar.js';
-import { requireAdmin } from '../lib/admin.js';
+import { canSeeContactsRequest, requireAdmin } from '../lib/admin.js';
+import { contactFor } from '../lib/player-privacy.js';
 import { normalizePointsKind, normalizePointsTable, normalizeSeason } from '../lib/points.js';
 import { endedSeason } from '../lib/points-seasons.js';
 import { tournamentDetail } from '../lib/tournament-detail.js';
@@ -43,7 +44,12 @@ export default async function tournamentsRoutes(fastify) {
       ladderRepo.eventRatings(t),
       liveChannels.list(req.params.id),
     ]);
-    return { ...tournamentDetail(t, { players, matches: ms, votes, ladder, channels }), synced_at: syncedAt };
+    // QQ / Discord only for signed-in players and admins.
+    const contacts = await canSeeContactsRequest(fastify, req);
+    return {
+      ...tournamentDetail(t, { players: players.map((p) => contactFor(p, contacts)), matches: ms, votes: votes.map((v) => contactFor(v, contacts)), ladder, channels }),
+      synced_at: syncedAt,
+    };
   });
 
   // Live update after match changes (results, reports, the live match):
