@@ -23,8 +23,51 @@ function bracketTotals(matches) {
   return totals;
 }
 
-/** { label, short } for a stage of `matches` (the matches shown). */
+/** "QF", "SF", "F" or the round number, English (single elimination). */
+function mainRoundEn(round, total) {
+  if (round === 0) return { en: "Third Place", tag: "3RD" };
+  const d = total - round + 1;
+  if (d === total) return { en: "Final", tag: "FINAL" };
+  if (d === total - 1) return { en: "Semifinals", tag: "SF" };
+  if (d === total - 2) return { en: "Quarterfinals", tag: "QF" };
+  return { en: `Round ${d}`, tag: `R${d}` };
+}
+
+/**
+ * English names for the overlays (always English): { en: "Winners Round 2",
+ * tag: "WB R2" }.
+ */
+export function stageEnglish(bracket, round, totals) {
+  const total = totals[bracket] || 1;
+  const played = total - round + 1;
+  switch (bracket) {
+    case "sw":
+      return { en: `Swiss Round ${round}`, tag: `SWISS R${round}` };
+    case "gse": {
+      const r = mainRoundEn(round, total);
+      return { en: `Group Stage · ${r.en}`, tag: `GROUP ${r.tag}` };
+    }
+    case "gwb":
+      return round === 1 ? { en: "Group · Winners Qualifier", tag: "GROUP WB Q" } : { en: `Group · Winners Round ${played}`, tag: `GROUP WB R${played}` };
+    case "glb":
+      return round === 1 ? { en: "Group · Losers Qualifier", tag: "GROUP LB Q" } : { en: `Group · Losers Round ${played}`, tag: `GROUP LB R${played}` };
+    case "wb":
+      return round === 1 ? { en: "Winners Final", tag: "WB FINAL" } : { en: `Winners Round ${played}`, tag: `WB R${played}` };
+    case "lb":
+      return round === 1 ? { en: "Losers Final", tag: "LB FINAL" } : { en: `Losers Round ${played}`, tag: `LB R${played}` };
+    case "gf":
+      return { en: "Grand Final", tag: "GRAND FINAL" };
+    default:
+      return mainRoundEn(round, total);
+  }
+}
+
+/** { label, short, en, tag } for a stage of `matches` (the matches shown). */
 export function stageLabels(bracket, round, totals) {
+  return { ...stageLabelsZh(bracket, round, totals), ...stageEnglish(bracket, round, totals) };
+}
+
+function stageLabelsZh(bracket, round, totals) {
   const total = totals[bracket] || 1;
   switch (bracket) {
     case "sw":
@@ -133,4 +176,30 @@ export function playersStillIn(players = [], matches = [], { swiss = false } = {
     alive.add(first.winner_id === first.player1_id ? first.player2_id : first.player1_id);
   }
   return alive;
+}
+
+/** English league name for the overlays: "Diamond III", "Grandmaster", "Unranked". */
+export function tierEnglish(tier) {
+  const key = String(tier?.key || "");
+  if (!key || key === "unrated") return "Unranked";
+  if (key === "grandmaster") return "Grandmaster";
+  const [group, n] = key.split("-");
+  const name = group.charAt(0).toUpperCase() + group.slice(1);
+  return n ? `${name} ${["", "I", "II", "III"][Number(n)] || n}` : name;
+}
+
+const POOL_EN = { prop: "PROP", "legacy-jet": "EARLY JET", "top-jet": "TOP JET", proleague: "PRO LEAGUE BVR" };
+const FORMAT_EN = { single_elim: "SINGLE ELIMINATION", double_elim: "DOUBLE ELIMINATION", swiss: "SWISS" };
+
+/** The event's mode, type and format in English: ["RB", "PROP", "DOUBLE ELIMINATION"]. */
+export function eventTagsEnglish(t) {
+  if (!t) return [];
+  const format = t.loser_advances && t.format === "single_elim" ? "LOSER ADVANCES" : FORMAT_EN[t.format] || String(t.format || "").replace(/_/g, " ").toUpperCase();
+  return [String(t.game_mode || "").toUpperCase(), POOL_EN[t.vehicle_pool] || "", format].filter(Boolean);
+}
+
+/** "20:00" from a stored Beijing "YYYY-MM-DDTHH:mm" time ("" without one). */
+export function startClock(value) {
+  const m = String(value || "").match(/[T ](\d{2}:\d{2})/);
+  return m ? m[1] : "";
 }

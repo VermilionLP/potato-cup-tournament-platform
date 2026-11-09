@@ -9,7 +9,7 @@ export const DEFAULTS = {
   stable: '2',
   'end-delay': '8',
   'scene-battle': 'ingame',
-  'scene-ended': 'intermission',
+  'scene-ended': 'versus',
   'scene-hangar': 'hybrid',
   'dry-run': false,
   ask: false,

@@ -1,138 +1,116 @@
 <script>
-  // Overlay "ingame" scene: a results ticker at the top and the live match
-  // in the top-right corner (with the Ban / Pick result once confirmed), over
-  // the game capture.
+  // Overlay "ingame" scene (HUD), over the game capture: a thin results
+  // ticker at the top and the live match card in the top-right corner, in
+  // the cyan style. Quiet by default: when a live score changes, that
+  // side's score lights up for 3 s.
   import { fade, fly } from "svelte/transition";
-  import { resultLabel } from "#lib/banpick.js";
+  import { untrack } from "svelte";
+  import { matchStageLabels } from "#lib/overlay.js";
 
-  let { tournament, tickerRounds = [], activeMatch = null, stageShort, who } = $props();
+  let { tournament, tickerRounds = [], activeMatch = null, matches = [], who } = $props();
 
   let tickerWidth = $state(0);
   // Constant speed: the content is repeated three times, one copy scrolls by.
-  let tickerDuration = $derived(!tickerWidth || !tickerRounds.length ? 50 : tickerWidth / 3 / 50);
+  let tickerDuration = $derived(!tickerWidth || !tickerRounds.length ? 50 : tickerWidth / 3 / 60);
+  let tag = $derived(activeMatch ? matchStageLabels(activeMatch, tournament?.matches || matches).tag : "");
+
+  let s1 = $derived(activeMatch?.live_score1 ?? null);
+  let s2 = $derived(activeMatch?.live_score2 ?? null);
+  // Flash the side whose score just went up.
+  let flash = $state({ 1: false, 2: false });
+  let last = { id: null, 1: null, 2: null };
+  $effect(() => {
+    const id = activeMatch?.id ?? null;
+    const now = { 1: s1, 2: s2 };
+    untrack(() => {
+      for (const slot of [1, 2]) {
+        if (last.id === id && now[slot] != null && last[slot] != null && now[slot] > last[slot]) {
+          flash[slot] = true;
+          setTimeout(() => (flash[slot] = false), 3000);
+        }
+      }
+      last = { id, 1: now[1], 2: now[2] };
+    });
+  });
+  // The confirmed Ban / Pick result; a group without a vehicle draw is "any".
+  let bpState = $derived(activeMatch?.banpick?.state?.phase === "done" ? activeMatch.banpick.state : null);
+  let vehicle = $derived(bpState ? bpState.vehicle || (bpState.group ? `${bpState.group} · ANY` : "") : "");
+  const score = (m, slot) => (slot === 1 ? m.score1 : m.score2);
 </script>
 
-<div class="absolute inset-0 w-full h-full flex flex-col justify-between p-4 z-10" transition:fade={{ duration: 400 }}>
-  <!-- Results ticker, top centre -->
-  <div class="absolute top-13 left-1/2 -translate-x-1/2 z-20 w-full max-w-[45%]" transition:fly={{ y: -120, duration: 800, delay: 300 }}>
-    <div class="ticker-wrap flex items-center bg-slate-950/95 border-2 border-cyan-500/30 rounded-lg py-1.5 px-3 shadow-2xl backdrop-blur-md overflow-hidden">
-      <div class="shrink-0 font-orbitron font-extrabold text-[13px] bg-cyan-500 text-black px-2.5 py-0.5 rounded uppercase tracking-wider mr-3 shadow flex items-center gap-1">
-        <span class="w-1.5 h-1.5 rounded-full bg-black animate-pulse"></span>
-        <span>RESULTS</span>
-      </div>
-      <div class="relative flex-1 overflow-hidden h-6">
-        <div class="ticker animate-marquee" bind:clientWidth={tickerWidth} style="animation-duration: {tickerDuration}s">
-          {#if tickerRounds.length === 0}
-            <div class="ticker-item text-xs text-slate-400 italic">No matches concluded yet.</div>
-          {:else}
-            <!-- Repeated for seamless wrapping -->
-            {#each Array(3) as _, copy (copy)}
-              {#each tickerRounds as tr (tr.key)}
-                <span class="ticker-item text-sm sm:text-base font-extrabold tracking-wide font-sans inline-flex items-center gap-2 mr-6">
-                  <span class="font-orbitron font-black text-[11px] bg-cyan-950/80 border border-cyan-500/30 text-cyan-400 px-2 py-0.5 rounded uppercase tracking-wider">
-                    {tr.short}
-                  </span>
-                  <span class="inline-flex items-center gap-3">
-                    {#each tr.matches as m, mIdx (m.id)}
-                      <span class="inline-flex items-center">
-                        <span class="text-white">{who.name(m.player1_id)}</span>
-                        <span class="font-orbitron font-black text-cyan-400 bg-slate-900 border border-slate-800 rounded px-1.5 mx-1.5 py-0.2 text-xs sm:text-sm">
-                          {m.status === "walkover" ? (m.winner_id === m.player1_id ? "W : FF" : "FF : W") : `${m.score1} : ${m.score2}`}
-                        </span>
-                        <span class="text-white">{who.name(m.player2_id)}</span>
-                        {#if mIdx < tr.matches.length - 1}
-                          <span class="text-cyan-500/25 px-2 font-bold">/</span>
-                        {/if}
-                      </span>
-                    {/each}
-                  </span>
-                  <span class="text-slate-600 pl-4 font-light font-mono">|</span>
-                </span>
+<div class="absolute inset-0 z-10" transition:fade={{ duration: 400 }}>
+  <!-- Results ticker: thin, see-through, 1240 wide -->
+  <div class="absolute left-1/2 top-6 h-11 w-[1240px] -translate-x-1/2 overflow-hidden rounded-lg bg-[rgba(2,6,23,0.78)] backdrop-blur-md" transition:fly={{ y: -80, duration: 700, delay: 200 }}>
+    <div class="absolute inset-y-0 left-0 w-[3px] bg-cyan-500"></div>
+    <div class="absolute inset-y-0 left-4 right-4 overflow-hidden">
+      <div class="ticker absolute inset-y-0 flex items-center whitespace-nowrap" bind:clientWidth={tickerWidth} style="animation-duration: {tickerDuration}s">
+        {#if tickerRounds.length === 0}
+          <span class="font-num text-base font-bold tracking-[0.16em] text-cyan-400">RESULTS · NO MATCHES PLAYED YET</span>
+        {:else}
+          {#each Array(3) as _, copy (copy)}
+            {#each tickerRounds as tr (tr.key)}
+              <span class="mr-5 font-num text-base font-bold tracking-[0.16em] text-cyan-400">{tr.short}</span>
+              {#each tr.matches as m, i (m.id)}
+                <span class="text-lg font-semibold text-[#E6E9EE]">{who.name(m.player1_id)}</span>
+                <b class="mx-2 font-num text-lg text-cyan-400">{m.status === "walkover" ? (m.winner_id === m.player1_id ? "W : FF" : "FF : W") : `${score(m, 1)} : ${score(m, 2)}`}</b>
+                <span class="text-lg font-semibold text-[#E6E9EE]">{who.name(m.player2_id)}</span>
+                <span class="mx-4 text-white/25">/</span>
               {/each}
             {/each}
-          {/if}
-        </div>
+          {/each}
+        {/if}
       </div>
     </div>
   </div>
 
-  <!-- Live match, top right -->
-  <div class="absolute top-22.5 right-4 z-10 flex flex-col items-end gap-2" transition:fly={{ x: 400, duration: 800 }}>
-    {#if !activeMatch}
-      <div class="bg-slate-950/80 border border-slate-800 rounded-lg p-3.5 backdrop-blur-md text-right shadow-lg">
-        <span class="text-[9px] font-mono text-cyan-400 font-bold uppercase tracking-widest block mb-1">POTATO CUP LIVE</span>
-        <p class="text-slate-400 text-xs italic">No active match selected.</p>
+  <!-- Live match card, top right -->
+  {#if activeMatch}
+    <div
+      class="absolute right-6 top-[92px] w-[360px] overflow-hidden rounded-[10px] border border-cyan-400/25 bg-[rgba(2,6,23,0.78)] shadow-[0_0_24px_rgba(6,182,212,0.18),0_8px_30px_rgba(0,0,0,0.25)] backdrop-blur-md"
+      transition:fly={{ x: 400, duration: 700 }}
+    >
+      <div class="h-0.5 bg-cyan-500"></div>
+      <div class="flex h-9 items-center justify-between gap-3 px-3">
+        <span class="inline-flex items-center gap-1.5 font-num text-base font-bold tracking-[0.14em] text-cyan-400">
+          <span class="h-1.5 w-1.5 animate-pulse rounded-full bg-red-500"></span>LIVE · {tag}
+        </span>
+        <span class="truncate font-display text-base font-semibold uppercase tracking-[0.04em] text-[#AFC0D8]">{tournament?.name}</span>
       </div>
-    {:else}
-      <div class="bg-slate-950/98 border-2 border-cyan-500/50 rounded-xl overflow-hidden shadow-[0_0_30px_rgba(6,182,212,0.35)] flex flex-col min-w-80 max-w-sm backdrop-blur-md">
-        <div class="bg-cyan-950/60 px-4 py-1 border-b border-cyan-500/25 flex justify-between items-center text-xs sm:text-sm font-mono text-cyan-400 font-bold tracking-widest uppercase">
-          <span>{tournament.name}</span>
-          <span class="text-amber-400">{stageShort(activeMatch)}</span>
-        </div>
-        <div class="py-1.5 px-5 flex flex-col gap-0 font-sans">
-          <div class="flex items-center justify-center gap-3 py-0.5">
-            <span class="text-slate-100 font-black text-center text-xl sm:text-2xl leading-tight tracking-tight truncate w-full" title={who.name(activeMatch.player1_id)}>
-              {who.name(activeMatch.player1_id)}
-            </span>
-            {#if activeMatch.live_score1 != null}
-              <span class="font-orbitron shrink-0 rounded bg-slate-900/90 px-2 text-xl font-black text-cyan-400">{activeMatch.live_score1}</span>
-            {/if}
-          </div>
-          <div class="h-px bg-cyan-500/20 flex items-center justify-center relative my-0.5">
-            <span class="absolute bg-slate-950 px-2 text-[9px] text-cyan-400 font-black font-mono tracking-widest">VS</span>
-          </div>
-          <div class="flex items-center justify-center gap-3 py-0.5">
-            <span class="text-slate-100 font-black text-center text-xl sm:text-2xl leading-tight tracking-tight truncate w-full" title={who.name(activeMatch.player2_id)}>
-              {who.name(activeMatch.player2_id)}
-            </span>
-            {#if activeMatch.live_score1 != null}
-              <span class="font-orbitron shrink-0 rounded bg-slate-900/90 px-2 text-xl font-black text-cyan-400">{activeMatch.live_score2}</span>
-            {/if}
-          </div>
-          {#if activeMatch.banpick?.state?.phase === "done"}
-            <div class="mt-1 border-t border-cyan-500/20 pt-1 text-center text-sm font-bold text-amber-300 truncate">
-              载具 · {resultLabel(activeMatch.banpick.state)}
-            </div>
+      {#each [1, 2] as slot (slot)}
+        {@const pid = slot === 1 ? activeMatch.player1_id : activeMatch.player2_id}
+        {@const sc = slot === 1 ? s1 : s2}
+        <div class="flex h-11 items-center gap-2.5 px-3 {slot === 2 ? 'border-t border-white/[0.08]' : ''}">
+          <span class="h-[22px] w-[3px] rounded-sm {slot === 1 ? 'bg-side-a' : 'bg-side-b'}"></span>
+          <span class="min-w-0 flex-1 truncate text-[22px] font-bold">{who.name(pid)}</span>
+          {#if sc != null}
+            <span
+              class="flex h-8 min-w-[34px] items-center justify-center rounded-md px-1.5 font-display text-[26px] font-extrabold transition-colors duration-500
+                {flash[slot] ? 'bg-cyan-400 text-[#020617]' : 'text-cyan-400'}">{sc}</span
+            >
           {/if}
         </div>
-      </div>
-    {/if}
-  </div>
+      {/each}
+      {#if vehicle}
+        <div class="flex h-[38px] items-center justify-center gap-2.5 bg-cyan-500/10 text-lg font-semibold text-[#E2E8F0]">
+          <span class="font-num text-base font-bold tracking-[0.14em] text-cyan-400">VEHICLE</span><span class="truncate">{vehicle}</span>
+        </div>
+      {/if}
+    </div>
+  {/if}
 </div>
 
 <style>
-  .ticker-wrap {
-    box-shadow:
-      0 10px 25px -5px rgba(0, 0, 0, 0.6),
-      inset 0 1px 0 0 rgba(255, 255, 255, 0.05);
-  }
-
   .ticker {
-    display: inline-flex;
-    align-items: center;
-    white-space: nowrap;
-    position: absolute;
     width: max-content;
     will-change: transform;
-  }
-
-  .animate-marquee {
     animation: marquee 35s linear infinite;
   }
-
-  .ticker-item {
-    display: inline-flex;
-    align-items: center;
-    padding-right: 2rem;
-    color: #cbd5e1;
-  }
-
   @keyframes marquee {
-    0% {
+    from {
       transform: translate3d(0, 0, 0);
     }
-    100% {
-      /* Scroll by exactly one copy (1/3 of the repeated content) */
+    to {
+      /* Scroll by exactly one copy (1/3 of the repeated content). */
       transform: translate3d(-33.3333%, 0, 0);
     }
   }

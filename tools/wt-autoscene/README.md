@@ -12,7 +12,7 @@
 | 游戏状态 | OBS 场景 | 网站大屏（默认） |
 |---|---|---|
 | 进入战斗 | `obsBattle` | `ingame` 游戏内 |
-| 战斗结束：从战斗回到机库（再等 `endDelay` 秒，默认 8，让观众看完结算） | `obsEnded` | `intermission` 间歇 |
+| 战斗结束：从战斗回到机库（再等 `endDelay` 秒，默认 8，让观众看完结算） | `obsEnded` | `versus` 对位预告 |
 | 启动时就在机库 | `obsHangar` | `hybrid` 综合 |
 
 观战时游戏接口在整场战斗中一直报告 `running`，不会给出"战斗结束"的信号（2026-10 两局完整对局的记录），所以"从战斗回到机库"就是比赛结束。加载地图和退出战斗时接口会有几秒没有响应，这是正常的，不会触发切换。
@@ -24,7 +24,7 @@
 1. OBS → 工具 → WebSocket 服务器设置：勾选"开启 WebSocket 服务器"，记下端口（默认 4455）和密码。
 2. 每个场景放一个浏览器源，网址里用 `scene=` 固定大屏画面，例如：
    - 场景"游戏内"：游戏画面采集 + 浏览器源 `https://你的网站域名/tournament/赛事ID/overlay?channel=1&scene=ingame`
-   - 场景"间歇"：浏览器源 `https://你的网站域名/tournament/赛事ID/overlay?channel=1&scene=intermission`
+   - 场景"对位预告"：浏览器源 `https://你的网站域名/tournament/赛事ID/overlay?channel=1&scene=versus`（旧的 `scene=intermission` 链接也会显示它）
    带 `scene=` 的浏览器源不再跟随控制台的场景切换，但对局、比分、轮次仍然实时更新。
    浏览器源属性里不要勾选"不可见时关闭源"，这样切换场景时画面不用重新加载。
 3. 把这些场景名填进 `config.json` 的 `obsBattle` / `obsEnded` / `obsHangar`（必须和 OBS 里的名字完全一致）。
