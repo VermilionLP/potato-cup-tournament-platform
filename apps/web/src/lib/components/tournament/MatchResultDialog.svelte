@@ -9,7 +9,7 @@
   import { Button } from "#lib/components/ui/button/index.js";
   import BanPickPanel from "#lib/components/BanPickPanel.svelte";
   import ScoreForm from "#lib/components/ScoreForm.svelte";
-  import { canConfirm, mayAct, resultLabel } from "#lib/banpick.js";
+  import { resultLabel } from "#lib/banpick.js";
   import { hasLiveScore } from "#lib/match-card.js";
   import PendingReportPanel from "./PendingReportPanel.svelte";
   import LadderPreview from "./LadderPreview.svelte";
@@ -51,18 +51,6 @@
     return { id, name: playerName(id), flag: p?.flag, seed: p?.seed };
   };
   let showBanPick = $derived(step === "banpick" && banpickEnabled && !correcting);
-  let confirmingBp = $state(false);
-  async function confirmBp() {
-    confirmingBp = true;
-    try {
-      await bpRemote.act("confirm");
-    } catch {
-      // shown by the page
-    } finally {
-      confirmingBp = false;
-    }
-  }
-
   function submit() {
     onsubmit(Number(score1) > Number(score2) ? match.player1_id : match.player2_id);
   }
@@ -88,16 +76,6 @@
         {:else if step === "banpick" && banpickEnabled}
           <div class="flex flex-wrap items-center gap-2 mb-1 pr-6">
             <span>Ban / Pick</span>
-            {#if bp.phase === "done"}
-              <Button size="sm" onclick={() => (step = "score")}>填报比分 →</Button>
-            {:else if mayAct(bpRemote?.record, "confirm", bpRemote?.me, bpRemote?.myId)}
-              <Button
-                size="sm"
-                disabled={!canConfirm(bp) || confirmingBp}
-                onclick={confirmBp}
-                title={canConfirm(bp) ? "锁定本场载具" : "抽到结果后才能确认"}>确认抽取结果</Button
-              >
-            {/if}
           </div>
         {:else}
           <div class="flex flex-wrap items-center gap-2 mb-1 pr-6">
@@ -119,7 +97,7 @@
       {#if step === "banpick" && banpickEnabled}
         <div class="py-2">
           {#key match.id}
-            <BanPickPanel {bp} remote={bpRemote} nameOf={playerName} {vehicles} {poolName} player1={player(match.player1_id)} player2={player(match.player2_id)} />
+            <BanPickPanel {bp} remote={bpRemote} nameOf={playerName} {vehicles} {poolName} player1={player(match.player1_id)} player2={player(match.player2_id)} onscore={() => (step = "score")} />
           {/key}
         </div>
       {:else}

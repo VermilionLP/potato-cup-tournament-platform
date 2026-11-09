@@ -1,8 +1,10 @@
 <script>
   // Ban / Pick for one match, following the rules of the event's vehicle pool
   // template (bans per player, removal limits, whether a vehicle is drawn).
-  // Parts: banpick/BanPickSide (a player and their bans), BanPickDrawStrip
-  // (draws), BanPickGroupGrid (the groups), BanPickLog (the server's log).
+  // Parts: banpick/BanPickSide (a player and their bans), BanPickGuide
+  // (the steps, what to do now and its buttons, pinned on top),
+  // BanPickDrawStrip (the draws), BanPickGroupGrid (the groups),
+  // BanPickLog (the server's log).
   //
   // Two modes, same look:
   // - local (the template preview): `bp` is changed here (#lib/banpick.js
@@ -15,6 +17,7 @@
   import { banTurn, groupVehicles, initialBanPick, localAct, mayAct, rulesSummary } from "#lib/banpick.js";
   import BanPickSide from "./banpick/BanPickSide.svelte";
   import BanPickDrawStrip from "./banpick/BanPickDrawStrip.svelte";
+  import BanPickGuide from "./banpick/BanPickGuide.svelte";
   import BanPickGroupGrid from "./banpick/BanPickGroupGrid.svelte";
   import BanPickLog from "./banpick/BanPickLog.svelte";
   import Undo2Icon from "@lucide/svelte/icons/undo-2";
@@ -27,7 +30,9 @@
     bp = $bindable(initialBanPick()),
     remote = null,
     nameOf = (id) => id,
+    onscore = null, // "填报比分" once the result is locked (the match dialog)
   } = $props();
+  let strip = $state(null);
   let rolling = $state(false);
   let busy = $state(false);
   // Local mode: earlier states, for undo.
@@ -35,14 +40,6 @@
 
   const rules = $derived(bp.rules);
   const grouped = $derived(groupVehicles(vehicles));
-  const steps = $derived(
-    [
-      rules.bansPerPlayer > 0 && { id: "ban", label: rules.bansPerPlayer > 1 ? `禁用 ×${rules.bansPerPlayer}` : "禁用" },
-      { id: "drawGroup", label: "抽大组" },
-      rules.drawVehicle && { id: "drawVehicle", label: "抽载具" },
-    ].filter(Boolean),
-  );
-  const stepIndex = $derived(bp.phase === "done" ? steps.length : steps.findIndex((s) => s.id === bp.phase));
   const vehicleCount = $derived(grouped.reduce((n, g) => n + g.vehicles.length, 0));
   const banning = $derived(bp.phase === "ban");
   const turn = $derived(banTurn(bp));
@@ -71,42 +68,27 @@
     history = action === "reset" ? [] : [...history.slice(-50), bp];
     bp = next;
   }
-  const turnText = $derived(
-    !remote || remote.me?.admin ? `轮到 ${turn} 禁用，点击大组名或载具即可禁用整组` : remote.me?.side === turn ? "轮到你禁用，点击大组名或载具即可禁用整组" : `等待 ${turn} 方禁用`,
-  );
 </script>
 
 <div class="space-y-3">
-  <!-- Players and their bans, with the step indicator in between -->
+  <!-- What to do now and its buttons (pinned while the groups scroll) -->
+  <BanPickGuide {bp} {grouped} {can} {busy} {rolling} me={remote?.me || null} {run} ondraw={(kind) => strip?.draw(kind)} {onscore} />
+
+  <!-- Players and their bans -->
   <div class="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center">
-    <BanPickSide slot="A" player={player1} active={turn === "A"} {bp} canPass={can("pass") && !busy} onpass={() => run("pass")} />
-    <ol class="flex shrink-0 items-center justify-center gap-1 px-1">
-      {#each steps as step, i (step.id)}
-        <li
-          class="rounded-full px-2 py-0.5 text-small font-semibold
-            {i === stepIndex
-            ? 'bg-primary text-primary-foreground'
-            : i < stepIndex
-              ? 'bg-primary/15 text-brand-ink'
-              : 'bg-muted text-muted-foreground'}"
-        >
-          {step.label}
-        </li>
-      {/each}
-    </ol>
-    <BanPickSide slot="B" player={player2} active={turn === "B"} {bp} canPass={can("pass") && !busy} onpass={() => run("pass")} />
+    <BanPickSide slot="A" player={player1} active={turn === "A"} {bp} canPass={false} />
+    <BanPickSide slot="B" player={player2} active={turn === "B"} {bp} canPass={false} />
   </div>
 
   <!-- Draw strip -->
   {#if !banning}
-    <BanPickDrawStrip {bp} {grouped} {run} {can} {busy} lastEntry={remote?.record?.log?.at(-1) || null} bind:rolling />
+    <BanPickDrawStrip bind:this={strip} {bp} {grouped} {run} {can} {busy} lastEntry={remote?.record?.log?.at(-1) || null} bind:rolling />
   {/if}
 
   <!-- Vehicle groups -->
   <div class="flex items-center justify-between gap-2 text-small text-muted-foreground">
     <span>
       {poolName ? `${poolName} · ` : ""}{grouped.length} 个大组 · {vehicleCount} 架 · {rulesSummary(rules)}
-      {#if banning}· {turnText}{/if}
     </span>
     <span class="flex shrink-0 items-center gap-1">
       {#if can("undo")}

@@ -1,13 +1,13 @@
 <script>
   // Ban / Pick after the bans: the drawn group and vehicle with a short
-  // slot-machine roll, and the draw / remove / back buttons the rules allow
-  // (and the viewer may use: `can`). Once a group is drawn its vehicles show
+  // slot-machine roll. The buttons are in BanPickGuide, which calls
+  // `draw(kind)` here for the draws. Once a group is drawn its vehicles show
   // as garage slots with wiki pictures (the roll highlights them); the drawn
   // vehicle shows as a big slot. `run(action)` carries an action out (on the
   // server for a match); a draw someone else made (a new `lastEntry`) rolls
   // here too, so everyone watching sees it land.
   import { untrack } from "svelte";
-  import { availableGroups, availableVehicles, rerollsLeft } from "#lib/banpick.js";
+  import { availableGroups, availableVehicles } from "#lib/banpick.js";
   import VehicleSlot from "./VehicleSlot.svelte";
 
   let { bp, grouped = [], run, can = () => true, busy = false, lastEntry = null, rolling = $bindable(false) } = $props();
@@ -17,13 +17,6 @@
   const rules = $derived(bp.rules);
   const groupsLeft = $derived(availableGroups(bp, grouped));
   const vehiclesLeft = $derived(bp.group ? availableVehicles(bp, grouped, bp.group) : []);
-  const left = $derived(rerollsLeft(bp));
-  // With a removal limit, a drawn result can only be swapped by removing it.
-  const freeGroupRedraw = $derived(rules.groupRerolls === null);
-  const freeVehicleRedraw = $derived(rules.vehicleRerolls === null);
-  const canGoBack = $derived(rules.groupRerolls === null && rules.vehicleRerolls === null);
-  // Spectators (and players once it is confirmed) get no buttons.
-  const actor = $derived(can("drawGroup"));
 
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   // Slot-machine effect: random names for at least 900 ms and until `done` settles.
@@ -58,6 +51,11 @@
     }
   }
 
+  /** Draws a group ("drawGroup") or a vehicle ("drawVehicle") with the roll. */
+  export function draw(kind) {
+    return kind === "drawGroup" ? roll(groupsLeft, "drawGroup") : roll(vehiclesLeft, "drawVehicle");
+  }
+
   // Someone else's draw (server mode): roll to it.
   let seenEntry = untrack(() => lastEntry?.n ?? 0);
   $effect(() => {
@@ -70,8 +68,6 @@
       if (options.length > 1) spin(options, e.action, sleep(0));
     });
   });
-
-  const removalsLabel = (n) => (n === null ? "" : `（剩 ${n} 次）`);
 
   // The drawn (or rolling) group and its vehicles, for the pictures.
   let shownGroup = $derived(rolling && rollingPhase === "drawGroup" ? rollingLabel : bp.group);
@@ -115,75 +111,6 @@
       </div>
     </div>
   </div>
-  <div class="flex flex-wrap gap-1.5">
-    {#if bp.phase === "done"}
-      <span class="rounded-full bg-primary px-3 py-1 text-xs font-bold text-primary-foreground">已确认</span>
-    {:else if !actor}
-      <span class="rounded-full border border-border px-3 py-1 text-small text-muted-foreground">观战中</span>
-    {:else if bp.phase === "drawGroup"}
-      {#if !bp.group || freeGroupRedraw}
-        <button
-          type="button"
-          disabled={busy || rolling || !groupsLeft.length}
-          onclick={() => roll(groupsLeft, "drawGroup")}
-          class="rounded-full bg-primary px-3 py-1 text-xs font-bold text-primary-foreground hover:bg-primary/85 disabled:opacity-50 cursor-pointer"
-        >
-          {bp.group ? "重新抽取" : "抽取大组"}
-        </button>
-      {/if}
-      {#if bp.group}
-        <button
-          type="button"
-          disabled={busy || rolling || left.groups === 0}
-          onclick={() => run("removeGroup")}
-          class="rounded-full border border-border px-3 py-1 text-xs hover:bg-muted disabled:opacity-50 cursor-pointer"
-        >
-          移出该组{removalsLabel(left.groups)}
-        </button>
-        {#if rules.drawVehicle}
-          <button
-            type="button"
-            disabled={busy || rolling}
-            onclick={() => run("confirmGroup")}
-            class="rounded-full border border-primary/50 px-3 py-1 text-xs font-bold text-brand-ink hover:bg-primary/10 disabled:opacity-50 cursor-pointer"
-          >
-            使用该组
-          </button>
-        {/if}
-      {/if}
-    {:else}
-      {#if !bp.vehicle || freeVehicleRedraw}
-        <button
-          type="button"
-          disabled={busy || rolling || !vehiclesLeft.length}
-          onclick={() => roll(vehiclesLeft, "drawVehicle")}
-          class="rounded-full bg-primary px-3 py-1 text-xs font-bold text-primary-foreground hover:bg-primary/85 disabled:opacity-50 cursor-pointer"
-        >
-          {bp.vehicle ? "重新抽取" : "抽取载具"}
-        </button>
-      {/if}
-      {#if bp.vehicle}
-        <button
-          type="button"
-          disabled={busy || rolling || left.vehicles === 0}
-          onclick={() => run("removeVehicle")}
-          class="rounded-full border border-border px-3 py-1 text-xs hover:bg-muted disabled:opacity-50 cursor-pointer"
-        >
-          移出该载具{removalsLabel(left.vehicles)}
-        </button>
-      {/if}
-      {#if canGoBack}
-        <button
-          type="button"
-          disabled={busy || rolling}
-          onclick={() => run("backToGroups")}
-          class="rounded-full border border-border px-3 py-1 text-xs hover:bg-muted disabled:opacity-50 cursor-pointer"
-        >
-          返回大组
-        </button>
-      {/if}
-    {/if}
-  </div>
 </div>
 {#if bp.group && groupVehiclesShown.length && (bp.phase === "drawVehicle" || !rules.drawVehicle)}
   <div class="space-y-1">
@@ -196,9 +123,4 @@
       {/each}
     </div>
   </div>
-{/if}
-{#if bp.phase === "drawGroup" && !groupsLeft.length}
-  <p class="text-center text-small text-destructive">没有可抽的大组了，可以点"重置"重新开始。</p>
-{:else if bp.phase === "drawVehicle" && !vehiclesLeft.length}
-  <p class="text-center text-small text-destructive">该组载具已全部移出，{canGoBack ? "请返回大组重新抽取" : "可以点\"重置\"重新开始"}。</p>
 {/if}
