@@ -13,7 +13,9 @@
   import { contactIsEmpty, parseContact } from "#lib/contact.js";
   import { ensurePlayerKey, notifyKeyConflict } from "#lib/player-session.js";
   import SiteNav from "#lib/components/layout/SiteNav.svelte";
-  import PushToggle from "#lib/components/layout/PushToggle.svelte";
+  import ReminderCenter from "#lib/components/layout/ReminderCenter.svelte";
+  import AttentionBanner from "#lib/components/layout/AttentionBanner.svelte";
+  import { reminders } from "#lib/reminders.svelte.js";
   import AdminDialog from "#lib/components/layout/AdminDialog.svelte";
   import AdminMenu from "#lib/components/layout/AdminMenu.svelte";
   import ConfirmHost from "#lib/components/layout/ConfirmHost.svelte";
@@ -43,6 +45,13 @@
       console.error("检查个人资料完整性失败:", e);
     }
   }
+
+  // In-page reminders for the player set in this browser (not on overlays).
+  const onOverlay = $derived(page.url.pathname.includes("/overlay"));
+  $effect(() => {
+    if (onOverlay) return;
+    return reminders.start(userState.id);
+  });
 
   onMount(() => {
     initLocale();
@@ -104,7 +113,7 @@
 
         <!-- Right: Notifications + Dark mode + Profile -->
         <div class="flex items-center gap-2">
-          <PushToggle />
+          <ReminderCenter />
 
           <!-- Language toggle: 中文 / English -->
           <button
@@ -168,6 +177,7 @@
         </div>
       </div>
     </header>
+    <AttentionBanner />
 
     <!-- Main Content -->
     <!-- pb on phones: room for the bottom tab bar (SiteNav). -->

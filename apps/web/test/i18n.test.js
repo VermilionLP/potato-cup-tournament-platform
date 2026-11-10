@@ -57,7 +57,7 @@ test("text put together at runtime", () => {
   assert.equal(translate("不禁用 · 大组不可移出 · 抽到大组即结束"), "No bans · Groups can't be removed · Ends once a group is drawn");
   assert.equal(translate("移出该组（剩 2 次）"), "Remove group (2 left)");
   assert.equal(translate("该组载具已全部移出，请返回大组重新抽取。"), "All vehicles of this group were removed; go back and draw another group.");
-  assert.equal(translate("关闭比赛提醒失败: Network error"), "Couldn't turn off match reminders: Network error");
+  assert.equal(translate("关闭浏览器通知失败: Network error"), "Couldn't turn off browser notifications: Network error");
   assert.equal(translate("2026 赛季周赛 · 冠军直邀"), "2026 season, weekly · Champion invited");
   assert.equal(translate("2026 赛季 · 当前"), "2026 season · current");
   assert.equal(translate("新建赛事默认计入当前赛季（现在是 2026）。"), "New events count towards the current season by default (now 2026).");
