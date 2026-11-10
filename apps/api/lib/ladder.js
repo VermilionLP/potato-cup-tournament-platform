@@ -5,6 +5,10 @@
 // The winner is always the player with the higher map score; `matches.winner_id` is
 // the bracket advancer and must never be used here.
 
+import { ladderWeight } from '@potato-cup/shared/ladder-weight.js';
+
+export { LADDER_WEIGHTS, ladderWeight } from '@potato-cup/shared/ladder-weight.js';
+
 export const BASE_MMR = 3000;
 export const ACTIVE_DAYS = 365;
 export const PROVISIONAL_GAMES = 10;
@@ -114,7 +118,8 @@ function timestampOf(value) {
 
 /**
  * Compute current MMR from chronologically ordered games.
- * Each game: { id, player1_id, player2_id, score1, score2, played_at, ... }
+ * Each game: { id, player1_id, player2_id, score1, score2, played_at,
+ * event_kind?, ... }; K is scaled by the event's weight (ladderWeight).
  * Returns { players, history }; players are already ranked.
  */
 export function computeLadder(games = []) {
@@ -139,8 +144,9 @@ export function computeLadder(games = []) {
     const b = get(p2);
     const aWon = score1 > score2;
     const ea = expectedScore(a.rating, b.rating);
-    const ka = kForGames(a.games);
-    const kb = kForGames(b.games);
+    const weight = ladderWeight(game.event_kind);
+    const ka = kForGames(a.games) * weight;
+    const kb = kForGames(b.games) * weight;
     const aAfter = a.rating + ka * ((aWon ? 1 : 0) - ea);
     const bAfter = b.rating + kb * ((aWon ? 0 : 1) - (1 - ea));
     const playedAt = game.played_at || null;
@@ -161,6 +167,7 @@ export function computeLadder(games = []) {
         opponent_rating_before: b.rating,
         opponent_rating_after: bAfter,
         delta: aAfter - a.rating,
+        weight,
         played_at: playedAt,
       },
       {
@@ -178,6 +185,7 @@ export function computeLadder(games = []) {
         opponent_rating_before: a.rating,
         opponent_rating_after: aAfter,
         delta: bAfter - b.rating,
+        weight,
         played_at: playedAt,
       }
     );

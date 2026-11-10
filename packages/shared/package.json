@@ -3,10 +3,11 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Rules shared by the API and the website: Ban / Pick, vehicle pool templates and games per round.",
+  "description": "Rules shared by the API and the website: Ban / Pick, vehicle pool templates, games per round and ladder weights.",
   "exports": {
     "./banpick.js": "./banpick.js",
     "./vehicle-pools.js": "./vehicle-pools.js",
-    "./round-format.js": "./round-format.js"
+    "./round-format.js": "./round-format.js",
+    "./ladder-weight.js": "./ladder-weight.js"
   }
 }

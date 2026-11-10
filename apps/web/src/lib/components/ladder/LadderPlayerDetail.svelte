@@ -95,6 +95,9 @@
             <span class="hidden sm:block text-small text-muted-foreground truncate max-w-40">
               {h.tournament_name}
             </span>
+            {#if h.weight > 1}
+              <span class="shrink-0 rounded bg-primary/12 px-1 text-small font-semibold text-brand-ink num" title="大型赛事的天梯加减分更多">×{h.weight}</span>
+            {/if}
             <span class="num font-bold {h.mmr_delta >= 0 ? 'text-emerald-500' : 'text-rose-500'}">
               {h.mmr_delta >= 0 ? "+" : ""}{h.mmr_delta}
             </span>

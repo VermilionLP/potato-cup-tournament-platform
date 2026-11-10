@@ -142,7 +142,7 @@ Ban / Pick 的载具池是 `axsuck.vehicle_pools` 里的模板（迁移 027）�
 
 ## Event tiers
 
-赛事有等级（`tournaments.tier`：S / A / B / C / D，对应 Liquipedia 的 liquipediatier 1–5）和性质（`event_kind`：major 大型赛事 / weekly 周赛 / qualifier 预选赛；迁移 043 把原来的季度赛、月赛并入大型赛事，「其他」改为未设置，旧值 season / monthly 仍会被认作 major），迁移 031 按 Liquipedia 页面回填导入的赛事，其余按积分榜类型（大型赛事 B、周赛 C）。规则在 `apps/api/lib/event-tier.js`，前端标签在 `#lib/tournament.js`（`EVENT_TIERS` / `EVENT_KINDS`）。管理员在赛事页顶部修改；`GET /players/statistics?tier=&kind=` 只统计该等级 / 性质的赛事，并返回按等级的冠军数和亚军数（`championships_by_tier` / `runner_ups_by_tier`，亚军 = 单独第 2 名，榜单 `rankings.by_runner_ups`）；预选赛按 `event_kind` 判断，不计冠亚军。Wiki 导出默认用赛事等级。
+赛事有等级（`tournaments.tier`：S / A / B / C / D，对应 Liquipedia 的 liquipediatier 1–5）和性质（`event_kind`：major 大型赛事 / weekly 周赛 / qualifier 预选赛；迁移 043 把原来的季度赛、月赛并入大型赛事，「其他」改为未设置，旧值 season / monthly 仍会被认作 major），迁移 031 按 Liquipedia 页面回填导入的赛事，其余按积分榜类型（大型赛事 B、周赛 C）。规则在 `apps/api/lib/event-tier.js`，前端标签在 `#lib/tournament.js`（`EVENT_TIERS` / `EVENT_KINDS`）。管理员在赛事页顶部修改；`GET /players/statistics?tier=&kind=` 只统计该等级 / 性质的赛事，并返回按等级的冠军数和亚军数（`championships_by_tier` / `runner_ups_by_tier`，亚军 = 单独第 2 名，榜单 `rankings.by_runner_ups`）；预选赛按 `event_kind` 判断，不计冠亚军。Wiki 导出默认用赛事等级。天梯按性质加权（`packages/shared/ladder-weight.js`，`apps/api/lib/ladder.js` 的 `computeLadder` 和网页 `#lib/ladder-sim.js` 共用）：每场的 Elo K 乘以赛事权重，大型赛事 ×1.5、预选赛 ×1.25、周赛和未设置 ×1；天梯是按全部对局现算的，所以改权重或改赛事性质会重新计算所有历史分数。
 
 ## Liquipedia export
 

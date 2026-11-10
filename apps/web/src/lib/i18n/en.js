@@ -1059,7 +1059,7 @@ export default {
   "对手 {0}": "vs {0}",
   "对手 {0} · {1}": "vs {0} · {1}",
   "暂无对局记录。": "No matches yet.",
-  "Elo：初始 3000，前 10 场 K=200（同分对局 ±100），10–30 场 K=100，30 场以后 K=50；2-0 与 2-1 同权。 只有已完成的赛事对局计入，弃权/平局不计。活跃窗口 {0} 天； 不活跃选手移出榜单，但分数保留，回归后继续使用。": "Elo: start 3000, K=200 for the first 10 matches (±100 for ties), K=100 for 10–30, K=50 after; 2-0 and 2-1 count the same. Only finished event matches count; walkovers and draws don't. Active window {0} days; inactive players leave the board but keep their rating for when they return.",
+  "Elo：初始 3000，前 10 场 K=200（同分对局 ±100），10–30 场 K=100，30 场以后 K=50；2-0 与 2-1 同权。 按赛事性质加权：大型赛事 ×{0}、预选赛 ×{1}、周赛 ×{2}（K 乘以权重，大赛加减分更多）。 只有已完成的赛事对局计入，弃权/平局不计。活跃窗口 {3} 天； 不活跃选手移出榜单，但分数保留，回归后继续使用。": "Elo: start 3000, K=200 for the first 10 matches (±100 for ties), K=100 for 10–30, K=50 after; 2-0 and 2-1 count the same. Weighted by event kind: majors ×{0}, qualifiers ×{1}, weekly cups ×{2} (K times the weight, so majors move ratings more). Only finished event matches count; walkovers and draws don't. Active window {3} days; inactive players leave the board but keep their rating for when they return.",
   "Potato Cup 比赛提醒": "Potato Cup match reminder",
   "{0} 将在 {1} 开始": "{0} starts at {1}",
   "大师": "Master",
@@ -2374,4 +2374,10 @@ export default {
   "登上领奖台、最长连胜和历史最高 MMR": "Podiums, longest winning streak and highest MMR",
   "每个赛季各类型积分榜的第一名": "The top of each season's points boards",
   "每场结束赛事的领奖台，最新的在最上面": "The podium of every finished event, newest first",
+  // Ladder weights by event kind.
+  "大型赛事的天梯加减分更多": "Major events move ladder ratings more",
+  "大型赛事的加减分比周赛多": "Major events move ratings more than weekly cups",
+  "本场权重 ×{0}": "Weight ×{0}",
+  "本场是预选赛，天梯加减分是周赛的 {0} 倍。": "This is a qualifier: ladder gains and losses are {0}× a weekly cup's.",
+  "本场是大型赛事，天梯加减分是周赛的 {0} 倍。": "This is a major event: ladder gains and losses are {0}× a weekly cup's.",
 };
