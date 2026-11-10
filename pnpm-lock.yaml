@@ -172,9 +172,6 @@ importers:
 
   apps/api:
     dependencies:
-      '@fastify/autoload':
-        specifier: ^6.3.1
-        version: 6.5.1
       '@fastify/cors':
         specifier: ^11.2.0
         version: 11.3.1
@@ -295,9 +292,6 @@ packages:
 
   '@fastify/ajv-compiler@4.0.7':
     resolution: {integrity: sha512-VP0yIfwlc1ohj733keYDqyHm1VWeP9VQxYomunhr90jkC4aNNibbkrRiaNgPgqj1ORxUenILR4qzA/ppYBNAtQ==}
-
-  '@fastify/autoload@6.5.1':
-    resolution: {integrity: sha512-IW2DyejF1+SEEDTwbJriAcKtMcAy+y1cK04ZQj3p7WwwR/zgN+YYxzmM96L+AP48nNOCNKBGpyYJzgZ1HnubKA==}
 
   '@fastify/cors@11.3.1':
     resolution: {integrity: sha512-gZXNzd6FLHzOIfvoK4+Az3Wko2V6Y0MIsLxpyo4AEYl7a9q1JBPwPaxLea4nkr++8FCiJiPpYYo6E02uZW0dqw==}
@@ -1638,8 +1632,6 @@ snapshots:
       ajv: 8.20.0
       ajv-formats: 3.0.1(ajv@8.20.0)
       fast-uri: 4.2.3
-
-  '@fastify/autoload@6.5.1': {}
 
   '@fastify/cors@11.3.1':
     dependencies:

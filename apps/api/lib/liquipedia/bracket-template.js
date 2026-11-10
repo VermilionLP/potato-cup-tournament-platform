@@ -77,8 +77,3 @@ export function parseBracketTemplate(wikitext) {
   }
   return { matches: nodes };
 }
-
-/** True when the template has a lower bracket. */
-export function isDoubleElimination(template) {
-  return [...template.matches.values()].some((n) => n.side === 'l');
-}
