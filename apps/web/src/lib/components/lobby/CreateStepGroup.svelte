@@ -37,7 +37,7 @@
         max="64"
         placeholder={form.groupFormat === "swiss" ? "不分组" : "必填"}
         bind:value={form.groupSize}
-        class="h-8 w-24 rounded-md border border-border bg-background px-2 text-center text-sm text-foreground"
+        class="field w-24 text-center"
       />
     </label>
     <label class="space-y-1.5" for="new-advance">
@@ -48,7 +48,7 @@
         min="1"
         max="64"
         bind:value={form.advancePerGroup}
-        class="h-8 w-24 rounded-md border border-border bg-background px-2 text-center text-sm text-foreground"
+        class="field w-24 text-center"
       />
     </label>
   </div>

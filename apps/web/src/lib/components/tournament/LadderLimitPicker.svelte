@@ -16,7 +16,7 @@
       choice = e.currentTarget.value;
       onchoice?.(choice);
     }}
-    class="{compact ? 'h-6 text-xs' : 'h-8 text-xs'} rounded-md border border-border bg-background px-1.5 font-semibold text-foreground cursor-pointer disabled:opacity-60"
+    class="{compact ? 'field-compact h-6 px-1.5' : 'field'} cursor-pointer"
   >
     <option value="">不限天梯</option>
     <option value="mmr">天梯分上限…</option>
@@ -33,7 +33,7 @@
       aria-label="天梯分上限"
       bind:value={mmr}
       {disabled}
-      class="{compact ? 'h-6' : 'h-8'} w-20 rounded-md border border-border bg-background px-1.5 text-xs tabular-nums text-foreground"
+      class="{compact ? 'field-compact h-6 px-1.5' : 'field'} w-20 num"
     />
   {/if}
 </span>

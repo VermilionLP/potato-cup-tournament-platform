@@ -99,7 +99,7 @@
     else toast.error("复制失败，请手动选中后复制");
   }
 
-  const field = "h-8 w-full rounded-md border border-border bg-background px-2 text-xs text-foreground focus:border-primary focus:outline-none";
+  const field = "field w-full";
   const area = "w-full rounded-md border border-border bg-background p-2 num text-small text-foreground focus:border-primary focus:outline-none";
   const label = "text-small font-semibold text-muted-foreground";
 </script>

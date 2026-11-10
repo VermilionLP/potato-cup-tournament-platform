@@ -156,15 +156,15 @@
 
     {#if isAdmin}
       <div class="space-y-2.5">
-        <label for="reg-id-input" class="text-xs font-bold text-muted-foreground">管理员手动为群友报名</label>
+        <label for="reg-id-input" class="text-small font-semibold text-muted-foreground">管理员手动为群友报名</label>
         <div class="flex gap-2">
           <Input
             id="reg-id-input"
             bind:value={regInput}
             placeholder="输入群友 ID，如 Vermilion"
-            class="bg-background border-border text-foreground flex-1 h-9 text-xs"
+            class="bg-background flex-1"
           />
-          <Button variant="secondary" size="sm" onclick={registerTyped} class="text-xs h-9 cursor-pointer">添加选手</Button>
+          <Button variant="secondary" size="sm" onclick={registerTyped} class="cursor-pointer">添加选手</Button>
         </div>
 
         {#if unregisteredPlayers.length > 0}

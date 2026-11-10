@@ -141,17 +141,17 @@
         type="text"
         bind:value={searchQuery}
         placeholder="搜索 ID、显示名、战队..."
-        class="w-full pl-9 pr-4 h-8 text-sm rounded-md bg-muted/40 border border-border focus:border-primary/50 focus:ring-1 focus:ring-primary/30 outline-none transition-all text-foreground placeholder:text-muted-foreground/60"
+        class="field w-full pl-9 pr-4 bg-muted/40 placeholder:text-muted-foreground/60"
       />
     </div>
-    <select bind:value={nation} aria-label="国籍" class="h-8 rounded-md border border-border bg-muted/40 px-2 text-xs cursor-pointer {nation ? 'font-bold text-brand-ink' : 'text-muted-foreground'}">
+    <select bind:value={nation} aria-label="国籍" class="field bg-muted/40 cursor-pointer {nation ? 'font-bold text-brand-ink' : 'text-muted-foreground'}">
       <option value="">全部国籍</option>
       {#each nations as [code, n] (code)}
         <option value={code}>{String(code).toUpperCase()} · {n}</option>
       {/each}
     </select>
     {#if teams.length}
-      <select bind:value={team} aria-label="战队" class="h-8 max-w-48 rounded-md border border-border bg-muted/40 px-2 text-xs cursor-pointer {team ? 'font-bold text-brand-ink' : 'text-muted-foreground'}">
+      <select bind:value={team} aria-label="战队" class="field max-w-48 bg-muted/40 cursor-pointer {team ? 'font-bold text-brand-ink' : 'text-muted-foreground'}">
         <option value="">全部战队</option>
         {#each teams as [name, n] (name)}
           <option value={name}>{name} · {n}</option>

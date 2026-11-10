@@ -98,7 +98,7 @@
       <!-- Min matches filter -->
       <select
         bind:value={minMatchesFilter}
-        class="h-7 text-xs rounded-md bg-muted/40 border border-border focus:border-primary/50 outline-none text-foreground px-2 pr-6 cursor-pointer shrink-0"
+        class="field bg-muted/40 pr-6 cursor-pointer shrink-0"
       >
         <option value={0}>全部场次</option>
         <option value={2}>≥ 2 场</option>
@@ -120,7 +120,7 @@
           type="text"
           bind:value={statsSearchQuery}
           placeholder="搜索选手..."
-          class="w-full pl-8 pr-3 h-7 text-xs rounded-md bg-muted/40 border border-border focus:border-primary/50 focus:ring-1 focus:ring-primary/30 outline-none text-foreground"
+          class="field w-full pl-8 pr-3 bg-muted/40"
         />
       </div>
     </div>

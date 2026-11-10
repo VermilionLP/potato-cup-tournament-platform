@@ -55,12 +55,12 @@
 
     <div class="space-y-4 py-3">
       <div class="space-y-1.5">
-        <label for="final-time-input" class="text-xs font-bold text-muted-foreground">确定的比赛时间 (支持输入自定义文字)</label>
+        <label for="final-time-input" class="text-small font-semibold text-muted-foreground">确定的比赛时间 (支持输入自定义文字)</label>
         <Input
           id="final-time-input"
           bind:value
           placeholder="例如: 2026-06-20 20:00 或 本周六晚8点"
-          class="bg-background border-border text-foreground text-xs"
+          class="bg-background"
         />
       </div>
 

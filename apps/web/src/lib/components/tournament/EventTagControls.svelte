@@ -79,11 +79,11 @@
 </script>
 
 {#if editable && isAdmin}
-  {@const field = "h-9 w-full rounded-md border border-border bg-background px-2 text-sm text-foreground cursor-pointer disabled:opacity-60"}
+  {@const field = "field w-full cursor-pointer"}
   <div class="grid grid-cols-2 gap-3">
     <label class="space-y-1">
       <span class="block text-small font-semibold text-muted-foreground">赛事等级</span>
-      <select value={tournament.tier || ""} disabled={savingTier} onchange={(e) => saveTier("tier", e.currentTarget.value)} class="{field} font-bold">
+      <select value={tournament.tier || ""} disabled={savingTier} onchange={(e) => saveTier("tier", e.currentTarget.value)} class={field}>
         <option value="">未分级</option>
         {#each EVENT_TIERS as tier (tier.id)}
           <option value={tier.id}>{tier.name}</option>
@@ -101,7 +101,7 @@
     </label>
     <label class="space-y-1">
       <span class="block text-small font-semibold text-muted-foreground">比赛模式</span>
-      <select value={tournament.game_mode || "rb"} disabled={savingMode} onchange={(e) => saveGameMode(e.currentTarget.value)} class="{field} num font-bold">
+      <select value={tournament.game_mode || "rb"} disabled={savingMode} onchange={(e) => saveGameMode(e.currentTarget.value)} class="{field} num">
         {#each GAME_MODES as mode (mode.id)}
           <option value={mode.id}>{mode.code} · {mode.name}</option>
         {/each}

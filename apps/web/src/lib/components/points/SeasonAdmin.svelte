@@ -78,7 +78,7 @@
       当前赛季
       <input
         aria-label="当前赛季"
-        class="h-7 w-16 rounded border border-border bg-background px-1.5 num text-xs text-foreground focus:border-primary focus:outline-none"
+        class="field w-16 num"
         inputmode="numeric"
         maxlength="4"
         bind:value={currentDraft}

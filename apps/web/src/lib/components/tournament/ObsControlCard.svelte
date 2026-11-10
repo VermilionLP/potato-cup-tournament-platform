@@ -145,7 +145,7 @@
         <div class="flex items-center justify-between gap-2">
           <span class="font-semibold text-muted-foreground shrink-0">直播频道:</span>
           <select
-            class="h-8 rounded-md border border-input bg-background px-2 text-xs font-bold cursor-pointer"
+            class="field-compact font-bold cursor-pointer"
             value={String(channel)}
             onchange={(e) => onchannel?.(Number(e.currentTarget.value))}
           >
@@ -183,7 +183,7 @@
         <span class="font-semibold text-muted-foreground block">当前直播对局:</span>
         {#if tournament?.matches?.length > 0}
           <select
-            class="flex h-8 w-full rounded-md border border-input bg-background px-3 py-1 text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+            class="field-compact w-full"
             value={tournament.active_match_id || ""}
             onchange={(e) => setActive(e.currentTarget.value)}
           >
@@ -212,7 +212,7 @@
           <div class="flex items-center justify-between gap-2">
             <span class="font-bold text-brand-ink block text-small shrink-0">当前显示大屏:</span>
             <select
-              class="flex h-8 rounded border border-primary/30 bg-background px-2 py-1 text-small text-brand-ink font-bold shadow-sm focus-visible:outline-none cursor-pointer"
+              class="field-compact border-primary/30 text-brand-ink font-bold cursor-pointer"
               value={tournament.overlay_scene || "auto"}
               onchange={(e) => setScene(e.currentTarget.value)}
             >
@@ -252,12 +252,12 @@
               {/each}
             </div>
             <div class="flex flex-wrap items-center gap-1.5">
-              <input type="number" min="1" max="1440" step="1" class="h-7 w-16 rounded border border-input bg-background px-2 text-small num" bind:value={countdownMinutes} aria-label="倒计时分钟数" />
+              <input type="number" min="1" max="1440" step="1" class="field-compact w-16 num" bind:value={countdownMinutes} aria-label="倒计时分钟数" />
               <span class="text-small text-muted-foreground">分钟</span>
               <Button size="sm" class="h-7 px-2.5 text-xs cursor-pointer" onclick={() => startMinutes(countdownMinutes)}>开始</Button>
               <span class="mx-1 h-4 w-px bg-border"></span>
               <span class="text-small text-muted-foreground">或到</span>
-              <input type="time" class="h-7 rounded border border-input bg-background px-2 text-small num" bind:value={countdownTime} aria-label="比赛开始时间" />
+              <input type="time" class="field-compact num" bind:value={countdownTime} aria-label="比赛开始时间" />
               <Button size="sm" variant="outline" class="h-7 px-2.5 text-xs cursor-pointer" onclick={() => startAt(countdownTime)}>设定</Button>
             </div>
           </div>
@@ -266,7 +266,7 @@
             <div class="flex items-center justify-between gap-2 pt-2 border-t border-primary/10">
               <span class="text-small font-semibold text-muted-foreground shrink-0">展示轮次:</span>
               <select
-                class="h-7 rounded border border-input bg-background px-2 text-small cursor-pointer"
+                class="field-compact cursor-pointer"
                 value={overlayShownStage?.key || ""}
                 onchange={(e) => setStage(e.currentTarget.value)}
               >
@@ -295,7 +295,7 @@
             <input
               type="text"
               readonly
-              class="flex-1 h-7 px-2 border border-primary/25 rounded bg-background text-small select-all cursor-default text-brand-ink num"
+              class="field-compact flex-1 border-primary/25 select-all cursor-default text-brand-ink num"
               value={autoUrl}
             />
             <Button
@@ -318,7 +318,7 @@
               {#if link.key === "intro"}
                 <div class="flex items-center gap-1">
                   <span class="text-small text-muted-foreground">轮次:</span>
-                  <select class="h-5 rounded border border-input bg-background px-1 text-small" bind:value={introStage}>
+                  <select class="field-compact h-6 px-1" bind:value={introStage}>
                     <option value="">当前轮次（自动）</option>
                     {#each overlayStageList as st (st.key)}
                       <option value={st.key}>{st.label}</option>
@@ -331,7 +331,7 @@
               <input
                 type="text"
                 readonly
-                class="flex-1 h-7 px-2 border border-input rounded bg-muted/30 text-small select-all cursor-default"
+                class="field-compact flex-1 bg-muted/30 select-all cursor-default"
                 value={link.url}
               />
               <Button size="icon-xs" variant="outline" class="h-7 w-7 cursor-pointer shrink-0" onclick={(e) => copy(link.url, link.copied, e)}>

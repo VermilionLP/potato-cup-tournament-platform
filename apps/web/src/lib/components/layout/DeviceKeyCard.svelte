@@ -63,7 +63,7 @@
         : "本设备还没有这个 ID 的密钥。如果你在别的设备上用过这个 ID，请把那边的密钥导入。"}
     </p>
     <div class="flex gap-2">
-      <Input bind:value={keyImport} placeholder="粘贴设备密钥" class="h-8 flex-1 num text-small" />
+      <Input bind:value={keyImport} placeholder="粘贴设备密钥" class="flex-1 num" />
       <Button size="sm" class="h-8 text-xs" disabled={busy || !keyImport.trim()} onclick={importKey}>导入</Button>
     </div>
   {/if}

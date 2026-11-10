@@ -89,12 +89,12 @@
 
     <div class="space-y-4 py-2">
       <div class="space-y-1.5">
-        <label for="edit-player-id" class="text-xs font-bold text-muted-foreground">选手唯一 ID (Player ID)</label>
+        <label for="edit-player-id" class="text-small font-semibold text-muted-foreground">选手唯一 ID (Player ID)</label>
         <Input
           id="edit-player-id"
           bind:value={id}
           placeholder="选手唯一 ID（修改后会自动刷新全库所有对局和记录）"
-          class="bg-background border-border text-foreground text-xs"
+          class="bg-background"
         />
       </div>
 
@@ -102,33 +102,33 @@
         <span class="text-xs font-bold text-muted-foreground">联系方式（QQ / Discord）</span>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 bg-muted/20 border border-border/60 p-4 rounded-xl">
           <div class="space-y-1">
-            <label for="edit-contact-qq" class="text-small font-bold text-muted-foreground">QQ 号</label>
-            <Input id="edit-contact-qq" bind:value={qq} placeholder="例如: 123456789" class="text-xs h-8 bg-background border-border text-foreground" />
+            <label for="edit-contact-qq" class="text-small font-semibold text-muted-foreground">QQ 号</label>
+            <Input id="edit-contact-qq" bind:value={qq} placeholder="例如: 123456789" class="bg-background" />
           </div>
           <div class="space-y-1">
-            <label for="edit-contact-discord" class="text-small font-bold text-muted-foreground">Discord 用户名</label>
-            <Input id="edit-contact-discord" bind:value={discord} placeholder="例如: username" class="text-xs h-8 bg-background border-border text-foreground" />
+            <label for="edit-contact-discord" class="text-small font-semibold text-muted-foreground">Discord 用户名</label>
+            <Input id="edit-contact-discord" bind:value={discord} placeholder="例如: username" class="bg-background" />
           </div>
         </div>
         <p class="text-small text-muted-foreground/60">赛务联系用，会显示在选手列表中。</p>
       </div>
       <div class="grid grid-cols-2 gap-3">
         <div class="space-y-1.5">
-          <label for="edit-flag" class="text-xs font-bold text-muted-foreground">国籍/地区 (Flag)</label>
+          <label for="edit-flag" class="text-small font-semibold text-muted-foreground">国籍/地区 (Flag)</label>
           <div class="flex items-center gap-2">
             <Flag code={flag} size={20} />
-            <Input id="edit-flag" bind:value={flag} placeholder="例如: cn, hk, tw" class="bg-background border-border text-foreground text-xs flex-1" />
+            <Input id="edit-flag" bind:value={flag} placeholder="例如: cn, hk, tw" class="bg-background flex-1" />
           </div>
         </div>
         <div class="space-y-1.5">
-          <label for="edit-team" class="text-xs font-bold text-muted-foreground">战队前缀 (Team Tag)</label>
-          <Input id="edit-team" bind:value={team} placeholder="例如: AlphaX" class="bg-background border-border text-foreground text-xs" />
+          <label for="edit-team" class="text-small font-semibold text-muted-foreground">战队前缀 (Team Tag)</label>
+          <Input id="edit-team" bind:value={team} placeholder="例如: AlphaX" class="bg-background" />
         </div>
       </div>
 
       <div class="space-y-1.5">
-        <label for="edit-link" class="text-xs font-bold text-muted-foreground">Wiki 个人页链接 (Link)</label>
-        <Input id="edit-link" bind:value={link} placeholder="例如: Vermilion" class="bg-background border-border text-foreground text-xs" />
+        <label for="edit-link" class="text-small font-semibold text-muted-foreground">Wiki 个人页链接 (Link)</label>
+        <Input id="edit-link" bind:value={link} placeholder="例如: Vermilion" class="bg-background" />
         <p class="text-small text-muted-foreground/60">
           Liquipedia Wiki 页面名称，最终将链接至
           https://liquipedia.net/warthunder/&lt;名称&gt;

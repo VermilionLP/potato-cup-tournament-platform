@@ -211,7 +211,7 @@
           <Card.Header class="p-5 pb-2"><Card.Title class="text-sm font-bold">交手记录</Card.Title></Card.Header>
           <Card.Content class="p-5 pt-0 space-y-3">
             {#if opponents.length}
-              <select bind:value={opponentId} class="w-full rounded-md border border-border bg-background px-2 py-1.5 text-xs">
+              <select bind:value={opponentId} class="field w-full">
                 <option value="">选择对手…</option>
                 {#each opponents as o (o.id)}
                   <option value={o.id}>{o.name}（{o.won} 胜 {o.lost} 负）</option>

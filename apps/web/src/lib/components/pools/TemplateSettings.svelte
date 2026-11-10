@@ -11,7 +11,7 @@
   // Removal limits: "" = unlimited, else 0-20.
   const limitValue = (n) => (n === null || n === undefined ? "" : String(n));
   const parseLimit = (value) => (value === "" ? null : Math.max(0, Math.min(20, Math.round(Number(value)) || 0)));
-  const fieldInput = "h-8 rounded-md border border-border bg-background px-2 text-xs text-foreground focus:border-primary focus:outline-none disabled:opacity-60";
+  const fieldInput = "field";
 </script>
 
 {#if isAdmin}
@@ -95,7 +95,7 @@
         <label class="flex items-center justify-between gap-2 rounded-md bg-muted/40 px-2.5 py-1.5" title="留空 = 不限次数（可随时重抽）">
           <span class="font-semibold text-foreground">大组可移出</span>
           <span class="inline-flex items-center gap-1.5 text-muted-foreground">
-            <input class="{fieldInput} h-7 w-14 text-center num" type="number" min="0" max="20" placeholder="不限" value={limitValue(current.rules.groupRerolls)} oninput={(e) => onrule("groupRerolls", parseLimit(e.currentTarget.value))} />
+            <input class="{fieldInput} w-16 text-center num" type="number" min="0" max="20" placeholder="不限" value={limitValue(current.rules.groupRerolls)} oninput={(e) => onrule("groupRerolls", parseLimit(e.currentTarget.value))} />
             次
           </span>
         </label>
@@ -103,7 +103,7 @@
           <label class="flex items-center justify-between gap-2 rounded-md bg-muted/40 px-2.5 py-1.5" title="留空 = 不限次数（可随时重抽）">
             <span class="font-semibold text-foreground">载具可移出</span>
             <span class="inline-flex items-center gap-1.5 text-muted-foreground">
-              <input class="{fieldInput} h-7 w-14 text-center num" type="number" min="0" max="20" placeholder="不限" value={limitValue(current.rules.vehicleRerolls)} oninput={(e) => onrule("vehicleRerolls", parseLimit(e.currentTarget.value))} />
+              <input class="{fieldInput} w-16 text-center num" type="number" min="0" max="20" placeholder="不限" value={limitValue(current.rules.vehicleRerolls)} oninput={(e) => onrule("vehicleRerolls", parseLimit(e.currentTarget.value))} />
               次
             </span>
           </label>
