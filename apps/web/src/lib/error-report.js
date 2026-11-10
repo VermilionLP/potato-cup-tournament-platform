@@ -18,6 +18,9 @@ export function errorReport(error, { message = "", page = "", userAgent = "" } =
   const text = String(error?.message || message || error || "").trim();
   const stack = String(error?.stack || "");
   if (!text || NOISE.some((re) => re.test(text)) || EXTENSION.test(stack)) return null;
+  // The server said no (4xx: "not your turn", "already confirmed"…): the
+  // page shows that to the visitor; it is not a bug in the page.
+  if (Number.isInteger(error?.status) && error.status >= 400 && error.status < 500) return null;
   return { message: text.slice(0, 500), stack: stack.slice(0, 4000), page, userAgent };
 }
 

@@ -71,3 +71,17 @@ test("local undo history is the panel's; localAct ignores unknown actions", () =
   assert.equal(localAct(s, webGroups, "fly"), s);
   assert.deepEqual(localAct(localAct(s, webGroups, "ban", { group: "GA" }), webGroups, "reset"), s);
 });
+
+test("before the first action only A may ban (judged on the state shown)", () => {
+  const rules = normalizeRules({ bansPerPlayer: 1 });
+  const shown = initialBanPick(rules);
+  assert.equal(mayAct(null, "ban", { side: "A" }, "p1", shown), true);
+  assert.equal(mayAct(null, "ban", { side: "B" }, "p2", shown), false);
+  assert.equal(mayAct(null, "pass", { side: "B" }, "p2", shown), false);
+  assert.equal(mayAct(null, "reset", { side: "A" }, "p1", shown), false);
+  assert.equal(mayAct(null, "ban", { admin: true }, "admin", shown), true);
+  assert.equal(mayAct(null, "ban", { side: null }, "x", shown), false);
+  // No bans: either player may draw first.
+  const noBans = initialBanPick(normalizeRules({ bansPerPlayer: 0 }));
+  assert.equal(mayAct(null, "drawGroup", { side: "B" }, "p2", noBans), true);
+});

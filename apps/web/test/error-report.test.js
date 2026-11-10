@@ -14,3 +14,10 @@ test("reports real errors, skips noise and extensions", () => {
   assert.equal(errorReport(undefined, { message: "" }), null);
   assert.equal(errorReport("plain string rejection").message, "plain string rejection");
 });
+
+test("the server's refusals (4xx) are not reported; server failures are", () => {
+  const refused = Object.assign(new Error("现在轮到 A 方禁用"), { status: 403 });
+  assert.equal(errorReport(refused), null);
+  assert.equal(errorReport(Object.assign(new Error("Ban/Pick 刚刚被别人更新了，已刷新为最新状态"), { status: 409 })), null);
+  assert.ok(errorReport(Object.assign(new Error("Internal Server Error"), { status: 500 })));
+});

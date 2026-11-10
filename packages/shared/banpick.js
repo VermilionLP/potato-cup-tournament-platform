@@ -252,11 +252,15 @@ export function actionProblem(record, action, who, by) {
 
 /**
  * Whether the viewer may do `action` on a match's Ban / Pick (the buttons
- * shown): actionProblem without the message. me = { admin, side }; a match
- * without a Ban / Pick yet lets its players start one.
+ * shown): actionProblem without the message. me = { admin, side }. A match
+ * without a Ban / Pick yet is judged on `initial` (the state it starts
+ * from, as shown), so only A may make the first ban.
  */
-export function mayAct(record, action, me, myId) {
-  if (!record?.state) return Boolean(me?.admin) || (Boolean(me?.side) && action !== 'reset' && action !== 'undo');
+export function mayAct(record, action, me, myId, initial = null) {
+  if (!record?.state) {
+    if (initial) return actionProblem({ log: [], ...record, state: initial }, action, me || {}, myId) === null;
+    return Boolean(me?.admin) || (Boolean(me?.side) && action !== 'reset' && action !== 'undo');
+  }
   return actionProblem({ log: [], ...record }, action, me || {}, myId) === null;
 }
 
