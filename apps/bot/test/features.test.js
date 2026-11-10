@@ -152,7 +152,13 @@ test('a number typed straight after the command still counts', () => {
   assert.equal(unglue('战绩Alpha'), null, 'names are not split');
 });
 
-import { createRenderer, openEventsCard, scheduleCard, statsCard } from '../src/cards.js';
+import { createRenderer, dateParts, openEventsCard, scheduleCard, statsCard } from '../src/cards.js';
+
+test('date tiles read Beijing dates and weekdays', () => {
+  assert.deepEqual(dateParts('2026-11-14T20:00'), { month: 11, day: 14, weekday: '周六', time: '20:00' });
+  assert.deepEqual(dateParts('2026-1-5'), { month: 1, day: 5, weekday: '周一', time: '' });
+  assert.equal(dateParts(''), null);
+});
 
 test('cards render to PNG with the site font, and long names do not break them', async () => {
   const r = createRenderer();
@@ -163,7 +169,13 @@ test('cards render to PNG with the site font, and long names do not break them',
   }, new Date('2026-11-10T03:00:00Z'));
   assert.equal(png.subarray(1, 4).toString(), 'PNG');
   assert.equal(png.readUInt32BE(16), 1440, '2x width');
-  for (const tree of [openEventsCard({ events: [] }), statsCard({ id: 'New' }), scheduleCard({ player_id: 'X', events: [], now: [] })]) {
+  const ladder = {
+    mmr: 1714, games: 46, tier: { group: 'diamond', name: '钻石 II' },
+    history: Array.from({ length: 12 }, (_, i) => ({ won: i % 3 !== 0, opponent_name: `P${i}`, mmr_before: 1600 + i * 9, mmr_after: 1609 + i * 9, mmr_delta: 9 })).reverse(),
+  };
+  const full = await r.stats({ id: 'Alpha', flag: 'cn', team: 'T', matches_won: 30, matches_lost: 10, championships: 3 }, ladder);
+  assert.equal(full.subarray(1, 4).toString(), 'PNG');
+  for (const tree of [openEventsCard({ events: [] }), statsCard({ id: 'New' }), statsCard({ id: 'Zero', matches_won: 0, matches_lost: 0 }, null), scheduleCard({ player_id: 'X', events: [], now: [] })]) {
     const out = await r.render(tree);
     assert.equal(out.subarray(1, 4).toString(), 'PNG');
   }

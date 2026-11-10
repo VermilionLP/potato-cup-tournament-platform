@@ -99,7 +99,9 @@ export function registerCommands(ctx, site, logger = console, pictures = null) {
       const stats = await site.statistics();
       const player = findPlayer(stats.players, who);
       if (!player) return `没有找到「${who}」的比赛记录。`;
-      return picture((cards) => cards.stats(player), () => formatStats(player));
+      // The ladder adds league, MMR and recent form to the card; the card still works without it.
+      const ladder = pictures ? await site.ladder(player.id).catch(() => null) : null;
+      return picture((cards) => cards.stats(player, ladder), () => formatStats(player));
     } catch (err) {
       logger.warn?.(`[commands] stats failed: ${err?.message || err}`);
       return failed(err);

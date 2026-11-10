@@ -52,6 +52,15 @@ export function createSite({ siteUrl, botToken, timeoutMs = 8000, fetchImpl = fe
     },
     schedule: (playerId) => call('GET', `/bot/players/${enc(playerId)}/schedule`),
     statistics: () => call('GET', '/players/statistics'),
+    /** League, MMR and games (newest first) from the ladder, or null without ladder games. */
+    ladder: async (playerId) => {
+      try {
+        return await call('GET', `/ladder/players/${enc(playerId)}`);
+      } catch (err) {
+        if (err.status === 404) return null;
+        throw err;
+      }
+    },
     openEvents: (openid) => call('GET', `/bot/open-events${openid ? `?openid=${enc(openid)}` : ''}`),
     register: (openid, tournamentId) => call('POST', '/bot/register', { openid, tournament_id: tournamentId }),
     unregister: (openid, tournamentId) => call('POST', '/bot/unregister', { openid, tournament_id: tournamentId }),
