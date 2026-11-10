@@ -1,13 +1,17 @@
-// The bracket as one shareable picture: the whole elimination bracket (not
-// the section on screen), and for double elimination the winners band
-// (with the grand final) and the losers band stacked into one image.
+// The bracket as one shareable picture, whatever is on screen in full:
+// - elimination: the whole bracket (not the section on screen); double
+//   elimination stacks the winners band (with the grand final) and the
+//   losers band;
+// - Swiss: the standings, then every round's pairings;
+// - group stage: every group, one under the other: its placings (or Swiss
+//   standings) and its bracket (or rounds).
 //
 // bracketImageLayout() is pure: it places everything with the same maths as
 // the page (treePositions for single elimination, layoutBracketBand +
 // withGrandFinalColumn for double) and returns drawing primitives with
 // absolute coordinates. #lib/bracket-image-draw.js paints them on a canvas.
 
-import { bracketRoundLabel, bracketRoundTotal, buildMatchOrder, layoutBracketBand, maxRound, roundLabel, treePositions, withGrandFinalColumn } from "./bracket.js";
+import { bracketRoundLabel, bracketRoundTotal, buildMatchOrder, groupSwissRounds, layoutBracketBand, maxRound, roundLabel, treePositions, withGrandFinalColumn } from "./bracket.js";
 import { championshipMatchOf, eliminationRounds } from "./event-view.js";
 import { gameModeInfo, vehiclePoolLabel } from "./tournament.js";
 
@@ -22,6 +26,10 @@ const COL_LABEL_H = 30;
 const SECTION_GAP = 40;
 const FOOTER_H = 52;
 const THIRD_GAP = 44;
+export const ROW_H = 34; // table rows
+const TABLE_HEAD_H = 32;
+const GROUP_TITLE_H = 54;
+const SWISS_GAP = 14;
 
 const decided = (m) => m.status === "completed" || m.status === "walkover";
 
@@ -89,81 +97,197 @@ function placeColumns(columns, { labelOf, players, playerName, status, numbers }
   return { cards, labels, links, at };
 }
 
+/** A double-elimination (or group) bracket: winners band (+ grand final), losers band. */
+function doubleSections(matches, ctx, { wbCode = "wb", lbCode = "lb", group = false, perGroup = 0 } = {}) {
+  const band = matches.filter((m) => m.round > 0);
+  const size = { cardHeight: CARD_H, slotHeight: CARD_H + 22, columnWidth: CARD_W, columnGap: COL_GAP };
+  const wb = layoutBracketBand(band, wbCode, size);
+  const lb = layoutBracketBand(band, lbCode, size);
+  const gfs = group ? [] : matches.filter((m) => m.bracket === "gf").sort((a, b) => a.position - b.position);
+  const wbCols = withGrandFinalColumn(wb.columns, gfs, { cardWidth: CARD_W, cardHeight: CARD_H, columnGap: COL_GAP, stackGap: 30 });
+  const wbTotal = bracketRoundTotal(band, wbCode);
+  const lbTotal = bracketRoundTotal(band, lbCode);
+  // Numbers as on the page: winners, losers, grand final.
+  const ids = [...wb.columns, ...lb.columns].flatMap((c) => c.matches.map((i) => i.match.id)).concat(gfs.map((m) => m.id));
+  const numbers = new Map(ids.map((id, i) => [id, i + 1]));
+  const asTop = (cols) => cols.map((c) => ({ ...c, matches: c.matches.map((i) => ({ ...i, top: i.y - CARD_H / 2 })) }));
+  const singleGroup = group && !lb.columns.length;
+  // A group's last winners / losers round decides who qualifies.
+  const label = (side, round, total) =>
+    singleGroup ? roundLabel(round, total) : group && round === 1 ? (side === "lb" ? "败者组出线战" : "胜者组出线战") : bracketRoundLabel(side, round, total);
+  const out = [{
+    title: singleGroup ? "" : "胜者组",
+    sub: gfs.length ? "胜者组 → 总决赛" : "",
+    level: 2,
+    ...placeColumns(asTop(wbCols), { labelOf: (c) => (c.grandFinal ? "总决赛" : label("wb", c.round, wbTotal)), numbers, ...ctx }),
+    columns: wbCols,
+    next: (m) => m.next_match_id,
+  }];
+  if (lb.columns.length) {
+    out.push({
+      title: "败者组",
+      sub: group ? "" : "再败即淘汰",
+      level: 2,
+      ...placeColumns(asTop(lb.columns), { labelOf: (c) => label("lb", c.round, lbTotal), numbers, ...ctx }),
+      columns: lb.columns,
+      next: (m) => m.next_match_id,
+    });
+  }
+  void perGroup;
+  return out;
+}
+
+/** A single-elimination bracket, with the third-place match under the final. */
+function singleSection(matches, ctx) {
+  const order = buildMatchOrder(matches);
+  const rounds = eliminationRounds(matches);
+  const total = maxRound(matches);
+  const pos = treePositions(rounds, { H: CARD_H, g: 16, G: 30 });
+  const columns = rounds.map((r, i) => ({
+    round: r.round,
+    x: i * (CARD_W + COL_GAP),
+    matches: r.matches.map((m) => ({ match: m, top: pos.positions[m.id]?.top ?? 0 })),
+  }));
+  const numbers = new Map(matches.map((m) => [m.id, order.get(m.id)]));
+  const placed = placeColumns(columns, { labelOf: (c) => roundLabel(c.round, total), numbers, ...ctx });
+  // Single elimination feeds by position: matches 2i and 2i+1 into i.
+  for (let i = 1; i < rounds.length; i += 1) {
+    rounds[i].matches.forEach((m, idx) => {
+      for (const feeder of [rounds[i - 1].matches[idx * 2], rounds[i - 1].matches[idx * 2 + 1]]) {
+        if (feeder && placed.at.get(feeder.id)) placed.links.push({ points: link(placed.at.get(feeder.id), placed.at.get(m.id)), done: Boolean(feeder.winner_id) });
+      }
+    });
+  }
+  const third = matches.find((m) => m.round === 0);
+  if (third && columns.length) {
+    const finalCard = placed.at.get(rounds.at(-1).matches[0]?.id);
+    const top = (finalCard?.y ?? 0) + CARD_H + THIRD_GAP;
+    placed.cards.push(cardOf(third, { x: columns.at(-1).x, top, number: order.get(third.id), ...ctx }));
+    placed.notes = [{ x: columns.at(-1).x, y: top - 8, text: "三四名决赛" }];
+  }
+  return { title: "", ...placed, columns };
+}
+
+/** Swiss rounds side by side: one column per round, cards stacked (byes as a note card). */
+function swissSection(matches, ctx, title = "各轮对阵") {
+  const rounds = groupSwissRounds(matches);
+  const cards = [];
+  const labels = [];
+  rounds.forEach((r, i) => {
+    const x = i * (CARD_W + 28);
+    labels.push({ x, text: `第 ${r.round} 轮` });
+    r.matches.forEach((m, j) => {
+      const card = cardOf(m, { x, top: j * (CARD_H + SWISS_GAP), number: m.position, ...ctx });
+      if (Boolean(m.player1_id) !== Boolean(m.player2_id)) {
+        card.byeNote = `轮空 · ${ctx.playerName(m.player1_id || m.player2_id, m)} 记一胜`;
+      }
+      cards.push(card);
+    });
+  });
+  return { title, level: 2, cards, labels, links: [], notes: [] };
+}
+
+const signed = (n) => (n > 0 ? `+${n}` : String(n ?? 0));
+
+/** Swiss standings as a table. */
+function standingsTable(rows, ctx, { title = "积分榜", perGroup = 0, finished = false } = {}) {
+  return {
+    kind: "table",
+    title,
+    sub: perGroup ? `前 ${perGroup} 名晋级淘汰赛` : "胜 1 分 · 同分比小分净胜、对手分",
+    head: [["名次", 56, "center"], ["选手", 300, "left"], ["胜-负", 80, "center"], ["积分", 70, "center"], ["小分净胜", 90, "center"], ["对手分", 80, "center"]],
+    rows: rows.map((r) => ({
+      cells: [String(r.rank), ctx.playerName(r.player_id), `${r.wins}-${r.losses}`, String(r.points), signed(r.game_diff), String(r.buchholz ?? 0)],
+      flag: ctx.players.find((p) => p.id === r.player_id)?.flag || "",
+      mark: perGroup && r.rank <= perGroup ? "晋级" : finished && r.rank === 1 && !perGroup ? "冠军" : r.byes > 0 ? "轮空" : "",
+      good: Boolean(perGroup && r.rank <= perGroup),
+      cut: Boolean(perGroup && r.rank === perGroup),
+    })),
+  };
+}
+
+/** A bracket group's placings (rank, player, how they placed). */
+function placingTable(group, ctx, perGroup) {
+  return {
+    kind: "table",
+    title: "",
+    sub: "",
+    head: [["名次", 56, "center"], ["选手", 300, "left"], ["结果", 200, "left"]],
+    rows: group.rows.map((r) => ({
+      cells: [r.how ? String(r.rank) : "–", ctx.playerName(r.player_id), r.qualified ? "出线" : r.how || ""],
+      flag: ctx.players.find((p) => p.id === r.player_id)?.flag || "",
+      mark: "",
+      good: Boolean(r.qualified),
+      cut: false,
+    })),
+    note: group.complete ? `前 ${perGroup} 名出线` : `前 ${perGroup} 名出线 · 小组进行中，名次随比赛结果更新`,
+  };
+}
+
 /**
- * Everything to draw, absolutely placed. `matches`: the elimination bracket
- * (bracketMatchesOf); `playerName(id, match)`: the page's namer.
+ * Everything to draw, absolutely placed.
+ * view: "elimination" (`matches`: the bracket, `doubleElim`), "swiss"
+ * (`matches`, `standings`, `totalRounds`) or "groups" (`matches`: the
+ * group stage, `groups`: group_stage.groups, `groupFormat`: the group
+ * stage's format, `perGroup`). `playerName(id, match)`: the page's namer.
  */
-export function bracketImageLayout({ tournament, matches = [], doubleElim = false, playerName = null, now = new Date() } = {}) {
+export function bracketImageLayout({
+  tournament,
+  matches = [],
+  view = "elimination",
+  doubleElim = false,
+  standings = [],
+  totalRounds = null,
+  groups = [],
+  groupFormat = "",
+  perGroup = 0,
+  playerName = null,
+  now = new Date(),
+} = {}) {
   const t = tournament || {};
   const players = t.players || [];
   playerName ??= (id) => (id ? players.find((p) => p.id === id)?.display_name || id : "TBD");
   const status = t.status || "";
-  const order = buildMatchOrder(matches);
+  const ctx = { players, playerName, status };
   const sections = [];
+  let formatTag = doubleElim ? "双败淘汰" : "单败淘汰";
+  let champion = null;
 
-  if (doubleElim) {
-    const band = matches.filter((m) => m.round > 0);
-    const size = { cardHeight: CARD_H, slotHeight: CARD_H + 22, columnWidth: CARD_W, columnGap: COL_GAP };
-    const wb = layoutBracketBand(band, "wb", size);
-    const lb = layoutBracketBand(band, "lb", size);
-    const gfs = matches.filter((m) => m.bracket === "gf").sort((a, b) => a.position - b.position);
-    const wbCols = withGrandFinalColumn(wb.columns, gfs, { cardWidth: CARD_W, cardHeight: CARD_H, columnGap: COL_GAP, stackGap: 30 });
-    const wbTotal = bracketRoundTotal(band, "wb");
-    const lbTotal = bracketRoundTotal(band, "lb");
-    // Numbers as on the page: winners, losers, grand final.
-    const ids = [...wb.columns, ...lb.columns].flatMap((c) => c.matches.map((i) => i.match.id)).concat(gfs.map((m) => m.id));
-    const numbers = new Map(ids.map((id, i) => [id, i + 1]));
-    const asTop = (cols) => cols.map((c) => ({ ...c, matches: c.matches.map((i) => ({ ...i, top: i.y - CARD_H / 2 })) }));
-    sections.push({
-      title: "胜者组",
-      sub: gfs.length ? "胜者组 → 总决赛" : "",
-      ...placeColumns(asTop(wbCols), {
-        labelOf: (c) => (c.grandFinal ? "总决赛" : bracketRoundLabel("wb", c.round, wbTotal)),
-        players, playerName, status, numbers,
-      }),
-      columns: wbCols,
-      next: (m) => m.next_match_id,
-    });
-    if (lb.columns.length) {
-      sections.push({
-        title: "败者组",
-        sub: "再败即淘汰",
-        ...placeColumns(asTop(lb.columns), { labelOf: (c) => bracketRoundLabel("lb", c.round, lbTotal), players, playerName, status, numbers }),
-        columns: lb.columns,
-        next: (m) => m.next_match_id,
-      });
+  if (view === "swiss") {
+    const rounds = groupSwissRounds(matches);
+    const current = rounds.at(-1);
+    const finished = Boolean(current) && current.round >= (totalRounds || 0) && current.matches.every((m) => m.status !== "pending");
+    if (groups.length > 1) {
+      // Two-stage: Swiss groups, each with its standings and rounds.
+      for (const g of groups) {
+        const own = matches.filter((m) => (m.swiss_group || 1) === g.group);
+        sections.push({ kind: "group", title: `${g.label} 组`, sub: `${g.rows.length} 人 · 共 ${g.rounds ?? totalRounds ?? "?"} 轮` });
+        sections.push(standingsTable(g.rows, ctx, { title: "", perGroup }));
+        if (own.length) sections.push(swissSection(own, ctx));
+      }
+      formatTag = "小组赛 · 瑞士轮";
+    } else {
+      sections.push(standingsTable(standings, ctx, { perGroup, finished }));
+      if (matches.length) sections.push(swissSection(matches, ctx));
+      formatTag = `瑞士轮 · ${totalRounds ?? "?"} 轮`;
+      if (finished && status === "completed" && standings[0]) champion = players.find((p) => p.id === standings[0].player_id) || { id: standings[0].player_id };
     }
+  } else if (view === "groups") {
+    const single = groupFormat === "single_elim";
+    for (const g of groups) {
+      const own = matches.filter((m) => (m.swiss_group || 1) === g.group);
+      sections.push({ kind: "group", title: `${g.label} 组`, sub: g.complete ? "已结束" : "" });
+      sections.push(placingTable(g, ctx, perGroup));
+      sections.push(...doubleSections(own, ctx, { wbCode: single ? "gse" : "gwb", lbCode: "glb", group: true }));
+    }
+    formatTag = single ? "小组赛 · 单败" : "小组赛 · 双败";
+  } else if (doubleElim) {
+    sections.push(...doubleSections(matches, ctx));
   } else {
-    const rounds = eliminationRounds(matches);
-    const total = maxRound(matches);
-    const pos = treePositions(rounds, { H: CARD_H, g: 16, G: 30 });
-    const columns = rounds.map((r, i) => ({
-      round: r.round,
-      x: i * (CARD_W + COL_GAP),
-      matches: r.matches.map((m) => ({ match: m, top: pos.positions[m.id]?.top ?? 0 })),
-    }));
-    const numbers = new Map(matches.map((m) => [m.id, order.get(m.id)]));
-    const placed = placeColumns(columns, { labelOf: (c) => roundLabel(c.round, total), players, playerName, status, numbers });
-    // Single elimination feeds by position: matches 2i and 2i+1 into i.
-    for (let i = 1; i < rounds.length; i += 1) {
-      rounds[i].matches.forEach((m, idx) => {
-        for (const feeder of [rounds[i - 1].matches[idx * 2], rounds[i - 1].matches[idx * 2 + 1]]) {
-          if (feeder && placed.at.get(feeder.id)) placed.links.push({ points: link(placed.at.get(feeder.id), placed.at.get(m.id)), done: Boolean(feeder.winner_id) });
-        }
-      });
-    }
-    const third = matches.find((m) => m.round === 0);
-    if (third && columns.length) {
-      const finalCard = placed.at.get(rounds.at(-1).matches[0]?.id);
-      const top = (finalCard?.y ?? 0) + CARD_H + THIRD_GAP;
-      const card = cardOf(third, { x: columns.at(-1).x, top, number: order.get(third.id), players, playerName, status });
-      placed.cards.push(card);
-      placed.notes = [{ x: columns.at(-1).x, y: top - 8, text: "三四名决赛" }];
-    }
-    sections.push({ title: "", ...placed, columns });
+    sections.push(singleSection(matches, ctx));
   }
 
-  // Links of the double-elimination bands follow next_match_id.
+  // Links of the bands follow next_match_id.
   for (const s of sections) {
     if (!s.next) continue;
     for (const col of s.columns) {
@@ -178,12 +302,26 @@ export function bracketImageLayout({ tournament, matches = [], doubleElim = fals
   // Stack the sections; offset everything to absolute coordinates.
   let y = HEADER_H + 20;
   let contentWidth = 0;
-  const out = { cards: [], labels: [], links: [], titles: [], notes: [] };
+  const out = { cards: [], labels: [], links: [], titles: [], notes: [], tables: [], groups: [] };
   for (const s of sections) {
+    if (s.kind === "group") {
+      out.groups.push({ x: PAD, y, text: s.title, sub: s.sub || "" });
+      y += GROUP_TITLE_H;
+      continue;
+    }
     if (s.title) {
       out.titles.push({ x: PAD, y, text: s.title, sub: s.sub || "" });
       y += SECTION_TITLE_H;
     }
+    if (s.kind === "table") {
+      const width = s.head.reduce((n, [, w]) => n + w, 0);
+      const height = TABLE_HEAD_H + s.rows.length * ROW_H;
+      out.tables.push({ x: PAD, y, width, height, head: s.head, rows: s.rows, note: s.note || "" });
+      contentWidth = Math.max(contentWidth, width);
+      y += height + (s.note ? 30 : 0) + SECTION_GAP - 10;
+      continue;
+    }
+    if (!s.cards.length) continue;
     const labelY = y;
     y += COL_LABEL_H;
     const top = y;
@@ -201,22 +339,20 @@ export function bracketImageLayout({ tournament, matches = [], doubleElim = fals
     y = top + bottom + SECTION_GAP;
   }
 
-  const champMatch = championshipMatchOf(matches, doubleElim);
-  const champion = status === "completed" && champMatch?.winner_id ? players.find((p) => p.id === champMatch.winner_id) || { id: champMatch.winner_id } : null;
+  if (view === "elimination") {
+    const champMatch = championshipMatchOf(matches, doubleElim);
+    if (status === "completed" && champMatch?.winner_id) champion = players.find((p) => p.id === champMatch.winner_id) || { id: champMatch.winner_id };
+  }
   const mode = gameModeInfo(t.game_mode);
-  const tags = [
-    mode?.code || "",
-    vehiclePoolLabel(t.vehicle_pool),
-    doubleElim ? "双败淘汰" : "单败淘汰",
-    `${players.length} 名选手`,
-  ].filter(Boolean);
+  const tags = [mode?.code || "", vehiclePoolLabel(t.vehicle_pool), formatTag, `${players.length} 名选手`].filter(Boolean);
   const width = Math.max(760, contentWidth + PAD * 2);
+  const stage = view === "elimination" ? "" : view === "groups" || groups.length > 1 ? "小组赛" : "";
   return {
     width,
     height: y - SECTION_GAP + 28 + FOOTER_H,
     header: {
       name: t.name || "",
-      kind: status === "registration" ? "对阵预览" : status === "completed" ? "最终对阵" : "对阵图",
+      kind: status === "registration" ? "对阵预览" : status === "completed" ? "最终对阵" : stage || "对阵图",
       note: status === "registration" ? "按当前报名和种子生成，开赛时可能变化" : "",
       time: eventTimeText(t.scheduled_time),
       tags,
@@ -224,6 +360,10 @@ export function bracketImageLayout({ tournament, matches = [], doubleElim = fals
     },
     ...out,
     stamp: now,
-    flags: [...new Set([...out.cards.flatMap((c) => c.rows.map((r) => r.flag)), champion?.flag].filter(Boolean))],
+    flags: [...new Set([
+      ...out.cards.flatMap((c) => c.rows.map((r) => r.flag)),
+      ...out.tables.flatMap((tb) => tb.rows.map((r) => r.flag)),
+      champion?.flag,
+    ].filter(Boolean))],
   };
 }

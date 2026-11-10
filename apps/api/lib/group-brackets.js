@@ -316,7 +316,12 @@ export function groupBracketPlacings(format, players, matches, perGroup) {
     }
   }
 
-  const sorted = [...entries.values()].sort((a, b) => a.tier - b.tier || b.diff - a.diff || a.seed - b.seed);
+  // Players still in the bracket (no placing yet) rank ahead of the ones
+  // already out and behind the ones already through: they can still reach
+  // the top places. Double: after tiers 0-1 (出线); single: after 0-3.
+  const ALIVE = format === 'double_elim' ? 1.5 : 3.5;
+  const sortTier = (e) => (e.tier === 99 ? ALIVE : e.tier);
+  const sorted = [...entries.values()].sort((a, b) => sortTier(a) - sortTier(b) || b.diff - a.diff || a.seed - b.seed);
   const k = Number(perGroup) || 0;
   return sorted.map((e, i) => {
     const next = sorted[i + 1];
@@ -324,7 +329,9 @@ export function groupBracketPlacings(format, players, matches, perGroup) {
       player_id: e.player_id,
       seed: e.seed,
       rank: i + 1,
-      qualified: i < k && e.tier < 99,
+      // Through only once the placing is final: decided, and nobody ahead
+      // still playing.
+      qualified: i < k && e.tier < 99 && sorted.slice(0, i).every((x) => x.tier < 99),
       how: e.how,
       // Same stage and game differential as the next player: only the seed separates them.
       tie_with_next: Boolean(next && next.tier === e.tier && next.diff === e.diff && e.tier < 99),

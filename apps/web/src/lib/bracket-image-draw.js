@@ -5,7 +5,7 @@
 // fonts (HarmonyOS Sans SC is split by unicode-range, so the characters of
 // the picture are loaded first) and the site's flag SVGs.
 
-import { CARD_H, CARD_W, STRIP_H } from "./bracket-image.js";
+import { CARD_H, CARD_W, ROW_H, STRIP_H } from "./bracket-image.js";
 import { flagSrc } from "./flags.js";
 
 const C = {
@@ -29,6 +29,8 @@ function textRuns(layout) {
     layout.header.name, layout.header.kind, layout.header.note, layout.header.time, ...layout.header.tags, layout.header.champion?.name,
     ...layout.cards.flatMap((c) => [String(c.number ?? ""), ...c.rows.flatMap((r) => [r.name, r.score])]),
     ...layout.labels.map((l) => l.text), ...layout.titles.flatMap((t) => [t.text, t.sub]), ...layout.notes.map((n) => n.text),
+    ...layout.groups.flatMap((g) => [g.text, g.sub]), ...layout.cards.map((c) => c.byeNote),
+    ...layout.tables.flatMap((tb) => [tb.note, ...tb.head.map(([h]) => h), ...tb.rows.flatMap((r) => [...r.cells, r.mark])]),
     ...FIXED_TEXT,
   ].filter(Boolean).join("");
   return all;
@@ -181,6 +183,113 @@ export async function drawBracketImage(layout, { scale = 2, host = typeof locati
     }
   }
 
+  // Group titles (小组赛: A 组, B 组…)
+  for (const g of layout.groups) {
+    ctx.fillStyle = C.orange;
+    roundRect(ctx, g.x, g.y + 8, 34, 34, 9);
+    ctx.fill();
+    ctx.fillStyle = "#ffffff";
+    ctx.font = font(800, 22, DISPLAY);
+    ctx.textAlign = "center";
+    ctx.fillText(g.text.replace(/\s*组$/, ""), g.x + 17, g.y + 26);
+    ctx.textAlign = "left";
+    ctx.font = font(700, 24);
+    ctx.fillStyle = C.ink;
+    ctx.fillText(g.text, g.x + 46, g.y + 26);
+    if (g.sub) {
+      const w = ctx.measureText(g.text).width;
+      ctx.font = font(400, 14);
+      ctx.fillStyle = C.faint;
+      ctx.fillText(g.sub, g.x + 58 + w, g.y + 27);
+    }
+  }
+
+  // Tables (standings, placings)
+  for (const tb of layout.tables) {
+    ctx.fillStyle = C.card;
+    roundRect(ctx, tb.x, tb.y, tb.width, tb.height, 12);
+    ctx.fill();
+    ctx.save();
+    roundRect(ctx, tb.x, tb.y, tb.width, tb.height, 12);
+    ctx.clip();
+    ctx.fillStyle = C.soft;
+    ctx.fillRect(tb.x, tb.y, tb.width, 32);
+    let cx = tb.x;
+    ctx.font = font(700, 12);
+    ctx.fillStyle = C.muted;
+    for (const [h, w, align] of tb.head) {
+      ctx.textAlign = align === "center" ? "center" : "left";
+      ctx.fillText(h, align === "center" ? cx + w / 2 : cx + 12, tb.y + 17);
+      cx += w;
+    }
+    ctx.textAlign = "left";
+    tb.rows.forEach((r, i) => {
+      const ry = tb.y + 32 + i * ROW_H;
+      const mid = ry + ROW_H / 2 + 1;
+      if (r.good) {
+        ctx.fillStyle = "#f0fdf4";
+        ctx.fillRect(tb.x, ry, tb.width, ROW_H);
+      }
+      ctx.fillStyle = C.border;
+      ctx.fillRect(tb.x, ry, tb.width, 1);
+      let x = tb.x;
+      r.cells.forEach((cell, j) => {
+        const [, w, align] = tb.head[j];
+        if (j === 0) {
+          ctx.font = font(800, 17, DISPLAY);
+          ctx.fillStyle = r.mark === "冠军" ? C.prize : C.orangeInk;
+          ctx.textAlign = "center";
+          ctx.fillText(cell, x + w / 2, mid);
+          ctx.textAlign = "left";
+        } else if (j === 1) {
+          let nx = x + 12;
+          const flag = flagImages.get(r.flag);
+          if (flag) {
+            ctx.drawImage(flag, nx, mid - 7, 19, 14);
+            nx += 26;
+          }
+          ctx.font = font(700, 14);
+          ctx.fillStyle = C.ink;
+          const name = fit(ctx, cell, w - (nx - x) - (r.mark ? 56 : 12));
+          ctx.fillText(name, nx, mid);
+          if (r.mark) {
+            const tone = r.mark === "晋级" ? [C.winSoft, C.win] : r.mark === "冠军" ? [C.prizeSoft, C.prize] : [C.soft, C.muted];
+            pill(ctx, nx + ctx.measureText(name).width + 8, mid - 10, r.mark, tone, { size: 11, padX: 6, h: 20 });
+            ctx.textBaseline = "middle";
+          }
+        } else {
+          const strong = tb.head[j][0] === "积分" || cell === "出线";
+          ctx.font = strong ? font(700, 14) : font(400, 14);
+          ctx.fillStyle = cell === "出线" ? C.win : C.ink;
+          ctx.textAlign = align === "center" ? "center" : "left";
+          ctx.fillText(cell, align === "center" ? x + w / 2 : x + 12, mid);
+          ctx.textAlign = "left";
+        }
+        x += w;
+      });
+      if (r.cut) {
+        ctx.strokeStyle = "#22c55e";
+        ctx.setLineDash([6, 4]);
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(tb.x, ry + ROW_H);
+        ctx.lineTo(tb.x + tb.width, ry + ROW_H);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+    });
+    ctx.restore();
+    ctx.strokeStyle = C.border;
+    ctx.lineWidth = 1;
+    roundRect(ctx, tb.x, tb.y, tb.width, tb.height, 12);
+    ctx.stroke();
+    if (tb.note) {
+      ctx.font = font(400, 13);
+      ctx.fillStyle = C.faint;
+      ctx.fillText(tb.note, tb.x + 2, tb.y + tb.height + 16);
+    }
+  }
+
   // Column labels
   ctx.font = font(700, 13);
   for (const l of layout.labels) {
@@ -206,6 +315,21 @@ export async function drawBracketImage(layout, { scale = 2, host = typeof locati
   // Cards
   const rowH = (CARD_H - STRIP_H) / 2;
   for (const c of layout.cards) {
+    if (c.byeNote) {
+      // Swiss bye: a dashed note card.
+      ctx.strokeStyle = "#cfcfca";
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([5, 4]);
+      roundRect(ctx, c.x, c.y, CARD_W, CARD_H, 10);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.font = font(400, 13);
+      ctx.fillStyle = C.muted;
+      ctx.textAlign = "center";
+      ctx.fillText(fit(ctx, c.byeNote, CARD_W - 20), c.x + CARD_W / 2, c.y + CARD_H / 2);
+      ctx.textAlign = "left";
+      continue;
+    }
     ctx.fillStyle = C.card;
     roundRect(ctx, c.x, c.y, CARD_W, CARD_H, 10);
     ctx.fill();

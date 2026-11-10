@@ -127,3 +127,23 @@ test('start checks for elimination groups', () => {
   assert.match(groupBracketProblem('single_elim', 4, 4), /无需比赛/);
   assert.equal(groupBracketProblem('single_elim', 4, 1), null);
 });
+
+test('a group in progress: players still playing rank ahead of those out, and nobody is through early', () => {
+  const ps = players(4);
+  // p1 lost the winners first round and the losers first round: out. The rest still play.
+  const matches = [
+    { bracket: 'gwb', round: 2, position: 1, player1_id: 'p1', player2_id: 'p4', status: 'completed', winner_id: 'p4', score1: 1, score2: 2 },
+    { bracket: 'gwb', round: 2, position: 2, player1_id: 'p2', player2_id: 'p3', status: 'completed', winner_id: 'p2', score1: 2, score2: 0 },
+    { bracket: 'gwb', round: 1, position: 1, player1_id: 'p4', player2_id: 'p2', status: 'pending' },
+    { bracket: 'glb', round: 2, position: 1, player1_id: 'p1', player2_id: 'p3', status: 'completed', winner_id: 'p3', score1: 1, score2: 2 },
+    { bracket: 'glb', round: 1, position: 1, player1_id: 'p3', player2_id: null, status: 'pending' },
+  ];
+  const placings = groupBracketPlacings('double_elim', ps, matches, 2);
+  assert.equal(placings.at(-1).player_id, 'p1');
+  assert.equal(placings.at(-1).how, '败者组第 1 轮淘汰');
+  assert.deepEqual(placings.map((p) => p.qualified), [false, false, false, false]);
+  // The winners final decided: its winner is through, the rest wait.
+  matches[2] = { ...matches[2], status: 'completed', winner_id: 'p4', score1: 2, score2: 0 };
+  const later = groupBracketPlacings('double_elim', ps, matches, 2);
+  assert.deepEqual(later.map((p) => [p.player_id, p.qualified]), [['p4', true], ['p2', false], ['p3', false], ['p1', false]]);
+});
