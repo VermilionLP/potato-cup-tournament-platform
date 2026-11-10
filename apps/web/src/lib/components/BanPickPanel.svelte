@@ -45,28 +45,36 @@
   const turn = $derived(banTurn(bp));
 
   /** May the viewer do `action` now? */
-  const can = (action) => (remote ? mayAct(remote.record, action, remote.me, remote.myId) : action !== "undo" || history.length > 0);
+  // A match without a Ban / Pick yet is judged on the state shown (`bp`).
+  const can = (action) => (remote ? mayAct(remote.record, action, remote.me, remote.myId, bp) : action !== "undo" || history.length > 0);
 
-  /** Carries out an action; resolves once the new state is in `bp` (server mode: once the page has it). */
+  /**
+   * Carries out an action; resolves once the new state is in `bp` (server
+   * mode: once the page has it) with true, or false when the server said no
+   * (remote.act has shown why and refreshed the page).
+   */
   async function run(action, args = {}) {
     if (remote) {
       busy = true;
       try {
         await remote.act(action, args);
+        return true;
+      } catch {
+        return false;
       } finally {
         busy = false;
       }
-      return;
     }
     if (action === "undo") {
       if (history.length) bp = history.at(-1);
       history = history.slice(0, -1);
-      return;
+      return true;
     }
     const next = localAct(bp, grouped, action, args);
-    if (next === bp) return;
+    if (next === bp) return false;
     history = action === "reset" ? [] : [...history.slice(-50), bp];
     bp = next;
+    return true;
   }
 </script>
 
