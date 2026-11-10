@@ -38,6 +38,8 @@
   import EventTabBar from "#lib/components/tournament/EventTabBar.svelte";
   import EventOverviewTab from "#lib/components/tournament/EventOverviewTab.svelte";
   import EventBracketCard from "#lib/components/tournament/EventBracketCard.svelte";
+  import BracketShareDialog from "#lib/components/tournament/BracketShareDialog.svelte";
+  import { bracketShareInput } from "#lib/bracket-image.js";
   import EventPoolTab from "#lib/components/tournament/EventPoolTab.svelte";
   import EventLiveTab from "#lib/components/tournament/EventLiveTab.svelte";
   import RosterCard from "#lib/components/tournament/RosterCard.svelte";
@@ -229,6 +231,14 @@
     changeStatus(status);
   }
 
+  // 分享 → 对阵分享图: what the bracket tab shows, in full (#lib/bracket-image.js).
+  let bracketShare = $state(null);
+  let shareInput = $derived(
+    tournament && !(tournament.status === "registration" && (tournament.players?.length || 0) < (isDoubleElim ? 4 : 2))
+      ? bracketShareInput(live, { isSwiss, isTwoStage, hasGroupBrackets, shownStage, bracketMatches, isDoubleElim })
+      : null,
+  );
+
   // The share dialog loads on first use.
   let ShareDialog = $state(null);
   async function openShare() {
@@ -338,7 +348,14 @@
       onreload={load}
     />
 
-    <EventTabBar {tabs} active={activeTab} onselect={selectTab} onshare={openShare} />
+    <EventTabBar
+      {tabs}
+      active={activeTab}
+      onselect={selectTab}
+      onshare={openShare}
+      onsharebracket={shareInput ? () => bracketShare?.generate() : null}
+      finished={tournament.status === "completed"}
+    />
 
     {#if activeTab === "overview"}
       <EventOverviewTab
@@ -453,6 +470,9 @@
 {/if}
 
 <!-- Ready-to-paste Discord post (loaded on first use) -->
+{#if tournament && shareInput}
+  <BracketShareDialog bind:this={bracketShare} tournament={live} {...shareInput} {playerName} />
+{/if}
 {#if tournament && ShareDialog}
   <ShareDialog bind:this={shareDialog} {tournament} podium={sharePodium} {standings} />
 {/if}

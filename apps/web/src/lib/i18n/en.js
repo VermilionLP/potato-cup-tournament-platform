@@ -2092,4 +2092,10 @@ export default {
   "小组赛 · 双败": "Groups · double elim",
   "积分榜和每一轮的对阵合并为一张，可以下载或直接复制到 QQ / Discord。": "The standings and every round in one picture, to download or copy into QQ / Discord.",
   "所有小组的名次和对阵合并为一张，可以下载或直接复制到 QQ / Discord。": "Every group's places and bracket in one picture, to download or copy into QQ / Discord.",
+  "对阵分享图": "Bracket picture",
+  "分享对阵图或赛事帖子": "Share the bracket picture or an event post",
+  "完整对阵生成一张图片，可下载或复制": "The whole bracket as one picture, to download or copy",
+  "还没有对阵，报名人数够了之后可以生成": "No bracket yet; available once enough players sign up",
+  "赛事结果帖子和结果图": "Results post and picture",
+  "赛事公告帖子，复制后直接粘贴": "Event announcement, ready to paste",
 };

@@ -18,7 +18,6 @@
   import GroupBracketsView from "#lib/components/GroupBracketsView.svelte";
   import SingleElimBracket from "./SingleElimBracket.svelte";
   import BracketRoundList from "./BracketRoundList.svelte";
-  import BracketShareDialog from "./BracketShareDialog.svelte";
   import ShieldCheckIcon from "@lucide/svelte/icons/shield-check";
 
   let {
@@ -115,31 +114,6 @@
         {/if}
       </Card.Description>
     </div>
-    <!-- What is shown, in full, as one picture: Swiss standings and rounds, every group, or the whole bracket. -->
-    {#if swissShown}
-      <BracketShareDialog
-        {tournament}
-        view="swiss"
-        matches={(tournament.matches || []).filter((m) => m.bracket === "sw")}
-        standings={tournament.standings || []}
-        totalRounds={tournament.swiss_rounds_effective ?? tournament.swiss_rounds}
-        groups={isTwoStage ? tournament.group_stage?.groups || [] : []}
-        perGroup={isTwoStage ? tournament.advance_per_group || 0 : 0}
-        {playerName}
-      />
-    {:else if groupBracketsShown}
-      <BracketShareDialog
-        {tournament}
-        view="groups"
-        matches={groupStageMatches}
-        groups={tournament.group_stage?.groups || []}
-        groupFormat={tournament.format}
-        perGroup={tournament.advance_per_group || 0}
-        {playerName}
-      />
-    {:else if eliminationShown}
-      <BracketShareDialog {tournament} matches={bracketMatches} doubleElim={isDoubleElim} {playerName} />
-    {/if}
   </Card.Header>
 
   {#if isMobileViewport && eliminationShown}

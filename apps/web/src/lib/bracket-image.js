@@ -12,7 +12,7 @@
 // absolute coordinates. #lib/bracket-image-draw.js paints them on a canvas.
 
 import { bracketRoundLabel, bracketRoundTotal, buildMatchOrder, groupSwissRounds, layoutBracketBand, maxRound, roundLabel, treePositions, withGrandFinalColumn } from "./bracket.js";
-import { championshipMatchOf, eliminationRounds } from "./event-view.js";
+import { championshipMatchOf, eliminationRounds, groupStageMatchesOf } from "./event-view.js";
 import { gameModeInfo, vehiclePoolLabel } from "./tournament.js";
 
 export const CARD_W = 232;
@@ -62,6 +62,9 @@ function cardOf(match, { x, top, number, players, playerName, status }) {
     x,
     y: top,
     number,
+    matchId: match.id,
+    // A match nobody reached (both slots empty): the page hides it.
+    voided: match.status === "completed" && !match.winner_id && !match.player1_id && !match.player2_id,
     rows: [row(1), row(2)],
     live: status === "in_progress" && match.status === "pending" && Boolean(match.player1_id && match.player2_id),
     bye,
@@ -133,6 +136,14 @@ function doubleSections(matches, ctx, { wbCode = "wb", lbCode = "lb", group = fa
       next: (m) => m.next_match_id,
     });
   }
+  // As on the page: a bye is a dashed note "轮空 · X 晋级".
+  for (const sec of out) {
+    for (const c of sec.cards) {
+      if (!c.bye) continue;
+      const through = c.rows.find((r) => !r.empty);
+      c.byeNote = `轮空 · ${through?.name || ""} 晋级`;
+    }
+  }
   void perGroup;
   return out;
 }
@@ -151,13 +162,17 @@ function singleSection(matches, ctx) {
   const numbers = new Map(matches.map((m) => [m.id, order.get(m.id)]));
   const placed = placeColumns(columns, { labelOf: (c) => roundLabel(c.round, total), numbers, ...ctx });
   // Single elimination feeds by position: matches 2i and 2i+1 into i.
+  // Byes are left out, cards and lines, as on the page (the bracket keeps
+  // its shape: the next match stays where it is).
+  const isBye = (m) => m.status === "completed" && Boolean(m.winner_id) && (!m.player1_id || !m.player2_id);
   for (let i = 1; i < rounds.length; i += 1) {
     rounds[i].matches.forEach((m, idx) => {
       for (const feeder of [rounds[i - 1].matches[idx * 2], rounds[i - 1].matches[idx * 2 + 1]]) {
-        if (feeder && placed.at.get(feeder.id)) placed.links.push({ points: link(placed.at.get(feeder.id), placed.at.get(m.id)), done: Boolean(feeder.winner_id) });
+        if (feeder && !isBye(feeder) && placed.at.get(feeder.id)) placed.links.push({ points: link(placed.at.get(feeder.id), placed.at.get(m.id)), done: Boolean(feeder.winner_id) });
       }
     });
   }
+  placed.cards = placed.cards.filter((c) => !c.bye);
   const third = matches.find((m) => m.round === 0);
   if (third && columns.length) {
     const finalCard = placed.at.get(rounds.at(-1).matches[0]?.id);
@@ -294,9 +309,10 @@ export function bracketImageLayout({
       for (const item of col.matches) {
         const from = s.at.get(item.match.id);
         const to = s.at.get(s.next(item.match));
-        if (from && to) s.links.push({ points: link(from, to), done: Boolean(item.match.winner_id) });
+        if (from && to && !from.voided && !to.voided) s.links.push({ points: link(from, to), done: Boolean(item.match.winner_id) });
       }
     }
+    s.cards = s.cards.filter((c) => !c.voided);
   }
 
   // Stack the sections; offset everything to absolute coordinates.
@@ -366,4 +382,40 @@ export function bracketImageLayout({
       champion?.flag,
     ].filter(Boolean))],
   };
+}
+
+/**
+ * What the share picture shows for the event page's state: the same choice
+ * as the bracket card (Swiss standings and rounds, the group stage, or the
+ * elimination bracket). Props for BracketShareDialog, or null when there is
+ * nothing to draw yet.
+ */
+export function bracketShareInput(t, { isSwiss = false, isTwoStage = false, hasGroupBrackets = false, shownStage = "group", bracketMatches = [], isDoubleElim = false } = {}) {
+  if (!t) return null;
+  if (isSwiss && (!isTwoStage || shownStage === "group")) {
+    const matches = (t.matches || []).filter((m) => m.bracket === "sw");
+    const groups = isTwoStage ? t.group_stage?.groups || [] : [];
+    if (!matches.length && !(t.standings || []).length && !groups.length) return null;
+    return {
+      view: "swiss",
+      matches,
+      standings: t.standings || [],
+      totalRounds: t.swiss_rounds_effective ?? t.swiss_rounds,
+      groups,
+      perGroup: isTwoStage ? t.advance_per_group || 0 : 0,
+    };
+  }
+  if (hasGroupBrackets && shownStage === "group") {
+    const groups = t.group_stage?.groups || [];
+    if (!groups.length) return null;
+    return {
+      view: "groups",
+      matches: groupStageMatchesOf(t),
+      groups,
+      groupFormat: t.format,
+      perGroup: t.advance_per_group || 0,
+    };
+  }
+  if (!bracketMatches.length) return null;
+  return { view: "elimination", matches: bracketMatches, doubleElim: isDoubleElim };
 }
