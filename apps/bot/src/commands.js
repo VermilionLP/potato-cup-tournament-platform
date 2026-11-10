@@ -22,11 +22,26 @@ export function attemptLimiter(limit = 5, windowMs = 10 * 60_000, now = () => Da
   };
 }
 
+// "绑定123456", "报名1": a number typed straight after the command (no
+// space) is common on phones; Koishi only matches "绑定 123456".
+const GLUED = /^\/?(绑定|bind|报名|取消报名|签到)(\d{1,6})$/i;
+
+/** The command with the space put back (and no "/"), or null when the text is not a glued command. */
+export function unglue(text) {
+  const m = String(text || '').trim().match(GLUED);
+  return m ? `${m[1]} ${m[2]}` : null;
+}
+
 const failed = (err) => (err?.status && err.status < 500 ? err.message : '网站暂时连不上，请稍后再试。');
 
 export function registerCommands(ctx, site, logger = console) {
   const qq = ctx.platform('qq');
   const mayBind = attemptLimiter();
+
+  qq.middleware((session, next) => {
+    const fixed = unglue(session.stripped?.content ?? session.content);
+    return fixed ? session.execute(fixed) : next();
+  }, true);
 
   qq.command('帮助', '查看指令').alias('help').action(() => HELP);
 

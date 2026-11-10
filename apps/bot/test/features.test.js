@@ -137,3 +137,17 @@ test('registration and check-in replies', () => {
   assert.equal(formatCheckedIn(['Weekly #40', 'Monthly']), '签到成功：Weekly #40、Monthly。');
   assert.match(formatCheckedIn([]), /现在没有可以签到的比赛/);
 });
+
+import { unglue } from '../src/commands.js';
+
+test('a number typed straight after the command still counts', () => {
+  assert.equal(unglue('绑定123456'), '绑定 123456');
+  assert.equal(unglue('/绑定123456'), '绑定 123456');
+  assert.equal(unglue(' BIND123456 '), 'BIND 123456');
+  assert.equal(unglue('报名1'), '报名 1');
+  assert.equal(unglue('取消报名12'), '取消报名 12');
+  assert.equal(unglue('签到2'), '签到 2');
+  assert.equal(unglue('绑定 123456'), null, 'spaced commands go through the normal parser');
+  assert.equal(unglue('绑定abc'), null);
+  assert.equal(unglue('战绩Alpha'), null, 'names are not split');
+});
