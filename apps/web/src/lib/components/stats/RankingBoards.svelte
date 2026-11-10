@@ -1,148 +1,68 @@
 <script>
-  // Top-five boards: titles and runner-ups (each with counts per tier), win
-  // rate (5+ matches), matches played and walkovers.
-  import { EmptyState } from "#lib/components/ui/empty-state/index.js";
+  // Career boards (名人堂): titles and runner-ups (with counts per tier),
+  // win rate (5+ matches), matches played and walkovers, each a LeaderBoard.
   import { TAG_BASE, TAG_TONE } from "#lib/tags.js";
-  import Flag from "#lib/components/Flag.svelte";
   import { TIER_TAG, tierBreakdown } from "#lib/tournament.js";
+  import LeaderBoard from "./LeaderBoard.svelte";
   import TrendingUpIcon from "@lucide/svelte/icons/trending-up";
   import TrophyIcon from "@lucide/svelte/icons/trophy";
   import MedalIcon from "@lucide/svelte/icons/medal";
   import ActivityIcon from "@lucide/svelte/icons/activity";
   import ShieldAlertIcon from "@lucide/svelte/icons/shield-alert";
 
-  // `class`: the boards' layout (a column by default, a grid in 名人堂).
-  let { rankings, class: layout = "space-y-6" } = $props();
+  // `class`: the boards' layout (a grid in 名人堂).
+  let { rankings, class: layout = "grid grid-cols-1 items-start gap-4 md:grid-cols-2 xl:grid-cols-3" } = $props();
+
+  const tierTags = (byTier) =>
+    tierBreakdown(byTier).map((t) => ({ text: `${t.id === "none" ? "未分级" : t.id} ×${t.count}`, class: `${TAG_BASE} ${TIER_TAG[t.id] || TAG_TONE.neutral}` }));
+  const base = (p) => ({ id: p.id, name: p.display_name, flag: p.flag });
+
+  let boards = $derived([
+    {
+      key: "titles",
+      title: "最强战力榜（冠军次数）",
+      icon: TrophyIcon,
+      tone: "text-amber-500",
+      empty: "暂无冠军记录",
+      rows: (rankings.by_championships || []).map((p) => ({ ...base(p), value: p.championships, unit: "次", tags: tierTags(p.championships_by_tier) })),
+    },
+    {
+      key: "runner-ups",
+      title: "苦涩的他~（亚军次数）",
+      icon: MedalIcon,
+      tone: "text-slate-500 dark:text-slate-300",
+      empty: "暂无亚军记录",
+      rows: (rankings.by_runner_ups || []).map((p) => ({ ...base(p), value: p.runner_ups, unit: "次", tags: tierTags(p.runner_ups_by_tier) })),
+    },
+    {
+      key: "win-rate",
+      title: "胜率榜（至少 5 场）",
+      icon: TrendingUpIcon,
+      tone: "text-emerald-600 dark:text-emerald-400",
+      empty: "暂无胜率排行（至少 5 场）",
+      rows: (rankings.by_win_rate || []).map((p) => ({ ...base(p), value: `${Math.round(p.match_win_rate * 100)}%`, note: `${p.matches_won} / ${p.matches_played}` })),
+    },
+    {
+      key: "played",
+      title: "劳模战士榜（场数）",
+      icon: ActivityIcon,
+      tone: "text-blue-600 dark:text-blue-400",
+      empty: "暂无场数排行",
+      rows: (rankings.by_played || []).map((p) => ({ ...base(p), value: p.matches_played, unit: "场" })),
+    },
+    {
+      key: "walkovers",
+      title: "和平鸽子王（弃权）",
+      icon: ShieldAlertIcon,
+      tone: "text-sky-600 dark:text-sky-400",
+      empty: "暂无弃权排行",
+      rows: (rankings.by_walkover || []).map((p) => ({ ...base(p), value: p.walkover_losses, unit: "次" })),
+    },
+  ]);
 </script>
 
 <div class={layout}>
-  <!-- Board 1: Championships -->
-  <div class="bg-card border border-border rounded-xl p-4.5 shadow-sm space-y-4">
-    <h3 class="text-xs font-black text-foreground uppercase tracking-wider flex items-center gap-1.5">
-      <TrophyIcon class="w-4 h-4 text-amber-500" />
-      最强战力榜 (冠军次数)
-    </h3>
-    <div class="space-y-3">
-      {#each rankings.by_championships || [] as p, idx (p.id)}
-        <div class="flex items-center justify-between p-2 rounded-lg bg-muted/10 border border-border/40 text-xs">
-          <div class="flex items-center gap-2">
-            <span class="w-5 h-5 rounded-full bg-amber-500/10 text-amber-500 flex items-center justify-center num font-bold text-small">{idx + 1}</span>
-            <Flag code={p.flag} size={18} />
-            <span class="font-bold truncate max-w-28">{p.display_name}</span>
-          </div>
-          <div class="flex flex-col items-end gap-0.5">
-            <span class="num font-black text-amber-500">{p.championships} <span class="text-small font-normal text-muted-foreground">次冠军</span></span>
-            <span class="flex flex-wrap justify-end gap-0.5">
-              {#each tierBreakdown(p.championships_by_tier) as t (t.id)}
-                <span class="{TAG_BASE} {TIER_TAG[t.id] || TAG_TONE.neutral}">{t.id === "none" ? "未分级" : t.id} ×{t.count}</span>
-              {/each}
-            </span>
-          </div>
-        </div>
-      {/each}
-      {#if !rankings.by_championships?.length}
-        <EmptyState compact title="暂无冠军记录" />
-      {/if}
-    </div>
-  </div>
-
-  <!-- Board 1b: Runner-ups -->
-  <div class="bg-card border border-border rounded-xl p-4.5 shadow-sm space-y-4">
-    <h3 class="text-xs font-black text-foreground uppercase tracking-wider flex items-center gap-1.5">
-      <MedalIcon class="w-4 h-4 text-slate-400" />
-      苦涩的他~（亚军次数）
-    </h3>
-    <div class="space-y-3">
-      {#each rankings.by_runner_ups || [] as p, idx (p.id)}
-        <div class="flex items-center justify-between p-2 rounded-lg bg-muted/10 border border-border/40 text-xs">
-          <div class="flex items-center gap-2">
-            <span class="w-5 h-5 rounded-full bg-slate-400/10 text-slate-400 flex items-center justify-center num font-bold text-small">{idx + 1}</span>
-            <Flag code={p.flag} size={18} />
-            <span class="font-bold truncate max-w-28">{p.display_name}</span>
-          </div>
-          <div class="flex flex-col items-end gap-0.5">
-            <span class="num font-black text-slate-400">{p.runner_ups} <span class="text-small font-normal text-muted-foreground">次亚军</span></span>
-            <span class="flex flex-wrap justify-end gap-0.5">
-              {#each tierBreakdown(p.runner_ups_by_tier) as t (t.id)}
-                <span class="{TAG_BASE} {TIER_TAG[t.id] || TAG_TONE.neutral}">{t.id === "none" ? "未分级" : t.id} ×{t.count}</span>
-              {/each}
-            </span>
-          </div>
-        </div>
-      {/each}
-      {#if !rankings.by_runner_ups?.length}
-        <EmptyState compact title="暂无亚军记录" />
-      {/if}
-    </div>
-  </div>
-
-  <!-- Board 2: Win Rate Ranking -->
-  <div class="bg-card border border-border rounded-xl p-4.5 shadow-sm space-y-4">
-    <h3 class="text-xs font-black text-foreground uppercase tracking-wider flex items-center gap-1.5">
-      <TrendingUpIcon class="w-4 h-4 text-emerald-500" />
-      胜率榜 (胜率)
-    </h3>
-    <div class="space-y-3">
-      {#each rankings.by_win_rate as p, idx (p.id)}
-        <div class="flex items-center justify-between p-2 rounded-lg bg-muted/10 border border-border/40 text-xs">
-          <div class="flex items-center gap-2">
-            <span class="w-5 h-5 rounded-full bg-emerald-500/10 text-emerald-500 flex items-center justify-center num font-bold text-small">{idx + 1}</span>
-            <Flag code={p.flag} size={18} />
-            <span class="font-bold truncate max-w-28">{p.display_name}</span>
-          </div>
-          <span class="num font-black text-emerald-500">{Math.round(p.match_win_rate * 100)}% <span class="text-small font-normal text-muted-foreground">({p.matches_won}/{p.matches_played})</span></span>
-        </div>
-      {/each}
-      {#if rankings.by_win_rate.length === 0}
-        <EmptyState compact title="暂无胜率排行（至少 5 场）" />
-      {/if}
-    </div>
-  </div>
-
-  <!-- Board 3: Matches Played Ranking -->
-  <div class="bg-card border border-border rounded-xl p-4.5 shadow-sm space-y-4">
-    <h3 class="text-xs font-black text-foreground uppercase tracking-wider flex items-center gap-1.5">
-      <ActivityIcon class="w-4 h-4 text-blue-500" />
-      劳模战士榜 (局数)
-    </h3>
-    <div class="space-y-3">
-      {#each rankings.by_played as p, idx}
-        <div class="flex items-center justify-between p-2 rounded-lg bg-muted/10 border border-border/40 text-xs">
-          <div class="flex items-center gap-2">
-            <span class="w-5 h-5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center num font-bold text-small">{idx + 1}</span>
-            <Flag code={p.flag} size={18} />
-            <span class="font-bold truncate max-w-28">{p.display_name}</span>
-          </div>
-          <span class="num font-black text-blue-600 dark:text-blue-400">{p.matches_played} <span class="text-small font-normal text-muted-foreground">场</span></span>
-        </div>
-      {/each}
-      {#if rankings.by_played.length === 0}
-        <EmptyState compact title="暂无场数排行" />
-      {/if}
-    </div>
-  </div>
-
-  <!-- Board 4: Walkovers Ranking -->
-  <div class="bg-card border border-border rounded-xl p-4.5 shadow-sm space-y-4">
-    <h3 class="text-xs font-black text-foreground uppercase tracking-wider flex items-center gap-1.5">
-      <ShieldAlertIcon class="w-4 h-4 text-sky-500" />
-      和平鸽子王 (弃权)
-    </h3>
-    <div class="space-y-3">
-      {#each rankings.by_walkover as p, idx}
-        <div class="flex items-center justify-between p-2 rounded-lg bg-muted/10 border border-border/40 text-xs">
-          <div class="flex items-center gap-2">
-            <span class="w-5 h-5 rounded-full bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center num font-bold text-small">{idx + 1}</span>
-            <Flag code={p.flag} size={18} />
-            <span class="font-bold truncate max-w-28">{p.display_name}</span>
-          </div>
-          <span class="num font-black text-sky-600 dark:text-sky-400">{p.walkover_losses} <span class="text-small font-normal text-muted-foreground">次</span></span>
-        </div>
-      {/each}
-      {#if rankings.by_walkover.length === 0}
-        <EmptyState compact title="暂无弃权排行" />
-      {/if}
-    </div>
-  </div>
-
+  {#each boards as b (b.key)}
+    <LeaderBoard title={b.title} icon={b.icon} tone={b.tone} rows={b.rows} empty={b.empty} />
+  {/each}
 </div>
