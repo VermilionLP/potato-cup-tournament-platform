@@ -81,7 +81,7 @@
 
 <div class="space-y-6">
   <!-- Page header -->
-  <PageHeader title="数据统计" icon={ChartIcon} description="选手生涯战绩、趣味榜单、载具统计和名人堂" />
+  <PageHeader title="数据" icon={ChartIcon} description="选手生涯战绩、趣味榜单、载具统计和名人堂" />
 
   <div class="flex gap-1 border-b border-border" role="tablist">
     {#each TABS as [id, label, Icon] (id)}

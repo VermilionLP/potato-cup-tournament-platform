@@ -1,18 +1,16 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import {
-  availableGroups,
-  availableVehicles,
-  backToGroups,
-  ban,
-  confirmGroup,
-  drawGroup,
-  drawVehicle,
-  groupVehicles,
-  initialBanPick,
-  removeGroup,
-  removeVehicle,
-} from "../src/lib/banpick.js";
+import { availableGroups, availableVehicles, groupVehicles, initialBanPick, localAct } from "../src/lib/banpick.js";
+
+// Each step as an action (the transitions are the server's, @potato-cup/shared).
+const ban = (s, group, vehicle = null) => localAct(s, [], group ? "ban" : "pass", { group, vehicle });
+const drawGroup = (s, grouped, rand) => localAct(s, grouped, "drawGroup", {}, rand);
+const drawVehicle = (s, grouped, rand) => localAct(s, grouped, "drawVehicle", {}, rand);
+const removeGroup = (s) => localAct(s, [], "removeGroup");
+const removeVehicle = (s) => localAct(s, [], "removeVehicle");
+const confirmGroup = (s) => localAct(s, [], "confirmGroup");
+const backToGroups = (s) => localAct(s, [], "backToGroups");
+const confirmResult = (s) => localAct(s, [], "confirm");
 
 const vehicles = [
   { name: "A1", group: "A" },
@@ -98,7 +96,7 @@ test("every bundled pool groups without duplicate names", async () => {
 });
 
 test("a drawn vehicle can be confirmed, which locks the result", async () => {
-  const { canConfirm, confirmResult } = await import("../src/lib/banpick.js");
+  const { canConfirm } = await import("../src/lib/banpick.js");
   let s = ban(ban(initialBanPick(), null), null);
   s = confirmGroup(drawGroup(s, grouped, first));
   assert.equal(canConfirm(s), false, "nothing drawn yet");
@@ -146,7 +144,7 @@ test("removal limits stop removing and free redraws", async () => {
 });
 
 test("a template can end the draw at the group", async () => {
-  const { canConfirm, confirmResult, resultLabel } = await import("../src/lib/banpick.js");
+  const { canConfirm, resultLabel } = await import("../src/lib/banpick.js");
   let s = initialBanPick({ bansPerPlayer: 0, drawVehicle: false });
   s = drawGroup(s, grouped, first);
   assert.equal(confirmGroup(s), s, "no vehicle step");

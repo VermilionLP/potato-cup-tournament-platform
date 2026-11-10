@@ -6,7 +6,7 @@ import { TournamentRepo } from '../repositories/tournament-repo.js';
 import { requireAdmin } from '../lib/admin.js';
 import { groupStageOf } from '../lib/group-stage-view.js';
 import { eventPlacements } from '../lib/placements.js';
-import { resolveTemplate } from '../lib/vehicle-pools.js';
+import { resolveTemplate } from '@potato-cup/shared/vehicle-pools.js';
 import { buildWikiPage } from '../lib/liquipedia/export.js';
 import { defaultWikiMeta, normalizeWikiMeta } from '../lib/liquipedia/export-meta.js';
 

@@ -1,6 +1,7 @@
 <script>
-  // Player list: search, recently active players first (your own entry on
-  // top), inactive ones folded away. Table, cards and the edit dialog live
+  // Player list, for finding people: search, nationality and team filters,
+  // recently active players first (your own entry on top), inactive ones
+  // folded away; a row opens the player's page. Rankings are in 排行. Table, cards and the edit dialog live
   // in #lib/components/players.
   import PageHeader from "#lib/components/PageHeader.svelte";
   import UsersIcon from "@lucide/svelte/icons/users";
@@ -30,23 +31,37 @@
   let isAdmin = $derived(!!userState.adminToken);
   let dialog = $state(null);
 
-  let filteredPlayers = $derived(filterPlayers(players, searchQuery));
+  // Nationality and team ("" = all), from the players present.
+  let nation = $state("");
+  let team = $state("");
+  const countBy = (list, key) => {
+    const m = new Map();
+    for (const p of list) if (p[key]) m.set(p[key], (m.get(p[key]) || 0) + 1);
+    return [...m.entries()].sort((a, b) => b[1] - a[1] || String(a[0]).localeCompare(String(b[0])));
+  };
+  let nations = $derived(countBy(players, "flag"));
+  let teams = $derived(countBy(players, "team"));
+  let filteredPlayers = $derived(
+    filterPlayers(players, searchQuery).filter((p) => (!nation || p.flag === nation) && (!team || p.team === team)),
+  );
   // Players not seen for over a year (no event, vote or visit) are folded
   // away so active players find themselves quickly. A search always looks
   // through everyone.
   let showInactive = $state(false);
   let activePlayers = $derived(mineFirst(filteredPlayers.filter((p) => isRecentlySeen(p)), userState.id));
   let inactivePlayers = $derived(filteredPlayers.filter((p) => !isRecentlySeen(p)));
-  let searching = $derived(searchQuery.trim() !== "");
+  let searching = $derived(searchQuery.trim() !== "" || Boolean(nation || team));
   let shownPlayers = $derived(searching || showInactive ? [...activePlayers, ...inactivePlayers] : activePlayers);
   // 30 at a time (#lib/expand-row.js PAGE_SIZE); a new search starts over.
   let limit = $state(PAGE_SIZE);
   $effect(() => {
     searchQuery;
+    nation;
+    team;
     limit = PAGE_SIZE;
   });
   let pagedPlayers = $derived(shownPlayers.slice(0, limit));
-  let emptyText = $derived(searchQuery ? "没有找到符合条件的选手" : inactivePlayers.length ? "最近一年没有活跃选手" : "暂无选手数据");
+  let emptyText = $derived(searchQuery || nation || team ? "没有找到符合条件的选手" : inactivePlayers.length ? "最近一年没有活跃选手" : "暂无选手数据");
 
   onMount(load);
 
@@ -68,7 +83,7 @@
   const openEdit = (p) => dialog?.openEdit(p);
 </script>
 
-<svelte:head><title>选手列表 · Potato Cup</title></svelte:head>
+<svelte:head><title>选手 · Potato Cup</title></svelte:head>
 
 {#snippet listFooter()}
   <span class="inline-flex flex-wrap items-center gap-3">
@@ -98,7 +113,7 @@
 {/snippet}
 
 <div class="space-y-6">
-  <PageHeader title="选手列表" icon={UsersIcon}>
+  <PageHeader title="选手" icon={UsersIcon}>
     {#snippet description()}
       共 {players.length} 名选手（近一年活跃 {players.filter((p) => isRecentlySeen(p)).length} 名）
     {/snippet}
@@ -118,14 +133,34 @@
     {/await}
   {/if}
 
-  <div class="relative max-w-sm">
-    <SearchIcon class="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/60 pointer-events-none" />
-    <input
-      type="text"
-      bind:value={searchQuery}
-      placeholder="搜索 ID、显示名、战队..."
-      class="w-full pl-9 pr-4 h-8 text-sm rounded-md bg-muted/40 border border-border focus:border-primary/50 focus:ring-1 focus:ring-primary/30 outline-none transition-all text-foreground placeholder:text-muted-foreground/60"
-    />
+  <!-- Find a player: search, nationality, team -->
+  <div class="flex flex-wrap items-center gap-2">
+    <div class="relative w-full sm:w-72">
+      <SearchIcon class="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/60 pointer-events-none" />
+      <input
+        type="text"
+        bind:value={searchQuery}
+        placeholder="搜索 ID、显示名、战队..."
+        class="w-full pl-9 pr-4 h-8 text-sm rounded-md bg-muted/40 border border-border focus:border-primary/50 focus:ring-1 focus:ring-primary/30 outline-none transition-all text-foreground placeholder:text-muted-foreground/60"
+      />
+    </div>
+    <select bind:value={nation} aria-label="国籍" class="h-8 rounded-md border border-border bg-muted/40 px-2 text-xs cursor-pointer {nation ? 'font-bold text-brand-ink' : 'text-muted-foreground'}">
+      <option value="">全部国籍</option>
+      {#each nations as [code, n] (code)}
+        <option value={code}>{String(code).toUpperCase()} · {n}</option>
+      {/each}
+    </select>
+    {#if teams.length}
+      <select bind:value={team} aria-label="战队" class="h-8 max-w-48 rounded-md border border-border bg-muted/40 px-2 text-xs cursor-pointer {team ? 'font-bold text-brand-ink' : 'text-muted-foreground'}">
+        <option value="">全部战队</option>
+        {#each teams as [name, n] (name)}
+          <option value={name}>{name} · {n}</option>
+        {/each}
+      </select>
+    {/if}
+    {#if nation || team}
+      <button type="button" class="text-xs font-semibold text-muted-foreground hover:text-foreground hover:underline cursor-pointer" onclick={() => ((nation = ""), (team = ""))}>清除筛选</button>
+    {/if}
   </div>
 
   {#if loading}

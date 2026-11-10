@@ -1,6 +1,12 @@
-// Vehicle pool contents: [{ name, nation, br, type, group, wiki? }] (wiki:
-// War Thunder unit id for the picture, optional). Pure: shared
-// by the API routes and their tests.
+// Vehicle pool templates, shared by the API (which stores them) and the
+// website (which picks an event's template the same way).
+//
+// Contents: [{ name, nation, br, type, group, wiki? }] (wiki: War Thunder
+// unit id for the picture, optional).
+
+import { DEFAULT_RULES, normalizeRules } from './banpick.js';
+
+export { DEFAULT_RULES, normalizeRules };
 
 export const MAX_POOL_VEHICLES = 500;
 
@@ -48,30 +54,12 @@ export function normalizeVehicles(input) {
 // every mode. Events use the most specific template for their type and mode
 // (see resolveTemplate) unless an admin picked one.
 
-// Ban / Pick rules (mirrors apps/web/src/lib/banpick.js):
-//   bansPerPlayer   groups each player bans, taking turns A, B, A, B...
-//   groupRerolls    drawn groups that may be removed (null = no limit)
-//   vehicleRerolls  drawn vehicles that may be removed (null = no limit)
-//   drawVehicle     false: the drawn group is the result
-export const DEFAULT_RULES = { bansPerPlayer: 1, groupRerolls: null, vehicleRerolls: null, drawVehicle: true };
+// Ban / Pick rules: normalizeRules in ./banpick.js.
 
 const clampInt = (value, min, max) => {
   const n = Number(value);
   return Number.isInteger(n) && n >= min && n <= max ? n : null;
 };
-
-/** Rules with defaults filled in and values kept in range. */
-export function normalizeRules(raw = {}) {
-  const r = raw && typeof raw === 'object' ? raw : {};
-  const limit = (v) => (v === null || v === undefined || v === '' ? null : clampInt(v, 0, 20));
-  const bans = clampInt(r.bansPerPlayer, 0, 3);
-  return {
-    bansPerPlayer: bans ?? DEFAULT_RULES.bansPerPlayer,
-    groupRerolls: limit(r.groupRerolls),
-    vehicleRerolls: limit(r.vehicleRerolls),
-    drawVehicle: r.drawVehicle === undefined ? DEFAULT_RULES.drawVehicle : Boolean(r.drawVehicle),
-  };
-}
 
 /**
  * Cleans a template for storage. With `partial`, only the fields present

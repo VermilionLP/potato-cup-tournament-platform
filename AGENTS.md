@@ -12,7 +12,13 @@ WarThunder Potato Cup 水友赛平台：报名、时间投票、种子、对阵�
 apps/
 ├── api/              # Fastify 5 (ESM), port 3100, PostgreSQL schema axsuck
 └── web/              # SvelteKit 3 SPA (ssr=false), port 5175
+packages/
+└── shared/           # @potato-cup/shared: rules both apps apply (Ban / Pick, vehicle pool templates)
 ```
+
+Code that the server and the website must agree on goes in `packages/shared` (plain ES modules, no dependencies; both apps depend on `"@potato-cup/shared": "workspace:*"` and import `@potato-cup/shared/<file>.js`), not into two copies.
+
+Site sections (main navigation, `SiteNav.svelte`): 赛事大厅 `/` (events, `/tournament/<id>`), 选手 `/players` (finding people; `/player/<id>`), 排行 `/ladder` and `/points` (two tabs, `RankingTabs.svelte`), 数据 `/stats` (players, vehicles, hall of fame). Admin tools are in the header's shield menu (`AdminMenu.svelte`): each running / upcoming event's console `/tournament/<id>/console`, vehicle pool templates `/pools`, error reports `/errors`.
 
 ## Stack
 
@@ -63,7 +69,7 @@ pnpm test         # web + api 单元测试（不需要数据库）
 
 ## Vehicle pool templates
 
-Ban / Pick 的载具池是 `axsuck.vehicle_pools` 里的模板（迁移 027）：每个模板属于一种比赛类型（`event_type`，仍是固定的 `prop` / `top-jet` / `legacy-jet` / `proleague`；`top-jet` 顶级喷气是 Weekly #23（2026-05-30）之前的喷气赛事，迁移 030 按日期划分，积分榜计入早期喷气的榜单），可限定游戏模式（`game_modes`，空 = 全部），并带自己的 BP 规则（`rules`：`bansPerPlayer`、`groupRerolls`、`vehicleRerolls`、`drawVehicle`）。比赛的 `tournaments.vehicle_template` 为空时自动匹配：同类型按 `sort_order`，先找包含该模式的，再找全部模式的。匹配逻辑在 `apps/api/lib/vehicle-pools.js` 和 `apps/web/src/lib/vehicle-pools.js` 各有一份，改动要同步。比赛的 BP 存在服务器（迁移 044 `matches.banpick`：`{ rev, state, log }`，`POST /tournaments/:id/matches/:matchId/banpick {action, group, vehicle, rev}`，规则在 `apps/api/lib/banpick.js`）：随机抽取由服务器完成；本场两位选手和管理员可以操作，禁用必须轮到自己（管理员可代禁），选手只能撤销自己刚才的禁用，其他撤销和重置只有管理员能做；撤销会标记被撤销的记录并重放，撤销本身也记入操作记录；`rev` 不一致返回 409；对局双方变化时由触发器清空，出结果后保留。状态转换和 `apps/web/src/lib/banpick.js` 一致（`apps/web/test/banpick-server.test.js` 对照），模板预览页仍只在本地试抽。 BP 对话框顶部是引导栏（`banpick/BanPickGuide.svelte`）：步骤、当前要做的事和下一步主按钮（抽大组 → 使用该组 → 抽载具 → 确认抽取结果 → 填报比分），次要操作在旁边；抽取动画在 `BanPickDrawStrip`，引导栏通过它的 `draw(kind)` 抽取。`GET /banpick/stats?tier=&kind=&type=&player=&vehicle=`（`lib/banpick-stats.js`，按比赛类型统计最常被禁的大组、出场最多 / 最常被移出的载具，撤销的步骤不计；带 `player` 时另给该选手的禁用和常用载具，再带 `vehicle` 时给他开这辆载具的战绩 `player.vehicle`）用于统计页、选手页和 BP 遮罩。赛事结束后结算页显示「载具出场与 Ban / Pick 记录」（`#lib/event-banpick.js`、`BanPickRecap.svelte`）。BP 轮到某位选手禁用时推送「轮到你禁用了」（`notifyBanTurn`，每轮每人一次）。
+Ban / Pick 的载具池是 `axsuck.vehicle_pools` 里的模板（迁移 027）：每个模板属于一种比赛类型（`event_type`，仍是固定的 `prop` / `top-jet` / `legacy-jet` / `proleague`；`top-jet` 顶级喷气是 Weekly #23（2026-05-30）之前的喷气赛事，迁移 030 按日期划分，积分榜计入早期喷气的榜单），可限定游戏模式（`game_modes`，空 = 全部），并带自己的 BP 规则（`rules`：`bansPerPlayer`、`groupRerolls`、`vehicleRerolls`、`drawVehicle`）。比赛的 `tournaments.vehicle_template` 为空时自动匹配：同类型按 `sort_order`，先找包含该模式的，再找全部模式的。模板的清理和匹配（`normalizeTemplate`、`resolveTemplate`）在共享包 `packages/shared/vehicle-pools.js`，前后端共用。比赛的 BP 存在服务器（迁移 044 `matches.banpick`：`{ rev, state, log }`，`POST /tournaments/:id/matches/:matchId/banpick {action, group, vehicle, rev}`，规则在共享包 `packages/shared/banpick.js`）：随机抽取由服务器完成；本场两位选手和管理员可以操作，禁用必须轮到自己（管理员可代禁），选手只能撤销自己刚才的禁用，其他撤销和重置只有管理员能做；撤销会标记被撤销的记录并重放，撤销本身也记入操作记录；`rev` 不一致返回 409；对局双方变化时由触发器清空，出结果后保留。服务器和网页用同一套状态转换（`step`；网页的 `#lib/banpick.js` 从共享包转出，只加了操作记录的文字），模板预览页用 `localAct` 在本地试抽（`apps/web/test/banpick-server.test.js` 对照两者结果一致）。BP 对话框顶部是引导栏（`banpick/BanPickGuide.svelte`）：步骤、当前要做的事和下一步主按钮（抽大组 → 使用该组 → 抽载具 → 确认抽取结果 → 填报比分），次要操作在旁边；抽取动画在 `BanPickDrawStrip`，引导栏通过它的 `draw(kind)` 抽取。`GET /banpick/stats?tier=&kind=&type=&player=&vehicle=`（`lib/banpick-stats.js`，按比赛类型统计最常被禁的大组、出场最多 / 最常被移出的载具，撤销的步骤不计；带 `player` 时另给该选手的禁用和常用载具，再带 `vehicle` 时给他开这辆载具的战绩 `player.vehicle`）用于统计页、选手页和 BP 遮罩。赛事结束后结算页显示「载具出场与 Ban / Pick 记录」（`#lib/event-banpick.js`、`BanPickRecap.svelte`）。BP 轮到某位选手禁用时推送「轮到你禁用了」（`notifyBanTurn`，每轮每人一次）。
 
 ## OBS overlays
 

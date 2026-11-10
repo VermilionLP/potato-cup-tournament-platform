@@ -3,8 +3,8 @@ import { getRequesterId, isAdminRequest, requireAdmin, requireMatchPlayerOrAdmin
 import { inTransaction } from '../lib/transaction.js';
 import { canConfirm, canDispute, liveScoreProblem, playerReport, reportToApply, scoreProblem } from '../lib/match-reports.js';
 import { afterResult, applyReport, notifyBanTurn, notifyReportToConfirm, recordScore, recordWalkover } from '../lib/match-flow.js';
-import { act, emptyRecord, groupVehicles } from '../lib/banpick.js';
-import { normalizeRules, resolveTemplate } from '../lib/vehicle-pools.js';
+import { act, emptyRecord, groupVehicles } from '@potato-cup/shared/banpick.js';
+import { normalizeRules, resolveTemplate } from '@potato-cup/shared/vehicle-pools.js';
 
 export default async function matchesRoutes(fastify) {
   const repo = MatchRepo(fastify.db);

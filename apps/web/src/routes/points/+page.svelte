@@ -1,10 +1,12 @@
 <script>
+  import SwordsIcon from "@lucide/svelte/icons/swords";
   import { EmptyState } from "#lib/components/ui/empty-state/index.js";
   // Potato Cup points leaderboard (积分榜): per season (year) and event type,
   // the points players earned in finished events with a points table. The
   // board is PointsBoard; admins also get SeasonAdmin (loaded on demand).
   import { FilterBar, FilterGroup } from "#lib/components/ui/filter-group/index.js";
   import PageHeader from "#lib/components/PageHeader.svelte";
+  import RankingTabs from "#lib/components/rankings/RankingTabs.svelte";
   import PageSkeleton from "#lib/components/PageSkeleton.svelte";
   import { onMount } from "svelte";
   import { toast } from "svelte-sonner";
@@ -16,7 +18,6 @@
   import { lazy } from "#lib/lazy.js";
   import PointsBoard from "#lib/components/points/PointsBoard.svelte";
   import { Input } from "#lib/components/ui/input/index.js";
-  import AwardIcon from "@lucide/svelte/icons/award";
   import SearchIcon from "@lucide/svelte/icons/search";
 
   const loadSeasonAdmin = lazy(() => import("#lib/components/points/SeasonAdmin.svelte"));
@@ -93,14 +94,15 @@
   }
 </script>
 
-<svelte:head><title>年度积分榜 · Potato Cup</title></svelte:head>
+<svelte:head><title>年度积分榜 · 排行 · Potato Cup</title></svelte:head>
 
 <div class="space-y-5">
-  <PageHeader title="土豆杯积分榜" icon={AwardIcon} description="周赛和大型赛事按最终名次给分，每个赛季按比赛类型分别排名">
+  <PageHeader title="排行" icon={SwordsIcon} description="年度积分榜：周赛和大型赛事按最终名次给分，每个赛季按比赛类型分别排名">
     {#snippet more()}
       <p>计入积分榜的周赛和大型赛事按最终名次给分，每个赛季按比赛类型分别排名。冬季总决赛每个类型 16 人：管理员指定的直邀赛事冠军直接晋级（冠军已有资格时顺延给亚军），其余名额按积分排名。积分在赛事设置中定义，赛事结束后计入。</p>
     {/snippet}
   </PageHeader>
+  <RankingTabs />
 
   {#if loading && !data}
     <PageSkeleton kind="table" label="加载中..." rows={10} />

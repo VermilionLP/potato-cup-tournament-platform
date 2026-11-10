@@ -5,7 +5,7 @@
 // Pools differ by event type (prop, top-jet...), so the numbers are per
 // type; `types` lists every type with Ban / Pick data.
 
-import { effectiveEntries } from './banpick.js';
+import { effectiveEntries } from '@potato-cup/shared/banpick.js';
 
 const DONE_RESULTS = new Set(['completed', 'walkover']);
 
