@@ -34,8 +34,22 @@ export function unglue(text) {
 
 const failed = (err) => (err?.status && err.status < 500 ? err.message : '网站暂时连不上，请稍后再试。');
 
-export function registerCommands(ctx, site, logger = console) {
+/**
+ * `pictures`: { cards, h } to answer 报名 / 赛程 / 战绩 with PNG cards
+ * (src/cards.js); without it, or if drawing fails, the replies are text.
+ */
+export function registerCommands(ctx, site, logger = console, pictures = null) {
   const qq = ctx.platform('qq');
+  // A card for the reply, or the text when there are no cards or drawing fails.
+  async function picture(draw, fallback) {
+    if (!pictures) return fallback();
+    try {
+      return pictures.h.image(await draw(pictures.cards), 'image/png');
+    } catch (err) {
+      logger.warn?.(`[commands] drawing a card failed, sending text: ${err?.message || err}`);
+      return fallback();
+    }
+  }
   const mayBind = attemptLimiter();
 
   qq.middleware((session, next) => {
@@ -70,7 +84,8 @@ export function registerCommands(ctx, site, logger = console) {
     try {
       const playerId = await site.whois(session.userId);
       if (!playerId) return NOT_BOUND;
-      return formatSchedule(await site.schedule(playerId));
+      const data = await site.schedule(playerId);
+      return picture((cards) => cards.schedule(data), () => formatSchedule(data));
     } catch (err) {
       logger.warn?.(`[commands] schedule failed: ${err?.message || err}`);
       return failed(err);
@@ -82,7 +97,9 @@ export function registerCommands(ctx, site, logger = console) {
       const who = name?.trim() || (await site.whois(session.userId));
       if (!who) return `${NOT_BOUND}\n也可以发送「战绩 选手名」查询任意选手。`;
       const stats = await site.statistics();
-      return formatStats(findPlayer(stats.players, who)) || `没有找到「${who}」的比赛记录。`;
+      const player = findPlayer(stats.players, who);
+      if (!player) return `没有找到「${who}」的比赛记录。`;
+      return picture((cards) => cards.stats(player), () => formatStats(player));
     } catch (err) {
       logger.warn?.(`[commands] stats failed: ${err?.message || err}`);
       return failed(err);
@@ -94,7 +111,7 @@ export function registerCommands(ctx, site, logger = console) {
   qq.command('报名 [event:text]', '报名赛事').alias('register').action(async ({ session }, arg) => {
     try {
       const data = await site.openEvents(session.userId);
-      if (!arg?.trim()) return formatOpenEvents(data);
+      if (!arg?.trim()) return picture((cards) => cards.openEvents(data), () => formatOpenEvents(data));
       if (!data.player_id) return NOT_BOUND;
       const event = pickEvent(data.events, arg);
       if (!event) return `没有找到「${arg.trim()}」。发送「报名」查看正在报名的赛事和编号。`;
