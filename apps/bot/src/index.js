@@ -40,6 +40,7 @@ if (config.qq) {
     secret: config.qq.appSecret,
     type: 'private',
     sandbox: config.qq.sandbox,
+    intents: config.qq.intents,
     protocol: 'websocket',
   });
 }

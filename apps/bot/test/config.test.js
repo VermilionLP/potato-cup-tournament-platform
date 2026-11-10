@@ -8,12 +8,14 @@ test('nothing configured is a problem', () => {
   assert.equal(readConfig({}).problems.length, 1);
 });
 
-test('official bot alone, sandbox on by default', () => {
+test('official bot alone: no sandbox, group @ and private message intents by default', () => {
   const c = readConfig({ QQ_APP_ID: '102', QQ_APP_SECRET: 's' });
   assert.deepEqual(c.problems, []);
-  assert.equal(c.qq.sandbox, true);
+  assert.equal(c.qq.sandbox, false);
+  assert.equal(c.qq.intents, 1 << 25);
   assert.equal(c.onebot, null);
-  assert.equal(readConfig({ QQ_APP_ID: '102', QQ_APP_SECRET: 's', QQ_SANDBOX: 'false' }).qq.sandbox, false);
+  assert.equal(readConfig({ QQ_APP_ID: '102', QQ_APP_SECRET: 's', QQ_SANDBOX: 'true' }).qq.sandbox, true);
+  assert.equal(readConfig({ QQ_APP_ID: '102', QQ_APP_SECRET: 's', QQ_INTENTS: '1073741824' }).qq.intents, 1 << 30);
 });
 
 test('official bot needs both id and secret', () => {
