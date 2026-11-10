@@ -16,7 +16,7 @@
   import { userState } from "#lib/user.svelte.js";
   import { reminders } from "#lib/reminders.svelte.js";
   import { calendarUrl, webcalUrl } from "#lib/reminders.js";
-  import { copyText } from "#lib/clipboard.js";
+  import { copyText, selectText } from "#lib/clipboard.js";
   import { API } from "#lib/api.js";
   import { disablePush, enablePush, pushIsEnabled, pushStatus, sendTestPush } from "#lib/push.js";
   import BellIcon from "@lucide/svelte/icons/bell";
@@ -80,9 +80,16 @@
       busy = false;
     }
   }
-  async function copyCommand() {
-    if (await copyText(`绑定 ${qqCode.code}`)) toast.success("已复制，在 QQ 群里 @土豆杯机器人 后粘贴发送");
-    else toast.error("复制失败，请手动输入");
+  let codeEl = $state(null);
+  async function copyCommand(e) {
+    if (await copyText(`绑定 ${qqCode.code}`, { near: e?.currentTarget })) {
+      toast.success("已复制，在 QQ 群里 @土豆杯机器人 后粘贴发送");
+    } else if (selectText(codeEl)) {
+      // The browser refused: leave the command selected for a long press / ⌘C.
+      toast.info("已选中绑定指令，请长按或按 ⌘C 复制");
+    } else {
+      toast.error("复制失败，请手动输入");
+    }
   }
   async function unbind() {
     if (busy || !userState.id) return;
@@ -104,8 +111,8 @@
   const allFeed = $derived(origin ? calendarUrl(origin) : "");
   const count = $derived(reminders.items.length);
 
-  async function copy(url) {
-    if (await copyText(url)) toast.success("日历链接已复制，到日历 App 里选择「通过网址订阅」并粘贴");
+  async function copy(url, e) {
+    if (await copyText(url, { near: e?.currentTarget })) toast.success("日历链接已复制，到日历 App 里选择「通过网址订阅」并粘贴");
     else toast.error("复制失败，请手动选择链接复制");
   }
 
@@ -193,7 +200,7 @@
       </p>
       <div class="mt-2 flex flex-wrap gap-1.5">
         <a href={webcalUrl(feed)} class={main}><CalendarPlusIcon class="size-3.5" />添加到日历</a>
-        <button type="button" class={small} onclick={() => copy(feed)}><CopyIcon class="size-3.5" />复制链接</button>
+        <button type="button" class={small} onclick={(e) => copy(feed, e)}><CopyIcon class="size-3.5" />复制链接</button>
         <button type="button" class="{small} border-transparent bg-transparent text-muted-foreground" onclick={() => (help = !help)}>怎么添加？</button>
       </div>
       {#if help}
@@ -202,7 +209,7 @@
           <li>安卓和其他日历 App：点「复制链接」，在日历 App 的设置里找「添加日历 → 通过网址订阅」并粘贴。</li>
           <li>Outlook：「添加日历 → 从 Internet 订阅」并粘贴链接。</li>
           <li>到时间没有响铃的话，检查日历订阅设置里是否关掉了「提醒」。</li>
-          {#if mine}<li>只想看全部赛事？<button type="button" class="font-semibold text-brand-ink underline-offset-2 hover:underline cursor-pointer" onclick={() => copy(allFeed)}>复制全部赛事日历链接</button></li>{/if}
+          {#if mine}<li>只想看全部赛事？<button type="button" class="font-semibold text-brand-ink underline-offset-2 hover:underline cursor-pointer" onclick={(e) => copy(allFeed, e)}>复制全部赛事日历链接</button></li>{/if}
         </ul>
       {/if}
     </div>
@@ -241,7 +248,7 @@
         {#if qqCode}
           <div class="mt-2 rounded-md bg-muted/60 p-2">
             <p class="text-small text-muted-foreground">10 分钟内在 QQ 群里 @土豆杯机器人 发送：</p>
-            <p class="num mt-0.5 text-lg font-black tracking-wide">绑定 {qqCode.code}</p>
+            <p bind:this={codeEl} class="num mt-0.5 select-all text-lg font-black tracking-wide">绑定 {qqCode.code}</p>
           </div>
         {/if}
         <div class="mt-2 flex flex-wrap gap-1.5">

@@ -52,8 +52,8 @@
     { key: "banpick", title: "5. Ban / Pick (直播对局的禁用与抽取)", url: channelUrl(`${base()}?scene=banpick`, channel), copied: "已复制 Ban / Pick 链接" },
   ]);
 
-  function copy(url, message) {
-    copyText(url).then((ok) => (ok ? toast.success(message) : toast.error("复制失败，请手动选中链接复制")));
+  function copy(url, message, e) {
+    copyText(url, { near: e?.currentTarget }).then((ok) => (ok ? toast.success(message) : toast.error("复制失败，请手动选中链接复制")));
   }
 
   async function setActive(value) {
@@ -301,7 +301,7 @@
             <Button
               size="icon-xs"
               class="h-7 w-7 cursor-pointer shrink-0 bg-primary text-black hover:bg-primary/90"
-              onclick={() => copy(autoUrl, "已复制全自动智能直播源链接")}
+              onclick={(e) => copy(autoUrl, "已复制全自动智能直播源链接", e)}
             >
               <CopyIcon class="w-3.5 h-3.5" />
             </Button>
@@ -334,7 +334,7 @@
                 class="flex-1 h-7 px-2 border border-input rounded bg-muted/30 text-small select-all cursor-default"
                 value={link.url}
               />
-              <Button size="icon-xs" variant="outline" class="h-7 w-7 cursor-pointer shrink-0" onclick={() => copy(link.url, link.copied)}>
+              <Button size="icon-xs" variant="outline" class="h-7 w-7 cursor-pointer shrink-0" onclick={(e) => copy(link.url, link.copied, e)}>
                 <CopyIcon class="w-3.5 h-3.5" />
               </Button>
             </div>
