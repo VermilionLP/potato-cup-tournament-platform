@@ -11,6 +11,7 @@
   import ScoreForm from "#lib/components/ScoreForm.svelte";
   import { resultLabel } from "#lib/banpick.js";
   import { hasLiveScore } from "#lib/match-card.js";
+  import { bestOfFor, scoreProblem, winsNeeded } from "#lib/round-format.js";
   import PendingReportPanel from "./PendingReportPanel.svelte";
   import LadderPreview from "./LadderPreview.svelte";
   import RadioIcon from "@lucide/svelte/icons/radio";
@@ -60,6 +61,9 @@
     !correcting && Boolean(onsavelive) && match?.status === "pending" && Boolean(match?.player1_id && match?.player2_id),
   );
   let tie = $derived(Number(score1) === Number(score2));
+  // The round's best-of (set on the bracket's round header), if any.
+  let bestOf = $derived(bestOfFor(tournament, match));
+  let bestOfWarning = $derived(bestOf && !tie ? scoreProblem(bestOf, score1, score2) : "");
   let showWalkover = $state(false);
   const ago = (iso) => {
     const min = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
@@ -89,7 +93,7 @@
         {/if}
       </Dialog.Title>
       <Dialog.Description class="text-xs text-muted-foreground">
-        {match ? roundLabel(match) : ""} · 第 {match?.position} 场
+        {match ? roundLabel(match) : ""}{#if bestOf} · BO{bestOf}（{bestOf === 1 ? "一局定胜负" : `先赢 ${winsNeeded(bestOf)} 局`}）{/if} · 第 {match?.position} 场
       </Dialog.Description>
     </Dialog.Header>
 
@@ -134,6 +138,11 @@
             disabled={submitting || savingLive}
             liveHint={canSaveLive}
           />
+          {#if bestOfWarning}
+            <p class="rounded-md bg-amber-500/10 px-3 py-2 text-small text-amber-700 dark:text-amber-300" role="status">
+              {`本轮 BO${bestOf}，先赢 ${winsNeeded(bestOf)} 局的一方获胜，请确认比分是否正确`}
+            </p>
+          {/if}
           {#if !correcting && match.player1_id && match.player2_id && match.status !== "completed" && match.status !== "walkover" && !tie}
             <LadderPreview {match} {tournament} {playerName} {score1} {score2} />
           {/if}

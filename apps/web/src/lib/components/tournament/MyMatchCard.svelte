@@ -3,6 +3,7 @@
   // the event page (#lib/my-match.js): check-in before the start; during it
   // the next match (round, opponent and their contact, whose turn) with
   // the report / confirm / dispute buttons.
+  import { bestOfFor } from "#lib/round-format.js";
   import { toast } from "svelte-sonner";
   import { API } from "#lib/api.js";
   import { myMatchInfo } from "#lib/my-match.js";
@@ -107,7 +108,7 @@
       <div class="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-center">
         <div class="space-y-1.5 min-w-0">
           <div class="text-small text-muted-foreground">
-            {roundLabel(info.match)}{matchOrder?.get?.(info.match.id) ? ` · 第 ${matchOrder.get(info.match.id)} 场` : ""}
+            {roundLabel(info.match)}{bestOfFor(tournament, info.match) ? ` · BO${bestOfFor(tournament, info.match)}` : ""}{matchOrder?.get?.(info.match.id) ? ` · 第 ${matchOrder.get(info.match.id)} 场` : ""}
           </div>
           <div class="flex flex-wrap items-center gap-2 text-sm">
             <span class="text-muted-foreground">对手</span>

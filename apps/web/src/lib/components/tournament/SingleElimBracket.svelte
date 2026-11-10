@@ -8,6 +8,8 @@
   import BracketMatchCard from "#lib/components/BracketMatchCard.svelte";
   import { roundLabel, treePositions } from "#lib/bracket.js";
   import { isCompletedBye } from "#lib/match-card.js";
+  import { roundKey } from "#lib/round-format.js";
+  import RoundBestOf from "./RoundBestOf.svelte";
 
   // rounds: the rounds shown (all, one section, or the final stage), first
   // round first; matches: every bracket match (for the third-place match).
@@ -102,8 +104,9 @@
   {#each rounds as r, colIdx (r.round)}
     <div class="shrink-0 flex flex-col justify-start h-full {bracketSpecs.cardWidth}">
       <!-- Round Header -->
-      <div class="text-small text-secondary-foreground bg-secondary py-1.5 px-3 font-bold text-center mb-4 shrink-0 rounded-full">
+      <div class="flex items-center justify-center gap-1.5 text-small text-secondary-foreground bg-secondary py-1.5 px-3 font-bold text-center mb-4 shrink-0 rounded-full">
         {roundLabel(r.round, totalRounds)}
+        <RoundBestOf key={roundKey(r.matches[0] || { round: r.round })} label={roundLabel(r.round, totalRounds)} />
       </div>
 
 
@@ -214,9 +217,10 @@
               {@const tpTop = gfPos.top + gfPos.height + 28}
               
               <!-- Third Place Match -->
-              <div class="absolute left-0 w-full text-label font-bold text-center text-muted-foreground uppercase tracking-wider h-4 flex items-center justify-center"
+              <div class="absolute left-0 w-full text-label font-bold text-center text-muted-foreground uppercase tracking-wider h-4 flex items-center justify-center gap-1.5"
                    style="top: {tpTop - 18}px;">
                 三四名决赛
+                <RoundBestOf key={roundKey(thirdPlaceMatch)} label="三四名决赛" />
               </div>
               <div class="absolute left-0 w-full" style="top: {tpTop}px; height: {gfPos.height}px;">
                 <BracketMatchCard

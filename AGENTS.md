@@ -99,6 +99,10 @@ Ban / Pick 的载具池是 `axsuck.vehicle_pools` 里的模板（迁移 027）�
 
 赛事页的「说明」标签（`EventGuideTab.svelte`）由 `#lib/event-guide.js` 按赛事设置生成：关键信息、参赛流程（当前所在步骤标「现在」）、赛制规则、Ban / Pick 步骤、报分/异议/弃权、提醒和工具、常见问题。这里引用的规则必须和代码一致：改了报分确认时间（`apps/api/lib/match-reports.js`）、瑞士轮配对和排名（`lib/swiss.js`）、签到时间、联系方式可见范围、机器人指令等，要同步改 `event-guide.js` 和 `test/event-guide.test.js`。管理员在「设置 → 补充说明」写的本场约定（`tournaments.description`，`PATCH description`，最多 4000 字）显示在最上方。
 
+## Games per round (BO)
+
+每一轮打几局存在 `tournaments.round_best_of`（`{ "main:1": 5, "wb:2": 3, "sw:1": 1 }`，键是 bracket + 存储的 round，规则在 `packages/shared/round-format.js`）。管理员在对阵表每一轮的标题上点「+ BO」设置（`RoundBestOf.svelte`，数据经 `EventBracketCard` 的 context 传给单败、双败、瑞士轮、小组赛和手机版轮次列表），`PUT /tournaments/:id/round-best-of`。显示在：轮次标题、比分弹窗（比分不能结束这一轮时提示，但不阻止提交）、「我的比赛」、分享图、「说明」标签、Liquipedia 导出的 `bestof`。小组赛各组同一轮共用一个设置。
+
 ## Reminders
 
 顶栏铃铛是「提醒中心」（`components/layout/ReminderCenter.svelte`），三种渠道互补：

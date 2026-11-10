@@ -46,3 +46,9 @@ test("notes, facts and ladder limit", () => {
   assert.equal(eventGuide(null), null);
   assert.ok(formatText({ format: "double_elim" }).includes("双败"));
 });
+
+test("the play step points to the round headers once a best-of is set", () => {
+  const play = (g) => g.steps.find((s) => s.id === "play").lines;
+  assert.ok(!play(eventGuide(base)).some((l) => l.includes("BO3")));
+  assert.ok(play(eventGuide({ ...base, round_best_of: { "main:1": 3 } })).some((l) => l.includes("BO3")));
+});

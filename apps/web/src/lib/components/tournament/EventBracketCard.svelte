@@ -19,6 +19,9 @@
   import SingleElimBracket from "./SingleElimBracket.svelte";
   import BracketRoundList from "./BracketRoundList.svelte";
   import ShieldCheckIcon from "@lucide/svelte/icons/shield-check";
+  import { toast } from "svelte-sonner";
+  import { API } from "#lib/api.js";
+  import { setRoundFormat } from "#lib/round-format.js";
 
   let {
     tournament, // as the console's live channel sees it (withChannel)
@@ -46,6 +49,30 @@
     onstartplayoffs,
     onwithdrawplayoffs,
   } = $props();
+
+  // Games per round ("BO3" on the round headers, RoundBestOf). A save
+  // shows at once; the event's next reload (the live update) replaces it.
+  let savedBestOf = $state(null); // { base, value }
+  let bestOfMap = $derived(
+    savedBestOf && savedBestOf.base === tournament?.round_best_of ? savedBestOf.value : tournament?.round_best_of || {},
+  );
+  setRoundFormat({
+    get map() {
+      return bestOfMap;
+    },
+    get canEdit() {
+      return isAdmin;
+    },
+    async save(key, bestOf) {
+      const base = tournament?.round_best_of;
+      try {
+        const res = await API.setRoundBestOf(tid, key, bestOf);
+        savedBestOf = { base, value: res.round_best_of || {} };
+      } catch (e) {
+        toast.error(e.message);
+      }
+    },
+  });
 
   let groupStageMatches = $derived(groupStageMatchesOf(tournament));
   let totalRounds = $derived(maxRound(bracketMatches));

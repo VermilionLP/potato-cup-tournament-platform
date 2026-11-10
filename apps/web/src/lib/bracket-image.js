@@ -14,6 +14,7 @@
 import { bracketRoundLabel, bracketRoundTotal, buildMatchOrder, groupSwissRounds, layoutBracketBand, maxRound, roundLabel, treePositions, withGrandFinalColumn } from "./bracket.js";
 import { championshipMatchOf, eliminationRounds, groupStageMatchesOf } from "./event-view.js";
 import { gameModeInfo, vehiclePoolLabel } from "./tournament.js";
+import { bestOfFor } from "./round-format.js";
 
 export const CARD_W = 232;
 export const CARD_H = 66; // number strip + two player rows
@@ -83,13 +84,13 @@ function link(from, to) {
 }
 
 /** Columns -> cards, labels, links (positions relative to the section's content top). */
-function placeColumns(columns, { labelOf, players, playerName, status, numbers }) {
+function placeColumns(columns, { labelOf, players, playerName, status, numbers, withBestOf = (text, _match) => text }) {
   const cards = [];
   const labels = [];
   const links = [];
   const at = new Map();
   for (const col of columns) {
-    labels.push({ x: col.x, text: labelOf(col) });
+    labels.push({ x: col.x, text: withBestOf(labelOf(col), col.matches[0]?.match) });
     for (const item of col.matches) {
       const card = cardOf(item.match, { x: col.x, top: item.top, number: numbers.get(item.match.id), players, playerName, status });
       card.done = Boolean(item.match.winner_id);
@@ -178,7 +179,7 @@ function singleSection(matches, ctx) {
     const finalCard = placed.at.get(rounds.at(-1).matches[0]?.id);
     const top = (finalCard?.y ?? 0) + CARD_H + THIRD_GAP;
     placed.cards.push(cardOf(third, { x: columns.at(-1).x, top, number: order.get(third.id), ...ctx }));
-    placed.notes = [{ x: columns.at(-1).x, y: top - 8, text: "三四名决赛" }];
+    placed.notes = [{ x: columns.at(-1).x, y: top - 8, text: ctx.withBestOf("三四名决赛", third) }];
   }
   return { title: "", ...placed, columns };
 }
@@ -190,7 +191,7 @@ function swissSection(matches, ctx, title = "各轮对阵") {
   const labels = [];
   rounds.forEach((r, i) => {
     const x = i * (CARD_W + 28);
-    labels.push({ x, text: `第 ${r.round} 轮` });
+    labels.push({ x, text: ctx.withBestOf(`第 ${r.round} 轮`, r.matches[0]) });
     r.matches.forEach((m, j) => {
       const card = cardOf(m, { x, top: j * (CARD_H + SWISS_GAP), number: m.position, ...ctx });
       if (Boolean(m.player1_id) !== Boolean(m.player2_id)) {
@@ -263,7 +264,12 @@ export function bracketImageLayout({
   const players = t.players || [];
   playerName ??= (id) => (id ? players.find((p) => p.id === id)?.display_name || id : "TBD");
   const status = t.status || "";
-  const ctx = { players, playerName, status };
+  // Round headers carry the round's best-of when set: "半决赛 · BO3".
+  const withBestOf = (text, match) => {
+    const n = match ? bestOfFor(t, match) : null;
+    return n ? `${text} · BO${n}` : text;
+  };
+  const ctx = { players, playerName, status, withBestOf };
   const sections = [];
   let formatTag = doubleElim ? "双败淘汰" : "单败淘汰";
   let champion = null;

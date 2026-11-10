@@ -437,6 +437,54 @@ test('the 说明 tab: the steps with the current one marked, the format, and the
   }
 });
 
+test('admins set games per round on the round header; everyone sees it; a score that cannot end it is flagged', async () => {
+  const players = [];
+  for (let i = 0; i < 4; i += 1) players.push(await makePlayer('bo'));
+  const id = await makeEvent({ players, start: true });
+  const { browser, page, errors } = await openPage({ admin: true });
+  try {
+    await page.goto(`${BASE}/tournament/${id}#bracket`);
+    await page.getByRole('button', { name: '设置总决赛的局数' }).click({ timeout: T });
+    await page.getByRole('button', { name: /BO5/ }).click();
+    for (let i = 0; i < 25; i += 1) {
+      if ((await api('GET', `/tournaments/${id}`)).round_best_of?.['main:1']) break;
+      await page.waitForTimeout(200);
+    }
+    assert.deepEqual((await api('GET', `/tournaments/${id}`)).round_best_of, { 'main:1': 5 });
+    await page.getByRole('button', { name: /总决赛 BO5/ }).waitFor({ timeout: T });
+    await page.screenshot({ path: 'e2e-shot-best-of.png' });
+    await assert.rejects(api('PUT', `/tournaments/${id}/round-best-of`, { key: 'main:2', best_of: 4 }), /400/);
+    await api('PUT', `/tournaments/${id}/round-best-of`, { key: 'main:2', best_of: 3 });
+
+    // A semifinal is BO3: 1 : 0 is flagged in the result dialog, 2 : 0 is not.
+    await page.reload();
+    const match = (await api('GET', `/tournaments/${id}`)).matches.find((m) => m.player1_id && m.player2_id && m.status === 'pending');
+    const card = page.getByRole('button').filter({ hasText: match.player1_id }).filter({ hasText: match.player2_id }).first();
+    await card.click({ timeout: T });
+    const dialog = page.getByRole('dialog');
+    await dialog.getByText(/BO3（先赢 2 局）/).waitFor({ timeout: T });
+    const plus = dialog.getByRole('button', { name: `${match.player1_id} 加 1 分` });
+    await plus.click({ timeout: T });
+    await dialog.getByText('本轮 BO3，先赢 2 局的一方获胜，请确认比分是否正确').waitFor({ timeout: T });
+    await plus.click();
+    await dialog.getByText('请确认比分是否正确', { exact: false }).waitFor({ state: 'detached', timeout: T });
+  } finally {
+    await browser.close();
+  }
+  // Visitors see the best-of, without the menu.
+  const guest = await openPage({});
+  try {
+    await guest.page.goto(`${BASE}/tournament/${id}#bracket`);
+    await guest.page.getByText('BO5', { exact: true }).waitFor({ timeout: T });
+    await guest.page.getByText('BO3', { exact: true }).first().waitFor({ timeout: T });
+    assert.equal(await guest.page.getByRole('button', { name: /局数/ }).count(), 0);
+    assert.deepEqual(guest.errors, [], 'no uncaught errors in the page');
+  } finally {
+    await guest.browser.close();
+  }
+  assert.deepEqual(errors, [], 'no uncaught errors in the page');
+});
+
 test('a live score during the match: shown on the bracket, cleared by the result', async () => {
   const players = [];
   for (let i = 0; i < 4; i += 1) players.push(await makePlayer('lsc'));

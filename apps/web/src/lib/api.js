@@ -87,6 +87,7 @@ export const API = {
   deleteTournament: (id) => request(`/tournaments/${enc(id)}`, { method: 'DELETE' }),
   updateStatus: (id, status, scheduled_time) => request(`/tournaments/${enc(id)}/status`, { method: 'POST', body: JSON.stringify({ status, scheduled_time }) }),
   updateTournament: (id, data) => request(`/tournaments/${enc(id)}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  setRoundBestOf: (id, key, bestOf) => request(`/tournaments/${enc(id)}/round-best-of`, { method: 'PUT', body: JSON.stringify({ key, best_of: bestOf }) }),
   startPlayoffs: (id) => request(`/tournaments/${enc(id)}/playoffs`, { method: 'POST' }),
   withdrawPlayoffs: (id) => request(`/tournaments/${enc(id)}/playoffs`, { method: 'DELETE' }),
   setSwissRounds: (id, swiss_rounds) => request(`/tournaments/${enc(id)}/swiss-rounds`, { method: 'POST', body: JSON.stringify({ swiss_rounds }) }),

@@ -4,6 +4,8 @@
   // the bracket (BracketMatchCard; tabs from #lib/round-list.js).
   import { roundTabs, currentTabKey } from "#lib/round-list.js";
   import BracketMatchCard from "#lib/components/BracketMatchCard.svelte";
+  import RoundBestOf from "./RoundBestOf.svelte";
+  import { roundFormat } from "#lib/round-format.js";
 
   let {
     matches = [],
@@ -26,6 +28,7 @@
   let chosen = $state("");
   let shownKey = $derived(tabs.some((t) => t.key === chosen) ? chosen : currentTabKey(tabs));
   let shown = $derived(tabs.find((t) => t.key === shownKey));
+  const format = roundFormat();
   let flagOf = (id) => players.find((p) => p.id === id)?.flag;
 </script>
 
@@ -47,6 +50,12 @@
       {/each}
     </div>
 
+    {#if shown && (format?.canEdit || format?.map?.[shown.key])}
+      <!-- The round's best-of (admins set it here too). -->
+      <p class="flex items-center gap-1.5 text-small font-bold text-muted-foreground">
+        {shown.label}<RoundBestOf key={shown.key} label={shown.label} />
+      </p>
+    {/if}
     <div class="space-y-2">
       {#each shown?.matches || [] as m (m.id)}
         <BracketMatchCard
