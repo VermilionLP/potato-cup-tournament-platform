@@ -11,6 +11,9 @@
   import { Button } from "#lib/components/ui/button/index.js";
   import { Input } from "#lib/components/ui/input/index.js";
   import { Badge } from "#lib/components/ui/badge/index.js";
+  import DiscordButton from "#lib/components/discord/DiscordButton.svelte";
+  import DiscordIcon from "#lib/components/discord/DiscordIcon.svelte";
+  import { discord, markDiscordJoined } from "#lib/discord.svelte.js";
   import UsersIcon from "@lucide/svelte/icons/users";
   import CheckIcon from "@lucide/svelte/icons/check";
 
@@ -128,6 +131,18 @@
         </Button>
       {/if}
     </div>
+
+    <!-- Registered: the next step is the Discord server. -->
+    {#if userState.id && isRegistered}
+      <div class="flex flex-col gap-3 rounded-xl border p-3.5 sm:flex-row sm:items-center {discord.joined ? 'border-border bg-muted/20' : 'border-[#5865F2]/30 bg-[#5865F2]/8'}">
+        <span class="flex size-9 shrink-0 items-center justify-center rounded-lg bg-[#5865F2] text-white"><DiscordIcon class="size-5" /></span>
+        <div class="min-w-0 flex-1">
+          <p class="text-sm font-bold text-foreground">{discord.joined ? "Potato Cup Discord 服务器" : "下一步：加入 Discord 服务器"}</p>
+          <p class="text-small text-muted-foreground">{discord.joined ? "赛事通知、和对手约战、找管理员都在服务器里。" : "赛事通知、和对手约战、找管理员都在服务器里，比赛前请先加入。"}</p>
+        </div>
+        <DiscordButton variant={discord.joined ? "outline" : "solid"} label={discord.joined ? "打开服务器" : "加入服务器"} onclick={markDiscordJoined} />
+      </div>
+    {/if}
 
     {#if limitLabel}
       <p class="rounded-lg border px-3 py-2 text-xs {blocked ? 'border-destructive/30 bg-destructive/10 text-destructive' : 'border-sky-500/30 bg-sky-500/10 text-sky-700 dark:text-sky-300'}">

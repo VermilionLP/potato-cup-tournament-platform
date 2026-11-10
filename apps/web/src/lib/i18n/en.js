@@ -2043,4 +2043,18 @@ export default {
   "已经报名了": "Already registered",
   "报名已截止，请联系管理员退出": "Registration is closed; ask an admin to take you off the list",
   "已选中绑定指令，请长按或按 ⌘C 复制": "The command is selected: long-press or press ⌘C to copy it",
+  // Discord server (after registering, home page).
+  "加入 Discord": "Join Discord",
+  "你已报名": "You're registered for",
+  "加入 Potato Cup Discord 服务器": "Join the Potato Cup Discord server",
+  "赛事通知、和对手约战、找管理员都在服务器里，比赛前请先加入。": "Event news, arranging games with your opponent and reaching the admins all happen there. Join before your match.",
+  "赛事通知、和对手约战、找管理员都在服务器里。": "Event news, arranging games with your opponent and reaching the admins all happen there.",
+  "这场比赛需要签到：开赛前 30 分钟回到赛事页面签到，未签到可能被移出。": "This event needs check-in: come back to the event page 30 minutes before the start, or you may be removed.",
+  "我已经在服务器里了": "I'm already in the server",
+  "以后再说": "Later",
+  "下一步：加入 Discord 服务器": "Next: join the Discord server",
+  "打开服务器": "Open server",
+  "加入服务器": "Join server",
+  "加入 Discord 服务器": "Join the Discord server",
+  "Potato Cup Discord 服务器": "Potato Cup Discord server",
 };

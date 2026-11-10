@@ -12,6 +12,8 @@ export const HELP = [
   '战绩 — 我的战绩；战绩 选手名 — 查别人',
   '解绑 — 解除绑定',
   '状态 — 检查机器人和网站是否在线',
+  '',
+  'Discord 服务器：网站首页点「加入 Discord」',
 ].join('\n');
 
 export const NOT_BOUND = '你还没有绑定选手。请在网站右上角铃铛的「QQ 群提醒」里获取绑定码，然后 @我 发送「绑定 123456」。';
@@ -101,10 +103,21 @@ export function pickEvent(events, arg, fallback = null) {
   return events.find((e) => e.id === want) || events.find((e) => e.name === want) || null;
 }
 
-/** Reply after registering. */
+/**
+ * The Potato Cup Discord server (also on the site). Only the picture cards
+ * show the link: the official QQ bot's text messages may only carry URLs
+ * registered on the QQ platform, and an unregistered one can get the whole
+ * reply blocked.
+ */
+export const DISCORD_INVITE = 'https://discord.gg/3KchNdgePr';
+
+/** Reply after registering: the result, check-in if needed, then the Discord server (no link, see above). */
 export function formatRegistered(e) {
   const when = shortTime(e.scheduled_time);
-  return `报名成功：${e.name}（${when}）。${e.checkin_enabled ? '这场需要签到：开赛前 30 分钟 @我 发送「签到」。' : ''}`;
+  return [
+    `报名成功：${e.name}（${when}）。${e.checkin_enabled ? '这场需要签到：开赛前 30 分钟 @我 发送「签到」。' : ''}`,
+    '下一步：加入 Potato Cup Discord 服务器，赛事通知、约战和找管理员都在里面。邀请链接见网站首页的「加入 Discord」，或 @我 发送「帮助」。',
+  ].join('\n');
 }
 
 /** Reply after 签到: the events checked in to, by name. */

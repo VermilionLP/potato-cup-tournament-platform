@@ -23,6 +23,7 @@
   import ClockIcon from "@lucide/svelte/icons/clock";
   import PlusIcon from "@lucide/svelte/icons/plus";
   import TrophyIcon from "@lucide/svelte/icons/trophy";
+  import DiscordButton from "#lib/components/discord/DiscordButton.svelte";
 
   let tournaments = $state([]);
   let loading = $state(true);
@@ -149,6 +150,7 @@
   <!-- Top Headline and Create trigger -->
   <PageHeader title="赛事大厅" icon={TrophyIcon} description="报名、投票和观看 Potato Cup 水友赛">
     {#snippet actions()}
+      <DiscordButton variant="outline" />
       {#if isAdmin}
         {#if lastEvent}
           <Button

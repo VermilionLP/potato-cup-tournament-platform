@@ -9,6 +9,8 @@
   import { toast } from "svelte-sonner";
   import { API } from "#lib/api.js";
   import { userState } from "#lib/user.svelte.js";
+  import { discord, markDiscordJoined, promptDiscordAfterRegistering } from "#lib/discord.svelte.js";
+  import DiscordButton from "#lib/components/discord/DiscordButton.svelte";
   import { needsProfile } from "#lib/profile-prompt.js";
   import { countdown } from "#lib/datetime.js";
   import { beijingTitle, displayCapacity, scheduledDateTime, startTimeLabel, statusLabel, statusTone } from "#lib/lobby.js";
@@ -55,7 +57,7 @@
     busy = true;
     try {
       await API.register(t.id, userState.id);
-      toast.success("报名成功");
+      if (!promptDiscordAfterRegistering({ name: t.name, checkin: t.checkin_enabled ?? t.checkin?.enabled })) toast.success("报名成功");
       detail = await API.getTournament(t.id).catch(() => detail);
       await onchanged?.();
     } catch (e) {
@@ -125,6 +127,9 @@
             </span>
             <Button variant="outline" onclick={() => goto(href)}>查看赛事</Button>
           </div>
+          {#if !discord.joined}
+            <DiscordButton class="h-[44px] md:self-end" label="下一步：加入 Discord 服务器" onclick={markDiscordJoined} />
+          {/if}
         {:else}
           <Button disabled={busy || !detail} onclick={signUp}>
             {busy ? "报名中…" : userState.id ? `以 ${userState.id} 报名` : "立即报名"}

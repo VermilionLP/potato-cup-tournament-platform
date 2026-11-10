@@ -19,6 +19,7 @@
   import AdminDialog from "#lib/components/layout/AdminDialog.svelte";
   import AdminMenu from "#lib/components/layout/AdminMenu.svelte";
   import ConfirmHost from "#lib/components/layout/ConfirmHost.svelte";
+  import JoinDiscordDialog from "#lib/components/discord/JoinDiscordDialog.svelte";
   import { installErrorReporting } from "#lib/error-report.js";
   import ProfileDialog from "#lib/components/layout/ProfileDialog.svelte";
   import SiteFooter from "#lib/components/layout/SiteFooter.svelte";
@@ -194,6 +195,7 @@
 {#if !page.url.pathname.includes("/overlay")}<SiteNav placement="bottom" />{/if}
 <Toaster position="bottom-right" mobileOffset={{ bottom: "76px" }} />
 <ConfirmHost />
+<JoinDiscordDialog />
 
 <ProfileDialog bind:this={profileDialog} />
 <AdminDialog bind:open={adminOpen} />
