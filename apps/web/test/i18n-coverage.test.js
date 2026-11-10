@@ -39,7 +39,9 @@ const ALLOWED = new Set([
   // The ICP filing number is a legal identifier shown as issued.
   "鲁ICP备2026068167号-1",
   "1 人的1对阵用了 1（带轮空位），请在 Liquipedia 上确认模板。",
-  "Group 1 的1小组对阵没有现成的 Liquipedia 模板对照，请确认模板名。"
+  "Group 1 的1小组对阵没有现成的 Liquipedia 模板对照，请确认模板名。",
+  // The command players send to the QQ bot: it stays Chinese.
+  "绑定 1"
 ]);
 
 let parse = null;
@@ -54,7 +56,8 @@ test("all Chinese UI text has English", { skip: !parse && "svelte/compiler not i
     // discord-share.js writes its own English posts.
     ...sourceFiles(join(root, "web/src"), [".svelte", ".js"]).filter((f) => !f.includes("/i18n/") && !f.includes("/components/ui/") && !f.endsWith("discord-share.js")),
     ...sourceFiles(join(root, "api/routes"), [".js"]),
-    ...sourceFiles(join(root, "api/lib"), [".js"]).filter((f) => !/liquipedia\/(countries|de-templates)/.test(f)),
+    // bot-notices.js holds the QQ group notices and bot replies: posted in a Chinese QQ group, never shown on the site.
+    ...sourceFiles(join(root, "api/lib"), [".js"]).filter((f) => !/liquipedia\/(countries|de-templates)/.test(f) && !f.endsWith("bot-notices.js")),
   ];
   const missing = [...uiStrings(parse, files)]
     .filter(([text]) => /[一-鿿]/.test(translate(text)) && !ALLOWED.has(text))

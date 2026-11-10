@@ -10,14 +10,45 @@
 
 哪一段配置填了，哪个机器人才会启动，所以可以先只上线其中一个。两个机器人都**不做群管理**（审核、禁言、踢人、撤回由真人管理员负责），社区机器人只在 `ONEBOT_GROUPS` 列出的群里说话，不回私聊。
 
-目前只有一个 `状态` 指令，用来检查"QQ → 机器人 → 网站 → QQ"这条链路是否通。
+## 功能
+
+**社区机器人：群通知**（发到 `ONEBOT_NOTICE_GROUP`，默认 `ONEBOT_GROUPS` 的第一个群）
+
+| 通知 | 时机 | @ 谁 |
+|---|---|---|
+| 比赛就绪 | 对阵双方确定 | 双方 |
+| 请确认比分 | 对手提交比分 | 要确认的一方 |
+| 轮到禁用 | Ban/Pick 轮到某人 | 该选手 |
+| 赛果 | 比分生效、弃权判负 | 不 @ |
+| 开赛提醒 | 开赛前 1 小时（报名阶段的赛事） | 所有报名选手 |
+
+@ 的是选手个人资料里填的 QQ 号，只填了 Discord 的选手只出现名字。通知由网站排队（`apps/api/lib/bot-notices.js`），机器人每 10 秒取一次、逐条发送、每条间隔 3–7 秒；发不出去的下一轮再试，超过 30 分钟就不再发。
+
+**官方机器人：查询指令**（在群里 @土豆杯机器人 后发送；英文别名也可以）
+
+| 指令 | 作用 |
+|---|---|
+| `绑定 123456` / `bind` | 绑定选手。绑定码在网站右上角铃铛 →「QQ 群提醒」里获取，10 分钟有效 |
+| `赛程` / `schedule` | 我报名的未结束赛事，以及现在要做的事（确认比分、禁用、开打） |
+| `战绩` / `stats`，`战绩 选手名` | 参赛次数、胜负、小局、冠亚军 |
+| `解绑` / `unbind` | 解除这个 QQ 的绑定 |
+| `帮助` / `help` | 指令列表 |
+| `状态` / `status` | 检查机器人和网站是否在线（两个机器人都会回答） |
+
+QQ 给官方机器人的用户标识（openid）在群聊和私聊里不一样，所以在群里绑定的只在群里有效。
+
+这两部分都需要 API 和机器人的 `.env` 里有相同的 `BOT_TOKEN`；没有的话只剩 `状态`。
 
 ## 文件
 
 | 路径 | 作用 |
 |---|---|
-| `src/index.js` | 入口：加载适配器、群白名单、`状态` 指令 |
+| `src/index.js` | 入口：加载适配器、群白名单、`状态` 指令，启动通知和指令 |
 | `src/config.js` | 读取并检查 `.env` |
+| `src/notices.js` | 社区机器人：取通知、@ 选手发群消息、标记已发送 |
+| `src/commands.js` | 官方机器人：绑定、赛程、战绩等指令 |
+| `src/format.js` | 指令回复的文字 |
+| `src/site.js` | 调用网站 API（带 `BOT_TOKEN`） |
 | `napcat/compose.yaml` | NapCat 容器（端口只绑定本机） |
 | `ecosystem.config.cjs` | PM2 进程 `potato-bot` |
 | `../../scripts/bot-setup.sh` | 服务器一键准备 |
@@ -85,7 +116,21 @@ pm2 logs potato-bot
 
 之后每次 `deploy.sh` 部署都会自动重启 `potato-bot`。
 
-### 六、验证
+### 六、打开通知和查询（BOT_TOKEN）
+
+生成一个随机令牌，同时写进网站和机器人的配置：
+
+```bash
+TOKEN=$(openssl rand -hex 24)
+for f in /home/admin/suck/apps/api/.env /home/admin/suck/apps/bot/.env; do
+  if grep -q '^BOT_TOKEN=' "$f"; then sed -i "s|^BOT_TOKEN=.*|BOT_TOKEN=$TOKEN|" "$f"; else echo "BOT_TOKEN=$TOKEN" >> "$f"; fi
+done
+grep -c "^BOT_TOKEN=$TOKEN" /home/admin/suck/apps/api/.env /home/admin/suck/apps/bot/.env   # 两个文件都应显示 1
+pm2 restart suck-tournament --update-env
+pm2 restart potato-bot
+```
+
+### 七、验证
 
 - 在 Potato Cup 群里发 `状态` → 社区机器人回复"社区机器人在线。网站 API：正常"
 - 在群里 `@官方机器人 状态` → 官方机器人回复"官方机器人在线。网站 API：正常"
@@ -101,6 +146,9 @@ pm2 logs potato-bot
 | `adapter failed to connect to ws://127.0.0.1:3001`，code 1006 | NapCat 没在运行或还没登录：`cd /home/admin/napcat && docker compose ps`，再看 `docker compose logs napcat` |
 | 连上后立刻断开、提示鉴权失败 | `apps/bot/.env` 的 `ONEBOT_TOKEN` 与 `/home/admin/napcat/.env` 不一致 |
 | 社区机器人在某个群不回复 | 群号不在 `ONEBOT_GROUPS` 里（这是有意的） |
+| 日志提示 `BOT_TOKEN is not set` | 按「六」设置 `BOT_TOKEN`，两边要一样 |
+| 群里没有比赛通知 | API 的 `.env` 没有 `BOT_TOKEN`（不会排队），或两边不一致（机器人日志有 401） |
+| @ 官方机器人「赛程」回复"还没有绑定" | 在网站获取绑定码后 @机器人 发送「绑定 123456」；在私聊用要另外绑定 |
 | `pm2 logs` 里不停出现配置错误后进程停止 | 按提示补全 `.env`，再 `pm2 restart potato-bot` |
 | NapCat 掉线，需要重新扫码 | 重新开 SSH 隧道进 WebUI 扫码；频繁掉线说明账号被风控，降低发送频率 |
 | 拉取镜像失败 | 运行脚本时加 `--mirror`；已有 `/etc/docker/daemon.json` 时要手动加 `registry-mirrors` |

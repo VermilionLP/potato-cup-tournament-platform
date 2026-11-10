@@ -8,13 +8,15 @@ import { hashPlayerKey } from '../lib/player-key.js';
 const MODULE_FILES = [
   'tournaments', 'tournament-settings', 'tournament-bracket', 'tournament-import', 'players',
   'player-keys', 'player-stats', 'registrations', 'matches', 'votes', 'ladder', 'wiki', 'push', 'reminders',
-  'admin', 'vehicle-pools', 'points', 'client-errors',
+  'admin', 'vehicle-pools', 'points', 'client-errors', 'bot',
 ];
 const modules = await Promise.all(MODULE_FILES.map(async (f) => (await import(`../routes/${f}.js`)).default));
 
 const ADMIN = { 'x-admin-token': 'test-admin-token' };
 const player = (id, key) => ({ 'x-player-id': id, ...(key ? { 'x-player-key': key } : {}) });
 process.env.ADMIN_TOKEN = ADMIN['x-admin-token'];
+process.env.BOT_TOKEN = 'test-bot-token';
+const BOT = { 'x-bot-token': 'test-bot-token' };
 
 // Writes anyone may make without an identity.
 const PUBLIC_WRITES = new Set(['POST /push/subscribe', 'DELETE /push/unsubscribe', 'POST /push/test', 'POST /client-errors']);
@@ -28,9 +30,14 @@ const SELF_WRITES = new Set([
   'POST /tournaments/:id/checkin', 'DELETE /tournaments/:id/checkin',
   'POST /tournaments/:id/matches/:matchId/report/confirm', 'POST /tournaments/:id/matches/:matchId/report/dispute',
   'DELETE /tournaments/:id/matches/:matchId/report',
+  'POST /players/:id/qq-bind-code', 'DELETE /players/:id/qq-bindings',
 ]);
 // Reads only admins may make.
-const ADMIN_READS = ['GET /players/:id/key', 'GET /players/duplicates', 'GET /tournaments/:id/wiki', 'GET /client-errors'];
+const ADMIN_READS = [
+  'GET /players/:id/key', 'GET /players/duplicates', 'GET /tournaments/:id/wiki', 'GET /client-errors',
+  // The bot routes (the bot's token or an admin).
+  'GET /bot/notices', 'GET /bot/whois/:openid', 'GET /bot/players/:id/schedule',
+];
 const body = { player_id: 'p1', id: 'p1', score1: 2, score2: 0, winner_id: 'p1', newId: 'p9', targetId: 'p2', name: 'X', battle_tags: { qq: '123456' } };
 
 test('every write needs an identity; a request without one writes nothing', async () => {
@@ -166,4 +173,43 @@ test('an event page reads its own vehicle pool', async () => {
   const res = await inject({ method: 'GET', url: '/tournaments/t1/vehicle-pool' });
   assert.equal(res.statusCode, 200);
   assert.match(String(res.payload.template.vehicles[0].unit), /^p-47d/, 'unit filled in from the bundled index');
+});
+
+test('bot routes take the bot token, refuse players and stop when BOT_TOKEN is unset', async () => {
+  const db = fakeDb({ row: { player_id: 'p1', code: '123456', expires_at: new Date().toISOString() } });
+  const { routes, inject } = await buildRoutes(modules, db);
+  const botRoutes = routes.filter((r) => r.path.startsWith('/bot/'));
+  assert.ok(botRoutes.length >= 5, `found ${botRoutes.length} bot routes`);
+  const url = (r) => sampleUrl(r.path.replace('/bot/notices/:id', '/bot/notices/1')).replace(':openid', 'OPENID0123456789');
+  const body2 = { code: '123456', openid: 'OPENID0123456789' };
+  for (const r of botRoutes) {
+    const asPlayer = await inject({ method: r.method, url: url(r), headers: player('p1'), body: body2 });
+    assert.equal(asPlayer.statusCode, 401, `${r.method} ${r.path} as a player`);
+    const asBot = await inject({ method: r.method, url: url(r), headers: BOT, body: body2 });
+    assert.ok(asBot.statusCode < 400, `${r.method} ${r.path} as the bot: ${asBot.statusCode} ${asBot.error?.message}`);
+    const wrong = await inject({ method: r.method, url: url(r), headers: { 'x-bot-token': 'test-bot-tokem' }, body: body2 });
+    assert.equal(wrong.statusCode, 401, `${r.method} ${r.path} with a wrong token`);
+  }
+  const saved = process.env.BOT_TOKEN;
+  process.env.BOT_TOKEN = '';
+  try {
+    const off = await inject({ method: 'GET', url: '/bot/notices', headers: { 'x-bot-token': '' } });
+    assert.equal(off.statusCode, 503);
+  } finally {
+    process.env.BOT_TOKEN = saved;
+  }
+});
+
+test('a bot token is not an admin token', async () => {
+  const { inject } = await buildRoutes(modules, fakeDb());
+  const res = await inject({ method: 'DELETE', url: '/tournaments/t1', headers: BOT });
+  assert.equal(res.statusCode, 401);
+});
+
+test('a player gets a QQ bind code only for themselves', async () => {
+  const { inject } = await buildRoutes(modules, fakeDb({ row: { code: '012345', expires_at: new Date().toISOString() } }));
+  assert.equal((await inject({ method: 'POST', url: '/players/p2/qq-bind-code', headers: player('p1') })).statusCode, 403);
+  const own = await inject({ method: 'POST', url: '/players/p1/qq-bind-code', headers: player('p1') });
+  assert.equal(own.statusCode, 200, `${own.statusCode} ${own.error?.message}`);
+  assert.match(own.payload.data.code, /^\d{6}$/);
 });

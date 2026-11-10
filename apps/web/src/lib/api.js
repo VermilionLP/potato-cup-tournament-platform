@@ -155,6 +155,10 @@ export const API = {
   testPush: (endpoint) => request('/push/test', { method: 'POST', body: JSON.stringify({ endpoint }) }),
   // What needs this player now (in-page reminders).
   getReminders: (playerId) => request(`/reminders/${enc(playerId)}`),
+  // QQ bot binding: a code to send to the official bot, whether this player has bound a QQ account, unbinding.
+  createQqBindCode: (playerId) => request(`/players/${enc(playerId)}/qq-bind-code`, { method: 'POST' }),
+  getQqBindings: (playerId) => request(`/players/${enc(playerId)}/qq-bindings`),
+  deleteQqBindings: (playerId) => request(`/players/${enc(playerId)}/qq-bindings`, { method: 'DELETE' }),
   getPlayer: (id) => request(`/players/${enc(id)}`),
   updatePlayer: (id, data) => request('/players', { method: 'POST', body: JSON.stringify({ id, ...data }) }),
   // Device key: bind on first use / check a key (pass it to import one).

@@ -2023,4 +2023,18 @@ export default {
   "签到已开放，请在开赛前完成签到": "Check-in is open; check in before the start",
   "你已报名本场比赛。签到在开赛前 30 分钟开放，未签到可能被移出。": "You're registered. Check-in opens 30 minutes before the start; players who don't check in may be removed.",
   "你已报名本场比赛。": "You're registered for this event.",
+  // QQ group reminders (ReminderCenter.svelte)
+  "获取绑定码失败: {0}": "Couldn't get a binding code: {0}",
+  "已复制，在 QQ 群里 @土豆杯机器人 后粘贴发送": "Copied. In the QQ group, @ the Potato Cup bot and paste it",
+  "复制失败，请手动输入": "Couldn't copy; please type it in",
+  "已解除 QQ 绑定": "QQ account unbound",
+  "解除绑定失败: {0}": "Couldn't unbind: {0}",
+  "QQ 群提醒": "QQ group",
+  "群里的比赛就绪、确认比分、轮到禁用和开赛提醒会 @ 你个人资料里填写的 QQ 号。": "Match ready, score to confirm, your ban turn and event start notices in the QQ group @ the QQ number in your profile.",
+  "绑定后，在群里 @土豆杯机器人 发送「赛程」或「战绩」就能查询自己的比赛。": "Once bound, @ the Potato Cup bot in the group with \"schedule\" or \"stats\" to look up your matches.",
+  "10 分钟内在 QQ 群里 @土豆杯机器人 发送：": "Within 10 minutes, @ the Potato Cup bot in the QQ group and send:",
+  "再绑定一个 QQ": "Bind another QQ",
+  "获取绑定码": "Get a binding code",
+  "解除绑定": "Unbind",
+  "填写选手 ID 后可以绑定 QQ，在群里查询自己的赛程和战绩。": "Enter your player ID to bind QQ and look up your schedule and record in the group.",
 };
