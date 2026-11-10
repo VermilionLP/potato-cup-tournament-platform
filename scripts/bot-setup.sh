@@ -40,6 +40,17 @@ warn() { echo "  WARN  $*"; }
 fail() { echo "  FAIL  $*"; exit 1; }
 token() { openssl rand -hex 24; }
 
+install_docker_ce() {
+  echo "  ...   installing Docker CE from the Alibaba Cloud mirror ($PRETTY_NAME)"
+  sudo wget -q -O /etc/yum.repos.d/docker-ce.repo http://mirrors.cloud.aliyuncs.com/docker-ce/linux/centos/docker-ce.repo
+  sudo sed -i 's|https://mirrors.aliyun.com|http://mirrors.cloud.aliyuncs.com|g' /etc/yum.repos.d/docker-ce.repo
+  if [ "$ID" = "alinux" ]; then
+    sudo dnf -y install dnf-plugin-releasever-adapter --repo alinux3-plus
+  fi
+  sudo dnf -y install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+  ok "docker installed"
+}
+
 echo "==> 1/5 checks"
 [ "$(id -u)" -ne 0 ] || fail "run as the admin user, not root (the script calls sudo itself)"
 [ -d "$BOT_DIR" ] || fail "$BOT_DIR not found: deploy the code with apps/bot first (scripts/deploy.sh --git)"
@@ -64,15 +75,18 @@ if command -v docker >/dev/null; then
 else
   . /etc/os-release
   case "${ID:-}" in
-    alinux|centos|rhel|rocky|almalinux|anolis)
-      echo "  ...   installing Docker CE from the Alibaba Cloud mirror ($PRETTY_NAME)"
-      sudo wget -q -O /etc/yum.repos.d/docker-ce.repo http://mirrors.cloud.aliyuncs.com/docker-ce/linux/centos/docker-ce.repo
-      sudo sed -i 's|https://mirrors.aliyun.com|http://mirrors.cloud.aliyuncs.com|g' /etc/yum.repos.d/docker-ce.repo
-      if [ "$ID" = "alinux" ]; then
-        sudo dnf -y install dnf-plugin-releasever-adapter --repo alinux3-plus
+    alinux)
+      if [ "${VERSION_ID%%.*}" -ge 4 ] 2>/dev/null; then
+        # Alibaba Cloud Linux 4 ships Docker and the compose plugin itself.
+        echo "  ...   installing Docker from the system repositories ($PRETTY_NAME)"
+        sudo dnf -y install docker docker-compose-plugin
+        ok "docker installed"
+      else
+        install_docker_ce
       fi
-      sudo dnf -y install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-      ok "docker installed"
+      ;;
+    centos|rhel|rocky|almalinux|anolis)
+      install_docker_ce
       ;;
     *)
       fail "no automatic Docker install for ${PRETTY_NAME:-this system}; install Docker + the compose plugin (https://help.aliyun.com/zh/ecs/user-guide/install-and-use-docker), then run this again"
@@ -97,7 +111,12 @@ if ! id -nG "$USER" | grep -qw docker; then
 fi
 DOCKER="docker"
 docker info >/dev/null 2>&1 || DOCKER="sudo docker"
-$DOCKER compose version >/dev/null 2>&1 || fail "docker compose plugin missing (sudo dnf -y install docker-compose-plugin)"
+if ! $DOCKER compose version >/dev/null 2>&1; then
+  echo "  ...   installing the docker compose plugin"
+  sudo dnf -y install docker-compose-plugin >/dev/null 2>&1 || true
+  $DOCKER compose version >/dev/null 2>&1 || fail "docker compose plugin missing and could not be installed (sudo dnf -y install docker-compose-plugin)"
+fi
+ok "docker compose $($DOCKER compose version --short 2>/dev/null)"
 
 echo "==> 3/5 napcat ($NAPCAT_DIR)"
 mkdir -p "$NAPCAT_DIR/data/qq" "$NAPCAT_DIR/data/config" "$NAPCAT_DIR/data/plugins"
@@ -137,19 +156,24 @@ fi
 echo "  ...   pulling and starting NapCat (the image is about 600 MB; the first pull takes a while)"
 if ! (cd "$NAPCAT_DIR" && $DOCKER compose up -d); then
   echo
-  echo "  Pulling the image failed. Docker Hub is usually unreachable from mainland China:"
-  echo "  get a mirror address in the Alibaba Cloud console (容器镜像服务 -> 镜像工具 -> 镜像加速器)"
-  echo "  and run this script again with --mirror <address>."
+  echo "  Pulling the image failed. Docker Hub is usually unreachable from mainland China,"
+  echo "  and the Alibaba Cloud accelerator does not carry every image. Pull it through a"
+  echo "  public mirror and point NAPCAT_IMAGE at it, then run this script again:"
+  echo "    docker pull docker.m.daocloud.io/mlikiowa/napcat-docker:latest"
+  echo "    sed -i 's|^NAPCAT_IMAGE=.*|NAPCAT_IMAGE=docker.m.daocloud.io/mlikiowa/napcat-docker:latest|' $NAPCAT_DIR/.env"
   exit 1
 fi
 ok "napcat container running"
 
 echo "==> 4/5 bot settings ($BOT_DIR/.env)"
-if [ -f "$BOT_DIR/.env" ]; then
+if [ -s "$BOT_DIR/.env" ]; then
   skip ".env exists, not changed (its ONEBOT_TOKEN must match $NAPCAT_DIR/.env)"
 else
+  [ -f "$BOT_DIR/.env.example" ] || fail "$BOT_DIR/.env.example missing: deploy the latest code (deploy.sh now copies it), or copy it from your git checkout"
   umask 077
-  sed "s|^ONEBOT_TOKEN=.*|ONEBOT_TOKEN=$ONEBOT_TOKEN|" "$BOT_DIR/.env.example" > "$BOT_DIR/.env"
+  # Written to a temporary file first, so a failure never leaves an empty .env behind.
+  sed "s|^ONEBOT_TOKEN=.*|ONEBOT_TOKEN=$ONEBOT_TOKEN|" "$BOT_DIR/.env.example" > "$BOT_DIR/.env.tmp"
+  mv "$BOT_DIR/.env.tmp" "$BOT_DIR/.env"
   umask 022
   ok ".env created with the OneBot token"
 fi

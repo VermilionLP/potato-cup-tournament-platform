@@ -65,6 +65,8 @@ RSYNC_OPTS=(
   -a
   --exclude=node_modules
   --exclude=.git
+  # Templates are code; real .env files stay on the server untouched.
+  --include=.env.example
   --exclude=.env
   --exclude='.env.*'
   --exclude=apps/web/build
