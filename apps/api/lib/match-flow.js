@@ -1,11 +1,14 @@
 // What happens after a result lands, shared by the match routes, the event
 // start and the auto-confirm timer: applying a reported result, walkovers
 // for forfeited players, and the "your match is ready" push to the two
-// players of every match that just became playable.
+// players of every match that just became playable. Each notice also goes
+// to the QQ group through the community bot when the bots are on
+// (lib/bot-notices.js), whether or not web push is set up.
 
 import { MatchRepo } from '../repositories/match-repo.js';
 import { getPlayerDisplayName } from '../repositories/player-repo.js';
 import { claimNotice, pushEnabled, sendToPlayers } from './push-sender.js';
+import { botNoticesEnabled, noticeText, queueBotNotice } from './bot-notices.js';
 import { inTransaction } from './transaction.js';
 
 /**
@@ -74,7 +77,9 @@ export async function settleForfeits(db, tournamentId) {
 
 /** "Your match is ready": once per pairing, to both players of every playable match. */
 export async function notifyReadyMatches(db, tournamentId, log) {
-  if (!pushEnabled()) return 0;
+  const push = pushEnabled();
+  const qq = botNoticesEnabled();
+  if (!push && !qq) return 0;
   const event = (await db.query('SELECT id, name, status FROM axsuck.tournaments WHERE id = $1', [tournamentId])).rows[0];
   if (!event || event.status !== 'in_progress') return 0;
   const { rows: ready } = await db.query(`
@@ -90,6 +95,15 @@ export async function notifyReadyMatches(db, tournamentId, log) {
   for (const m of ready) {
     if (!(await claimNotice(db, m.id, `ready:${m.player1_id}:${m.player2_id}`))) continue;
     const url = `/tournament/${encodeURIComponent(tournamentId)}`;
+    if (qq) {
+      await queueBotNotice(db, {
+        kind: 'ready',
+        tournamentId,
+        text: noticeText.ready(event.name, names.get(m.player1_id) || m.player1_id, names.get(m.player2_id) || m.player2_id),
+        mention: [m.player1_id, m.player2_id],
+      }, log);
+    }
+    if (!push) continue;
     for (const [me, other] of [[m.player1_id, m.player2_id], [m.player2_id, m.player1_id]]) {
       sent += await sendToPlayers(db, [me], {
         title: '轮到你了',
@@ -104,13 +118,24 @@ export async function notifyReadyMatches(db, tournamentId, log) {
 
 /** Tell the opponent a score is waiting for them. */
 export async function notifyReportToConfirm(db, tournamentId, match, report, log) {
-  if (!pushEnabled() || report.kind !== 'score') return 0;
+  const push = pushEnabled();
+  const qq = botNoticesEnabled();
+  if ((!push && !qq) || report.kind !== 'score') return 0;
   const opponent = match.player1_id === report.by ? match.player2_id : match.player1_id;
   const event = (await db.query('SELECT name FROM axsuck.tournaments WHERE id = $1', [tournamentId])).rows[0];
   const names = new Map((await db.query(
     'SELECT id, battle_tags FROM axsuck.players WHERE id = ANY($1::text[])', [[match.player1_id, match.player2_id]],
   )).rows.map((p) => [p.id, getPlayerDisplayName(p) || p.id]));
   const score = `${names.get(match.player1_id) || match.player1_id} ${report.score1} : ${report.score2} ${names.get(match.player2_id) || match.player2_id}`;
+  if (qq) {
+    await queueBotNotice(db, {
+      kind: 'confirm',
+      tournamentId,
+      text: noticeText.confirm(event?.name, names.get(match.player1_id) || match.player1_id, report.score1, report.score2, names.get(match.player2_id) || match.player2_id),
+      mention: [opponent],
+    }, log);
+  }
+  if (!push) return 0;
   return sendToPlayers(db, [opponent], {
     title: '请确认比分',
     body: `${event?.name || ''}：对手提交了 ${score}。10 分钟内不确认也不提出异议将自动生效`,
@@ -126,9 +151,43 @@ export async function afterResult(fastify, tournamentId) {
   } catch (err) {
     fastify.log?.error({ err, tournamentId }, 'settling forfeits failed');
   }
-  notifyReadyMatches(fastify.db, tournamentId, fastify.log).catch((err) => {
-    fastify.log?.error({ err, tournamentId }, 'ready notices failed');
-  });
+  // Results first, so the group reads "A won" before "A's next match is ready".
+  notifyResults(fastify.db, tournamentId, fastify.log)
+    .catch((err) => fastify.log?.error({ err, tournamentId }, 'result notices failed'))
+    .then(() => notifyReadyMatches(fastify.db, tournamentId, fastify.log))
+    .catch((err) => fastify.log?.error({ err, tournamentId }, 'ready notices failed'));
+}
+
+/** How recent a result must be to be announced (afterResult runs right after it lands). */
+export const RESULT_NOTICE_WINDOW_MINUTES = 10;
+
+/**
+ * Results for the QQ group: every match of the event that was decided in
+ * the last few minutes, once per outcome (a result that is rolled back and
+ * entered differently is announced again; the same one is not).
+ */
+export async function notifyResults(db, tournamentId, log) {
+  if (!botNoticesEnabled()) return 0;
+  const event = (await db.query('SELECT id, name FROM axsuck.tournaments WHERE id = $1', [tournamentId])).rows[0];
+  if (!event) return 0;
+  const { rows: done } = await db.query(`
+    SELECT id, player1_id, player2_id, winner_id, score1, score2, status FROM axsuck.matches
+    WHERE tournament_id = $1 AND status IN ('completed', 'walkover') AND winner_id IS NOT NULL
+      AND updated_at > NOW() - ($2::int * INTERVAL '1 minute')
+    ORDER BY updated_at, id
+  `, [tournamentId, RESULT_NOTICE_WINDOW_MINUTES]);
+  let queued = 0;
+  for (const m of done) {
+    // Byes (one side empty) are not results anyone waits for.
+    if (!m.player1_id || !m.player2_id) continue;
+    if (!(await claimNotice(db, m.id, `qq-result:${m.status}:${m.winner_id}:${m.score1}:${m.score2}`))) continue;
+    const loser = m.winner_id === m.player1_id ? m.player2_id : m.player1_id;
+    const text = m.status === 'walkover'
+      ? noticeText.walkover(event.name, m.winner_id, loser)
+      : noticeText.result(event.name, m.player1_id, m.score1, m.score2, m.player2_id, m.winner_id);
+    if (await queueBotNotice(db, { kind: 'result', tournamentId, text }, log)) queued += 1;
+  }
+  return queued;
 }
 
 /**
@@ -137,7 +196,9 @@ export async function afterResult(fastify, tournamentId) {
  */
 export async function notifyBanTurn(db, tournamentId, match, record, log) {
   const state = record?.state;
-  if (!pushEnabled() || state?.phase !== 'ban') return 0;
+  const push = pushEnabled();
+  const qq = botNoticesEnabled();
+  if ((!push && !qq) || state?.phase !== 'ban') return 0;
   const side = state.bans.length % 2 === 0 ? 'A' : 'B';
   const playerId = side === 'A' ? match.player1_id : match.player2_id;
   const opponentId = side === 'A' ? match.player2_id : match.player1_id;
@@ -147,6 +208,15 @@ export async function notifyBanTurn(db, tournamentId, match, record, log) {
   const last = state.bans.at(-1);
   const who = getPlayerDisplayName(other) || opponentId;
   const before = !last ? '' : last.group ? `${who} 禁用了 ${last.group}，` : `${who} 空过，`;
+  if (qq) {
+    await queueBotNotice(db, {
+      kind: 'ban',
+      tournamentId,
+      text: noticeText.ban(event?.name, playerId, before.replace(/，$/, '')),
+      mention: [playerId],
+    }, log);
+  }
+  if (!push) return 0;
   return sendToPlayers(db, [playerId], {
     title: '轮到你禁用了',
     body: `${event?.name || ''}：${before}请打开 Ban/Pick 选择要禁用的大组`,

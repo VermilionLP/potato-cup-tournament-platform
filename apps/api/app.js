@@ -24,6 +24,7 @@ import votesRoutes from './routes/votes.js';
 import ladderRoutes from './routes/ladder.js';
 import wikiRoutes from './routes/wiki.js';
 import pushRoutes from './routes/push.js';
+import botRoutes from './routes/bot.js';
 import reminderRoutes from './routes/reminders.js';
 import vehicleImageRoutes from './routes/vehicle-images.js';
 import vehicleSpecsRoutes from './routes/vehicle-specs.js';
@@ -32,6 +33,7 @@ import vehiclePoolRoutes from './routes/vehicle-pools.js';
 import pointsRoutes from './routes/points.js';
 import { startPushScheduler } from './lib/push-scheduler.js';
 import { startReportScheduler } from './lib/report-scheduler.js';
+import { startBotScheduler } from './lib/bot-scheduler.js';
 import { createEsLogger, registerRequestLogging } from './lib/es-logger.js';
 import { registerRateLimit } from './lib/rate-limit.js';
 import { registerLadderCacheInvalidation } from './lib/ladder-cache.js';
@@ -92,6 +94,7 @@ await fastify.register(ladderRoutes, { prefix: '/api' });
 await fastify.register(wikiRoutes, { prefix: '/api' });
 await fastify.register(pushRoutes, { prefix: '/api' });
 await fastify.register(reminderRoutes, { prefix: '/api' });
+await fastify.register(botRoutes, { prefix: '/api' });
 await fastify.register(vehicleImageRoutes, { prefix: '/api' });
 await fastify.register(vehicleSpecsRoutes, { prefix: '/api' });
 await fastify.register(adminRoutes, { prefix: '/api' });
@@ -104,6 +107,7 @@ await fastify.register(clientErrorRoutes, { prefix: '/api' });
 if (process.env.BACKGROUND_JOBS !== 'off') {
   startPushScheduler(fastify);
   startReportScheduler(fastify);
+  startBotScheduler(fastify);
 }
 
 fastify.get('/api/ping', async () => ({ pong: true }));

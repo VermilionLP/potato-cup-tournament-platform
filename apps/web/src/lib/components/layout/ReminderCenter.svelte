@@ -5,7 +5,10 @@
   //                  whose alarms ring on the phone / computer itself;
   //   notifications  browser push (#lib/push.js), with a test button;
   //   on this site   the banner, tab-title blink and sound while a page is
-  //                  open (#lib/reminders.svelte.js).
+  //                  open (#lib/reminders.svelte.js);
+  //   QQ             the bots in the Potato Cup QQ group: notices @ the QQ
+  //                  number in the profile; binding (a code sent to the
+  //                  official bot) lets the player ask it for their schedule.
   // The badge counts what needs the player now.
   import { onMount } from "svelte";
   import { toast } from "svelte-sonner";
@@ -14,6 +17,7 @@
   import { reminders } from "#lib/reminders.svelte.js";
   import { calendarUrl, webcalUrl } from "#lib/reminders.js";
   import { copyText } from "#lib/clipboard.js";
+  import { API } from "#lib/api.js";
   import { disablePush, enablePush, pushIsEnabled, pushStatus, sendTestPush } from "#lib/push.js";
   import BellIcon from "@lucide/svelte/icons/bell";
   import BellRingIcon from "@lucide/svelte/icons/bell-ring";
@@ -21,6 +25,7 @@
   import CopyIcon from "@lucide/svelte/icons/copy";
   import MonitorIcon from "@lucide/svelte/icons/monitor";
   import CheckIcon from "@lucide/svelte/icons/check";
+  import MessageCircleIcon from "@lucide/svelte/icons/message-circle";
 
   let open = $state(false);
   let subscribed = $state(false);
@@ -47,8 +52,52 @@
     }
   });
   $effect(() => {
-    if (open) refreshStatus();
+    if (open) {
+      refreshStatus();
+      refreshQq();
+    }
   });
+
+  // QQ binding: { count } from the server, and the code just made.
+  let qqBound = $state(0);
+  let qqCode = $state(null);
+  async function refreshQq() {
+    if (!userState.id) return;
+    try {
+      qqBound = (await API.getQqBindings(userState.id)).data?.count || 0;
+    } catch {
+      qqBound = 0;
+    }
+  }
+  async function makeCode() {
+    if (busy || !userState.id) return;
+    busy = true;
+    try {
+      qqCode = (await API.createQqBindCode(userState.id)).data;
+    } catch (e) {
+      toast.error(e.plain ? e.message : `获取绑定码失败: ${e.message}`);
+    } finally {
+      busy = false;
+    }
+  }
+  async function copyCommand() {
+    if (await copyText(`绑定 ${qqCode.code}`)) toast.success("已复制，在 QQ 群里 @土豆杯机器人 后粘贴发送");
+    else toast.error("复制失败，请手动输入");
+  }
+  async function unbind() {
+    if (busy || !userState.id) return;
+    busy = true;
+    try {
+      await API.deleteQqBindings(userState.id);
+      qqBound = 0;
+      qqCode = null;
+      toast.info("已解除 QQ 绑定");
+    } catch (e) {
+      toast.error(e.plain ? e.message : `解除绑定失败: ${e.message}`);
+    } finally {
+      busy = false;
+    }
+  }
 
   const mine = $derived(Boolean(userState.id));
   const feed = $derived(origin ? calendarUrl(origin, userState.id) : "");
@@ -176,6 +225,35 @@
           {/if}
         </div>
         <p class="mt-1.5 text-[11px] leading-snug text-muted-foreground/80">部分国内安卓浏览器收不到网页通知，建议同时订阅日历。</p>
+      {/if}
+    </div>
+
+    <!-- QQ group -->
+    <div class={section}>
+      <div class="mb-1 flex items-center gap-2">
+        <MessageCircleIcon class="size-4 text-brand-ink" />
+        <p class="flex-1 text-sm font-bold">QQ 群提醒</p>
+        {#if mine && qqBound}<span class="inline-flex items-center gap-0.5 text-small font-bold text-brand-ink"><CheckIcon class="size-3.5" />已绑定</span>{/if}
+      </div>
+      <p class="text-small text-muted-foreground">群里的比赛就绪、确认比分、轮到禁用和开赛提醒会 @ 你个人资料里填写的 QQ 号。</p>
+      {#if mine}
+        <p class="mt-1 text-small text-muted-foreground">绑定后，在群里 @土豆杯机器人 发送「赛程」或「战绩」就能查询自己的比赛。</p>
+        {#if qqCode}
+          <div class="mt-2 rounded-md bg-muted/60 p-2">
+            <p class="text-small text-muted-foreground">10 分钟内在 QQ 群里 @土豆杯机器人 发送：</p>
+            <p class="num mt-0.5 text-lg font-black tracking-wide">绑定 {qqCode.code}</p>
+          </div>
+        {/if}
+        <div class="mt-2 flex flex-wrap gap-1.5">
+          {#if qqCode}
+            <button type="button" class={main} onclick={copyCommand}><CopyIcon class="size-3.5" />复制</button>
+          {:else}
+            <button type="button" class={main} disabled={busy} onclick={makeCode}>{qqBound ? "再绑定一个 QQ" : "获取绑定码"}</button>
+          {/if}
+          {#if qqBound}<button type="button" class={small} disabled={busy} onclick={unbind}>解除绑定</button>{/if}
+        </div>
+      {:else}
+        <p class="mt-1 text-small text-muted-foreground">填写选手 ID 后可以绑定 QQ，在群里查询自己的赛程和战绩。</p>
       {/if}
     </div>
 

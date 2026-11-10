@@ -91,6 +91,12 @@ export const CACHE_NEUTRAL_ROUTES = new Set([
   'POST /tournaments/:id/matches/:matchId/report/dispute',
   'DELETE /tournaments/:id/matches/:matchId/report',
   'POST /client-errors',
+  // QQ bots: notices and account bindings never move ratings.
+  'POST /bot/notices/:id/sent',
+  'POST /bot/bind',
+  'DELETE /bot/bind/:openid',
+  'POST /players/:id/qq-bind-code',
+  'DELETE /players/:id/qq-bindings',
   'DELETE /client-errors',
 ]);
 

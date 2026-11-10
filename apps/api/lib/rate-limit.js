@@ -2,9 +2,10 @@
 // process). Each client IP gets `limit` requests per `windowMs` per bucket;
 // past that the request is answered with 429 and Retry-After. Reads (GET,
 // HEAD, OPTIONS) are limited only by rules marked `reads`; admin requests
-// are never limited.
+// and the QQ bots' requests (lib/bot-auth.js) are never limited.
 
 import { isAdminRequest } from './admin.js';
+import { isBotRequest } from './bot-auth.js';
 
 export const RATE_LIMITS = [
   // Sign-in name lookup (GET, asked while typing): plenty for people, not for scraping.
@@ -50,7 +51,7 @@ const READS = new Set(['GET', 'HEAD', 'OPTIONS']);
 export function registerRateLimit(fastify, limiter = createRateLimiter()) {
   fastify.addHook('onRequest', async (req, reply) => {
     if (!req.url.startsWith('/api/')) return;
-    if (isAdminRequest(req)) return;
+    if (isAdminRequest(req) || isBotRequest(req)) return;
     const path = req.url.split('?')[0];
     const blocked = limiter.check(req.ip, path, READS.has(req.method));
     if (!blocked) return;

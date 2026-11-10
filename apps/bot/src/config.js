@@ -39,7 +39,10 @@ export function readConfig(env) {
     } else {
       const groups = (env.ONEBOT_GROUPS || '').split(',').map((s) => s.trim()).filter(Boolean);
       if (groups.length === 0) problems.push('ONEBOT_GROUPS must list at least one group number.');
+      const noticeGroup = (env.ONEBOT_NOTICE_GROUP || groups[0] || '').trim();
+      if (noticeGroup && !groups.includes(noticeGroup)) problems.push('ONEBOT_NOTICE_GROUP must be one of ONEBOT_GROUPS.');
       onebot = {
+        noticeGroup,
         selfId: env.ONEBOT_SELF_ID,
         token: env.ONEBOT_TOKEN,
         endpoint: env.ONEBOT_ENDPOINT || 'ws://127.0.0.1:3001',
@@ -52,5 +55,10 @@ export function readConfig(env) {
     problems.push('No bot is configured: fill in apps/bot/.env (see .env.example).');
   }
 
-  return { qq, onebot, siteUrl: (env.SITE_API_URL || 'http://127.0.0.1:3100').replace(/\/+$/, ''), problems };
+  // BOT_TOKEN opens the site's /api/bot routes: notices for the community
+  // bot, bindings and schedules for the official bot. Without it only the
+  // 状态 check works.
+  const botToken = (env.BOT_TOKEN || '').trim() || null;
+
+  return { qq, onebot, botToken, siteUrl: (env.SITE_API_URL || 'http://127.0.0.1:3100').replace(/\/+$/, ''), problems };
 }

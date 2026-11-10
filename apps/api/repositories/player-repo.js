@@ -25,6 +25,10 @@ export async function mergePlayerInto(client, oldId, targetId) {
       AND NOT EXISTS (SELECT 1 FROM axsuck.player_keys WHERE player_id = $2)
   `, [oldId, targetId]);
 
+  // QQ bot bindings follow the player (lib/bot-auth.js, routes/bot.js); open bind codes are dropped.
+  await client.query('UPDATE axsuck.qq_bindings SET player_id = $2 WHERE player_id = $1', [oldId, targetId]);
+  await client.query('DELETE FROM axsuck.qq_bind_codes WHERE player_id = $1', [oldId]);
+
   // 1. Event registrations (the target's own entry wins in a shared event).
   await client.query(`
     DELETE FROM axsuck.tournament_players o

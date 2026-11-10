@@ -10,13 +10,15 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readConfig } from './config.js';
 import { allowSession } from './filters.js';
-import { pingSite } from './site.js';
+import { createSite, pingSite } from './site.js';
+import { registerCommands } from './commands.js';
+import { startNoticeLoop } from './notices.js';
 
 // Koishi's ESM build fails to load on Node 22 (@koishijs/loader), and the
 // adapters require() the CommonJS build: load everything through require so
 // the app and its adapters share one Koishi instance.
 const require = createRequire(import.meta.url);
-const { Context } = require('koishi');
+const { Context, h, Universal } = require('koishi');
 const HttpService = require('@koishijs/plugin-http').default;
 const QQAdapter = require('@koishijs/plugin-adapter-qq').default ?? require('@koishijs/plugin-adapter-qq');
 const OneBotAdapter = require('koishi-plugin-adapter-onebot').default ?? require('koishi-plugin-adapter-onebot');
@@ -67,5 +69,17 @@ app.command('状态', '检查机器人和网站是否连通')
     return `${who}在线。网站 API：${site.ok ? '正常' : `无法连接（${site.error}）`}`;
   });
 
+if (config.botToken) {
+  const site = createSite({ siteUrl: config.siteUrl, botToken: config.botToken });
+  if (config.qq) registerCommands(app, site);
+  if (config.onebot) {
+    // The online OneBot bot, or null while NapCat is down or logging in.
+    const getBot = () => app.bots.find((b) => b.platform === 'onebot' && b.status === Universal.Status.ONLINE) || null;
+    startNoticeLoop({ site, getBot, groupId: config.onebot.noticeGroup, h });
+  }
+} else {
+  console.warn('[bot] BOT_TOKEN is not set: group notices and the official bot\'s commands are off (only 状态 works).');
+}
+
 await app.start();
-console.log(`[bot] started: ${[config.qq && 'official QQ bot', config.onebot && 'community bot'].filter(Boolean).join(', ')}`);
+console.log(`[bot] started: ${[config.qq && 'official QQ bot', config.onebot && `community bot (notices to ${config.onebot.noticeGroup})`].filter(Boolean).join(', ')}`);
