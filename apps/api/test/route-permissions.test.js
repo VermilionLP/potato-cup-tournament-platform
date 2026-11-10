@@ -3,11 +3,11 @@ import { test } from 'node:test';
 import { buildRoutes, fakeDb, sampleUrl } from './helpers/route-harness.js';
 import { hashPlayerKey } from '../lib/player-key.js';
 
-// Route modules as app.js registers them. push.js needs web-push (via the
-// scheduler it does not import), so all load without the npm packages.
+// Route modules as app.js registers them. push.js loads web-push only when
+// it sends, so all load without the npm packages.
 const MODULE_FILES = [
   'tournaments', 'tournament-settings', 'tournament-bracket', 'tournament-import', 'players',
-  'player-keys', 'player-stats', 'registrations', 'matches', 'votes', 'ladder', 'wiki', 'push',
+  'player-keys', 'player-stats', 'registrations', 'matches', 'votes', 'ladder', 'wiki', 'push', 'reminders',
   'admin', 'vehicle-pools', 'points', 'client-errors',
 ];
 const modules = await Promise.all(MODULE_FILES.map(async (f) => (await import(`../routes/${f}.js`)).default));
@@ -17,7 +17,7 @@ const player = (id, key) => ({ 'x-player-id': id, ...(key ? { 'x-player-key': ke
 process.env.ADMIN_TOKEN = ADMIN['x-admin-token'];
 
 // Writes anyone may make without an identity.
-const PUBLIC_WRITES = new Set(['POST /push/subscribe', 'DELETE /push/unsubscribe', 'POST /client-errors']);
+const PUBLIC_WRITES = new Set(['POST /push/subscribe', 'DELETE /push/unsubscribe', 'POST /push/test', 'POST /client-errors']);
 // Writes a player may make for themselves (checked separately below).
 const SELF_WRITES = new Set([
   'POST /players', 'POST /players/:id/touch', 'POST /players/:id/key',

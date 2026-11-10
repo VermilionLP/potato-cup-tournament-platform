@@ -222,17 +222,46 @@ export default async function tournamentsRoutes(fastify) {
     return created;
   });
 
-  fastify.get('/calendar.ics', async (req, reply) => {
-    const tournaments = (await fastify.db.query(`
-      SELECT id, name, scheduled_time
-      FROM axsuck.tournaments
-      WHERE status <> 'completed' AND scheduled_time <> ''
-      ORDER BY created_at ASC
-    `)).rows;
-    const ics = buildCalendarFeed(tournaments);
+  // Calendar subscriptions (lib/calendar.js): every upcoming event, or with
+  // ?player=<id> that player's own (renamed players keep their feed through
+  // their old id). Calendars poll it, so it must stay cheap.
+  const siteOrigin = (req) => {
+    const proto = String(req.headers['x-forwarded-proto'] || req.protocol || 'https').split(',')[0].trim();
+    return req.headers.host ? `${proto}://${req.headers.host}` : '';
+  };
+  const sendIcs = (reply, ics, filename) => {
     reply.header('Content-Type', 'text/calendar; charset=utf-8');
-    reply.header('Content-Disposition', 'attachment; filename="suck-calendar.ics"');
+    reply.header('Content-Disposition', `inline; filename="${filename}"`);
+    reply.header('Cache-Control', 'public, max-age=300');
     return ics;
+  };
+
+  fastify.get('/calendar.ics', async (req, reply) => {
+    const wanted = typeof req.query?.player === 'string' ? req.query.player.trim().slice(0, 100) : '';
+    if (!wanted) {
+      const tournaments = (await fastify.db.query(`
+        SELECT id, name, scheduled_time, status, updated_at
+        FROM axsuck.tournaments
+        WHERE status <> 'completed' AND scheduled_time <> ''
+        ORDER BY created_at ASC
+      `)).rows;
+      return sendIcs(reply, buildCalendarFeed(tournaments, new Date(), { origin: siteOrigin(req) }), 'potato-cup.ics');
+    }
+    const player = (await fastify.db.query(`
+      SELECT p.id FROM axsuck.players p WHERE p.id = $1
+      UNION ALL
+      SELECT a.player_id FROM axsuck.player_aliases a WHERE a.alias = $1
+      LIMIT 1
+    `, [wanted])).rows[0];
+    if (!player) throw fastify.httpErrors.notFound('Player not found');
+    const tournaments = (await fastify.db.query(`
+      SELECT t.id, t.name, t.scheduled_time, t.status, t.checkin_enabled, t.updated_at
+      FROM axsuck.tournaments t
+      JOIN axsuck.tournament_players tp ON tp.tournament_id = t.id AND tp.player_id = $1
+      WHERE t.status <> 'completed' AND t.scheduled_time <> ''
+      ORDER BY t.created_at ASC
+    `, [player.id])).rows;
+    return sendIcs(reply, buildCalendarFeed(tournaments, new Date(), { origin: siteOrigin(req), player: player.id }), 'potato-cup-mine.ics');
   });
 
   fastify.get('/tournaments/:id/calendar.ics', async (req, reply) => {
@@ -242,6 +271,7 @@ export default async function tournamentsRoutes(fastify) {
       id: t.id,
       name: t.name,
       scheduledTime: t.scheduled_time,
+      origin: siteOrigin(req),
     });
     if (!ics) throw fastify.httpErrors.badRequest('Tournament has no scheduled time');
     reply.header('Content-Type', 'text/calendar; charset=utf-8');

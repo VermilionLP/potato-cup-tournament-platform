@@ -1,24 +1,17 @@
-import webpush from 'web-push';
+// Every minute: the "starts in an hour" reminder to every browser that
+// turned reminders on. Runs once there are keys (lib/push-keys.js: .env,
+// or generated when the first browser subscribed).
 import { reminderPayload, reminderWindow, REMINDER_KIND } from './push.js';
-import { setPushTransport } from './push-sender.js';
+import { pushKeys } from './push-keys.js';
+import { sendRaw } from './push-sender.js';
 
 export function startPushScheduler(fastify) {
-  const publicKey = process.env.VAPID_PUBLIC_KEY;
-  const privateKey = process.env.VAPID_PRIVATE_KEY;
-  const subject = process.env.VAPID_SUBJECT || 'mailto:REMOVED_EMAIL';
-  if (!publicKey || !privateKey) {
-    fastify.log.warn('VAPID keys are not configured; web push is disabled.');
-    return;
-  }
-  webpush.setVapidDetails(subject, publicKey, privateKey);
-  // Personal notices (lib/push-sender.js) go through the same keys.
-  setPushTransport((subscription, payload) => webpush.sendNotification(subscription, payload));
-
   let running = false;
   const tick = async () => {
     if (running) return;
     running = true;
     try {
+      if (!(await pushKeys(fastify.db))) return;
       const tournaments = (await fastify.db.query(`
         SELECT id, name, scheduled_time
         FROM axsuck.tournaments
@@ -47,7 +40,7 @@ export function startPushScheduler(fastify) {
         const payload = JSON.stringify(reminderPayload(tournament));
         for (const subscription of subscriptions) {
           try {
-            await webpush.sendNotification({
+            await sendRaw({
               endpoint: subscription.endpoint,
               keys: { p256dh: subscription.p256dh, auth: subscription.auth },
             }, payload);

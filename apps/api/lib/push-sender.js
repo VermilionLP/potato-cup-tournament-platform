@@ -1,6 +1,6 @@
 // Personal web push: notices for given players (migration 034 ties a
-// subscription to the player who subscribed). The transport is set by the
-// push scheduler once VAPID keys are configured (it imports web-push), so
+// subscription to the player who subscribed). The transport is set by
+// lib/push-keys.js once there are VAPID keys (it imports web-push), so
 // routes can use this without the package; without a transport nothing is
 // sent.
 
@@ -12,6 +12,12 @@ export function setPushTransport(fn) {
 
 export function pushEnabled() {
   return Boolean(transport);
+}
+
+/** Sends one notification (throws like web-push: statusCode 404 / 410 for a dead subscription). */
+export function sendRaw(subscription, payload) {
+  if (!transport) throw new Error('Push notifications are not configured');
+  return transport(subscription, payload);
 }
 
 /** Sends `payload` to every subscription of these players; drops dead ones. */

@@ -59,7 +59,7 @@ pnpm test         # web + api 单元测试（不需要数据库）
 
 ## Credentials
 
-- `apps/api/.env` — `DATABASE_URL`、`PORT`、VAPID keys、`ADMIN_TOKEN`、`ES_*`
+- `apps/api/.env` — `DATABASE_URL`、`PORT`、`ADMIN_TOKEN`、`ES_*`；VAPID keys 可不填（见下面「Reminders」）
 
 选手的 QQ / Discord（`players.battle_tags` 里的 `qq` / `discord`）只发给已登录的选手和管理员（`lib/player-privacy.js` 的 `contactFor` / `canSeeContacts`，用在选手、赛事详情和投票接口）；游客收到的 `battle_tags` 里没有这两项，前端 `ContactBadges` 显示「登录后可见」。
 
@@ -89,6 +89,13 @@ Ban / Pick 的载具池是 `axsuck.vehicle_pools` 里的模板（迁移 027）�
 ## Check-in, reported results, personal push
 
 迁移 034。**签到**：赛事可开启 `tournaments.checkin_enabled`，开赛前 30 分钟开放（`lib/checkin.js`，北京时间；没有时间就整个报名阶段开放），选手 `POST /tournaments/:id/checkin`，管理员任何时候可代签；开赛走 `POST /tournaments/:id/start {remove, forfeit}`：`remove` 的人移出并重排种子、重新生成对阵，`forfeit` 的人留下但标 `tournament_players.forfeited`，他们碰到的每场比赛自动判对手弃权胜（`lib/match-flow.js` 的 `settleForfeits`，每次出结果后都会跑）。**比分确认**：管理员提交的结果立即生效；选手提交的比分存进 `matches.pending_report`（JSONB），对手确认（或提交相同比分）才生效，提交不同比分或点「有异议」就标为争议，由管理员选一方生效或驳回；没人异议的比分 10 分钟后由 `lib/report-scheduler.js` 自动生效；选手申报对手弃权一律要管理员确认。规则在 `lib/match-reports.js`（纯函数，有测试）。**个人推送**：`push_subscriptions.player_id` 记录订阅者（带设备密钥校验），`lib/push-sender.js` 只推给指定选手；对阵双方确定时推「轮到你了」，对手提交比分时推「请确认比分」，BP 轮到自己禁用时推「轮到你禁用了」，每条只发一次（`push_match_notices`）。
+
+## Reminders
+
+顶栏铃铛是「提醒中心」（`components/layout/ReminderCenter.svelte`），三种渠道互补：
+- **日历订阅**（推荐，国内也能用）：`GET /api/calendar.ics` 是全部未结束赛事，`?player=<id>` 是该选手报名的赛事（旧 ID 经 `player_aliases` 仍有效）。闹钟由手机/电脑日历自己响：全部赛事开赛前 1 小时；个人日历 1 小时 + 10 分钟，需要签到的再加 30 分钟（`lib/calendar.js`，`ALARMS`）。日历每小时自动刷新。
+- **浏览器通知**（Web Push）：`.env` 有 `VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY` 就用它；没有的话第一个浏览器开启通知时服务器自己生成一对存进 `app_secrets`（迁移 046，`lib/push-keys.js`），之后不能再换。`POST /push/test` 给本浏览器发测试通知（每分钟一次）。国内安卓 Chrome 依赖 FCM，常常收不到，所以面板里推荐日历。
+- **网页内提醒**：开着网站时每 30 秒轮询 `GET /api/reminders/:playerId`（`lib/attention.js`：确认比分、轮到禁用、轮到比赛、签到开放、1 小时内开赛），页头下方横幅（`AttentionBanner.svelte`）、新提醒提示音、后台标签页标题闪烁（`lib/reminders.svelte.js`）；横幅可按条关闭，偏好存 localStorage。
 
 ## Admin tools
 

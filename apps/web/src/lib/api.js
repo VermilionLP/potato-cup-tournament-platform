@@ -152,6 +152,9 @@ export const API = {
     request('/push/subscribe', { method: 'POST', body: JSON.stringify(subscription) }),
   unsubscribePush: (endpoint) =>
     request('/push/unsubscribe', { method: 'DELETE', body: JSON.stringify({ endpoint }) }),
+  testPush: (endpoint) => request('/push/test', { method: 'POST', body: JSON.stringify({ endpoint }) }),
+  // What needs this player now (in-page reminders).
+  getReminders: (playerId) => request(`/reminders/${enc(playerId)}`),
   getPlayer: (id) => request(`/players/${enc(id)}`),
   updatePlayer: (id, data) => request('/players', { method: 'POST', body: JSON.stringify({ id, ...data }) }),
   // Device key: bind on first use / check a key (pass it to import one).
