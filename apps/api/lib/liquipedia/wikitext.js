@@ -102,22 +102,3 @@ export function parseTemplates(text) {
   }
   return out;
 }
-
-/** First top-level template in `text` with one of `names`, or null. */
-export function findTemplate(text, ...names) {
-  const wanted = names.map(normalizeName);
-  return parseTemplates(text).find((t) => wanted.includes(t.name)) || null;
-}
-
-/** Resolves the few magic words the Potato Cup pages use. */
-export function resolveMagic(value, pageTitle = '') {
-  const sub = String(pageTitle).split('/').pop();
-  return String(value ?? '')
-    .replace(/\{\{\s*SUBPAGENAME\s*\}\}/gi, sub)
-    .replace(/\{\{\s*PAGENAME\s*\}\}/gi, String(pageTitle).split('/').pop())
-    .replace(/\{\{\s*!\s*\}\}/g, '|')
-    .replace(/<br\s*\/?>/gi, ' ')
-    .replace(/\[\[(?:[^\]|]*\|)?([^\]]*)\]\]/g, '$1')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
