@@ -72,12 +72,12 @@
 
 <div class="space-y-4 py-2">
   <div class="space-y-1.5">
-    <label for="layout-contact-input" class="text-xs font-semibold text-muted-foreground">QQ 号 / Discord 用户名（必填）</label>
+    <label for="layout-contact-input" class="text-small font-semibold text-muted-foreground">QQ 号 / Discord 用户名（必填）</label>
     <Input
       id="layout-contact-input"
       bind:value={contactInput}
       placeholder="例如: 123456789 或 username"
-      class="bg-background border-border text-foreground"
+      class="bg-background"
       onkeydown={onEnter}
     />
     <p class="text-small text-muted-foreground/70">
@@ -89,12 +89,12 @@
   </div>
 
   <div class="space-y-1.5">
-    <label for="player-id-input" class="text-xs font-medium text-muted-foreground">选手游戏昵称 / ID</label>
+    <label for="player-id-input" class="text-small font-semibold text-muted-foreground">选手游戏昵称 / ID</label>
     <Input
       id="player-id-input"
       bind:value={idInput}
       placeholder="例如: Vermilion"
-      class="bg-background border-border text-foreground"
+      class="bg-background"
       onkeydown={onEnter}
     />
   </div>

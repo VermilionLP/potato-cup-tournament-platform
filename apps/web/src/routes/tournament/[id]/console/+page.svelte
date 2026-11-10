@@ -165,7 +165,7 @@
       </div>
       <div class="flex items-center gap-2 text-xs">
         <span class="text-muted-foreground">我的直播频道</span>
-        <select value={channel} onchange={(e) => changeChannel(Number(e.currentTarget.value))} class="rounded-md border border-border bg-background px-2 py-1">
+        <select value={channel} onchange={(e) => changeChannel(Number(e.currentTarget.value))} class="field cursor-pointer">
           {#each channels as c (c)}
             <option value={c}>频道 {c}</option>
           {/each}

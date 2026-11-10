@@ -67,14 +67,14 @@
 
     {#if !userState.adminToken}
       <div class="space-y-1.5 py-1">
-        <label for="admin-token-input" class="text-xs font-bold text-muted-foreground">管理员令牌</label>
+        <label for="admin-token-input" class="text-small font-semibold text-muted-foreground">管理员令牌</label>
         <Input
           id="admin-token-input"
           type="password"
           bind:value={tokenInput}
           placeholder="ADMIN_TOKEN"
           autocomplete="off"
-          class="text-xs h-8 bg-background border-border text-foreground"
+          class="bg-background"
           onkeydown={(e) => {
             if (e.key === "Enter") {
               e.preventDefault();

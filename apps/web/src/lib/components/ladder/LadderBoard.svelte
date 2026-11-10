@@ -92,7 +92,7 @@
       <select
         bind:value={minGames}
         aria-label="场次"
-        class="h-7 text-small rounded-md bg-muted/40 border border-border focus:border-primary/50 outline-none text-foreground px-2 pr-6 cursor-pointer"
+        class="field bg-muted/40 pr-6 cursor-pointer"
       >
         <option value={0}>全部场次</option>
         <option value={2}>≥ 2 场</option>
@@ -101,7 +101,7 @@
       </select>
       <div class="relative w-full sm:w-56">
         <SearchIcon class="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-        <Input bind:value={query} placeholder="搜索选手 / 战队" class="pl-8 h-8 text-xs" />
+        <Input bind:value={query} placeholder="搜索选手 / 战队" class="pl-8" />
       </div>
     </div>
   </Card.Header>

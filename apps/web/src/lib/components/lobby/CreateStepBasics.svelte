@@ -10,13 +10,13 @@
 
 <section class="space-y-4">
   <div class="space-y-1.5">
-    <label for="create-name-input" class="text-xs font-semibold text-foreground/80">赛事名称</label>
-    <Input id="create-name-input" bind:value={form.name} placeholder="例如 Potato Cup Weekly #40" class="h-10 bg-background border-border text-base font-semibold text-foreground" />
+    <label for="create-name-input" class="text-small font-semibold text-muted-foreground">赛事名称</label>
+    <Input id="create-name-input" bind:value={form.name} placeholder="例如 Potato Cup Weekly #40" class="bg-background" />
   </div>
   <div class="grid grid-cols-[6.5rem_1fr] gap-3">
     <div class="space-y-1.5">
-      <label for="create-capacity-input" class="text-xs font-semibold text-foreground/80">人数上限</label>
-      <Input id="create-capacity-input" type="number" bind:value={form.capacity} min="2" max="128" class="bg-background border-border text-foreground" />
+      <label for="create-capacity-input" class="text-small font-semibold text-muted-foreground">人数上限</label>
+      <Input id="create-capacity-input" type="number" bind:value={form.capacity} min="2" max="128" class="bg-background" />
     </div>
     <div class="space-y-1.5">
       <span class="text-xs font-semibold text-foreground/80">比赛模式</span>
@@ -37,7 +37,7 @@
     />
   </div>
   <div class="space-y-1.5">
-    <label for="create-time-input" class="text-xs font-semibold text-foreground/80">
+    <label for="create-time-input" class="text-small font-semibold text-muted-foreground">
       比赛时间 <span class="font-normal text-muted-foreground">· 可选，设置后跳过时间投票直接开启报名</span>
     </label>
     <DateTimePicker id="create-time-input" bind:value={form.scheduledTime} placeholder="不设置（先进行时间投票）" />

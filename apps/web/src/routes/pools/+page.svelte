@@ -288,7 +288,7 @@
             {#if view === "table"}
               <div class="relative ml-auto w-full sm:w-64">
                 <SearchIcon class="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-                <Input bind:value={query} placeholder="搜索载具、国家、类型或分组..." class="h-8 pl-8 text-xs" />
+                <Input bind:value={query} placeholder="搜索载具、国家、类型或分组..." class="pl-8" />
               </div>
               {#if isAdmin}
                 <Button variant="outline" size="sm" class="h-8 gap-1.5 text-xs cursor-pointer" onclick={addRow}>

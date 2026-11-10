@@ -33,7 +33,7 @@
         max={MAX_SWISS_ROUNDS}
         bind:value={form.swissRounds}
         aria-label="瑞士轮轮数"
-        class="h-8 w-16 rounded-md border border-border bg-background px-2 text-center text-sm text-foreground"
+        class="field w-16 text-center"
       />
       <span class="text-xs text-muted-foreground">轮</span>
     {:else if basis}

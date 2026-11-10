@@ -38,8 +38,7 @@
   const placeOf = (row) => ({ from: Number(row.from) || 0, to: Number(row.to) || Number(row.from) || 0 });
   let pool = $derived(prizeTotal(table));
 
-  const field =
-    "h-8 rounded-md border border-border bg-background text-xs text-foreground tabular-nums transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20";
+  const field = "field-compact h-8 tabular-nums";
 </script>
 
 <div class="space-y-3">
@@ -63,7 +62,7 @@
       赛季
       <input
         aria-label="积分榜赛季"
-        class="{field} w-20 px-2 text-center num font-semibold"
+        class="field w-20 text-center num"
         inputmode="numeric"
         maxlength="4"
         bind:value={season}
@@ -88,12 +87,12 @@
             {placeOf(row).from || "?"}
           </span>
           <div class="flex items-center gap-1">
-            <input aria-label="名次从" inputmode="numeric" class="{field} w-9 sm:w-10 px-1 text-center font-semibold" value={row.from} oninput={(e) => setRow(i, "from", e.currentTarget.value)} />
+            <input aria-label="名次从" inputmode="numeric" class="{field} w-9 sm:w-10 px-1 text-center" value={row.from} oninput={(e) => setRow(i, "from", e.currentTarget.value)} />
             <span class="text-muted-foreground">–</span>
-            <input aria-label="名次到" inputmode="numeric" class="{field} w-9 sm:w-10 px-1 text-center font-semibold" value={row.to} oninput={(e) => setRow(i, "to", e.currentTarget.value)} />
+            <input aria-label="名次到" inputmode="numeric" class="{field} w-9 sm:w-10 px-1 text-center" value={row.to} oninput={(e) => setRow(i, "to", e.currentTarget.value)} />
           </div>
           <div class="relative">
-            <input aria-label="积分" inputmode="decimal" class="{field} w-full pl-2 pr-2 sm:pr-7 num font-semibold" value={row.points} oninput={(e) => setRow(i, "points", e.currentTarget.value)} />
+            <input aria-label="积分" inputmode="decimal" class="{field} w-full pl-2 pr-2 sm:pr-7 num" value={row.points} oninput={(e) => setRow(i, "points", e.currentTarget.value)} />
             <span class="pointer-events-none absolute right-2 top-1/2 hidden -translate-y-1/2 text-small text-muted-foreground sm:block">分</span>
           </div>
           <div class="relative">
@@ -102,7 +101,7 @@
               aria-label="金鹰币奖金"
               inputmode="numeric"
               placeholder="无"
-              class="{field} w-full pl-2 sm:pl-7 pr-2 num font-semibold {row.prize ? 'text-amber-700 dark:text-amber-300' : ''}"
+              class="{field} w-full pl-2 sm:pl-7 pr-2 num {row.prize ? 'text-amber-700 dark:text-amber-300' : ''}"
               value={row.prize ?? ""}
               oninput={(e) => setRow(i, "prize", e.currentTarget.value)}
             />

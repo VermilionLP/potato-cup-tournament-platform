@@ -35,7 +35,7 @@
     value={tournament?.vehicle_template || ""}
     disabled={saving}
     onchange={(e) => save(e.currentTarget.value)}
-    class="h-7 rounded-md border border-border bg-background px-2 text-xs font-semibold text-foreground cursor-pointer disabled:opacity-60"
+    class="field-compact cursor-pointer"
   >
     <option value="">自动（{autoTemplate?.name || "无"}）</option>
     {#if tournament?.vehicle_template && !typeTemplates.some((t) => t.id === tournament.vehicle_template)}
