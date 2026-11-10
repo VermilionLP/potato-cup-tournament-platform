@@ -421,6 +421,14 @@ test('the 说明 tab: the steps with the current one marked, the format, and the
     // A step's button switches tabs.
     await page.getByRole('button', { name: '查看对阵' }).click();
     await page.waitForURL(/#bracket/, { timeout: T });
+    await page.getByRole('tab', { name: '对阵预览', selected: true }).waitFor({ timeout: T });
+    // Back goes to the previous tab, not out of the event.
+    await page.goBack();
+    await page.waitForURL(/#guide/, { timeout: T });
+    await page.getByText('参赛流程').waitFor({ timeout: T });
+    // A #players link on the same page switches tabs too.
+    await page.evaluate(() => { location.hash = 'players'; });
+    await page.getByRole('tab', { name: /选手/, selected: true }).waitFor({ timeout: T });
 
     // After the start the current step is playing the matches.
     await api('POST', `/tournaments/${id}/start`, { remove: [], forfeit: [] });
@@ -483,6 +491,36 @@ test('admins set games per round on the round header; everyone sees it; a score 
     await guest.browser.close();
   }
   assert.deepEqual(errors, [], 'no uncaught errors in the page');
+});
+
+test('the admin log: an admin\'s score shows with who did it; the event filter; not for visitors', async () => {
+  const players = [];
+  for (let i = 0; i < 4; i += 1) players.push(await makePlayer('lg'));
+  const id = await makeEvent({ players, start: true });
+  const match = (await api('GET', `/tournaments/${id}`)).matches.find((m) => m.player1_id && m.player2_id && m.status === 'pending');
+  await api('POST', `/tournaments/${id}/matches/${match.id}/result`, { score1: 2, score2: 1 }, { 'x-player-id': 'log-admin' });
+  // Match-day controls are not logged.
+  await api('POST', `/tournaments/${id}/countdown`, { seconds: 60 }).catch(() => {});
+  const log = await api('GET', `/admin/log?tournament=${id}`);
+  // Newest first; the setup (create, sign-ups, start) is there too, the countdown is not.
+  assert.equal(log.entries[0].action, 'match.result');
+  assert.ok(log.entries.some((e) => e.action === 'event.start'));
+  assert.ok(!log.entries.some((e) => /countdown/.test(e.action)));
+  assert.equal(log.entries[0].actor, 'log-admin');
+  assert.equal(log.entries[0].detail.match.player1, match.player1_id);
+
+  const { browser, page, errors } = await openPage({ admin: true });
+  try {
+    await page.goto(`${BASE}/log?event=${id}`);
+    await page.getByText(`录入比分 ${match.player1_id} 2:1 ${match.player2_id}`).waitFor({ timeout: T });
+    await page.getByText('log-admin').waitFor({ timeout: T });
+    await page.screenshot({ path: 'e2e-shot-admin-log.png' });
+    assert.deepEqual(errors, [], 'no uncaught errors in the page');
+  } finally {
+    await browser.close();
+  }
+  const res = await fetch(`${BASE}/api/admin/log`);
+  assert.equal(res.status, 401);
 });
 
 test('a live score during the match: shown on the bracket, cleared by the result', async () => {

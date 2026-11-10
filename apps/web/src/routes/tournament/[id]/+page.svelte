@@ -11,6 +11,7 @@
   import { lazy } from "#lib/lazy.js";
   import { toast } from "svelte-sonner";
   import { page } from "$app/state";
+  import { pushState } from "$app/navigation";
   import { userState } from "#lib/user.svelte.js";
   import { EventData } from "#lib/event-data.svelte.js";
   import { buildMatchOrder } from "#lib/bracket.js";
@@ -38,11 +39,8 @@
   import EventTabBar from "#lib/components/tournament/EventTabBar.svelte";
   import EventOverviewTab from "#lib/components/tournament/EventOverviewTab.svelte";
   import EventBracketCard from "#lib/components/tournament/EventBracketCard.svelte";
-  import EventGuideTab from "#lib/components/tournament/EventGuideTab.svelte";
-  import BracketShareDialog from "#lib/components/tournament/BracketShareDialog.svelte";
-  import { bracketShareInput } from "#lib/bracket-image.js";
+  import { bracketShareInput } from "#lib/bracket-share.js";
   import EventPoolTab from "#lib/components/tournament/EventPoolTab.svelte";
-  import EventLiveTab from "#lib/components/tournament/EventLiveTab.svelte";
   import RosterCard from "#lib/components/tournament/RosterCard.svelte";
   import EventPageStatus from "#lib/components/tournament/EventPageStatus.svelte";
   import MatchReport from "#lib/components/tournament/MatchReport.svelte";
@@ -69,6 +67,10 @@
     };
   });
   const loadShareDialog = lazy(() => import("#lib/components/tournament/ShareDialog.svelte"));
+  // Tabs and tools not every visit needs load when first shown or used.
+  const loadGuideTab = lazy(() => import("#lib/components/tournament/EventGuideTab.svelte"));
+  const loadLiveTab = lazy(() => import("#lib/components/tournament/EventLiveTab.svelte"));
+  const loadBracketShare = lazy(() => import("#lib/components/tournament/BracketShareDialog.svelte"));
 
   let tid = $derived(page.params.id);
   let isAdmin = $derived(!!userState.adminToken);
@@ -213,14 +215,26 @@
     ensureAdmin,
   });
 
-  // Tabs (#lib/event-tabs.js), remembered in the address hash.
+  // Tabs (#lib/event-tabs.js), kept in the address hash. Each switch is a
+  // history entry (shallow routing), so the back button moves between
+  // tabs; back / forward and #guide links are read from the address.
   let chosenTab = $state("");
+  const readHash = () => (chosenTab = tabFromHash(window.location.hash));
+  onMount(() => {
+    readHash();
+    window.addEventListener("popstate", readHash);
+    window.addEventListener("hashchange", readHash);
+    return () => {
+      window.removeEventListener("popstate", readHash);
+      window.removeEventListener("hashchange", readHash);
+    };
+  });
   let tabs = $derived(eventTabs(tournament, { hasTemplate: Boolean(data.bpTemplate), isAdmin, banpickEnabled }));
   let activeTab = $derived(activeTabOf(tournament, chosenTab));
-  onMount(() => (chosenTab = tabFromHash(window.location.hash)));
   function selectTab(id) {
+    if (id === activeTab && chosenTab) return;
     chosenTab = id;
-    history.replaceState(history.state, "", `#${id}`);
+    pushState(`#${id}`, {});
   }
 
   // Starting an event with check-in goes through the absentees dialog.
@@ -239,6 +253,19 @@
       ? bracketShareInput(live, { isSwiss, isTwoStage, hasGroupBrackets, shownStage, bracketMatches, isDoubleElim })
       : null,
   );
+
+  // The bracket picture (image code and dialog) loads on first use.
+  let BracketShare = $state(null);
+  async function shareBracket() {
+    try {
+      BracketShare ??= (await loadBracketShare()).default;
+    } catch (e) {
+      toast.error("加载失败: " + e.message);
+      return;
+    }
+    await tick();
+    bracketShare?.generate();
+  }
 
   // The share dialog loads on first use.
   let ShareDialog = $state(null);
@@ -267,6 +294,13 @@
 {#if data.loading || !tournament}
   <EventPageStatus loading={data.loading} />
 {:else}
+  {#snippet loadFailed(e)}
+    <p class="py-12 text-center text-xs text-destructive">加载失败: {e.message}</p>
+  {/snippet}
+  {#snippet loading()}
+    <p class="py-12 text-center text-xs text-muted-foreground">正在加载…</p>
+  {/snippet}
+
   {#snippet roster()}
     <RosterCard {tournament} {isAdmin} onedit={(p) => playerEditor?.edit(p)} onunregister={doUnregister} oncheckin={checkInFor} />
   {/snippet}
@@ -354,7 +388,7 @@
       active={activeTab}
       onselect={selectTab}
       onshare={openShare}
-      onsharebracket={shareInput ? () => bracketShare?.generate() : null}
+      onsharebracket={shareInput ? shareBracket : null}
       finished={tournament.status === "completed"}
     />
 
@@ -391,7 +425,13 @@
         onopenmatch={openMatch}
       />
     {:else if activeTab === "guide"}
-      <EventGuideTab {tournament} rules={data.bpTemplate?.rules || null} banpickEnabled={banpickEnabled && Boolean(data.bpTemplate)} onselect={selectTab} />
+      {#await loadGuideTab()}
+        {@render loading()}
+      {:then { default: EventGuideTab }}
+        <EventGuideTab {tournament} rules={data.bpTemplate?.rules || null} banpickEnabled={banpickEnabled && Boolean(data.bpTemplate)} onselect={selectTab} />
+      {:catch e}
+        {@render loadFailed(e)}
+      {/await}
     {:else if activeTab === "bracket"}
       {#if tournament.status === "registration" && (tournament.players?.length || 0) < (isDoubleElim ? 4 : 2)}
         <EmptyState title="还没有对阵" hint="报名人数够了之后这里会显示对阵预览。" />
@@ -403,6 +443,9 @@
     {:else if activeTab === "players"}
       {@render roster()}
     {:else if activeTab === "live"}
+      {#await loadLiveTab()}
+        {@render loading()}
+      {:then { default: EventLiveTab }}
       <EventLiveTab
         {live}
         {tid}
@@ -423,6 +466,9 @@
         onstreamend={() => handoff?.stop()}
         onclearhud={() => handoff?.clearHud()}
       />
+      {:catch e}
+        {@render loadFailed(e)}
+      {/await}
     {/if}
   </div>
 {/if}
@@ -473,8 +519,8 @@
 {/if}
 
 <!-- Ready-to-paste Discord post (loaded on first use) -->
-{#if tournament && shareInput}
-  <BracketShareDialog bind:this={bracketShare} tournament={live} {...shareInput} {playerName} />
+{#if tournament && shareInput && BracketShare}
+  <BracketShare bind:this={bracketShare} tournament={live} {...shareInput} {playerName} />
 {/if}
 {#if tournament && ShareDialog}
   <ShareDialog bind:this={shareDialog} {tournament} podium={sharePodium} {standings} />

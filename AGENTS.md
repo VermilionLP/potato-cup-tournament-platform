@@ -103,6 +103,14 @@ Ban / Pick 的载具池是 `axsuck.vehicle_pools` 里的模板（迁移 027）�
 
 每一轮打几局存在 `tournaments.round_best_of`（`{ "main:1": 5, "wb:2": 3, "sw:1": 1 }`，键是 bracket + 存储的 round，规则在 `packages/shared/round-format.js`）。管理员在对阵表每一轮的标题上点「+ BO」设置（`RoundBestOf.svelte`，数据经 `EventBracketCard` 的 context 传给单败、双败、瑞士轮、小组赛和手机版轮次列表），`PUT /tournaments/:id/round-best-of`。显示在：轮次标题、比分弹窗（比分不能结束这一轮时提示，但不阻止提交）、「我的比赛」、分享图、「说明」标签、Liquipedia 导出的 `bestof`。小组赛各组同一轮共用一个设置。
 
+## Admin log (操作记录)
+
+管理员（带 admin token）的每次成功写操作记进 `axsuck.admin_log`：`apps/api/lib/admin-log.js` 的 `ACTIONS` 表把路由映射成动作代码，`registerAdminLog` 在 app.js 里挂 preHandler（记下修改前的赛事名、对阵双方和原比分）和 onResponse（成功才写）。请求字段会去掉 token / key / password 一类，长文本截断。「谁」是管理员浏览器发的 `x-player-id`（admin token 是共用的）。比赛日的高频控制（直播场次、倒计时、overlay、实时比分、Ban / Pick 步骤、对阵预览）不记。新增管理员写接口时要在 `ACTIONS` 里加一行，并在网页的 `#lib/admin-log.js` `describeEntry` 里写成中文（再加英文）；`test/admin-log.test.js` 会检查表里的路由都存在。查看：`/log`（管理菜单 → 操作记录；赛事设置里「本场操作记录」→ `/log?event=ID`），`GET /admin/log`。
+
+## Event page loading
+
+赛事页首屏只加载看对阵 / 概览要用的代码。说明、直播标签、对阵分享图（`bracket-image*.js` + `BracketShareDialog`）、比分弹窗（`MatchResultDialog`，比赛进行中会在页面空闲时预加载）、管理员对话框都用 `#lib/lazy.js` 按需加载。页面一开始就要用的小函数放在小模块里（例如 `#lib/bracket-share.js`），不要为了一个函数把整个大模块拉进首屏。标签切换用 SvelteKit `pushState` 写进浏览记录，返回键回到上一个标签，`popstate` / `hashchange` 时从地址读标签。
+
 ## Reminders
 
 顶栏铃铛是「提醒中心」（`components/layout/ReminderCenter.svelte`），三种渠道互补：

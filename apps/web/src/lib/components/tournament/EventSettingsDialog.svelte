@@ -94,6 +94,7 @@
         <span class="num">ID: {tournament?.id}</span>
         {#if tournament?.created_at}<span> · 创建于 {new Date(tournament.created_at).toLocaleDateString("zh-CN")}</span>{/if}
         <span> · 每一项修改后立即保存（赛制、补充说明、积分表需点各自的保存按钮）。</span>
+        <a href="/log?event={encodeURIComponent(tournament?.id || '')}" class="text-brand-ink hover:underline">本场操作记录</a>
       </Dialog.Description>
     </Dialog.Header>
 

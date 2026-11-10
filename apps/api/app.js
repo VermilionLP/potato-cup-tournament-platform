@@ -29,6 +29,8 @@ import reminderRoutes from './routes/reminders.js';
 import vehicleImageRoutes from './routes/vehicle-images.js';
 import vehicleSpecsRoutes from './routes/vehicle-specs.js';
 import adminRoutes from './routes/admin.js';
+import adminLogRoutes from './routes/admin-log.js';
+import { registerAdminLog } from './lib/admin-log.js';
 import vehiclePoolRoutes from './routes/vehicle-pools.js';
 import pointsRoutes from './routes/points.js';
 import { startPushScheduler } from './lib/push-scheduler.js';
@@ -80,6 +82,8 @@ await fastify.register(swagger, {
 });
 await fastify.register(swaggerUi, { routePrefix: '/docs' });
 await fastify.register(databasePlugin);
+// Admin writes are logged (lib/admin-log.js); before the routes so it covers them all.
+registerAdminLog(fastify);
 await fastify.register(tournamentsRoutes, { prefix: '/api' });
 await fastify.register(tournamentSettingsRoutes, { prefix: '/api' });
 await fastify.register(tournamentBracketRoutes, { prefix: '/api' });
@@ -98,6 +102,7 @@ await fastify.register(botRoutes, { prefix: '/api' });
 await fastify.register(vehicleImageRoutes, { prefix: '/api' });
 await fastify.register(vehicleSpecsRoutes, { prefix: '/api' });
 await fastify.register(adminRoutes, { prefix: '/api' });
+await fastify.register(adminLogRoutes, { prefix: '/api' });
 await fastify.register(vehiclePoolRoutes, { prefix: '/api' });
 await fastify.register(pointsRoutes, { prefix: '/api' });
 await fastify.register(clientErrorRoutes, { prefix: '/api' });

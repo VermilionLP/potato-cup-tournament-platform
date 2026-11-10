@@ -62,6 +62,7 @@ export const API = {
   reportClientError: (report) =>
     request('/client-errors', { method: 'POST', body: JSON.stringify(report), keepalive: true }),
   getClientErrors: () => request('/client-errors'),
+  getAdminLog: ({ tournament = '', before = '' } = {}) => request(`/admin/log?${new URLSearchParams({ ...(tournament ? { tournament } : {}), ...(before ? { before } : {}) })}`),
   clearClientErrors: () => request('/client-errors', { method: 'DELETE' }),
 
   // Potato Cup points leaderboard (积分榜); season '' = the latest
