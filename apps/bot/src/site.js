@@ -52,5 +52,10 @@ export function createSite({ siteUrl, botToken, timeoutMs = 8000, fetchImpl = fe
     },
     schedule: (playerId) => call('GET', `/bot/players/${enc(playerId)}/schedule`),
     statistics: () => call('GET', '/players/statistics'),
+    openEvents: (openid) => call('GET', `/bot/open-events${openid ? `?openid=${enc(openid)}` : ''}`),
+    register: (openid, tournamentId) => call('POST', '/bot/register', { openid, tournament_id: tournamentId }),
+    unregister: (openid, tournamentId) => call('POST', '/bot/unregister', { openid, tournament_id: tournamentId }),
+    /** Without a tournament: every event of theirs whose check-in is open. */
+    checkin: (openid, tournamentId) => call('POST', '/bot/checkin', { openid, ...(tournamentId ? { tournament_id: tournamentId } : {}) }),
   };
 }

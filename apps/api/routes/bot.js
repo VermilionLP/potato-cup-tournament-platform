@@ -8,10 +8,16 @@
 // which calls POST /bot/bind with the openid QQ gave it for that person;
 // afterwards GET /bot/whois/:openid tells the bot who is asking and GET
 // /bot/players/:id/schedule what that player has coming up.
+// Registration: the bot acts only for the player bound to the openid it
+// passes (POST /bot/register, /bot/unregister, /bot/checkin), with the same
+// rules as the site (lib/registration.js); GET /bot/open-events lists the
+// events taking sign-ups, in the order the bot numbers them.
 
 import { randomInt } from 'crypto';
 import { requireBot } from '../lib/bot-auth.js';
-import { BIND_MESSAGES, pendingNotices } from '../lib/bot-notices.js';
+import { BIND_MESSAGES, REGISTER_MESSAGES, pendingNotices } from '../lib/bot-notices.js';
+import { checkinState } from '../lib/checkin.js';
+import { registerPlayer, setCheckin, unregisterPlayer } from '../lib/registration.js';
 import { requireSelfOrAdmin } from '../lib/admin.js';
 import { attentionItems } from '../lib/attention.js';
 import { getPlayerDisplayName } from '../repositories/player-repo.js';
@@ -26,6 +32,20 @@ function openidOf(fastify, value) {
 }
 
 export default async function botRoutes(fastify) {
+  // The player bound to this openid, or 403 with code NOT_BOUND.
+  async function boundPlayer(openid) {
+    const { rows } = await fastify.db.query('SELECT player_id FROM axsuck.qq_bindings WHERE openid = $1', [openid]);
+    if (rows.length) return rows[0].player_id;
+    const err = fastify.httpErrors.forbidden(REGISTER_MESSAGES.notBound);
+    err.code = 'NOT_BOUND';
+    throw err;
+  }
+  const eventId = (value) => {
+    const id = String(value || '').trim();
+    if (!id) throw fastify.httpErrors.badRequest('tournament_id is required');
+    return id;
+  };
+
   fastify.get('/bot/notices', async (req) => {
     requireBot(fastify, req);
     return { data: await pendingNotices(fastify.db) };
@@ -152,5 +172,80 @@ export default async function botRoutes(fastify) {
         now: attentionItems(playerId, { events, matches, names }).filter((i) => ['confirm', 'ban', 'ready'].includes(i.kind)),
       },
     };
+  });
+
+  // Events taking sign-ups, soonest first; with ?openid= also whether the
+  // bound player is in each and checked in.
+  fastify.get('/bot/open-events', async (req) => {
+    requireBot(fastify, req);
+    const openid = req.query?.openid ? openidOf(fastify, req.query.openid) : null;
+    const bound = openid
+      ? (await fastify.db.query('SELECT player_id FROM axsuck.qq_bindings WHERE openid = $1', [openid])).rows[0]?.player_id ?? null
+      : null;
+    const { rows } = await fastify.db.query(`
+      SELECT t.id, t.name, t.scheduled_time, t.player_capacity, t.checkin_enabled, t.status,
+             (SELECT COUNT(*)::int FROM axsuck.tournament_players p WHERE p.tournament_id = t.id) AS player_count,
+             me.player_id IS NOT NULL AS registered, me.checked_in_at
+      FROM axsuck.tournaments t
+      LEFT JOIN axsuck.tournament_players me ON me.tournament_id = t.id AND me.player_id = $1
+      WHERE t.status = 'registration'
+      ORDER BY NULLIF(t.scheduled_time, '') NULLS LAST, t.created_at, t.id
+    `, [bound]);
+    return {
+      data: {
+        player_id: bound,
+        events: rows.map((t) => ({
+          id: t.id,
+          name: t.name,
+          scheduled_time: t.scheduled_time,
+          player_count: t.player_count,
+          player_capacity: t.player_capacity,
+          checkin_enabled: Boolean(t.checkin_enabled),
+          checkin_open: checkinState(t).open,
+          registered: Boolean(t.registered),
+          checked_in: Boolean(t.checked_in_at),
+        })),
+      },
+    };
+  });
+
+  fastify.post('/bot/register', async (req) => {
+    requireBot(fastify, req);
+    const playerId = await boundPlayer(openidOf(fastify, req.body?.openid));
+    const tournamentId = eventId(req.body?.tournament_id);
+    const t = await registerPlayer(fastify, { tournamentId, playerId });
+    return { data: { player_id: playerId, tournament_id: tournamentId, name: t.name, checkin_enabled: Boolean(t.checkin_enabled) } };
+  });
+
+  fastify.post('/bot/unregister', async (req) => {
+    requireBot(fastify, req);
+    const playerId = await boundPlayer(openidOf(fastify, req.body?.openid));
+    const tournamentId = eventId(req.body?.tournament_id);
+    const removed = await unregisterPlayer(fastify, { tournamentId, playerId, onlyOpen: true });
+    return { data: { player_id: playerId, tournament_id: tournamentId, removed } };
+  });
+
+  // Checks the bound player in to one event, or (no tournament_id) to every
+  // event of theirs whose check-in is open now.
+  fastify.post('/bot/checkin', async (req) => {
+    requireBot(fastify, req);
+    const playerId = await boundPlayer(openidOf(fastify, req.body?.openid));
+    let ids;
+    if (req.body?.tournament_id) {
+      ids = [eventId(req.body.tournament_id)];
+    } else {
+      const { rows } = await fastify.db.query(`
+        SELECT t.id, t.status, t.scheduled_time, t.checkin_enabled FROM axsuck.tournament_players tp
+        JOIN axsuck.tournaments t ON t.id = tp.tournament_id
+        WHERE tp.player_id = $1 AND t.status = 'registration' AND t.checkin_enabled
+      `, [playerId]);
+      ids = rows.filter((t) => checkinState(t).open).map((t) => t.id);
+    }
+    const done = [];
+    for (const tournamentId of ids) {
+      await setCheckin(fastify, { tournamentId, playerId, checkedIn: true });
+      done.push(tournamentId);
+    }
+    return { data: { player_id: playerId, checked_in: done } };
   });
 }

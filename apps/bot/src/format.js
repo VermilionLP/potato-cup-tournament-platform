@@ -5,6 +5,9 @@ const STATUS = { registration: '报名中', in_progress: '进行中' };
 export const HELP = [
   '土豆杯机器人指令（@我 后发送）：',
   '绑定 123456 — 绑定选手（绑定码在网站右上角铃铛「QQ 群提醒」里获取）',
+  '报名 — 正在报名的赛事；报名 1 — 报名第 1 个',
+  '取消报名 1 — 退出第 1 个赛事的报名',
+  '签到 — 签到开放时一键签到',
   '赛程 — 我报名的比赛和现在要做的事',
   '战绩 — 我的战绩；战绩 选手名 — 查别人',
   '解绑 — 解除绑定',
@@ -64,4 +67,49 @@ export function findPlayer(players, name) {
   return players.find((p) => p.id === want)
     || players.find((p) => p.id.toLowerCase() === want.toLowerCase() || String(p.display_name || '').toLowerCase() === want.toLowerCase())
     || null;
+}
+
+/** "11-14 20:00 · 12/32 人" plus the player's own state. */
+function eventLine(e, i) {
+  let line = `${i + 1}. ${e.name} — ${shortTime(e.scheduled_time)} · ${e.player_count}/${e.player_capacity} 人`;
+  if (e.registered) line += e.checkin_enabled ? (e.checked_in ? ' · 已报名，已签到' : ' · 已报名') : ' · 已报名';
+  else if (e.player_count >= e.player_capacity) line += ' · 已满';
+  return line;
+}
+
+/** Reply to 报名 without a number, from GET /bot/open-events. */
+export function formatOpenEvents(data) {
+  const events = data?.events || [];
+  if (!events.length) return '目前没有正在报名的赛事。';
+  const lines = ['正在报名的赛事：', ...events.map(eventLine)];
+  const open = events.findIndex((e) => !e.registered && e.player_count < e.player_capacity);
+  if (!data.player_id) lines.push('', NOT_BOUND);
+  else if (open >= 0) lines.push('', `发送「报名 ${open + 1}」报名，「取消报名 编号」退出。`);
+  else lines.push('', '发送「取消报名 编号」可以退出报名。');
+  return lines.join('\n');
+}
+
+/**
+ * The event a player means: its number in the list (1-based), its id, or
+ * its exact name. With no argument, `fallback` picks (e.g. the only event
+ * they are in). Returns the event or null.
+ */
+export function pickEvent(events, arg, fallback = null) {
+  const want = String(arg ?? '').trim();
+  if (!want) return fallback ? fallback(events) : null;
+  if (/^\d{1,3}$/.test(want)) return events[Number(want) - 1] || null;
+  return events.find((e) => e.id === want) || events.find((e) => e.name === want) || null;
+}
+
+/** Reply after registering. */
+export function formatRegistered(e) {
+  const when = shortTime(e.scheduled_time);
+  return `报名成功：${e.name}（${when}）。${e.checkin_enabled ? '这场需要签到：开赛前 30 分钟 @我 发送「签到」。' : ''}`;
+}
+
+/** Reply after 签到: the events checked in to, by name. */
+export function formatCheckedIn(names) {
+  return names.length
+    ? `签到成功：${names.join('、')}。`
+    : '现在没有可以签到的比赛。签到在开赛前 30 分钟开放，只有报名了需要签到的赛事才要签到。';
 }
