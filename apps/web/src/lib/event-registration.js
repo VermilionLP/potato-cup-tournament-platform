@@ -7,6 +7,7 @@ import { toast } from "svelte-sonner";
 import { API } from "#lib/api.js";
 import { askConfirm } from "#lib/confirm.svelte.js";
 import { userState } from "#lib/user.svelte.js";
+import { promptDiscordAfterRegistering } from "#lib/discord.svelte.js";
 
 export function registrationActions(ctx) {
   // Registration. targetId: another player (admins); "" registers the
@@ -20,7 +21,11 @@ export function registrationActions(ctx) {
     try {
       const players = await API.register(ctx.tid(), id);
       ctx.setTournament({ ...ctx.tournament(), players });
-      toast.success(`选手 ${id} 报名成功`);
+      const t = ctx.tournament();
+      // Players registering themselves are asked to join the Discord server
+      // (the dialog says 报名成功); an admin adding someone gets the toast.
+      const self = !ctx.isAdmin() && id === userState.id;
+      if (!(self && promptDiscordAfterRegistering({ name: t?.name, checkin: t?.checkin?.enabled }))) toast.success(`选手 ${id} 报名成功`);
       await ctx.load();
       if (ctx.isAdmin()) await ctx.refreshPreview();
       return true;
