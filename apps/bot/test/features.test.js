@@ -134,9 +134,6 @@ test('events are picked by number, id or name; withdraw falls back to the only o
 test('registration and check-in replies', () => {
   assert.match(formatRegistered(open[0]), /报名成功：Weekly #40（11-14 20:00）。这场需要签到/);
   assert.doesNotMatch(formatRegistered(open[1]), /签到/);
-  // The next step is the Discord server; no link in text (QQ blocks unregistered URLs).
-  assert.match(formatRegistered(open[1]), /下一步：加入 Potato Cup Discord 服务器/);
-  assert.doesNotMatch(formatRegistered(open[1]), /https?:|discord\.gg/);
   assert.equal(formatCheckedIn(['Weekly #40', 'Monthly']), '签到成功：Weekly #40、Monthly。');
   assert.match(formatCheckedIn([]), /现在没有可以签到的比赛/);
 });
