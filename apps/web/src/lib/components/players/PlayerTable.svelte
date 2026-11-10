@@ -1,4 +1,5 @@
 <script>
+  import { goto } from "$app/navigation";
   // Player list as a table (wide screens).
   import { isRecentlySeen, wikiUrl } from "#lib/players.js";
   import { userState } from "#lib/user.svelte.js";
@@ -29,7 +30,15 @@
       </thead>
       <tbody class="divide-y divide-border/50">
         {#each players as p (p.id)}
-          <tr class="hover:bg-accent/30 transition-colors group {isRecentlySeen(p) ? '' : 'opacity-60'}">
+          <!-- The whole row opens the player's page (links and buttons inside keep their own action;
+               the name link is the keyboard way). -->
+          <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
+          <tr
+            class="hover:bg-accent/30 transition-colors group cursor-pointer {isRecentlySeen(p) ? '' : 'opacity-60'}"
+            onclick={(e) => {
+              if (!e.target.closest("a, button, input, select")) goto(`/player/${encodeURIComponent(p.id)}`);
+            }}
+          >
             <td class="px-5 py-3">
               <div class="flex items-center gap-3">
                 <PlayerAvatar player={p} />

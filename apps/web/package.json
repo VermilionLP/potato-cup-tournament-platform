@@ -14,6 +14,7 @@
     "fonts": "node scripts/fonts.mjs"
   },
   "dependencies": {
+    "@potato-cup/shared": "workspace:*",
     "clsx": "^2.1.1",
     "mode-watcher": "^1.1.0",
     "svelte-sonner": "^1.1.1",

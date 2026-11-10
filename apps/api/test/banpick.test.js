@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { act, actionProblem, effectiveEntries, emptyRecord, groupVehicles, replay } from '../lib/banpick.js';
+import { act, actionProblem, effectiveEntries, emptyRecord, groupVehicles, replay } from '@potato-cup/shared/banpick.js';
 
 const grouped = groupVehicles([
   { group: 'GA', name: 'a1' }, { group: 'GA', name: 'a2' },

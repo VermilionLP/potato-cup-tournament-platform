@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { DEFAULT_RULES, normalizeRules, normalizeTemplate, resolveTemplate } from '../lib/vehicle-pools.js';
+import { DEFAULT_RULES, normalizeRules, normalizeTemplate, resolveTemplate } from '@potato-cup/shared/vehicle-pools.js';
 
 const options = { eventTypes: ['prop', 'legacy-jet', 'proleague'], gameModes: ['ab', 'rb', 'sb'] };
 

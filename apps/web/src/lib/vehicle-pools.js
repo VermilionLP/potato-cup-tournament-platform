@@ -6,23 +6,8 @@
 // when empty, #lib/wt-units.js).
 export const POOL_FIELDS = ["name", "nation", "br", "type", "group", "wiki"];
 
-/**
- * The template an event uses (mirrors resolveTemplate in
- * apps/api/lib/vehicle-pools.js): the admin's choice when it exists;
- * otherwise, among templates of the event's type by sort_order, the first
- * made for its game mode, else the first made for every mode, else the first.
- */
-export function resolveTemplate(templates = [], { vehicle_pool: type, game_mode: mode, vehicle_template: chosen } = {}) {
-  if (chosen) {
-    const own = templates.find((t) => t.id === chosen);
-    if (own) return own;
-  }
-  const ofType = templates
-    .filter((t) => t.event_type === type)
-    .sort((a, b) => (a.sort_order ?? 100) - (b.sort_order ?? 100) || String(a.id).localeCompare(String(b.id)));
-  const modes = (t) => t.game_modes || [];
-  return ofType.find((t) => modes(t).includes(mode)) || ofType.find((t) => !modes(t).length) || ofType[0] || null;
-}
+// Which template an event uses: shared with the server.
+export { resolveTemplate } from "@potato-cup/shared/vehicle-pools.js";
 
 /** "AB" / "AB · RB" / "全部模式" for a template's modes. */
 export function modesLabel(modes = []) {

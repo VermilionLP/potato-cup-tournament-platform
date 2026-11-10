@@ -6,7 +6,7 @@
 import { randomBytes } from 'crypto';
 import { requireAdmin } from '../lib/admin.js';
 import { GAME_MODES, VEHICLE_POOLS } from '../lib/tournament-config.js';
-import { normalizeRules, normalizeTemplate, resolveTemplate } from '../lib/vehicle-pools.js';
+import { normalizeRules, normalizeTemplate, resolveTemplate } from '@potato-cup/shared/vehicle-pools.js';
 import { withUnits } from '../lib/wt-unit-index.js';
 
 const COLUMNS = 'id, name, event_type, game_modes, rules, sort_order, vehicles, created_at, updated_at';

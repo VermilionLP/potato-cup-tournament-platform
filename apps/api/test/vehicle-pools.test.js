@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { MAX_POOL_VEHICLES, normalizeVehicles } from '../lib/vehicle-pools.js';
+import { MAX_POOL_VEHICLES, normalizeVehicles } from '@potato-cup/shared/vehicle-pools.js';
 
 test('vehicles are cleaned for storage', () => {
   const { vehicles, error } = normalizeVehicles([

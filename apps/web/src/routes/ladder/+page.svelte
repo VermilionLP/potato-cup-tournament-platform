@@ -1,12 +1,13 @@
 <script>
+  import SwordsIcon from "@lucide/svelte/icons/swords";
   import PageHeader from "#lib/components/PageHeader.svelte";
+  import RankingTabs from "#lib/components/rankings/RankingTabs.svelte";
   import PageSkeleton from "#lib/components/PageSkeleton.svelte";
   import { onMount } from "svelte";
   import { toast } from "svelte-sonner";
   import { API } from "#lib/api.js";
   import { userState } from "#lib/user.svelte.js";
   import { Badge } from "#lib/components/ui/badge/index.js";
-  import TrendingUpIcon from "@lucide/svelte/icons/trending-up";
   import DivisionPicker from "#lib/components/ladder/DivisionPicker.svelte";
   import LadderSummary from "#lib/components/ladder/LadderSummary.svelte";
   import LadderBoard from "#lib/components/ladder/LadderBoard.svelte";
@@ -120,11 +121,11 @@
   }
 </script>
 
-<svelte:head><title>天梯 · Potato Cup</title></svelte:head>
+<svelte:head><title>天梯 · 排行 · Potato Cup</title></svelte:head>
 
 <div class="space-y-6">
   <div class="space-y-3">
-    <PageHeader title="天梯 MMR" icon={TrendingUpIcon} description="全部已完成对局按日期顺序用 Elo 计算，初始 MMR 3000">
+    <PageHeader title="排行" icon={SwordsIcon} description="天梯 MMR：全部已完成对局按日期顺序用 Elo 计算，初始 MMR 3000">
       {#snippet badge()}
         {#if divisionLabel}
           <Badge variant="outline" class="text-xs font-bold border-primary/40 text-brand-ink">{divisionLabel}</Badge>
@@ -141,6 +142,7 @@
         </p>
       {/snippet}
     </PageHeader>
+    <RankingTabs />
     <!-- Division picker: game mode × event type -->
     <DivisionPicker mode={ladderMode} pool={ladderPool} onchange={setDivision} />
   </div>

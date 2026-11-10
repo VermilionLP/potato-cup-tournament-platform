@@ -15,35 +15,19 @@
   import SiteNav from "#lib/components/layout/SiteNav.svelte";
   import PushToggle from "#lib/components/layout/PushToggle.svelte";
   import AdminDialog from "#lib/components/layout/AdminDialog.svelte";
+  import AdminMenu from "#lib/components/layout/AdminMenu.svelte";
   import ConfirmHost from "#lib/components/layout/ConfirmHost.svelte";
   import { installErrorReporting } from "#lib/error-report.js";
   import ProfileDialog from "#lib/components/layout/ProfileDialog.svelte";
   import SiteFooter from "#lib/components/layout/SiteFooter.svelte";
   import SunIcon from "@lucide/svelte/icons/sun";
   import MoonIcon from "@lucide/svelte/icons/moon";
-  import ShieldCheckIcon from "@lucide/svelte/icons/shield-check";
 
   let { children } = $props();
 
   let profileDialog = $state(null);
   let adminOpen = $state(false);
   const openProfileDialog = () => profileDialog?.openDialog();
-
-  // Avatar gradient derived from the player ID.
-  const avatarColors = [
-    "from-orange-500 to-amber-600",
-    "from-sky-500 to-blue-600",
-    "from-emerald-500 to-teal-600",
-    "from-rose-500 to-red-600",
-    "from-slate-500 to-slate-700",
-    "from-amber-500 to-orange-600",
-  ];
-  let avatarGradient = $derived.by(() => {
-    if (!userState.id) return avatarColors[0];
-    let sum = 0;
-    for (let i = 0; i < userState.id.length; i++) sum += userState.id.charCodeAt(i);
-    return avatarColors[sum % avatarColors.length];
-  });
 
   // Signed-in players without a contact are asked to add one.
   async function checkProfileCompleteness(playerId) {
@@ -154,20 +138,7 @@
           </button>
 
           <!-- Admin login -->
-          <button
-            id="header-admin-button"
-            onclick={() => (adminOpen = true)}
-            title={userState.adminToken
-              ? "管理员已登录（点击管理）"
-              : "管理员登录"}
-            aria-label="管理员登录"
-            class="relative w-8 h-8 flex items-center justify-center rounded-md transition-colors cursor-pointer
-              {userState.adminToken
-                ? 'text-emerald-500 bg-emerald-500/10 hover:bg-emerald-500/15'
-                : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'}"
-          >
-            <ShieldCheckIcon class="h-4 w-4" />
-          </button>
+          <AdminMenu onadmin={() => (adminOpen = true)} />
 
           <!-- Divider -->
           <div class="w-px h-5 bg-border"></div>
@@ -179,7 +150,7 @@
             class="flex items-center gap-2 px-2.5 py-1.5 rounded-md hover:bg-muted/60 transition-colors text-sm cursor-pointer group"
           >
             <div data-no-i18n
-              class="w-6 h-6 rounded-full bg-linear-to-br {avatarGradient} flex items-center justify-center text-label font-bold text-white uppercase shrink-0"
+              class="w-6 h-6 rounded-full bg-linear-to-br from-orange-500 to-amber-600 flex items-center justify-center text-label font-bold text-white uppercase shrink-0"
             >
               {userState.id ? userState.id.slice(0, 2) : "?"}
             </div>

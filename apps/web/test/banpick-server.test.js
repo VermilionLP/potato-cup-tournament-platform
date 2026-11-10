@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { effectiveLog, groupVehicles, initialBanPick, localAct, logText, logWho, mayAct, newerRecord, normalizeRules } from "../src/lib/banpick.js";
-import * as server from "../../api/lib/banpick.js";
+import * as server from "@potato-cup/shared/banpick.js";
 
 const vehicles = [
   { group: "GA", name: "a1" }, { group: "GA", name: "a2" }, { group: "GB", name: "b1" },
