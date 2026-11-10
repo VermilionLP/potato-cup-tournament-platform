@@ -38,6 +38,7 @@
   import EventTabBar from "#lib/components/tournament/EventTabBar.svelte";
   import EventOverviewTab from "#lib/components/tournament/EventOverviewTab.svelte";
   import EventBracketCard from "#lib/components/tournament/EventBracketCard.svelte";
+  import EventGuideTab from "#lib/components/tournament/EventGuideTab.svelte";
   import BracketShareDialog from "#lib/components/tournament/BracketShareDialog.svelte";
   import { bracketShareInput } from "#lib/bracket-image.js";
   import EventPoolTab from "#lib/components/tournament/EventPoolTab.svelte";
@@ -389,6 +390,8 @@
         onexportwiki={() => wikiDialog?.start()}
         onopenmatch={openMatch}
       />
+    {:else if activeTab === "guide"}
+      <EventGuideTab {tournament} rules={data.bpTemplate?.rules || null} banpickEnabled={banpickEnabled && Boolean(data.bpTemplate)} onselect={selectTab} />
     {:else if activeTab === "bracket"}
       {#if tournament.status === "registration" && (tournament.players?.length || 0) < (isDoubleElim ? 4 : 2)}
         <EmptyState title="还没有对阵" hint="报名人数够了之后这里会显示对阵预览。" />

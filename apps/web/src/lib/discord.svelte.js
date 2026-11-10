@@ -3,7 +3,7 @@
 // the root layout). A player who says they are already in is not asked
 // again on this browser.
 
-export const DISCORD_INVITE = "https://discord.gg/3KchNdgePr";
+export { DISCORD_INVITE } from "./discord-invite.js";
 
 const KEY = "suck_discord_joined";
 const readJoined = () => {

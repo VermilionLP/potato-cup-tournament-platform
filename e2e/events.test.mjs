@@ -389,6 +389,54 @@ test('admins change the format before the start; the preview follows; not after 
   }
 });
 
+test('the 说明 tab: the steps with the current one marked, the format, and the admins\' notes', async () => {
+  const players = [];
+  for (let i = 0; i < 4; i += 1) players.push(await makePlayer('gd'));
+  const id = await makeEvent({ players, format: 'swiss' });
+  const { browser, page, errors } = await openPage({ admin: true });
+  try {
+    // Admins write the notes in the settings dialog.
+    await page.goto(`${BASE}/tournament/${id}`);
+    await page.getByRole('button', { name: '设置', exact: true }).click({ timeout: T });
+    const dialog = page.getByRole('dialog');
+    await dialog.getByText('补充说明', { exact: true }).waitFor({ timeout: T });
+    await dialog.locator('#event-settings-notes textarea').fill('每场 BO3，先赢两局晋级');
+    await dialog.getByRole('button', { name: '保存说明' }).click();
+    for (let i = 0; i < 25; i += 1) {
+      if ((await api('GET', `/tournaments/${id}`)).description) break;
+      await page.waitForTimeout(200);
+    }
+    assert.equal((await api('GET', `/tournaments/${id}`)).description, '每场 BO3，先赢两局晋级');
+    await page.keyboard.press('Escape');
+    await dialog.waitFor({ state: 'hidden', timeout: T });
+
+    await page.getByRole('tab', { name: '说明' }).click({ timeout: T });
+    await page.getByText('管理员说明').waitFor({ timeout: T });
+    await page.getByText('每场 BO3，先赢两局晋级').waitFor({ timeout: T });
+    await page.getByText('赛制：瑞士轮').waitFor({ timeout: T });
+    // Registration: the sign-up step is the current one.
+    const current = page.locator('li', { has: page.getByText('现在', { exact: true }) });
+    assert.match(await current.first().innerText(), /报名/);
+    await page.screenshot({ path: 'e2e-shot-guide.png', fullPage: true });
+    // A step's button switches tabs.
+    await page.getByRole('button', { name: '查看对阵' }).click();
+    await page.waitForURL(/#bracket/, { timeout: T });
+
+    // After the start the current step is playing the matches.
+    await api('POST', `/tournaments/${id}/start`, { remove: [], forfeit: [] });
+    await page.goto(`${BASE}/tournament/${id}#guide`);
+    await page.reload();
+    await page.getByText('参赛流程').waitFor({ timeout: T });
+    assert.match(await page.locator('li', { has: page.getByText('现在', { exact: true }) }).first().innerText(), /填报比分/);
+    assert.deepEqual(errors, [], 'no uncaught errors in the page');
+  } catch (e) {
+    await page.screenshot({ path: 'e2e-guide.png', fullPage: true }).catch(() => {});
+    throw e;
+  } finally {
+    await browser.close();
+  }
+});
+
 test('a live score during the match: shown on the bracket, cleared by the result', async () => {
   const players = [];
   for (let i = 0; i < 4; i += 1) players.push(await makePlayer('lsc'));

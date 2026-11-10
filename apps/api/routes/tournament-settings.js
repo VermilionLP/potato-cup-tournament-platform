@@ -25,6 +25,9 @@ import {
   SWISS_BRACKET,
 } from '../lib/swiss.js';
 
+// Longest organisers' notes (the 说明 tab).
+export const MAX_DESCRIPTION = 4000;
+
 export default async function tournamentSettingsRoutes(fastify) {
   const repo = TournamentRepo(fastify.db);
   const matches = MatchRepo(fastify.db);
@@ -44,15 +47,20 @@ export default async function tournamentSettingsRoutes(fastify) {
     const hasTier = body.tier !== undefined || body.event_kind !== undefined;
     const hasMode = body.game_mode !== undefined;
     const hasCheckin = body.checkin_enabled !== undefined;
+    // The organisers' notes on the 说明 tab (plain text).
+    const hasDescription = body.description !== undefined;
     const hasLimit = body.ladder_max_mmr !== undefined || body.ladder_max_tier !== undefined;
     // The bracket: all its fields together (a field left out is its default).
     const hasBracket = BRACKET_FIELDS.some((k) => body[k] !== undefined);
-    if (!hasName && !hasTime && !hasPool && !hasTemplate && !hasPoints && !hasInvite && !hasTier && !hasMode && !hasCheckin && !hasLimit && !hasBracket) {
-      throw fastify.httpErrors.badRequest('name, scheduled_time, game_mode, vehicle_pool, vehicle_template, points_table, points_invite, tier, event_kind, checkin_enabled, ladder_max_mmr / ladder_max_tier or the bracket (format, …) is required');
+    if (!hasName && !hasTime && !hasPool && !hasTemplate && !hasPoints && !hasInvite && !hasTier && !hasMode && !hasCheckin && !hasLimit && !hasBracket && !hasDescription) {
+      throw fastify.httpErrors.badRequest('name, scheduled_time, game_mode, vehicle_pool, vehicle_template, points_table, points_invite, tier, event_kind, checkin_enabled, ladder_max_mmr / ladder_max_tier, description or the bracket (format, …) is required');
     }
     if (hasBracket) {
       const problem = bracketSettingsProblem(body);
       if (problem) throw fastify.httpErrors.badRequest(problem);
+    }
+    if (hasDescription && String(body.description ?? '').length > MAX_DESCRIPTION) {
+      throw fastify.httpErrors.badRequest(`补充说明最多 ${MAX_DESCRIPTION} 字`);
     }
     if (hasMode && !GAME_MODES.includes(String(body.game_mode))) {
       throw fastify.httpErrors.badRequest(`game_mode must be one of: ${GAME_MODES.join(', ')}`);
@@ -150,6 +158,11 @@ export default async function tournamentSettingsRoutes(fastify) {
       updated = await repo.setBracket(req.params.id, normalizeBracketSettings(body));
       await fastify.db.query('DELETE FROM axsuck.matches WHERE tournament_id = $1', [t.id]);
       fastify.tournamentEvents.emit(`update:${req.params.id}`, { type: 'bracket_changed', format: updated.format });
+    }
+    // Notes: any time, finished events included.
+    if (hasDescription) {
+      updated = await repo.setDescription(req.params.id, String(body.description ?? '').trim());
+      fastify.tournamentEvents.emit(`update:${req.params.id}`, { type: 'description_changed' });
     }
     // Check-in (lib/checkin.js) can be switched on or off until the start.
     if (hasCheckin) {

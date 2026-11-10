@@ -1,8 +1,8 @@
 <script>
   // Admins: the event's settings in one dialog, so the header only shows
   // tags. Classification (tier, kind, mode, type), the bracket (format and
-  // its options, before the start), sign-ups (ladder limit, check-in) and
-  // points / prizes. Each part saves on its own. Open with
+  // its options, before the start), the notes on the 说明 tab, sign-ups
+  // (ladder limit, check-in) and points / prizes. Each part saves on its own. Open with
   // open(section?) — "points" scrolls to the points part.
   import { tick } from "svelte";
   import { toast } from "svelte-sonner";
@@ -13,6 +13,7 @@
   import PointsEditor from "#lib/components/PointsEditor.svelte";
   import EventTagControls from "./EventTagControls.svelte";
   import EventBracketSettings from "./EventBracketSettings.svelte";
+  import EventNotesEditor from "./EventNotesEditor.svelte";
   import LadderLimitTag from "./LadderLimitTag.svelte";
   import SettingsIcon from "@lucide/svelte/icons/settings";
 
@@ -30,8 +31,10 @@
   let hasPoints = $derived(Boolean(tournament?.points_table?.length));
 
   let bracketSettings = $state(null);
+  let notesEditor = $state(null);
   export async function open(section = "") {
     bracketSettings?.reset();
+    notesEditor?.reset();
     pointsDraft = copyTable(tournament?.points_table?.length ? tournament.points_table : POINTS_PRESETS[0].table);
     pointsSeasonDraft = tournament?.points_season || currentSeason();
     pointsKindDraft = tournament?.points_kind === "monthly" ? "monthly" : "weekly";
@@ -90,7 +93,7 @@
       <Dialog.Description class="text-small text-muted-foreground">
         <span class="num">ID: {tournament?.id}</span>
         {#if tournament?.created_at}<span> · 创建于 {new Date(tournament.created_at).toLocaleDateString("zh-CN")}</span>{/if}
-        <span> · 每一项修改后立即保存（赛制点「保存赛制」，积分表点「保存积分」）。</span>
+        <span> · 每一项修改后立即保存（赛制、补充说明、积分表需点各自的保存按钮）。</span>
       </Dialog.Description>
     </Dialog.Header>
 
@@ -102,6 +105,10 @@
       <section id="event-settings-bracket" class="px-5 py-4">
         {@render heading("赛制", started ? "" : "开赛前可以修改；对阵预览会按新赛制重新生成，已报名的选手不受影响。")}
         <EventBracketSettings bind:this={bracketSettings} bind:tournament {tid} {onreload} />
+      </section>
+      <section id="event-settings-notes" class="px-5 py-4">
+        {@render heading("补充说明", "写本场特有的规则（局数、地图、房间、违规处理等），显示在赛事页「说明」最上方；参赛流程和赛制规则会自动生成，不用在这里写。")}
+        <EventNotesEditor bind:this={notesEditor} bind:tournament {tid} />
       </section>
 
       <section class="space-y-4 px-5 py-4">

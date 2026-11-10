@@ -93,7 +93,11 @@ Ban / Pick 的载具池是 `axsuck.vehicle_pools` 里的模板（迁移 027）�
 
 ## Event settings
 
-赛事页的「设置」（`EventSettingsDialog.svelte`）分四块：分类、赛制、报名、奖金与积分。赛制（`EventBracketSettings.svelte`）复用创建向导的 `CreateStepFormat` / `CreateStepGroup` / `CreateStepPlayoff`，草稿点「保存赛制」才提交（`bracketFields` / `bracketProblem` in `#lib/create-event.js`，向导用同一套）；API 端 `PATCH /tournaments/:id` 带赛制字段时用 `lib/bracket-settings.js` 校验和规范化（`POST /tournaments` 同一套），只在开赛前允许，保存后删掉报名阶段的预览对阵，页面重新加载时按新赛制生成。
+赛事页的「设置」（`EventSettingsDialog.svelte`）分五块：分类、赛制、补充说明、报名、奖金与积分。赛制（`EventBracketSettings.svelte`）复用创建向导的 `CreateStepFormat` / `CreateStepGroup` / `CreateStepPlayoff`，草稿点「保存赛制」才提交（`bracketFields` / `bracketProblem` in `#lib/create-event.js`，向导用同一套）；API 端 `PATCH /tournaments/:id` 带赛制字段时用 `lib/bracket-settings.js` 校验和规范化（`POST /tournaments` 同一套），只在开赛前允许，保存后删掉报名阶段的预览对阵，页面重新加载时按新赛制生成。
+
+## Event guide (说明 tab)
+
+赛事页的「说明」标签（`EventGuideTab.svelte`）由 `#lib/event-guide.js` 按赛事设置生成：关键信息、参赛流程（当前所在步骤标「现在」）、赛制规则、Ban / Pick 步骤、报分/异议/弃权、提醒和工具、常见问题。这里引用的规则必须和代码一致：改了报分确认时间（`apps/api/lib/match-reports.js`）、瑞士轮配对和排名（`lib/swiss.js`）、签到时间、联系方式可见范围、机器人指令等，要同步改 `event-guide.js` 和 `test/event-guide.test.js`。管理员在「设置 → 补充说明」写的本场约定（`tournaments.description`，`PATCH description`，最多 4000 字）显示在最上方。
 
 ## Reminders
 
