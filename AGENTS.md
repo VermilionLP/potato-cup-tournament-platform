@@ -11,6 +11,7 @@ WarThunder Potato Cup 水友赛平台：报名、时间投票、种子、对阵�
 ```
 apps/
 ├── api/              # Fastify 5 (ESM), port 3100, PostgreSQL schema axsuck
+├── bot/              # QQ bots (Koishi): official QQ bot + NapCat community bot, PM2 potato-bot; see apps/bot/README.md
 └── web/              # SvelteKit 3 SPA (ssr=false), port 5175
 packages/
 └── shared/           # @potato-cup/shared: rules both apps apply (Ban / Pick, vehicle pool templates)
