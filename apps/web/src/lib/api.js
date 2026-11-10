@@ -137,9 +137,10 @@ export const API = {
     return request(`/players/statistics${qs ? `?${qs}` : ''}`);
   },
   // Ban / Pick numbers for one event type (default the busiest); player adds theirs.
-  getBanpickStats: ({ tier = '', kind = '', type = '', player = '' } = {}) => {
+  // With player and vehicle: that player's record with the vehicle (player.vehicle).
+  getBanpickStats: ({ tier = '', kind = '', type = '', player = '', vehicle = '' } = {}) => {
     const params = new URLSearchParams();
-    for (const [k, v] of Object.entries({ tier, kind, type, player })) if (v) params.set(k, v);
+    for (const [k, v] of Object.entries({ tier, kind, type, player, vehicle })) if (v) params.set(k, v);
     const qs = params.toString();
     return request(`/banpick/stats${qs ? `?${qs}` : ''}`);
   },

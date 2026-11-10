@@ -17,6 +17,7 @@
   import { matchStageLabels, tierEnglish } from "#lib/overlay.js";
   import { slotImage, slotImageDirect, unitImage, unitImageDirect } from "#lib/wt-units.js";
   import { loadVehicleSpecs, specCards } from "#lib/vehicle-specs.js";
+  import { API } from "#lib/api.js";
   import Flag from "#lib/components/Flag.svelte";
   import OverlayTopBar from "./OverlayTopBar.svelte";
   import LeagueBadge from "./LeagueBadge.svelte";
@@ -83,6 +84,30 @@
   });
   let cards = $derived(specCards(specs, String(tournament?.game_mode || "").toLowerCase()));
 
+  // Each player's record with the locked vehicle (finished matches; the
+  // group for a group-only template), for the players bar of the reveal.
+  let records = $state({});
+  let recordKey = $derived(
+    stage === 3 && activeMatch && bp.group ? [activeMatch.player1_id, activeMatch.player2_id, bp.vehicle || `${bp.group}（组内任选）`].join("|") : "",
+  );
+  $effect(() => {
+    const key = recordKey;
+    if (!key) return;
+    const [p1, p2, vehicle] = key.split("|");
+    let current = true;
+    for (const id of [p1, p2]) {
+      if (!id) continue;
+      API.getBanpickStats({ player: id, vehicle })
+        .then((d) => current && (records = { ...records, [`${id}|${vehicle}`]: d?.player?.vehicle ?? null }))
+        .catch(() => {});
+    }
+    return () => (current = false);
+  });
+  const recordOf = (id) => {
+    const key = `${id}|${bp.vehicle || `${bp.group}（组内任选）`}`;
+    return key in records ? records[key] : undefined;
+  };
+
   // Who pressed the draw buttons.
   const sideOf = (action) => [...log].reverse().find((e) => e.action === action)?.side || null;
   let groupDrawer = $derived(sideOf("drawGroup"));
@@ -143,6 +168,23 @@
   }
   const EASE = "cubic-bezier(.65,0,.25,1)";
 </script>
+
+{#snippet playerRecord(id, right)}
+  {@const r = recordOf(id)}
+  <span class="flex min-w-0 flex-col gap-1 {right ? 'items-end text-right' : ''}">
+    <span class="max-w-[300px] truncate text-[26px] font-black leading-tight">{who.name(id)}</span>
+    {#if r === undefined}
+      <span class="h-6"></span>
+    {:else if !r || !r.decided}
+      <span class="inline-flex h-6 items-center rounded-full bg-cyan-400 px-2.5 font-num text-[15px] font-extrabold tracking-[0.12em] text-[#03252E]">FIRST PLAY</span>
+    {:else}
+      <span class="inline-flex h-6 items-baseline gap-2 font-num text-[17px] font-bold leading-6 tabular-nums">
+        <span class="text-[#AFC0D8] tracking-[0.12em] text-[14px]">WITH THIS</span>
+        <span class="text-green-400">{r.wins}W</span><span class="text-white/30">·</span><span class="text-rose-400">{r.decided - r.wins}L</span>
+      </span>
+    {/if}
+  </span>
+{/snippet}
 
 {#snippet strip(slot, pid)}
   {@const right = slot === "B"}
@@ -386,12 +428,15 @@
         {#if stage === 3}<div class="sweep pointer-events-none absolute -inset-y-[20%] left-0 w-40"></div>{/if}
         <span class="absolute left-7 top-6 inline-flex h-10 items-center rounded-full bg-cyan-400 px-4 font-num text-[17px] font-extrabold tracking-[0.12em] text-[#03252E]">★ LOCKED IN</span>
         <!-- The two players, across the bottom of the image -->
-        <div class="absolute inset-x-0 bottom-0 flex h-24 items-center gap-4 bg-[linear-gradient(180deg,rgba(10,22,48,0)_0%,rgba(10,22,48,0.92)_55%)] px-7 text-[26px] font-black">
-          <span class="inline-flex h-9 w-9 items-center justify-center rounded-[9px] bg-side-a font-display text-2xl text-[#2A1C02]">A</span><span class="truncate">{who.name(activeMatch.player1_id)}</span>
-          <span class="h-px flex-1 bg-white/[0.12]"></span>
+        <!-- with each one's record with this vehicle, or FIRST PLAY -->
+        <div class="absolute inset-x-0 bottom-0 flex h-28 items-center gap-4 bg-[linear-gradient(180deg,rgba(10,22,48,0)_0%,rgba(10,22,48,0.94)_50%)] px-7 pt-3">
+          <span class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[9px] bg-side-a font-display text-2xl text-[#2A1C02]">A</span>
+          {@render playerRecord(activeMatch.player1_id, false)}
+          <span class="h-px min-w-6 flex-1 bg-white/[0.12]"></span>
           <span class="font-display text-[32px] italic text-cyan-200">VS</span>
-          <span class="h-px flex-1 bg-white/[0.12]"></span>
-          <span class="truncate">{who.name(activeMatch.player2_id)}</span><span class="inline-flex h-9 w-9 items-center justify-center rounded-[9px] bg-side-b font-display text-2xl text-[#22124A]">B</span>
+          <span class="h-px min-w-6 flex-1 bg-white/[0.12]"></span>
+          {@render playerRecord(activeMatch.player2_id, true)}
+          <span class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[9px] bg-side-b font-display text-2xl text-[#22124A]">B</span>
         </div>
       </div>
       <div class="flex min-h-0 min-w-0 flex-col {cards.length ? 'gap-3' : 'gap-6 py-1'}">
