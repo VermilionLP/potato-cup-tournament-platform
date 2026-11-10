@@ -23,6 +23,17 @@ import { attentionItems } from '../lib/attention.js';
 import { getPlayerDisplayName } from '../repositories/player-repo.js';
 
 export const BIND_CODE_TTL_MINUTES = 10;
+
+// What the bot's cards show as an event's tags (as the site's event list:
+// tier and kind, mode, vehicle pool, format).
+const eventTags = (t) => ({
+  game_mode: t.game_mode || null,
+  format: t.format || null,
+  two_stage: Boolean(t.playoff_format),
+  vehicle_pool: t.vehicle_pool || null,
+  tier: t.tier || null,
+  event_kind: t.event_kind || null,
+});
 const OPENID = /^[A-Za-z0-9_-]{8,128}$/;
 
 function openidOf(fastify, value) {
@@ -140,7 +151,8 @@ export default async function botRoutes(fastify) {
     requireBot(fastify, req);
     const playerId = String(req.params.id);
     const events = (await fastify.db.query(`
-      SELECT t.id, t.name, t.status, t.scheduled_time, t.checkin_enabled, tp.checked_in_at, tp.forfeited
+      SELECT t.id, t.name, t.status, t.scheduled_time, t.checkin_enabled, tp.checked_in_at, tp.forfeited,
+             t.game_mode, t.format, t.playoff_format, t.vehicle_pool, t.tier, t.event_kind
       FROM axsuck.tournament_players tp
       JOIN axsuck.tournaments t ON t.id = tp.tournament_id
       WHERE tp.player_id = $1 AND t.status <> 'completed'
@@ -167,7 +179,9 @@ export default async function botRoutes(fastify) {
           status: e.status,
           scheduled_time: e.scheduled_time,
           checkin_enabled: Boolean(e.checkin_enabled),
+          checkin_open: e.status === 'registration' && Boolean(e.checkin_enabled) && checkinState(e).open,
           checked_in: Boolean(e.checked_in_at),
+          ...eventTags(e),
         })),
         now: attentionItems(playerId, { events, matches, names }).filter((i) => ['confirm', 'ban', 'ready'].includes(i.kind)),
       },
@@ -184,6 +198,7 @@ export default async function botRoutes(fastify) {
       : null;
     const { rows } = await fastify.db.query(`
       SELECT t.id, t.name, t.scheduled_time, t.player_capacity, t.checkin_enabled, t.status,
+             t.game_mode, t.format, t.playoff_format, t.vehicle_pool, t.tier, t.event_kind,
              (SELECT COUNT(*)::int FROM axsuck.tournament_players p WHERE p.tournament_id = t.id) AS player_count,
              me.player_id IS NOT NULL AS registered, me.checked_in_at
       FROM axsuck.tournaments t
@@ -204,6 +219,7 @@ export default async function botRoutes(fastify) {
           checkin_open: checkinState(t).open,
           registered: Boolean(t.registered),
           checked_in: Boolean(t.checked_in_at),
+          ...eventTags(t),
         })),
       },
     };

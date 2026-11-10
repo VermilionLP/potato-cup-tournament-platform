@@ -53,3 +53,8 @@ test('pingSite reports success, HTTP errors and network errors', async () => {
   assert.deepEqual(await pingSite('http://s', { fetchImpl: bad }), { ok: false, error: 'HTTP 502' });
   assert.deepEqual(await pingSite('http://s', { fetchImpl: down }), { ok: false, error: 'ECONNREFUSED' });
 });
+
+test('the public site address printed on the cards', () => {
+  assert.equal(readConfig({ QQ_APP_ID: 'a', QQ_APP_SECRET: 'b' }).siteHost, 'potatocup-warthunder.com');
+  assert.equal(readConfig({ QQ_APP_ID: 'a', QQ_APP_SECRET: 'b', SITE_PUBLIC_URL: 'https://cup.example/' }).siteHost, 'cup.example');
+});

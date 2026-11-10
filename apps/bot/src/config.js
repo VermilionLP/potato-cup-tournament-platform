@@ -60,5 +60,9 @@ export function readConfig(env) {
   // 状态 check works.
   const botToken = (env.BOT_TOKEN || '').trim() || null;
 
-  return { qq, onebot, botToken, siteUrl: (env.SITE_API_URL || 'http://127.0.0.1:3100').replace(/\/+$/, ''), problems };
+  // The site's public address, printed on the cards ("potatocup-warthunder.com").
+  const siteHost = String(env.SITE_PUBLIC_URL || 'https://potatocup-warthunder.com')
+    .trim().replace(/^https?:\/\//i, '').replace(/\/+$/, '');
+
+  return { qq, onebot, botToken, siteUrl: (env.SITE_API_URL || 'http://127.0.0.1:3100').replace(/\/+$/, ''), siteHost, problems };
 }
