@@ -101,14 +101,13 @@
   {#if tab === "hall"}
     <!-- Career boards first (titles are what people look for), then the
          records and every finished event (HallOfFame). -->
-    <section class="space-y-3">
+    <section class="mb-8 space-y-3">
       <div>
         <h2 class="flex items-center gap-1.5 text-heading font-bold"><TrophyIcon class="h-4 w-4 text-amber-500" />生涯榜单</h2>
         <p class="text-small text-muted-foreground">全部赛事的冠军、亚军、胜率、场数和弃权排行</p>
       </div>
       {#if careerRankings}
-        <!-- Masonry columns: each board as tall as its list. -->
-        <RankingBoards rankings={careerRankings} class="columns-1 gap-5 md:columns-2 xl:columns-3 [&>*]:mb-5 [&>*]:break-inside-avoid" />
+        <RankingBoards rankings={careerRankings} />
       {:else}
         <PageSkeleton kind="stats" label="正在整理生涯榜单..." />
       {/if}

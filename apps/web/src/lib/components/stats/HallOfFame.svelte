@@ -13,12 +13,13 @@
   import { POOL_TAG, TIER_TAG, VEHICLE_POOLS, tierTagText, vehiclePoolLabel } from "#lib/tournament.js";
   import PageSkeleton from "#lib/components/PageSkeleton.svelte";
   import Flag from "#lib/components/Flag.svelte";
-  import CrownIcon from "@lucide/svelte/icons/crown";
+  import LeaderBoard from "./LeaderBoard.svelte";
   import TrophyIcon from "@lucide/svelte/icons/trophy";
   import MedalIcon from "@lucide/svelte/icons/medal";
   import FlameIcon from "@lucide/svelte/icons/flame";
   import TrendingUpIcon from "@lucide/svelte/icons/trending-up";
   import AwardIcon from "@lucide/svelte/icons/award";
+  import CrownIcon from "@lucide/svelte/icons/crown";
 
   let data = $state(null);
   let loading = $state(true);
@@ -50,9 +51,9 @@
 
   // Titles, events played and wins are on the player boards already.
   const BOARDS = [
-    { key: "podiums", title: "登上领奖台", icon: MedalIcon, tone: "text-slate-400", unit: "次" },
-    { key: "streak", title: "最长连胜", icon: FlameIcon, tone: "text-rose-500", unit: "连胜" },
-    { key: "peak", title: "历史最高 MMR", icon: TrendingUpIcon, tone: "text-sky-600 dark:text-sky-400", unit: "" },
+    { key: "podiums", title: "登上领奖台", icon: MedalIcon, tone: "text-orange-600 dark:text-orange-400", unit: "次" },
+    { key: "streak", title: "最长连胜", icon: FlameIcon, tone: "text-rose-600 dark:text-rose-400", unit: "连胜" },
+    { key: "peak", title: "历史最高 MMR", icon: TrendingUpIcon, tone: "text-violet-600 dark:text-violet-400", unit: "" },
   ];
   const MEDAL = ["", "bg-amber-400 text-amber-950", "bg-slate-300 text-slate-900", "bg-orange-400/80 text-orange-950"];
 
@@ -72,55 +73,42 @@
   const placeText = (p) => (p.to > p.place ? `${p.place}-${p.to}` : `${p.place}`);
 </script>
 
-<div class="space-y-6">
+{#snippet heading(Icon, tone, title, hint)}
+  <div>
+    <h2 class="flex items-center gap-1.5 text-heading font-bold"><Icon class="h-4 w-4 {tone}" />{title}</h2>
+    <p class="text-small text-muted-foreground">{hint}</p>
+  </div>
+{/snippet}
+
+<div class="space-y-8">
   {#if loading}
     <PageSkeleton kind="stats" label="正在整理历届冠军..." />
   {:else if data}
     <!-- All-time records -->
-    <section class="grid grid-cols-1 items-start gap-3 md:grid-cols-3">
-      {#each BOARDS as b (b.key)}
-        {@const rows = data.records[b.key] || []}
-        <div class="rounded-xl border border-border bg-card p-4 shadow-sm">
-          <h2 class="mb-3 flex items-center gap-1.5 text-xs font-black uppercase tracking-wider">
-            <b.icon class="h-4 w-4 {b.tone}" />{b.title}
-          </h2>
-          {#if rows.length}
-            {@const first = rows[0]}
-            <a href="/player/{encodeURIComponent(first.id)}" class="mb-2 flex items-center gap-3 rounded-lg bg-muted/30 p-2.5 hover:bg-muted/50">
-              <CrownIcon class="h-5 w-5 shrink-0 text-amber-500" />
-              <Flag code={first.flag} size={20} />
-              <span class="min-w-0 flex-1 truncate text-base font-black">{first.name}</span>
-              <span class="shrink-0 num text-xl font-black {b.tone}">{first.value}<span class="ml-0.5 font-sans text-small font-semibold text-muted-foreground">{b.unit}</span></span>
-            </a>
-            <ol class="space-y-1">
-              {#each rows.slice(1) as r, i (r.id)}
-                <li>
-                  <a href="/player/{encodeURIComponent(r.id)}" class="flex items-center gap-2 rounded-md px-2.5 py-1 text-xs hover:bg-muted/40">
-                    <span class="w-4 num text-small text-muted-foreground">{i + 2}</span>
-                    <Flag code={r.flag} size={14} />
-                    <span class="min-w-0 flex-1 truncate font-semibold">{r.name}</span>
-                    <span class="num font-bold">{r.value}</span>
-                  </a>
-                </li>
-              {/each}
-            </ol>
-          {:else}
-            <EmptyState compact title="暂无纪录" />
-          {/if}
-        </div>
-      {/each}
+    <section class="space-y-3">
+      {@render heading(AwardIcon, "text-brand-ink", "历史纪录", "登上领奖台、最长连胜和历史最高 MMR")}
+      <div class="grid grid-cols-1 items-start gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {#each BOARDS as b (b.key)}
+          <LeaderBoard
+            title={b.title}
+            icon={b.icon}
+            tone={b.tone}
+            rows={(data.records[b.key] || []).map((r) => ({ id: r.id, name: r.name, flag: r.flag, value: r.value, unit: b.unit }))}
+          />
+        {/each}
+      </div>
     </section>
 
     <!-- Season points leaders -->
     {#if seasonLeaders.length}
-      <section class="space-y-2">
-        <h2 class="flex items-center gap-1.5 text-sm font-black"><AwardIcon class="h-4 w-4 text-brand-ink" />赛季积分王</h2>
-        <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+      <section class="space-y-3">
+        {@render heading(CrownIcon, "text-amber-500", "赛季积分王", "每个赛季各类型积分榜的第一名")}
+        <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           {#each seasonLeaders as s (s.season)}
-            <div class="rounded-xl border border-border bg-card p-3 shadow-sm">
-              <div class="mb-1.5 text-xs font-bold text-muted-foreground">{s.season} 赛季</div>
+            <div class="rounded-xl border border-border bg-card p-4 shadow-sm">
+              <div class="mb-2 text-sm font-bold">{s.season} 赛季</div>
               {#each s.leaders as l (l.pool)}
-                <a href="/player/{encodeURIComponent(l.top.id)}" class="flex items-center gap-2 py-0.5 text-xs hover:text-brand-ink">
+                <a href="/player/{encodeURIComponent(l.top.id)}" class="flex items-center gap-2 rounded-md px-1 py-1.5 text-sm hover:bg-muted/50">
                   <span class="{TAG_BASE} {POOL_TAG[l.pool] || TAG_TONE.neutral} w-20 justify-center truncate">{vehiclePoolLabel(l.pool) || l.pool}</span>
                   <Flag code={l.top.flag} size={14} />
                   <span class="min-w-0 flex-1 truncate font-semibold">{l.top.display_name || l.top.id}</span>
@@ -136,7 +124,7 @@
     <!-- Timeline -->
     <section class="space-y-3">
       <div class="flex flex-wrap items-center justify-between gap-2">
-        <h2 class="flex items-center gap-1.5 text-sm font-black"><TrophyIcon class="h-4 w-4 text-amber-500" />历届赛事</h2>
+        {@render heading(TrophyIcon, "text-amber-500", "历届赛事", "每场结束赛事的领奖台，最新的在最上面")}
         {#if pools.length > 1}
           <div class="flex flex-wrap gap-1">
             {#each [{ id: "", name: "全部" }, ...pools] as p (p.id)}
