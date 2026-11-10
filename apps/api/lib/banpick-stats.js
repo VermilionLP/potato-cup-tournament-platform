@@ -22,14 +22,16 @@ const ranked = (map, field) => [...map.values()].filter((x) => x[field] > 0).sor
  * Returns { types: [{ type, matches }], type, matches, confirmed, bans,
  * passes, groups, vehicles, banners, player? } for `type` (default: the type
  * with the most matches); with `player`, that player's bans and played
- * vehicles (with wins), over every type.
+ * vehicles (with wins), over every type; with `vehicle` too, that player's
+ * record with it (player.vehicle: { name, played, wins, decided }, or null
+ * for a first play). A group-only result is named "<group>（组内任选）".
  *
  * groups.table / vehicles.table list every group / played vehicle (the
  * statistics page's vehicle tab); banners are every player who banned in
  * this type (most bans first), with their Ban / Pick matches and their most
  * banned groups.
  */
-export function buildBanpickStats(rows = [], { type = '', player = '' } = {}) {
+export function buildBanpickStats(rows = [], { type = '', player = '', vehicle = '' } = {}) {
   const withBp = rows.filter((r) => r.banpick?.state && effectiveEntries(r.banpick.log).length);
   const counts = new Map();
   for (const r of withBp) counts.set(r.vehicle_pool || '', (counts.get(r.vehicle_pool || '') || 0) + 1);
@@ -130,6 +132,7 @@ export function buildBanpickStats(rows = [], { type = '', player = '' } = {}) {
     out.player = {
       bans: [...mine.bans.entries()].map(([group, n]) => ({ group, n })).sort((a, b) => b.n - a.n).slice(0, 5),
       vehicles: [...mine.vehicles.values()].sort((a, b) => b.played - a.played).slice(0, 5),
+      ...(vehicle ? { vehicle: mine.vehicles.get(vehicle) || null } : {}),
     };
   }
   return out;

@@ -53,3 +53,16 @@ test('no data: empty boards', () => {
   assert.deepEqual(s.groups.table, []);
   assert.deepEqual(s.banners, []);
 });
+
+test("a player's record with one vehicle (the Ban / Pick overlay), or null on a first play", () => {
+  const one = play([['pass'], ['pass'], ['drawGroup', {}, 0], ['confirmGroup'], ['drawVehicle', {}, 0], ['confirm']]);
+  const rows = [
+    { banpick: one, vehicle_pool: 'prop', player1_id: 'p1', player2_id: 'p2', winner_id: 'p1', status: 'completed' },
+    { banpick: one, vehicle_pool: 'prop', player1_id: 'p2', player2_id: 'p1', winner_id: 'p2', status: 'completed' },
+    { banpick: one, vehicle_pool: 'prop', player1_id: 'p1', player2_id: 'p3', winner_id: null, status: 'pending' },
+  ];
+  const name = one.state.vehicle;
+  assert.deepEqual(buildBanpickStats(rows, { player: 'p1', vehicle: name }).player.vehicle, { name, played: 3, wins: 1, decided: 2 });
+  assert.equal(buildBanpickStats(rows, { player: 'p1', vehicle: 'zz' }).player.vehicle, null);
+  assert.equal('vehicle' in buildBanpickStats(rows, { player: 'p1' }).player, false);
+});

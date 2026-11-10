@@ -54,14 +54,15 @@ export default async function playerStatsRoutes(fastify) {
     const scope = statsScope(req.query);
     const type = String(req.query?.type || '').slice(0, 40);
     const player = String(req.query?.player || '').slice(0, 80);
-    return cached(fastify.db, JSON.stringify(['banpick-stats', scope.tier, scope.kind, type, player]), async () => {
+    const vehicle = player ? String(req.query?.vehicle || '').slice(0, 120) : '';
+    return cached(fastify.db, JSON.stringify(['banpick-stats', scope.tier, scope.kind, type, player, vehicle]), async () => {
       const rows = (await fastify.db.query(`
         SELECT m.banpick, m.player1_id, m.player2_id, m.winner_id, m.status,
                t.vehicle_pool, t.id AS tournament_id, t.tier, t.event_kind
         FROM axsuck.matches m JOIN axsuck.tournaments t ON t.id = m.tournament_id
         WHERE m.banpick IS NOT NULL
       `)).rows.filter((r) => scope({ tier: r.tier, event_kind: r.event_kind }));
-      return buildBanpickStats(rows, { type, player });
+      return buildBanpickStats(rows, { type, player, vehicle });
     });
   });
 
