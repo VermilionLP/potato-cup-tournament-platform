@@ -10,7 +10,6 @@
   import { Button } from "#lib/components/ui/button/index.js";
   import { bracketImageLayout } from "#lib/bracket-image.js";
   import { drawBracketImage } from "#lib/bracket-image-draw.js";
-  import ImageIcon from "@lucide/svelte/icons/image";
   import DownloadIcon from "@lucide/svelte/icons/download";
   import CopyIcon from "@lucide/svelte/icons/copy";
   import Share2Icon from "@lucide/svelte/icons/share-2";
@@ -28,6 +27,7 @@
     perGroup = 0,
     playerName = (id) => id,
   } = $props();
+  // Opened from the event page's 分享 menu (generate()).
 
   let open = $state(false);
   let busy = $state(false);
@@ -39,7 +39,7 @@
   const canCopy = typeof window !== "undefined" && typeof window.ClipboardItem !== "undefined" && Boolean(navigator.clipboard?.write);
   let canShare = $state(false);
 
-  async function generate() {
+  export async function generate() {
     open = true;
     busy = true;
     if (url) URL.revokeObjectURL(url);
@@ -89,14 +89,10 @@
   $effect(() => () => url && URL.revokeObjectURL(url));
 </script>
 
-<Button variant="outline" size="sm" onclick={generate} disabled={busy || !(matches.length || standings.length || groups.length)} class="h-8 gap-1.5 text-xs font-bold">
-  <ImageIcon class="size-4" />生成分享图
-</Button>
-
 <Dialog.Root bind:open>
   <Dialog.Content class="sm:max-w-[760px] max-h-[90vh] flex flex-col gap-3 border border-border bg-card">
     <Dialog.Header>
-      <Dialog.Title class="text-base font-bold">对阵图分享图</Dialog.Title>
+      <Dialog.Title class="text-base font-bold">对阵分享图</Dialog.Title>
       <Dialog.Description class="text-xs">
         {view === "swiss"
           ? "积分榜和每一轮的对阵合并为一张，可以下载或直接复制到 QQ / Discord。"

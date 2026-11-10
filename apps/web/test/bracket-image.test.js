@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { bracketImageLayout, CARD_H, CARD_W, eventTimeText } from "../src/lib/bracket-image.js";
+import { bracketImageLayout, bracketShareInput, CARD_H, CARD_W, eventTimeText } from "../src/lib/bracket-image.js";
 
 const players = ["a", "b", "c", "d"].map((id, i) => ({ id, display_name: id.toUpperCase(), flag: i ? "cn" : "us" }));
 
@@ -61,12 +61,37 @@ test("preview wording and event time", () => {
   assert.equal(eventTimeText(""), "");
 });
 
-test("a bye shows 轮空 in the empty slot and no score", () => {
-  const l = bracketImageLayout({
-    tournament: { status: "registration", players },
-    matches: [{ id: 1, bracket: "main", round: 1, position: 1, player1_id: "a", player2_id: null, status: "completed", winner_id: "a" }],
-  });
-  assert.deepEqual(l.cards[0].rows.map((r) => [r.name, r.score, r.lost]), [["A", "", false], ["轮空", "", false]]);
+test("byes as on the page: left out of a single-elimination picture, a note in double elimination", () => {
+  const bye = { id: 1, bracket: "main", round: 2, position: 1, player1_id: "a", player2_id: null, status: "completed", winner_id: "a", next_match_id: 3 };
+  const real = { id: 2, bracket: "main", round: 2, position: 2, player1_id: "b", player2_id: "c", status: "pending", next_match_id: 3 };
+  const final = { id: 3, bracket: "main", round: 1, position: 1, player1_id: "a", player2_id: null, status: "pending" };
+  const se = bracketImageLayout({ tournament: { status: "registration", players }, matches: [bye, real, final] });
+  assert.deepEqual(se.cards.map((c) => c.matchId), [2, 3]);
+  assert.equal(se.links.length, 1, "no line from the bye");
+  // The final keeps its place between the two first-round slots.
+  const withBye = bracketImageLayout({ tournament: { status: "registration", players }, matches: [{ ...bye, status: "pending", winner_id: null, player2_id: "d" }, real, final] });
+  assert.equal(se.cards.find((c) => c.matchId === 3).y, withBye.cards.find((c) => c.matchId === 3).y);
+
+  const de = [
+    { id: 11, bracket: "wb", round: 2, position: 1, player1_id: "a", player2_id: null, status: "completed", winner_id: "a", next_match_id: 13 },
+    { id: 12, bracket: "wb", round: 2, position: 2, player1_id: "b", player2_id: "c", status: "pending", next_match_id: 13 },
+    { id: 13, bracket: "wb", round: 1, position: 1, player1_id: "a", status: "pending" },
+    { id: 21, bracket: "lb", round: 2, position: 1, player1_id: null, player2_id: null, status: "completed", winner_id: null, next_match_id: 22 },
+    { id: 22, bracket: "lb", round: 1, position: 1, status: "pending" },
+  ];
+  const l = bracketImageLayout({ tournament: { status: "registration", players }, matches: de, doubleElim: true });
+  assert.equal(l.cards.find((c) => c.matchId === 11).byeNote, "轮空 · A 晋级");
+  assert.equal(l.cards.find((c) => c.matchId === 21), undefined, "a match nobody reached is hidden");
+  assert.equal(l.links.length, 2, "winners links only; none from the hidden match");
+});
+
+test("the share picture follows the bracket tab: Swiss, groups or elimination", () => {
+  const t = { matches: [{ id: 1, bracket: "sw", round: 1 }], standings: [{ player_id: "a" }], swiss_rounds: 3, group_stage: { groups: [{ group: 1, label: "A", rows: [] }] }, format: "double_elim", advance_per_group: 2 };
+  assert.equal(bracketShareInput(t, { isSwiss: true }).view, "swiss");
+  assert.equal(bracketShareInput(t, { isSwiss: true, isTwoStage: true, shownStage: "playoff", bracketMatches: [{ id: 9 }] }).view, "elimination");
+  assert.equal(bracketShareInput(t, { hasGroupBrackets: true, isTwoStage: true, shownStage: "group" }).view, "groups");
+  assert.equal(bracketShareInput(t, { bracketMatches: [] }), null);
+  assert.deepEqual(bracketShareInput(t, { bracketMatches: [{ id: 9 }], isDoubleElim: true }), { view: "elimination", matches: [{ id: 9 }], doubleElim: true });
 });
 
 test("Swiss: standings table, then one column per round; byes as a note", () => {
