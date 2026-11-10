@@ -352,6 +352,43 @@ test('admins change event settings in the settings dialog; the header shows tags
   }
 });
 
+test('admins change the format before the start; the preview follows; not after the start', async () => {
+  const players = [];
+  for (let i = 0; i < 4; i += 1) players.push(await makePlayer('fm'));
+  const id = await makeEvent({ players });
+  const { browser, page, errors } = await openPage({ admin: true });
+  try {
+    await page.goto(`${BASE}/tournament/${id}#bracket`);
+    await page.getByRole('button', { name: '设置', exact: true }).click({ timeout: T });
+    const dialog = page.getByRole('dialog');
+    await dialog.getByText('赛制', { exact: true }).waitFor({ timeout: T });
+    await dialog.getByRole('button', { name: /双败淘汰/ }).click();
+    await dialog.getByRole('button', { name: '保存赛制' }).click();
+    for (let i = 0; i < 25; i += 1) {
+      if ((await api('GET', `/tournaments/${id}`)).format === 'double_elim') break;
+      await page.waitForTimeout(200);
+    }
+    const t = await api('GET', `/tournaments/${id}`);
+    assert.equal(t.format, 'double_elim');
+    assert.equal(t.grand_final_reset, true);
+    await page.keyboard.press('Escape');
+    // The preview is now a double-elimination bracket.
+    await page.getByText('败者组').first().waitFor({ timeout: T });
+    // After the start the format is locked, in the API and in the dialog.
+    await api('POST', `/tournaments/${id}/start`, { remove: [], forfeit: [] });
+    await assert.rejects(api('PATCH', `/tournaments/${id}`, { format: 'single_elim' }), /400/);
+    await page.reload();
+    await page.getByRole('button', { name: '设置', exact: true }).click({ timeout: T });
+    await page.getByRole('dialog').getByText('赛事已开始，赛制不能再修改', { exact: false }).waitFor({ timeout: T });
+    assert.deepEqual(errors, [], 'no uncaught errors in the page');
+  } catch (e) {
+    await page.screenshot({ path: 'e2e-format.png', fullPage: true }).catch(() => {});
+    throw e;
+  } finally {
+    await browser.close();
+  }
+});
+
 test('a live score during the match: shown on the bracket, cleared by the result', async () => {
   const players = [];
   for (let i = 0; i < 4; i += 1) players.push(await makePlayer('lsc'));

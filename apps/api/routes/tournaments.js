@@ -15,10 +15,8 @@ import { normalizePointsKind, normalizePointsTable, normalizeSeason } from '../l
 import { endedSeason } from '../lib/points-seasons.js';
 import { tournamentDetail } from '../lib/tournament-detail.js';
 import { defaultTier, EVENT_KINDS, EVENT_TIERS, normalizeKind, normalizeTier } from '../lib/event-tier.js';
-import { GAME_MODES, SUPPORTED_FORMATS, VEHICLE_POOLS } from '../lib/tournament-config.js';
-import { groupBracketProblem } from '../lib/group-brackets.js';
-import { MAX_GROUP_SIZE, MIN_GROUP_SIZE, PLAYOFF_FORMATS } from '../lib/group-stage.js';
-import { isAutoRounds, MAX_SWISS_ROUNDS, MIN_SWISS_ROUNDS, parseSwissRounds } from '../lib/swiss.js';
+import { GAME_MODES, VEHICLE_POOLS } from '../lib/tournament-config.js';
+import { bracketSettingsProblem } from '../lib/bracket-settings.js';
 import { queueRegistrationOpen } from '../lib/bot-notices.js';
 
 export default async function tournamentsRoutes(fastify) {
@@ -147,9 +145,8 @@ export default async function tournamentsRoutes(fastify) {
     if (game_mode != null && !GAME_MODES.includes(String(game_mode))) {
       throw fastify.httpErrors.badRequest(`game_mode must be one of: ${GAME_MODES.join(', ')}`);
     }
-    if (format != null && !SUPPORTED_FORMATS.includes(String(format))) {
-      throw fastify.httpErrors.badRequest(`format must be one of: ${SUPPORTED_FORMATS.join(', ')}`);
-    }
+    const bracketProblem = bracketSettingsProblem(req.body);
+    if (bracketProblem) throw fastify.httpErrors.badRequest(bracketProblem);
     // The event type is set whether or not Ban / Pick is on; Ban / Pick
     // always draws from the pool of the event type.
     if (vehicle_pool != null && !VEHICLE_POOLS.includes(String(vehicle_pool))) {
@@ -160,30 +157,6 @@ export default async function tournamentsRoutes(fastify) {
     }
     if (event_kind != null && event_kind !== '' && !normalizeKind(event_kind)) {
       throw fastify.httpErrors.badRequest(`event_kind must be one of: ${EVENT_KINDS.join(', ')}`);
-    }
-    if (format === 'swiss' && !isAutoRounds(swiss_rounds) && !parseSwissRounds(swiss_rounds)) {
-      throw fastify.httpErrors.badRequest(`瑞士轮轮数必须是 ${MIN_SWISS_ROUNDS}-${MAX_SWISS_ROUNDS} 之间的整数（留空为自动）`);
-    }
-    if (playoff_format) {
-      if (!PLAYOFF_FORMATS.includes(playoff_format)) {
-        throw fastify.httpErrors.badRequest(`playoff_format must be one of: ${PLAYOFF_FORMATS.join(', ')}`);
-      }
-      const size = swiss_group_size === null || swiss_group_size === undefined || swiss_group_size === ''
-        ? null : Number(swiss_group_size);
-      if (size !== null && (!Number.isInteger(size) || size < MIN_GROUP_SIZE || size > MAX_GROUP_SIZE)) {
-        throw fastify.httpErrors.badRequest(`每组人数必须在 ${MIN_GROUP_SIZE}-${MAX_GROUP_SIZE} 之间（留空表示不分组）`);
-      }
-      const k = Number(advance_per_group);
-      if (!Number.isInteger(k) || k < 1 || k > MAX_GROUP_SIZE) {
-        throw fastify.httpErrors.badRequest('请设置每组晋级人数（至少 1 人）');
-      }
-      if (size !== null && k > size) {
-        throw fastify.httpErrors.badRequest(`每组晋级人数（${k}）不能多于每组人数（${size}）`);
-      }
-      if (format !== 'swiss' && size !== null) {
-        const problem = groupBracketProblem(format, size, k);
-        if (problem) throw fastify.httpErrors.badRequest(problem);
-      }
     }
     // A copied event keeps its vehicle pool template, if it still exists.
     let template = null;

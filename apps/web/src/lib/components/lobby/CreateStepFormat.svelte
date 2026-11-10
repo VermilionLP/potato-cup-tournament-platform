@@ -7,7 +7,9 @@
   import ShuffleIcon from "@lucide/svelte/icons/shuffle";
   import LayersIcon from "@lucide/svelte/icons/layers";
 
-  let { form = $bindable() } = $props();
+  // inWizard: the two-stage note points to the wizard's next steps; the
+  // event settings show both stages right below instead.
+  let { form = $bindable(), inWizard = true } = $props();
 
   const FORMATS = [
     { id: "single_elim", label: "单败淘汰", hint: "输一场即出局", icon: SwordsIcon },
@@ -63,7 +65,7 @@
     <SwissRoundsPicker bind:form />
   {:else}
     <p class="text-small leading-relaxed text-muted-foreground">
-      第一阶段分组比赛，各组前几名进入第二阶段淘汰赛。点「下一步」分别设置两个阶段。
+      {inWizard ? "第一阶段分组比赛，各组前几名进入第二阶段淘汰赛。点「下一步」分别设置两个阶段。" : "第一阶段分组比赛，各组前几名进入第二阶段淘汰赛。两个阶段在下面分别设置。"}
     </p>
   {/if}
 </section>

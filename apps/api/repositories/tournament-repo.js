@@ -87,6 +87,18 @@ export function TournamentRepo(db) {
     return getById(id);
   }
 
+  // Bracket settings (lib/bracket-settings.js normalizeBracketSettings), before the start.
+  async function setBracket(id, b) {
+    await db.query(
+      `UPDATE axsuck.tournaments
+         SET format = $2, loser_advances = $3, grand_final_reset = $4, swiss_rounds = $5,
+             playoff_format = $6, swiss_group_size = $7, advance_per_group = $8, updated_at = NOW()
+       WHERE id = $1`,
+      [id, b.format, b.loser_advances, b.grand_final_reset, b.swiss_rounds, b.playoff_format, b.swiss_group_size, b.advance_per_group],
+    );
+    return getById(id);
+  }
+
   // Ladder limit (lib/ladder-limit.js); nulls clear it.
   async function setLadderLimit(id, maxMmr, maxTier) {
     await db.query(
@@ -375,5 +387,6 @@ export function TournamentRepo(db) {
     }));
   }
 
-  return { list, getById, create, rename, setVehiclePool, setVehicleTemplate, setPoints, setPointsInvite, setScheduledTime, setSwissRounds, updateStatus, setTier, setLadderLimit, setGameMode, getPlayers, addPlayer, autoRegisterVoters, removePlayer, setSeeds, getMatches, getVotes };
+  return {
+    setBracket, list, getById, create, rename, setVehiclePool, setVehicleTemplate, setPoints, setPointsInvite, setScheduledTime, setSwissRounds, updateStatus, setTier, setLadderLimit, setGameMode, getPlayers, addPlayer, autoRegisterVoters, removePlayer, setSeeds, getMatches, getVotes };
 }

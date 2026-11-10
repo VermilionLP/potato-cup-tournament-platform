@@ -41,3 +41,19 @@ test("a copied event keeps the set-up, not the invite", () => {
   assert.equal(body.points_invite, false);
   assert.deepEqual(copyableEvents([{ id: "lp-x" }, { id: "a" }]).map((t) => t.id), ["a"]);
 });
+
+test("bracket fields: the same body for creating and for event settings", async () => {
+  const { bracketFields, bracketProblem, formFromEvent, newEventForm } = await import("../src/lib/create-event.js");
+  const form = { ...newEventForm("2026"), format: "double_elim", grandFinalReset: false };
+  assert.deepEqual(bracketFields(form), {
+    format: "double_elim", loser_advances: 0, grand_final_reset: false, swiss_rounds: null, playoff_format: null, swiss_group_size: null, advance_per_group: null,
+  });
+  // From a saved event and back: unchanged.
+  const saved = { format: "swiss", swiss_rounds: 5, playoff_format: "single_elim", swiss_group_size: 4, advance_per_group: 2, grand_final_reset: false };
+  assert.deepEqual(bracketFields(formFromEvent(saved)), {
+    format: "swiss", loser_advances: 0, grand_final_reset: false, swiss_rounds: 5, playoff_format: "single_elim", swiss_group_size: 4, advance_per_group: 2,
+  });
+  assert.equal(bracketProblem({ ...form, format: "swiss", swissRoundsMode: "manual", swissRounds: 99 }).length > 0, true);
+  assert.equal(bracketProblem({ ...form, format: "two_stage", groupFormat: "double_elim", groupSize: "" }), "淘汰制小组需要设置每组人数");
+  assert.equal(bracketProblem(form), "");
+});

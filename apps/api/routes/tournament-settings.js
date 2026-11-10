@@ -14,6 +14,7 @@ import { endedSeason } from '../lib/points-seasons.js';
 import { groupStageOf } from '../lib/group-stage-view.js';
 import { GAME_MODES, startBlockedReason, VEHICLE_POOLS } from '../lib/tournament-config.js';
 import { EVENT_KINDS, EVENT_TIERS, normalizeKind, normalizeTier } from '../lib/event-tier.js';
+import { BRACKET_FIELDS, bracketSettingsProblem, normalizeBracketSettings } from '../lib/bracket-settings.js';
 import {
   currentSwissRound,
   effectiveSwissRounds,
@@ -44,8 +45,14 @@ export default async function tournamentSettingsRoutes(fastify) {
     const hasMode = body.game_mode !== undefined;
     const hasCheckin = body.checkin_enabled !== undefined;
     const hasLimit = body.ladder_max_mmr !== undefined || body.ladder_max_tier !== undefined;
-    if (!hasName && !hasTime && !hasPool && !hasTemplate && !hasPoints && !hasInvite && !hasTier && !hasMode && !hasCheckin && !hasLimit) {
-      throw fastify.httpErrors.badRequest('name, scheduled_time, game_mode, vehicle_pool, vehicle_template, points_table, points_invite, tier, event_kind, checkin_enabled or ladder_max_mmr / ladder_max_tier is required');
+    // The bracket: all its fields together (a field left out is its default).
+    const hasBracket = BRACKET_FIELDS.some((k) => body[k] !== undefined);
+    if (!hasName && !hasTime && !hasPool && !hasTemplate && !hasPoints && !hasInvite && !hasTier && !hasMode && !hasCheckin && !hasLimit && !hasBracket) {
+      throw fastify.httpErrors.badRequest('name, scheduled_time, game_mode, vehicle_pool, vehicle_template, points_table, points_invite, tier, event_kind, checkin_enabled, ladder_max_mmr / ladder_max_tier or the bracket (format, …) is required');
+    }
+    if (hasBracket) {
+      const problem = bracketSettingsProblem(body);
+      if (problem) throw fastify.httpErrors.badRequest(problem);
     }
     if (hasMode && !GAME_MODES.includes(String(body.game_mode))) {
       throw fastify.httpErrors.badRequest(`game_mode must be one of: ${GAME_MODES.join(', ')}`);
@@ -131,6 +138,18 @@ export default async function tournamentSettingsRoutes(fastify) {
     if (hasLimit) {
       updated = await repo.setLadderLimit(req.params.id, ladderLimit.max_mmr, ladderLimit.max_tier);
       fastify.tournamentEvents.emit(`update:${req.params.id}`, { type: 'ladder_limit_changed' });
+    }
+    // The bracket can change until the start; sign-ups stay. Before the
+    // start the stored matches are only the preview (the page regenerates
+    // it on load, POST /bracket), so it is dropped and drawn again in the
+    // new format.
+    if (hasBracket) {
+      if (t.status === 'in_progress' || t.status === 'completed') {
+        throw fastify.httpErrors.badRequest('赛事已开始，不能再修改赛制');
+      }
+      updated = await repo.setBracket(req.params.id, normalizeBracketSettings(body));
+      await fastify.db.query('DELETE FROM axsuck.matches WHERE tournament_id = $1', [t.id]);
+      fastify.tournamentEvents.emit(`update:${req.params.id}`, { type: 'bracket_changed', format: updated.format });
     }
     // Check-in (lib/checkin.js) can be switched on or off until the start.
     if (hasCheckin) {

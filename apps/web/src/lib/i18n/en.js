@@ -2098,4 +2098,14 @@ export default {
   "还没有对阵，报名人数够了之后可以生成": "No bracket yet; available once enough players sign up",
   "赛事结果帖子和结果图": "Results post and picture",
   "赛事公告帖子，复制后直接粘贴": "Event announcement, ready to paste",
+  // Event settings: format.
+  "赛制已保存，对阵预览已按新赛制更新": "Format saved; the bracket preview follows it",
+  "· 赛事已开始，赛制不能再修改。": "· The event has started; the format can't change now.",
+  "改为：{0}": "Change to: {0}",
+  "当前：{0}": "Current: {0}",
+  "保存赛制": "Save format",
+  "· 每一项修改后立即保存（赛制点「保存赛制」，积分表点「保存积分」）。": "· Each change saves at once (the format with \"Save format\", the points table with \"Save points\").",
+  "开赛前可以修改；对阵预览会按新赛制重新生成，已报名的选手不受影响。": "Can change until the start; the bracket preview follows it, sign-ups stay.",
+  "赛事已开始，不能再修改赛制": "The event has started; the format can't change now",
+  "第一阶段分组比赛，各组前几名进入第二阶段淘汰赛。两个阶段在下面分别设置。": "Groups first, then the top of each group go to the playoff. Both stages are set below.",
 };
