@@ -1,7 +1,9 @@
 <script>
-  // "生成分享图": the whole elimination bracket as one PNG (double
-  // elimination: winners band with the grand final, losers band under it),
-  // with a preview and download / copy / share. Layout in
+  // "生成分享图": what the bracket card shows, in full, as one PNG: the
+  // whole elimination bracket (double elimination: winners band with the
+  // grand final, losers band under it), the Swiss standings and rounds, or
+  // every group of the group stage; with a preview and download / copy /
+  // share. Layout in
   // #lib/bracket-image.js, painting in #lib/bracket-image-draw.js.
   import { toast } from "svelte-sonner";
   import * as Dialog from "#lib/components/ui/dialog/index.js";
@@ -13,7 +15,19 @@
   import CopyIcon from "@lucide/svelte/icons/copy";
   import Share2Icon from "@lucide/svelte/icons/share-2";
 
-  let { tournament, matches = [], doubleElim = false, playerName = (id) => id } = $props();
+  // view: "elimination" | "swiss" | "groups" (see bracketImageLayout).
+  let {
+    tournament,
+    matches = [],
+    view = "elimination",
+    doubleElim = false,
+    standings = [],
+    totalRounds = null,
+    groups = [],
+    groupFormat = "",
+    perGroup = 0,
+    playerName = (id) => id,
+  } = $props();
 
   let open = $state(false);
   let busy = $state(false);
@@ -32,7 +46,7 @@
     url = "";
     blob = null;
     try {
-      const layout = bracketImageLayout({ tournament, matches, doubleElim, playerName });
+      const layout = bracketImageLayout({ tournament, matches, view, doubleElim, standings, totalRounds, groups, groupFormat, perGroup, playerName });
       size = { width: layout.width, height: layout.height };
       blob = await drawBracketImage(layout);
       url = URL.createObjectURL(blob);
@@ -75,7 +89,7 @@
   $effect(() => () => url && URL.revokeObjectURL(url));
 </script>
 
-<Button variant="outline" size="sm" onclick={generate} disabled={busy || !matches.length} class="h-8 gap-1.5 text-xs font-bold">
+<Button variant="outline" size="sm" onclick={generate} disabled={busy || !(matches.length || standings.length || groups.length)} class="h-8 gap-1.5 text-xs font-bold">
   <ImageIcon class="size-4" />生成分享图
 </Button>
 
@@ -84,7 +98,13 @@
     <Dialog.Header>
       <Dialog.Title class="text-base font-bold">对阵图分享图</Dialog.Title>
       <Dialog.Description class="text-xs">
-        {doubleElim ? "完整对阵（胜者组、总决赛和败者组合并为一张），可以下载或直接复制到 QQ / Discord。" : "完整对阵，可以下载或直接复制到 QQ / Discord。"}
+        {view === "swiss"
+          ? "积分榜和每一轮的对阵合并为一张，可以下载或直接复制到 QQ / Discord。"
+          : view === "groups"
+            ? "所有小组的名次和对阵合并为一张，可以下载或直接复制到 QQ / Discord。"
+            : doubleElim
+              ? "完整对阵（胜者组、总决赛和败者组合并为一张），可以下载或直接复制到 QQ / Discord。"
+              : "完整对阵，可以下载或直接复制到 QQ / Discord。"}
       </Dialog.Description>
     </Dialog.Header>
     <div class="min-h-40 flex-1 overflow-auto rounded-lg border border-border bg-muted/30">

@@ -68,3 +68,52 @@ test("a bye shows 轮空 in the empty slot and no score", () => {
   });
   assert.deepEqual(l.cards[0].rows.map((r) => [r.name, r.score, r.lost]), [["A", "", false], ["轮空", "", false]]);
 });
+
+test("Swiss: standings table, then one column per round; byes as a note", () => {
+  const sw = [
+    { id: 1, bracket: "sw", round: 1, position: 1, player1_id: "a", player2_id: "b", status: "completed", winner_id: "a", score1: 2, score2: 0 },
+    { id: 2, bracket: "sw", round: 1, position: 2, player1_id: "c", player2_id: null, status: "completed", winner_id: "c" },
+    { id: 3, bracket: "sw", round: 2, position: 1, player1_id: "a", player2_id: "c", status: "pending" },
+  ];
+  const standings = [
+    { player_id: "a", rank: 1, wins: 1, losses: 0, points: 1, game_diff: 2, buchholz: 0, byes: 0 },
+    { player_id: "c", rank: 2, wins: 1, losses: 0, points: 1, game_diff: 0, buchholz: 0, byes: 1 },
+    { player_id: "b", rank: 3, wins: 0, losses: 1, points: 0, game_diff: -2, buchholz: 1, byes: 0 },
+  ];
+  const l = bracketImageLayout({ tournament: { status: "in_progress", players }, view: "swiss", matches: sw, standings, totalRounds: 3 });
+  assert.equal(l.tables.length, 1);
+  assert.deepEqual(l.tables[0].rows.map((r) => r.cells), [["1", "A", "1-0", "1", "+2", "0"], ["2", "C", "1-0", "1", "0", "0"], ["3", "B", "0-1", "0", "-2", "1"]]);
+  assert.equal(l.tables[0].rows[1].mark, "轮空");
+  assert.deepEqual(l.labels.map((x) => x.text), ["第 1 轮", "第 2 轮"]);
+  assert.equal(l.cards.length, 3);
+  assert.match(l.cards[1].byeNote, /轮空 · C 记一胜/);
+  // Rounds sit under the table.
+  assert.ok(Math.min(...l.cards.map((c) => c.y)) > l.tables[0].y + l.tables[0].height);
+  assert.ok(l.header.tags.includes("瑞士轮 · 3 轮"));
+  assert.equal(l.links.length, 0);
+});
+
+test("group stage: every group under the other, placings then its bracket", () => {
+  const gm = (id, group, extra) => ({ id, swiss_group: group, bracket: "gse", status: "pending", ...extra });
+  const matches = [
+    gm(1, 1, { round: 2, position: 1, player1_id: "a", player2_id: "b", next_match_id: 3, status: "completed", winner_id: "a", score1: 2, score2: 1 }),
+    gm(2, 1, { round: 2, position: 2, player1_id: "c", player2_id: "d", next_match_id: 3 }),
+    gm(3, 1, { round: 1, position: 1, player1_id: "a" }),
+    gm(4, 2, { round: 1, position: 1, player1_id: "b", player2_id: "c" }),
+  ];
+  const groups = [
+    { group: 1, label: "A", complete: false, rows: [{ player_id: "a", rank: 1, how: "", qualified: false }, { player_id: "b", rank: 2, how: "首轮负", qualified: false }] },
+    { group: 2, label: "B", complete: true, rows: [{ player_id: "c", rank: 1, how: "出线战胜", qualified: true }] },
+  ];
+  const l = bracketImageLayout({ tournament: { status: "in_progress", players }, view: "groups", matches, groups, groupFormat: "single_elim", perGroup: 1 });
+  assert.deepEqual(l.groups.map((g) => [g.text, g.sub]), [["A 组", ""], ["B 组", "已结束"]]);
+  assert.equal(l.tables.length, 2);
+  assert.deepEqual(l.tables[1].rows[0].cells, ["1", "C", "出线"]);
+  assert.equal(l.tables[0].rows[0].cells[0], "–");
+  assert.equal(l.cards.length, 4);
+  assert.equal(l.links.length, 2);
+  // B's title comes after every card of A.
+  const aBottom = Math.max(...l.cards.filter((c) => c.rows[0].name !== "B").map((c) => c.y));
+  assert.ok(l.groups[1].y > aBottom);
+  assert.deepEqual(l.labels.map((x) => x.text), ["半决赛", "总决赛", "总决赛"]);
+});
