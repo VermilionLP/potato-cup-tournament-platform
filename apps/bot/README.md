@@ -42,7 +42,7 @@
 
 指令前面加不加 `/` 都可以（`/赛程` 和 `赛程` 一样）；指令和数字之间的空格也可以省略（`绑定123456`、`报名1`、`取消报名1`、`签到1`）。在 QQ 机器人后台登记这些指令后，用户在聊天框输入 `/` 就能看到指令列表。
 
-`报名`（列表）、`赛程`、`战绩` 的回复是图片卡片（`src/cards.js`：Satori 排版、resvg 生成 PNG，字体用网站同款 HarmonyOS Sans SC，不需要服务器安装字体）；生成失败时自动改发文字。每张图第一次生成约 0.2 秒，机器人内存多占用约 50 MB。
+`报名`（列表）、`赛程`、`战绩` 的回复是图片卡片（`src/cards.js`：Satori 排版、resvg 生成 PNG；中文用网站同款 HarmonyOS Sans SC，数字用 Barlow Condensed；logo、国旗、段位图标取自 `apps/web/static`，不需要服务器安装字体）。战绩卡另外读取天梯数据（段位、MMR、最近 5 场、MMR 走势），没有天梯记录的选手只显示比赛战绩。生成失败时自动改发文字。每张图生成约 0.2–0.4 秒，机器人内存多占用约 100 MB。
 
 QQ 给官方机器人的用户标识（openid）在群聊和私聊里不一样，所以在群里绑定的只在群里有效。
 
@@ -174,7 +174,7 @@ pm2 status
 docker compose -f /home/admin/napcat/compose.yaml ps
 ```
 
-内存参考：NapCat 容器限制为 1 GB，`potato-bot` 超过 300 MB 时 PM2 会自动重启它。
+内存参考：NapCat 容器限制为 1 GB，`potato-bot` 超过 500 MB 时 PM2 会自动重启它。
 
 ## 开发
 

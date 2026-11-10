@@ -11,7 +11,8 @@ module.exports = {
       min_uptime: '10s',
       max_restarts: 10,
       restart_delay: 5000,
-      max_memory_restart: '300M',
+      // Card rendering (fonts, resvg) needs room above the ~120 MB baseline.
+      max_memory_restart: '500M',
     },
   ],
 };
