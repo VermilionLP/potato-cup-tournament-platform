@@ -78,6 +78,7 @@
 
 {#if info}
   <section
+    id="my-match-card"
     class="rounded-xl border p-4 space-y-3
       {['play', 'confirm', 'checkin'].includes(info.state) ? 'border-primary/50 bg-primary/5 ring-1 ring-primary/20' : info.state === 'disputed' || info.state === 'claimed' ? 'border-destructive/40 bg-destructive/5' : 'border-border bg-card/40'}"
   >

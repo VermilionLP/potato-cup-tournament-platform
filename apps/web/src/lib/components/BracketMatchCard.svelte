@@ -35,6 +35,9 @@
   let editable = $derived(isAdmin && !locked && canCorrectResult(match));
   let clickable = $derived(playable || editable);
   let active = $derived(activeMatchId === match.id);
+  // The orange frame marks a match the viewer acts on: their own, or any
+  // playable one for admins. Others' matches stay plain.
+  let emphasized = $derived(playable && (isAdmin || isMine(match, userId)));
 
   function open() {
     if (clickable) onopen(match);
@@ -50,7 +53,7 @@
   onkeydown={(e) => (e.key === "Enter" || e.key === " ") && open()}
   class="flex flex-col justify-between overflow-hidden rounded-lg border bg-muted text-xs transition-all
     {clickable ? 'cursor-pointer hover:shadow-md' : 'cursor-default'}
-    {playable ? 'border-primary ring-1 ring-primary' : 'border-border'}
+    {emphasized ? 'border-primary ring-1 ring-primary' : 'border-border'}
     {active ? 'border-live ring-2 ring-live/60' : ''}
     {extra}"
 >

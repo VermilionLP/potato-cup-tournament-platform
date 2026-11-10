@@ -25,7 +25,8 @@
   import ArrowRightIcon from "@lucide/svelte/icons/arrow-right";
   import Trash2Icon from "@lucide/svelte/icons/trash-2";
 
-  let { t, onchanged, isAdmin = false, ondelete } = $props();
+  // mine: the visitor signed up for this event (the lobby put it on top for that).
+  let { t, onchanged, isAdmin = false, mine = false, ondelete } = $props();
 
   let href = $derived(`/tournament/${encodeURIComponent(t.id)}`);
   // The event's players (to know whether the visitor is in) and matches (live ones).
@@ -78,7 +79,7 @@
         {:else}
           <Tag tone={statusTone(t.status)}>{statusLabel(t.status)}</Tag>
         {/if}
-        <span class="text-small font-bold text-muted-foreground">下一场比赛</span>
+        <span class="text-small font-bold {mine ? 'text-brand-ink' : 'text-muted-foreground'}">{mine ? "我报名的赛事" : "下一场比赛"}</span>
       </div>
       <a {href} class="block font-display text-[2.25rem] font-extrabold uppercase leading-none text-foreground hover:text-brand-ink sm:text-[2.75rem]">{t.name}</a>
       <EventTags {t} />

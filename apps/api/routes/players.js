@@ -89,6 +89,19 @@ export default async function playersRoutes(fastify) {
     return { ok: true };
   });
 
+  // The events a player is signed up for that haven't finished (the lobby
+  // puts them first). Rosters are public, so no sign-in is needed.
+  fastify.get('/players/:id/active-events', async (req, reply) => {
+    const { rows } = await fastify.db.query(
+      `SELECT t.id, t.status FROM axsuck.tournament_players tp
+       JOIN axsuck.tournaments t ON t.id = tp.tournament_id
+       WHERE tp.player_id = $1 AND t.status <> 'completed'`,
+      [String(req.params.id || '').slice(0, 100)],
+    );
+    reply.header('Cache-Control', 'no-store');
+    return { events: rows };
+  });
+
   fastify.get('/players/:id', async (req) => {
     const p = await repo.getById(req.params.id);
     if (!p) throw fastify.httpErrors.notFound('Player not found');
@@ -194,10 +207,15 @@ export default async function playersRoutes(fastify) {
       throw fastify.httpErrors.badRequest(CONTACT_REQUIRED);
     }
 
+    // Nationality: a two-letter code; players saving their own profile pick one.
+    const flagCode = String(flag ?? '').trim().toLowerCase();
+    if (flagCode && !/^[a-z]{2}$/.test(flagCode)) throw fastify.httpErrors.badRequest('国籍代码无效');
+    if (!flagCode && !isAdminRequest(req)) throw fastify.httpErrors.badRequest('请选择国籍 / 地区');
+
     const requesterIdRaw = req.headers['x-player-id'];
     const requesterId = requesterIdRaw ? decodeURIComponent(requesterIdRaw) : undefined;
     const lastIp = (requesterId === id) ? req.ip : null;
-    const updatedPlayer = await repo.upsert(id, flag, team, link, battleTagsStr, lastIp);
+    const updatedPlayer = await repo.upsert(id, flagCode, team, link, battleTagsStr, lastIp);
 
     if (tournament_id) {
       await fastify.db.query(`

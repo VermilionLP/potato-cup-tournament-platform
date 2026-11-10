@@ -2,6 +2,7 @@
 // dialog, a player signing up.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { chromium, devices } from 'playwright';
 import { BASE, api, makeEvent, makePlayer, openPage } from './helpers.mjs';
 
 const T = 15_000;
@@ -132,6 +133,69 @@ test('signing in points new visitors to their existing player record', async () 
   } catch (e) {
     await page.screenshot({ path: 'e2e-sign-in-lookup.png', fullPage: true }).catch(() => {});
     throw e;
+  } finally {
+    await browser.close();
+  }
+});
+
+test('signing in asks for the in-game name (not the account number) and a country', async () => {
+  const { browser, page, errors } = await openPage();
+  const name = `New${Math.random().toString(36).slice(2, 7)}`;
+  try {
+    await page.goto(`${BASE}/`);
+    await page.locator('#header-profile-button').click({ timeout: T });
+    await page.locator('#player-id-input').fill('98765432');
+    await page.getByText('看起来是数字账号 ID', { exact: false }).waitFor({ timeout: T });
+    await page.locator('#player-id-input').fill(name);
+    await page.getByText('看起来是数字账号 ID', { exact: false }).waitFor({ state: 'detached', timeout: T });
+    await page.locator('#layout-contact-input').fill('12345678');
+    await page.getByRole('dialog').getByRole('button', { name: '保存' }).click();
+    // No country yet: not saved.
+    await page.getByText('请选择国籍 / 地区').last().waitFor({ timeout: T });
+    await page.screenshot({ path: 'e2e-shot-sign-in.png' });
+    await page.locator('#layout-flag-select').selectOption('jp');
+    await page.getByRole('dialog').getByRole('button', { name: '保存' }).click();
+    await page.waitForLoadState('load');
+    let saved = null;
+    for (let i = 0; i < 30 && saved?.flag !== 'jp'; i += 1) {
+      await page.waitForTimeout(300);
+      saved = await api('GET', `/players/${name}`).catch(() => null);
+    }
+    assert.equal(saved?.flag, 'jp');
+    assert.deepEqual(errors, [], 'no uncaught errors in the page');
+  } catch (e) {
+    await page.screenshot({ path: 'e2e-sign-in-flag.png', fullPage: true }).catch(() => {});
+    throw e;
+  } finally {
+    await browser.close();
+  }
+});
+
+test('phones: the player\'s next action stays a thumb away', async () => {
+  const players = [];
+  for (let i = 0; i < 4; i += 1) players.push(await makePlayer('pa'));
+  const id = await makeEvent({ players, start: true });
+  const match = (await api('GET', `/tournaments/${id}`)).matches.find((m) => m.player1_id && m.player2_id && m.status === 'pending');
+  const browser = await chromium.launch();
+  try {
+    const context = await browser.newContext({ ...devices['iPhone 13'], locale: 'zh-CN' });
+    await context.addInitScript((me) => {
+      localStorage.setItem('suck_player_id', me);
+      localStorage.setItem('suck_qq_group', '1');
+      localStorage.setItem('potato-lang', 'zh');
+    }, match.player1_id);
+    const page = await context.newPage();
+    await page.goto(`${BASE}/tournament/${id}`);
+    // 我的比赛 is right under the title; no reminder banner about this page.
+    await page.locator('#my-match-card').waitFor({ timeout: T });
+    assert.equal(await page.getByText('轮到你比赛了 ·', { exact: false }).count(), 0);
+    // Scrolled past it, the bar offers 填报比分.
+    await page.mouse.wheel(0, 2500);
+    const bar = page.locator('[data-player-action="report"]');
+    await bar.waitFor({ timeout: T });
+    await page.screenshot({ path: 'e2e-shot-action-bar.png' });
+    await bar.getByRole('button', { name: '填报比分' }).click();
+    await page.getByRole('dialog').waitFor({ timeout: T });
   } finally {
     await browser.close();
   }

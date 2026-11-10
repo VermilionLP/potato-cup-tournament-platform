@@ -47,3 +47,21 @@ test("reports from each side", () => {
   assert.equal(myMatchInfo(event({ matches: [m({ pending_report: claim })] }), "b").state, "claimed");
   assert.equal(reportView(m({}), "a"), null);
 });
+
+test("the phone action bar: register, check in, report, confirm", async () => {
+  const { playerAction } = await import("../src/lib/my-match.js");
+  const reg = { status: "registration", players: [{ id: "me" }], checkin: { enabled: true, open: true } };
+  assert.equal(playerAction({ ...reg, players: [] }, "me", { canSignUp: true }).kind, "register");
+  assert.equal(playerAction(reg, "me", { canSignUp: true, isRegistered: true }).kind, "checkin");
+  assert.equal(playerAction({ ...reg, players: [{ id: "me", checked_in_at: "x" }] }, "me", { canSignUp: true, isRegistered: true }), null);
+  const m = { id: 1, status: "pending", player1_id: "me", player2_id: "op" };
+  const run = { status: "in_progress", players: [{ id: "me" }, { id: "op", display_name: "Op" }], matches: [m] };
+  const play = playerAction(run, "me");
+  assert.equal(play.kind, "report");
+  assert.match(play.title, /Op/);
+  const reported = { ...run, matches: [{ ...m, pending_report: { kind: "score", score1: 0, score2: 2, by: "op", at: "x" } }] };
+  const confirm = playerAction(reported, "me");
+  assert.equal(confirm.kind, "confirm");
+  assert.match(confirm.title, /0 : 2/);
+  assert.equal(playerAction(run, "nobody"), null);
+});

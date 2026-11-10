@@ -130,7 +130,7 @@
 </script>
 
 <Card.Root class="border-border bg-card/40">
-  <Card.Header class="p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-border/40 pb-4">
+  <Card.Header class="p-4 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-4 border-b border-border/40 pb-3 sm:pb-4">
     <div>
       <Card.Title class="text-base font-bold flex items-center gap-2">
         <ShieldCheckIcon class="w-5 h-5 text-amber-500" />
@@ -140,7 +140,8 @@
           赛事对阵图 · {eventFormatLabel(tournament)}
         {/if}
       </Card.Title>
-      <Card.Description class="text-xs">
+      <!-- Phones: the explanation is in the 说明 tab; the bracket comes first. -->
+      <Card.Description class="hidden text-xs sm:block">
         {#if tournament.status === "registration"}
           基于当前报名的选手和种子排名实时生成的对阵预览（调整上方种子排序会自动刷新）。
           {#if hasGroupBrackets}
@@ -167,7 +168,7 @@
         {/if}
       </Card.Description>
     </div>
-    {#if myMatch}
+    {#if myMatch && !(isMobileViewport && eliminationShown)}
       <Button variant="outline" size="sm" onclick={locateMe} class="h-8 shrink-0 gap-1.5 text-xs font-semibold" title="跳到你的下一场（没有就是最近一场）">
         <LocateFixedIcon class="h-3.5 w-3.5" />定位到我
       </Button>
@@ -185,6 +186,11 @@
           {label}
         </button>
       {/each}
+      {#if myMatch}
+        <button type="button" onclick={locateMe} class="ml-auto inline-flex items-center gap-1 rounded-md border border-border px-2.5 py-1 font-semibold text-foreground cursor-pointer">
+          <LocateFixedIcon class="h-3.5 w-3.5" />定位到我
+        </button>
+      {/if}
     </div>
   {/if}
 

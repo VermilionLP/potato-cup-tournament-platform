@@ -2,7 +2,8 @@
   // Under the header: the most urgent thing the player has to do now (their
   // match, ban turn, a score to confirm, check-in, the start), from
   // #lib/reminders.svelte.js, with one button to it. Closed per item for
-  // this browser session; more items show as "+N".
+  // this browser session; more items show as "+N". Items about the page
+  // being shown are left out: the event page's 我的比赛 card says the same.
   import { reminders } from "#lib/reminders.svelte.js";
   import { itemText } from "#lib/reminders.js";
   import { page } from "$app/state";
@@ -17,10 +18,11 @@
     return () => clearInterval(timer);
   });
 
-  const list = $derived(reminders.banner ? reminders.visible : []);
+  const list = $derived(
+    reminders.banner ? reminders.visible.filter((i) => itemText(i, now).url !== page.url.pathname) : [],
+  );
   const item = $derived(list[0]);
   const text = $derived(item ? itemText(item, now) : null);
-  const here = $derived(text && page.url.pathname === text.url);
   const urgent = $derived(item && (item.kind === "confirm" || item.kind === "ban" || item.kind === "ready"));
 </script>
 
@@ -35,9 +37,9 @@
       <p class="min-w-0 flex-1 text-sm leading-snug">
         <span class="font-black">{text.title}</span>
         <span class="{urgent ? 'opacity-90' : 'text-muted-foreground'}"> · {text.body}</span>
-        {#if list.length > 1}<span class="ml-1 rounded-full px-1.5 text-[11px] font-bold {urgent ? 'bg-primary-foreground/20' : 'bg-primary/15'}">+{list.length - 1}</span>{/if}
+        {#if list.length > 1}<span class="ml-1 rounded-full px-1.5 text-label font-bold {urgent ? 'bg-primary-foreground/20' : 'bg-primary/15'}">+{list.length - 1}</span>{/if}
       </p>
-      {#if !here}
+      {#if text.url}
         <a
           href={text.url}
           class="inline-flex h-8 shrink-0 items-center gap-1 rounded-md px-3 text-xs font-bold

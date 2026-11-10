@@ -127,3 +127,15 @@ test("featured event: being played, else the next sign-up, else voting", async (
   assert.equal(featuredEvent([reg("a", "2026-11-10 20:00"), { id: "live", status: "in_progress" }]).id, "live");
   assert.equal(featuredEvent([{ id: "v", status: "voting" }, { id: "c", status: "completed" }]).id, "v");
 });
+
+test("the visitor's own events come first in the lobby", async () => {
+  const { featuredEvent } = await import("../src/lib/lobby.js");
+  const list = [
+    { id: "live", status: "in_progress" },
+    { id: "mine", status: "registration", scheduled_time: "2026-11-20T20:00" },
+    { id: "soon", status: "registration", scheduled_time: "2026-11-14T20:00" },
+  ];
+  assert.equal(featuredEvent(list).id, "live");
+  assert.equal(featuredEvent(list, new Set(["mine"])).id, "mine");
+  assert.equal(featuredEvent(list, new Set(["gone"])).id, "live");
+});

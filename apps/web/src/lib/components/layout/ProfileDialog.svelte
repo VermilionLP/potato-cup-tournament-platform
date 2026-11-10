@@ -8,6 +8,7 @@
   import { userState } from "#lib/user.svelte.js";
   import { ensurePlayerKey } from "#lib/player-session.js";
   import { buildContact, contactInputProblem, parseContact, requiredContactProblem, splitContactInput } from "#lib/contact.js";
+  import { flagProblem } from "#lib/flag-options.js";
   import * as Dialog from "#lib/components/ui/dialog/index.js";
   import { Button } from "#lib/components/ui/button/index.js";
   import UserRoundIcon from "@lucide/svelte/icons/user-round";
@@ -22,11 +23,12 @@
   // Visitor sign-in
   let contactInput = $state("");
   let contactError = $state("");
+  let flagError = $state("");
   let existingPlayers = $state([]);
   let lookup = $state(null); // GuestSignInFields: is the typed ID already a player
 
   // Profile of the signed-in player
-  let flag = $state("cn");
+  let flag = $state("");
   let team = $state("");
   let link = $state("");
   let contactBase = $state({}); // untouched battle_tags keys kept across saves
@@ -37,13 +39,15 @@
     idInput = userState.id || "";
     contactInput = userState.qqGroup || "";
     contactError = "";
+    flagError = "";
+    flag = "";
     open = true;
 
     if (userState.id) {
       try {
         const p = await API.getPlayer(userState.id);
         if (p) {
-          flag = p.flag || "cn";
+          flag = p.flag || "";
           team = p.team || "";
           link = p.link || "";
           const contact = parseContact(p.battle_tags);
@@ -69,7 +73,7 @@
   // Writes the contact typed at sign-in onto the player profile. Only the
   // channel that was typed is replaced, so an existing QQ or Discord value
   // is never wiped by the other one.
-  async function saveSignInContact(playerId, rawContact) {
+  async function saveSignInContact(playerId, rawContact, chosenFlag) {
     const parsed = splitContactInput(rawContact);
     if (!parsed.qq && !parsed.discord) return;
 
@@ -85,10 +89,11 @@
     const current = parseContact(player?.battle_tags);
     const nextQQ = parsed.qq || current.qq;
     const nextDiscord = parsed.discord || current.discord;
-    if (nextQQ === current.qq && nextDiscord === current.discord) return;
+    const nextFlag = chosenFlag || player?.flag || "";
+    if (nextQQ === current.qq && nextDiscord === current.discord && nextFlag === (player?.flag || "")) return;
 
     await API.updatePlayer(playerId, {
-      flag: player?.flag || "cn",
+      flag: nextFlag,
       team: player?.team || "",
       link: player?.link || "",
       battle_tags: buildContact(current.base, { qq: nextQQ, discord: nextDiscord }),
@@ -100,12 +105,13 @@
   async function signIn() {
     const trimmedContact = contactInput.trim();
     const trimmedId = idInput.trim();
-    contactError = contactInputProblem(trimmedContact);
-    if (contactError) return;
     if (!trimmedId) {
-      toast.error("请输入选手 ID");
+      toast.error("请输入游戏内昵称（选手 ID）");
       return;
     }
+    flagError = flagProblem(flag);
+    contactError = contactInputProblem(trimmedContact);
+    if (flagError || contactError) return;
     // A new ID next to an existing similar one is usually the same person.
     const known = lookup?.name === trimmedId ? lookup : null;
     const alike = known && !known.exact ? (known.alias ? [known.alias.player] : known.similar) : [];
@@ -128,7 +134,7 @@
       }
       await ensurePlayerKey(trimmedId);
       try {
-        await saveSignInContact(trimmedId, trimmedContact);
+        await saveSignInContact(trimmedId, trimmedContact, flag);
       } catch (e) {
         // A device-key conflict is explained by its own prompt.
         if (e.code !== "PLAYER_KEY_REQUIRED") {
@@ -178,8 +184,8 @@
       }
     }
 
-    // 2. Profile details (a contact is required)
-    const problem = requiredContactProblem({ qq: qq.trim(), discord: discord.trim() });
+    // 2. Profile details (a contact and the nationality are required)
+    const problem = flagProblem(flag) || requiredContactProblem({ qq: qq.trim(), discord: discord.trim() });
     if (problem) {
       toast.error(problem);
       return;
@@ -187,7 +193,7 @@
     busy = true;
     try {
       await API.updatePlayer(trimmedId, {
-        flag: flag || "cn",
+        flag,
         team: team || "",
         link: link || "",
         battle_tags: buildContact(contactBase, { qq, discord }),
@@ -222,9 +228,9 @@
       </Dialog.Title>
       <Dialog.Description class="text-xs text-muted-foreground">
         {#if userState.id}
-          修改您的游戏昵称、QQ / Discord 联系方式及关联 Wiki。
+          修改联系方式、国籍和战队；Liquipedia Wiki 页面可选。
         {:else}
-          填写您的 QQ 号或 Discord 用户名（联系方式）与游戏昵称 ID，以解锁创建、报名和修改权限。
+          填写游戏内昵称、国籍和联系方式（QQ 号或 Discord 用户名），就可以报名、投票和修改自己的资料。
         {/if}
       </Dialog.Description>
     </Dialog.Header>
@@ -233,7 +239,7 @@
       <ProfileFields bind:idInput bind:qq bind:discord bind:flag bind:team bind:link />
       <DeviceKeyCard />
     {:else}
-      <GuestSignInFields bind:idInput bind:contactInput bind:lookup {contactError} players={existingPlayers} onsubmit={signIn} />
+      <GuestSignInFields bind:idInput bind:contactInput bind:flag bind:lookup {contactError} {flagError} players={existingPlayers} onsubmit={signIn} />
     {/if}
 
     <Dialog.Footer class="flex flex-col sm:flex-row gap-2 mt-2">
