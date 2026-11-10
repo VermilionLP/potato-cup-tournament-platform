@@ -18,6 +18,7 @@
   import GroupBracketsView from "#lib/components/GroupBracketsView.svelte";
   import SingleElimBracket from "./SingleElimBracket.svelte";
   import BracketRoundList from "./BracketRoundList.svelte";
+  import BracketShareDialog from "./BracketShareDialog.svelte";
   import ShieldCheckIcon from "@lucide/svelte/icons/shield-check";
 
   let {
@@ -114,6 +115,10 @@
         {/if}
       </Card.Description>
     </div>
+    <!-- The whole elimination bracket as one picture (not the group stage). -->
+    {#if eliminationShown}
+      <BracketShareDialog {tournament} matches={bracketMatches} doubleElim={isDoubleElim} {playerName} />
+    {/if}
   </Card.Header>
 
   {#if isMobileViewport && eliminationShown}
