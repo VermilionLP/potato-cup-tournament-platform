@@ -103,3 +103,37 @@ test('notice group defaults to the first allowed group and must be one of them',
   assert.equal(readConfig(base).botToken, null);
   assert.equal(readConfig({ ...base, BOT_TOKEN: ' x ' }).botToken, 'x');
 });
+
+import { formatCheckedIn, formatOpenEvents, formatRegistered, pickEvent } from '../src/format.js';
+
+const open = [
+  { id: 'w40', name: 'Weekly #40', scheduled_time: '2026-11-14T20:00', player_count: 12, player_capacity: 32, checkin_enabled: true, registered: false },
+  { id: 'w41', name: 'Weekly #41', scheduled_time: '2026-11-21T20:00', player_count: 32, player_capacity: 32, registered: false },
+  { id: 'm1', name: 'Monthly', scheduled_time: '', player_count: 3, player_capacity: 16, checkin_enabled: true, registered: true, checked_in: true },
+];
+
+test('the 报名 list numbers events and says what to send next', () => {
+  const text = formatOpenEvents({ player_id: 'Alpha', events: open });
+  assert.match(text, /1\. Weekly #40 — 11-14 20:00 · 12\/32 人\n/);
+  assert.match(text, /2\. Weekly #41 — 11-21 20:00 · 32\/32 人 · 已满/);
+  assert.match(text, /3\. Monthly — 时间待定 · 3\/16 人 · 已报名，已签到/);
+  assert.match(text, /发送「报名 1」报名/);
+  assert.match(formatOpenEvents({ player_id: null, events: open }), /还没有绑定选手/);
+  assert.equal(formatOpenEvents({ events: [] }), '目前没有正在报名的赛事。');
+});
+
+test('events are picked by number, id or name; withdraw falls back to the only one', () => {
+  assert.equal(pickEvent(open, '2').id, 'w41');
+  assert.equal(pickEvent(open, ' w40 ').id, 'w40');
+  assert.equal(pickEvent(open, 'Monthly').id, 'm1');
+  assert.equal(pickEvent(open, '9'), null);
+  assert.equal(pickEvent(open, ''), null);
+  assert.equal(pickEvent(open, '', (es) => es.find((e) => e.registered)).id, 'm1');
+});
+
+test('registration and check-in replies', () => {
+  assert.match(formatRegistered(open[0]), /报名成功：Weekly #40（11-14 20:00）。这场需要签到/);
+  assert.doesNotMatch(formatRegistered(open[1]), /签到/);
+  assert.equal(formatCheckedIn(['Weekly #40', 'Monthly']), '签到成功：Weekly #40、Monthly。');
+  assert.match(formatCheckedIn([]), /现在没有可以签到的比赛/);
+});

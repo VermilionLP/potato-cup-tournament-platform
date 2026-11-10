@@ -96,7 +96,7 @@ Ban / Pick 的载具池是 `axsuck.vehicle_pools` 里的模板（迁移 027）�
 顶栏铃铛是「提醒中心」（`components/layout/ReminderCenter.svelte`），三种渠道互补：
 - **日历订阅**（推荐，国内也能用）：`GET /api/calendar.ics` 是全部未结束赛事，`?player=<id>` 是该选手报名的赛事（旧 ID 经 `player_aliases` 仍有效）。闹钟由手机/电脑日历自己响：全部赛事开赛前 1 小时；个人日历 1 小时 + 10 分钟，需要签到的再加 30 分钟（`lib/calendar.js`，`ALARMS`）。日历每小时自动刷新。
 - **浏览器通知**（Web Push）：`.env` 有 `VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY` 就用它；没有的话第一个浏览器开启通知时服务器自己生成一对存进 `app_secrets`（迁移 046，`lib/push-keys.js`），之后不能再换。`POST /push/test` 给本浏览器发测试通知（每分钟一次）。国内安卓 Chrome 依赖 FCM，常常收不到，所以面板里推荐日历。
-- **QQ 群**（`apps/bot`，迁移 047）：社区机器人把比赛就绪、请确认比分、轮到禁用、赛果和开赛前 1 小时提醒发到 QQ 群，并 @ 选手资料里的 QQ 号（`lib/bot-notices.js` 排队，`GET /bot/notices` 取用）；官方机器人在群里被 @ 时回答「赛程」「战绩」，选手先在提醒中心的「QQ 群提醒」获取绑定码，再 @机器人 发送「绑定 123456」。API 和机器人的 `.env` 都要设置相同的 `BOT_TOKEN`。
+- **QQ 群**（`apps/bot`，迁移 047）：社区机器人把比赛就绪、请确认比分、轮到禁用、赛果和开赛前 1 小时提醒发到 QQ 群，并 @ 选手资料里的 QQ 号（`lib/bot-notices.js` 排队，`GET /bot/notices` 取用）；新赛事创建时发「开放报名」公告；官方机器人在群里被 @ 时回答「报名」「取消报名」「签到」「赛程」「战绩」（报名规则和网站共用 `lib/registration.js`），选手先在提醒中心的「QQ 群提醒」获取绑定码，再 @机器人 发送「绑定 123456」。API 和机器人的 `.env` 都要设置相同的 `BOT_TOKEN`。
 - **网页内提醒**：开着网站时每 30 秒轮询 `GET /api/reminders/:playerId`（`lib/attention.js`：确认比分、轮到禁用、轮到比赛、签到开放、1 小时内开赛），页头下方横幅（`AttentionBanner.svelte`）、新提醒提示音、后台标签页标题闪烁（`lib/reminders.svelte.js`）；横幅可按条关闭，偏好存 localStorage。
 
 ## Admin tools

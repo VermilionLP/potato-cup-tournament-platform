@@ -2037,4 +2037,9 @@ export default {
   "获取绑定码": "Get a binding code",
   "解除绑定": "Unbind",
   "填写选手 ID 后可以绑定 QQ，在群里查询自己的赛程和战绩。": "Enter your player ID to bind QQ and look up your schedule and record in the group.",
+  // Registration messages from the API (lib/registration.js)
+  "报名已截止": "Registration is closed",
+  "报名人数已满": "The event is full",
+  "已经报名了": "Already registered",
+  "报名已截止，请联系管理员退出": "Registration is closed; ask an admin to take you off the list",
 };

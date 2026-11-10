@@ -19,6 +19,7 @@ import { GAME_MODES, SUPPORTED_FORMATS, VEHICLE_POOLS } from '../lib/tournament-
 import { groupBracketProblem } from '../lib/group-brackets.js';
 import { MAX_GROUP_SIZE, MIN_GROUP_SIZE, PLAYOFF_FORMATS } from '../lib/group-stage.js';
 import { isAutoRounds, MAX_SWISS_ROUNDS, MIN_SWISS_ROUNDS, parseSwissRounds } from '../lib/swiss.js';
+import { queueRegistrationOpen } from '../lib/bot-notices.js';
 
 export default async function tournamentsRoutes(fastify) {
   const repo = TournamentRepo(fastify.db);
@@ -219,6 +220,8 @@ export default async function tournamentsRoutes(fastify) {
       // Tier / kind: as given, else from the points table (or a weekly by name).
       ...defaultTier({ tier, kind: event_kind, pointsKind: points.table ? normalizePointsKind(points_kind) : '', name }),
     });
+    // The QQ group hears that sign-ups are open (no-op without the bots).
+    await queueRegistrationOpen(fastify.db, created, fastify.log);
     return created;
   });
 

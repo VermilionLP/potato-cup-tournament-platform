@@ -96,6 +96,7 @@ export const CACHE_NEUTRAL_ROUTES = new Set([
   'POST /bot/bind',
   'DELETE /bot/bind/:openid',
   'POST /players/:id/qq-bind-code',
+  'POST /bot/checkin',
   'DELETE /players/:id/qq-bindings',
   'DELETE /client-errors',
 ]);

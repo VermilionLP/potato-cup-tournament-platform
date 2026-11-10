@@ -2,7 +2,9 @@
 // never answers these). Who is asking comes from the openid QQ gives the
 // bot (session.userId), bound to a player with "绑定 <code>".
 
-import { HELP, NOT_BOUND, findPlayer, formatSchedule, formatStats } from './format.js';
+import {
+  HELP, NOT_BOUND, findPlayer, formatCheckedIn, formatOpenEvents, formatRegistered, formatSchedule, formatStats, pickEvent,
+} from './format.js';
 
 /** At most `limit` tries per key in `windowMs` (binding codes are only 6 digits). */
 export function attemptLimiter(limit = 5, windowMs = 10 * 60_000, now = () => Date.now()) {
@@ -68,6 +70,56 @@ export function registerCommands(ctx, site, logger = console) {
       return formatStats(findPlayer(stats.players, who)) || `没有找到「${who}」的比赛记录。`;
     } catch (err) {
       logger.warn?.(`[commands] stats failed: ${err?.message || err}`);
+      return failed(err);
+    }
+  });
+
+  // ---- Registration (the site's rules apply: lib/registration.js) ----
+
+  qq.command('报名 [event:text]', '报名赛事').alias('register').action(async ({ session }, arg) => {
+    try {
+      const data = await site.openEvents(session.userId);
+      if (!arg?.trim()) return formatOpenEvents(data);
+      if (!data.player_id) return NOT_BOUND;
+      const event = pickEvent(data.events, arg);
+      if (!event) return `没有找到「${arg.trim()}」。发送「报名」查看正在报名的赛事和编号。`;
+      if (event.registered) return `你已经报名了 ${event.name}。`;
+      await site.register(session.userId, event.id);
+      return formatRegistered(event);
+    } catch (err) {
+      logger.warn?.(`[commands] register failed: ${err?.message || err}`);
+      return failed(err);
+    }
+  });
+
+  qq.command('取消报名 [event:text]', '退出报名').alias('withdraw').action(async ({ session }, arg) => {
+    try {
+      const data = await site.openEvents(session.userId);
+      if (!data.player_id) return NOT_BOUND;
+      const mine = (events) => {
+        const registered = events.filter((e) => e.registered);
+        return registered.length === 1 ? registered[0] : null;
+      };
+      const event = pickEvent(data.events, arg, mine);
+      if (!event) return arg?.trim() ? `没有找到「${arg.trim()}」。` : '请发送「取消报名 编号」，编号见「报名」列表。';
+      if (!event.registered) return `你没有报名 ${event.name}。`;
+      await site.unregister(session.userId, event.id);
+      return `已退出 ${event.name} 的报名。`;
+    } catch (err) {
+      return failed(err);
+    }
+  });
+
+  qq.command('签到 [event:text]', '签到').alias('checkin').action(async ({ session }, arg) => {
+    try {
+      const data = await site.openEvents(session.userId);
+      if (!data.player_id) return NOT_BOUND;
+      const event = arg?.trim() ? pickEvent(data.events, arg) : null;
+      if (arg?.trim() && !event) return `没有找到「${arg.trim()}」。`;
+      const { checked_in: ids } = await site.checkin(session.userId, event?.id);
+      const names = ids.map((id) => data.events.find((e) => e.id === id)?.name || id);
+      return formatCheckedIn(names);
+    } catch (err) {
       return failed(err);
     }
   });

@@ -13,6 +13,7 @@
 
 import { isBotConfigured } from './bot-auth.js';
 import { parseContact } from './contact.js';
+import { parseScheduledDateTime } from './calendar.js';
 
 export const NOTICE_TTL_MS = 30 * 60 * 1000;
 const MAX_MENTIONS = 40;
@@ -40,6 +41,7 @@ export const noticeText = {
   ban: (event, who, before) => `${tag(event)}轮到 ${who} 禁用${before ? `（${before}）` : ''}\n请到网站的 Ban/Pick 里选择要禁用的大组。`,
   result: (event, a, s1, s2, b, winner) => `${tag(event)}赛果：${a} ${s1} : ${s2} ${b}，${winner} 胜出`,
   walkover: (event, winner, loser) => `${tag(event)}赛果：${winner} 不战而胜${loser ? `（${loser} 弃权）` : ''}`,
+  open: (event, when, capacity, checkin) => `${tag(event)}开放报名！比赛时间 ${when}，名额 ${capacity} 人${checkin ? '，需要签到' : ''}。\n在群里 @土豆杯机器人 发送「报名」即可报名，也可以到网站报名。`,
   soon: (event, time, checkin) => `${tag(event)}将在 ${time} 开始${checkin ? '，开赛前 30 分钟开放签到，请记得到网站签到' : ''}。`,
 };
 
@@ -74,6 +76,28 @@ export async function queueBotNotice(db, { kind, tournamentId = null, text, ment
     return null;
   }
 }
+
+/** "11月14日 20:00" from a scheduled time, or a word when there is none. */
+export function dateOf(scheduledTime) {
+  const p = parseScheduledDateTime(scheduledTime);
+  if (!p) return '待定';
+  return `${p.month}月${p.day}日${p.hasTime ? ` ${clockOf(p)}` : ''}`;
+}
+
+/** "Sign-ups are open" for a new event in registration. */
+export function queueRegistrationOpen(db, event, log = console) {
+  if (!event || event.status !== 'registration') return Promise.resolve(null);
+  return queueBotNotice(db, {
+    kind: 'open',
+    tournamentId: event.id,
+    text: noticeText.open(event.name, dateOf(event.scheduled_time), event.player_capacity, event.checkin_enabled),
+  }, log);
+}
+
+// Replies of the bot's registration routes (routes/bot.js).
+export const REGISTER_MESSAGES = {
+  notBound: '你还没有绑定选手。请在网站右上角铃铛的「QQ 群提醒」里获取绑定码，然后 @我 发送「绑定 123456」。',
+};
 
 /** Unsent notices not older than NOTICE_TTL_MS, oldest first. Drops old rows. */
 export async function pendingNotices(db, limit = 20) {
