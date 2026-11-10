@@ -32,7 +32,9 @@ if (config.problems.length > 0) {
   process.exit(1);
 }
 
-const app = new Context();
+// Commands work with or without a leading "/": QQ's command menu (typing /
+// in a chat) sends "/赛程", people type "赛程".
+const app = new Context({ prefix: ['', '/'] });
 // ctx.http: both adapters wait for it (the Koishi CLI adds it; a bare app does not).
 app.plugin(HttpService);
 
