@@ -7,9 +7,10 @@
     "dev:suck": "pnpm --filter suck-tournament-api --filter suck-tournament-web --parallel dev",
     "dev:api": "pnpm --filter suck-tournament-api dev",
     "dev:web": "pnpm --filter suck-tournament-web dev",
+    "dev:bot": "pnpm --filter potato-cup-bot dev",
     "build:web": "pnpm --filter suck-tournament-web build",
     "build:all": "pnpm -r build",
     "migrate": "pnpm --filter suck-tournament-api migrate",
-    "test": "pnpm --filter suck-tournament-web test && pnpm --filter suck-tournament-api test && node --test tools/wt-autoscene/test.mjs"
+    "test": "pnpm --filter suck-tournament-web test && pnpm --filter suck-tournament-api test && pnpm --filter potato-cup-bot test && node --test tools/wt-autoscene/test.mjs"
   }
 }

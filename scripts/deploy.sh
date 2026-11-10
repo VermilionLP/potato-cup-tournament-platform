@@ -23,6 +23,15 @@ STAGING=/home/admin/suck-staging
 TARGET=/home/admin/suck
 BACKUP_DIR=/home/admin/suck-backups
 PM2_APP=suck-tournament
+# The QQ bots (apps/bot) run as their own PM2 process once scripts/bot-setup.sh
+# has been followed; a deploy restarts them only if they are registered.
+BOT_PM2_APP=potato-bot
+restart_bot() {
+  if pm2 describe "$BOT_PM2_APP" > /dev/null 2>&1; then
+    pm2 restart "$BOT_PM2_APP" --update-env > /dev/null && echo "restarted $BOT_PM2_APP"
+  fi
+  return 0
+}
 PREFLIGHT="$TARGET/apps/api/.deploy-preflight.mjs"
 DEPLOYED_MARKER="$TARGET/.deployed-commit"
 
@@ -203,6 +212,7 @@ rollback() {
   pnpm install --frozen-lockfile
   NODE_OPTIONS=--max-old-space-size=1024 pnpm build:web
   pm2 restart "$PM2_APP" --update-env
+  restart_bot
   if [ -n "$LAST_DEPLOYED" ]; then echo "$LAST_DEPLOYED" > "$DEPLOYED_MARKER"; else rm -f "$DEPLOYED_MARKER"; fi
   wait_for_api http://localhost:3100
   if smoke http://localhost:3100; then
@@ -370,6 +380,7 @@ rm -f "$PRE_LOG"
 
 echo "==> 9/10 restart"
 pm2 restart "$PM2_APP" --update-env
+restart_bot
 if [ -n "$NEW_COMMIT" ]; then
   echo "$NEW_COMMIT" > "$DEPLOYED_MARKER"
 fi

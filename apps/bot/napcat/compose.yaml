@@ -1,0 +1,30 @@
+# NapCat (QQ client + OneBot v11) for the community bot.
+# scripts/bot-setup.sh copies this to /home/admin/napcat and writes the .env
+# next to it (UID/GID, WebUI token, image). Data lives there, outside the
+# repository, so deploys never touch the QQ login.
+#
+#   cd /home/admin/napcat && docker compose up -d
+#   docker compose logs -f napcat
+services:
+  napcat:
+    image: ${NAPCAT_IMAGE:-mlikiowa/napcat-docker:latest}
+    container_name: napcat
+    restart: unless-stopped
+    # A fixed MAC keeps the device fingerprint QQ sees the same across
+    # container rebuilds; a "new device" each time invites re-logins and risk checks.
+    mac_address: "02:42:ac:11:00:02"
+    environment:
+      NAPCAT_UID: ${NAPCAT_UID}
+      NAPCAT_GID: ${NAPCAT_GID}
+      WEBUI_TOKEN: ${WEBUI_TOKEN}
+      TZ: Asia/Shanghai
+    # Only reachable from this server: the bot connects to 3001 locally, and
+    # the WebUI (6099) is opened through an SSH tunnel, never from the internet.
+    ports:
+      - "127.0.0.1:6099:6099"
+      - "127.0.0.1:3001:3001"
+    volumes:
+      - ./data/qq:/app/.config/QQ
+      - ./data/config:/app/napcat/config
+      - ./data/plugins:/app/napcat/plugins
+    mem_limit: 1g
