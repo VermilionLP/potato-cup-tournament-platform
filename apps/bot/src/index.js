@@ -78,7 +78,7 @@ if (config.botToken) {
     // Picture replies for 报名 / 赛程 / 战绩; text if the renderer cannot start.
     let pictures = null;
     try {
-      pictures = { cards: createRenderer(), h };
+      pictures = { cards: createRenderer({ siteHost: config.siteHost }), h };
     } catch (err) {
       console.warn(`[bot] picture replies are off: ${err?.message || err}`);
     }

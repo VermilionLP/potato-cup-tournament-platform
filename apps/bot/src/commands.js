@@ -35,7 +35,7 @@ export function unglue(text) {
 const failed = (err) => (err?.status && err.status < 500 ? err.message : '网站暂时连不上，请稍后再试。');
 
 /**
- * `pictures`: { cards, h } to answer 报名 / 赛程 / 战绩 with PNG cards
+ * `pictures`: { cards, h } to answer 帮助 / 报名 / 赛程 / 战绩 with PNG cards
  * (src/cards.js); without it, or if drawing fails, the replies are text.
  */
 export function registerCommands(ctx, site, logger = console, pictures = null) {
@@ -57,7 +57,7 @@ export function registerCommands(ctx, site, logger = console, pictures = null) {
     return fixed ? session.execute(fixed) : next();
   }, true);
 
-  qq.command('帮助', '查看指令').alias('help').action(() => HELP);
+  qq.command('帮助', '查看指令').alias('help').action(() => picture((cards) => cards.help(), () => HELP));
 
   qq.command('绑定 <code:string>', '绑定选手').alias('bind').action(async ({ session }, code) => {
     if (!code) return '请发送「绑定 123456」，绑定码在网站右上角铃铛的「QQ 群提醒」里获取。';

@@ -152,7 +152,7 @@ test('a number typed straight after the command still counts', () => {
   assert.equal(unglue('战绩Alpha'), null, 'names are not split');
 });
 
-import { createRenderer, dateParts, openEventsCard, scheduleCard, statsCard } from '../src/cards.js';
+import { createRenderer, dateParts, eventTagList, helpCard, openEventsCard, scheduleCard, signupSteps, statsCard, whenText } from '../src/cards.js';
 
 test('date tiles read Beijing dates and weekdays', () => {
   assert.deepEqual(dateParts('2026-11-14T20:00'), { month: 11, day: 14, weekday: '周六', time: '20:00' });
@@ -175,7 +175,8 @@ test('cards render to PNG with the site font, and long names do not break them',
   };
   const full = await r.stats({ id: 'Alpha', flag: 'cn', team: 'T', matches_won: 30, matches_lost: 10, championships: 3 }, ladder);
   assert.equal(full.subarray(1, 4).toString(), 'PNG');
-  for (const tree of [openEventsCard({ events: [] }), statsCard({ id: 'New' }), statsCard({ id: 'Zero', matches_won: 0, matches_lost: 0 }, null), scheduleCard({ player_id: 'X', events: [], now: [] })]) {
+  assert.equal((await r.help()).subarray(1, 4).toString(), 'PNG');
+  for (const tree of [openEventsCard({ events: [] }), statsCard({ id: 'New' }), statsCard({ id: 'Zero', matches_won: 0, matches_lost: 0 }, null), scheduleCard({ player_id: 'X', events: [], now: [] }), helpCard()]) {
     const out = await r.render(tree);
     assert.equal(out.subarray(1, 4).toString(), 'PNG');
   }
@@ -198,4 +199,34 @@ test('a failing card falls back to the text reply', async () => {
   registerCommands(fakeCtx, site, { warn() {} }, working);
   assert.equal(await handlers['赛程']({ session: { userId: 'OPENID' } }), 'IMAGE:image/png:png');
   void Context;
+});
+
+const stateOf = (steps) => Object.fromEntries(steps.map((s) => [s.id, s.state]));
+
+test('the sign-up guide follows the player: bind, register, check in, play', () => {
+  const open = (over = {}) => ({ id: 'e', name: 'E', player_count: 3, player_capacity: 8, checkin_enabled: false, registered: false, ...over });
+  // Not bound: binding first, with the command.
+  let steps = signupSteps({ player_id: null, events: [open()] });
+  assert.deepEqual(stateOf(steps), { bind: 'current', register: 'todo', play: 'todo' });
+  assert.equal(steps[0].cmd, '绑定 123456');
+  // Bound: register, pointing at the first event that has room.
+  steps = signupSteps({ player_id: 'A', events: [open({ player_count: 8 }), open()] });
+  assert.deepEqual(stateOf(steps), { bind: 'done', register: 'current', play: 'todo' });
+  assert.equal(steps[1].cmd, '报名 2');
+  // Registered for an event with check-in: check-in is next.
+  steps = signupSteps({ player_id: 'A', events: [open({ registered: true, checkin_enabled: true, checkin_open: true })] });
+  assert.deepEqual(stateOf(steps), { bind: 'done', register: 'done', checkin: 'current', play: 'todo' });
+  assert.equal(steps[2].sub, '签到已开放，现在就签');
+  // Registered only where no check-in is needed: that step is done.
+  steps = signupSteps({ player_id: 'A', events: [open({ registered: true }), open({ checkin_enabled: true })] });
+  assert.deepEqual(stateOf(steps), { bind: 'done', register: 'done', checkin: 'done', play: 'current' });
+});
+
+test("events carry the site's tags and times", () => {
+  assert.deepEqual(eventTagList({ tier: 'C', event_kind: 'weekly', game_mode: 'rb', vehicle_pool: 'prop', format: 'double_elim' }),
+    [['C 级 · 周赛', 'info'], ['RB', 'neutral'], ['螺旋桨', 'neutral'], ['双败淘汰', 'neutral']]);
+  assert.deepEqual(eventTagList({ format: 'single_elim', two_stage: true }), [['小组赛 + 淘汰赛', 'neutral']]);
+  assert.deepEqual(eventTagList({}), []);
+  assert.equal(whenText('2026-11-20T20:00'), '11/20 周五 20:00');
+  assert.equal(whenText(''), '时间待定');
 });
