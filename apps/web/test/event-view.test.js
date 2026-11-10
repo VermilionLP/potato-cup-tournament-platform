@@ -158,3 +158,21 @@ test("big brackets are shown in sections, then the final stage", () => {
   assert.deepEqual(final.displayRounds.map((r) => r.round), [2, 1]);
   assert.equal(bracketSections(eliminationRounds(singleElim().matches)).sectionCount, 1);
 });
+
+test("find me: the next match to play, else the last one played", async () => {
+  const { myFocusMatch, sectionOfMatch } = await import("../src/lib/event-view.js");
+  const ms = [
+    { id: 1, round: 3, player1_id: "me", player2_id: "a", status: "completed" },
+    { id: 2, round: 2, player1_id: "me", player2_id: null, status: "pending" },
+    { id: 3, round: 2, player1_id: "b", player2_id: "c", status: "pending" },
+  ];
+  const order = new Map([[1, 1], [2, 5], [3, 4]]);
+  assert.equal(myFocusMatch(ms, "me", order).id, 2);
+  assert.equal(myFocusMatch([ms[0], { ...ms[1], status: "completed" }], "me", order).id, 2);
+  assert.equal(myFocusMatch(ms, "nobody", order), null);
+  assert.equal(myFocusMatch(ms, "", order), null);
+  // 64 players: first round 32 matches, desktop sections of 16.
+  const rounds = [6, 5, 4, 3, 2, 1].map((round) => ({ round, matches: Array.from({ length: 2 ** (round - 1) }, (_, i) => ({ id: round * 100 + i, round })) }));
+  assert.deepEqual(sectionOfMatch(rounds, { id: 600 + 20, round: 6 }), { mode: "sections", index: 1 });
+  assert.deepEqual(sectionOfMatch(rounds, { id: 100, round: 1 }), { mode: "final" });
+});

@@ -54,6 +54,8 @@ export const ACTIONS = {
   'POST /vehicle-pools': 'pool.create',
   'PUT /vehicle-pools/:id': 'pool.update',
   'DELETE /vehicle-pools/:id': 'pool.delete',
+  'PUT /admin/alert-players': 'admin.alert_players',
+  'POST /admin/backups/run': 'admin.backup',
 };
 
 const SECRET = /token|secret|password|passwd|key$|^key|private|auth/i;

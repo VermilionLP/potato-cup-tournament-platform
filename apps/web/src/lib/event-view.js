@@ -335,3 +335,35 @@ export function playableInOrder(matches = [], order = new Map()) {
     .filter((m) => m.status === "pending" && m.player1_id && m.player2_id)
     .sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
 }
+
+/**
+ * "Find me" on the bracket: the player's match to show — the next one to
+ * play (both players known first, in playing order), else the last one
+ * played. Null when the player has no match here.
+ */
+export function myFocusMatch(matches = [], playerId = "", order = new Map()) {
+  if (!playerId) return null;
+  const mine = matches.filter((m) => m && (m.player1_id === playerId || m.player2_id === playerId));
+  if (!mine.length) return null;
+  const rank = (m) => order.get(m.id) ?? 1e9 + m.id;
+  const pending = mine.filter((m) => m.status === "pending").sort((a, b) => Boolean(b.player1_id && b.player2_id) - Boolean(a.player1_id && a.player2_id) || rank(a) - rank(b));
+  if (pending.length) return pending[0];
+  return [...mine].sort((a, b) => rank(b) - rank(a))[0];
+}
+
+/**
+ * Which part of a big single-elimination bracket (bracketSections) shows
+ * this match: { mode: "final" } or { mode: "sections", index }.
+ */
+export function sectionOfMatch(rounds = [], match, { mobile = false } = {}) {
+  const firstCount = rounds[0]?.matches?.length || 0;
+  const sectionFirstMatches = Math.min(mobile ? 8 : 16, Math.max(2, firstCount));
+  const sectionDepth = Math.max(1, Math.round(Math.log2(sectionFirstMatches)) + 1);
+  const maxRoundNumber = rounds.length ? Math.max(...rounds.map((r) => r.round)) : 1;
+  const finalStartRound = Math.max(1, maxRoundNumber - (sectionDepth - 1));
+  if (!match || match.round < finalStartRound) return { mode: "final" };
+  const round = rounds.find((r) => r.round === match.round);
+  const at = Math.max(0, round?.matches.findIndex((m) => m.id === match.id) ?? 0);
+  const size = sectionFirstMatches >> (maxRoundNumber - match.round);
+  return { mode: "sections", index: Math.floor(at / Math.max(1, size)) };
+}
