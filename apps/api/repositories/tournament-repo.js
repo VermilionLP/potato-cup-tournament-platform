@@ -87,6 +87,12 @@ export function TournamentRepo(db) {
     return getById(id);
   }
 
+  // The organisers' notes (说明 tab).
+  async function setDescription(id, text) {
+    await db.query('UPDATE axsuck.tournaments SET description = $2, updated_at = NOW() WHERE id = $1', [id, text]);
+    return getById(id);
+  }
+
   // Bracket settings (lib/bracket-settings.js normalizeBracketSettings), before the start.
   async function setBracket(id, b) {
     await db.query(
@@ -388,5 +394,5 @@ export function TournamentRepo(db) {
   }
 
   return {
-    setBracket, list, getById, create, rename, setVehiclePool, setVehicleTemplate, setPoints, setPointsInvite, setScheduledTime, setSwissRounds, updateStatus, setTier, setLadderLimit, setGameMode, getPlayers, addPlayer, autoRegisterVoters, removePlayer, setSeeds, getMatches, getVotes };
+    setBracket, setDescription, list, getById, create, rename, setVehiclePool, setVehicleTemplate, setPoints, setPointsInvite, setScheduledTime, setSwissRounds, updateStatus, setTier, setLadderLimit, setGameMode, getPlayers, addPlayer, autoRegisterVoters, removePlayer, setSeeds, getMatches, getVotes };
 }
