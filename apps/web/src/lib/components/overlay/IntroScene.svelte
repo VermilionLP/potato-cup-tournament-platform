@@ -29,7 +29,7 @@
 
   const decided = (m) => m.status === "completed" || m.status === "walkover";
   // Win chance and MMR at stake, for matches with both players.
-  const sim = (m) => (m.player1_id && m.player2_id ? simulateMatch(who.get(m.player1_id), who.get(m.player2_id)) : null);
+  const sim = (m) => (m.player1_id && m.player2_id ? simulateMatch(who.get(m.player1_id), who.get(m.player2_id), { eventKind: tournament?.event_kind }) : null);
   let sims = $derived(new Map(matches.map((m) => [m.id, sim(m)])));
   let featured = $derived.by(() => {
     let best = null;

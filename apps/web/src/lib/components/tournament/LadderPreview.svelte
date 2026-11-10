@@ -8,7 +8,7 @@
   let { match, tournament, playerName = (id) => id, score1 = 0, score2 = 0 } = $props();
 
   const find = (id) => tournament?.players?.find((p) => p.id === id);
-  let sim = $derived(simulateMatch(find(match.player1_id), find(match.player2_id)));
+  let sim = $derived(simulateMatch(find(match.player1_id), find(match.player2_id), { eventKind: tournament?.event_kind }));
   // "a" when player 1 is ahead in the entered score, "b" for player 2, else none.
   let picked = $derived(Number(score1) > Number(score2) ? "a" : Number(score2) > Number(score1) ? "b" : "");
   let division = $derived([gameModeLabel(tournament?.game_mode), vehiclePoolLabel(tournament?.vehicle_pool)].filter(Boolean).join(" · "));
@@ -18,7 +18,7 @@
 </script>
 
 <div class="rounded-lg border border-border/70 bg-muted/20 px-3 py-2.5 text-xs space-y-2">
-  <div class="font-bold">天梯分预估<span class="ml-1.5 font-normal text-muted-foreground">{division} 分榜</span></div>
+  <div class="font-bold">天梯分预估<span class="ml-1.5 font-normal text-muted-foreground">{division} 分榜</span>{#if sim.weight !== 1}<span class="ml-1.5 rounded bg-primary/12 px-1.5 font-semibold text-brand-ink" title="大型赛事的加减分比周赛多">本场权重 ×{sim.weight}</span>{/if}</div>
   <div class="grid grid-cols-[minmax(0,1fr)_auto_auto_auto] items-center gap-x-3 gap-y-1">
     <span></span>
     <span class="text-small text-muted-foreground text-right">当前</span>

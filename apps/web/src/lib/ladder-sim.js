@@ -6,6 +6,10 @@
 // players start at 3000. An estimate: the server rates every game in time
 // order, so results reported meanwhile can shift it a little.
 
+import { ladderWeight } from "@potato-cup/shared/ladder-weight.js";
+
+export { LADDER_WEIGHTS, ladderWeight } from "@potato-cup/shared/ladder-weight.js";
+
 export const BASE_MMR = 3000;
 export const PROVISIONAL_GAMES = 10;
 const K_SCHEDULE = [
@@ -28,16 +32,19 @@ const ratingOf = (p) => ({
 });
 
 /**
- * Both outcomes for players a and b (event players with ladder fields):
+ * Both outcomes for players a and b (event players with ladder fields), in
+ * an event of kind `eventKind` (its ladder weight):
  * { a: { mmr, games, provisional }, b: {...}, ifAWins: { a, b }, ifBWins: { a, b } }
  * where each side is { after, delta } (rounded MMR).
  */
-export function simulateMatch(playerA, playerB) {
+export function simulateMatch(playerA, playerB, { eventKind = null } = {}) {
   const a = ratingOf(playerA);
   const b = ratingOf(playerB);
   const ea = expectedScore(a.mmr, b.mmr);
-  const ka = kForGames(a.games);
-  const kb = kForGames(b.games);
+  // The event's weight (major events move MMR more than weekly cups).
+  const weight = ladderWeight(eventKind);
+  const ka = kForGames(a.games) * weight;
+  const kb = kForGames(b.games) * weight;
   const outcome = (aWon) => {
     const aAfter = a.mmr + ka * ((aWon ? 1 : 0) - ea);
     const bAfter = b.mmr + kb * ((aWon ? 0 : 1) - (1 - ea));
@@ -47,5 +54,5 @@ export function simulateMatch(playerA, playerB) {
     };
   };
   const side = (r) => ({ ...r, provisional: r.games < PROVISIONAL_GAMES });
-  return { a: side(a), b: side(b), winChanceA: ea, ifAWins: outcome(true), ifBWins: outcome(false) };
+  return { a: side(a), b: side(b), winChanceA: ea, weight, ifAWins: outcome(true), ifBWins: outcome(false) };
 }

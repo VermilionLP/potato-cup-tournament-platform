@@ -31,3 +31,16 @@ test("unrated players start at 3000 with the provisional K", () => {
   const uneven = simulateMatch({ ladder_mmr: 3400, ladder_games: 50 }, { ladder_mmr: 3000, ladder_games: 50 });
   assert.ok(uneven.ifAWins.a.delta < 10 && uneven.ifBWins.a.delta < -40, "favourite gains little, loses a lot");
 });
+
+test("events weigh by kind: majors move MMR more than weekly cups, same as the server", async () => {
+  const server = await import("../../api/lib/ladder.js");
+  const { simulateMatch, ladderWeight } = await import("../src/lib/ladder-sim.js");
+  const a = { ladder_mmr: 3200, ladder_games: 40 };
+  const b = { ladder_mmr: 3100, ladder_games: 40 };
+  const weekly = simulateMatch(a, b, { eventKind: "weekly" }).ifAWins.a.delta;
+  const major = simulateMatch(a, b, { eventKind: "major" }).ifAWins.a.delta;
+  assert.ok(major > weekly, `${major} > ${weekly}`);
+  assert.equal(Math.round(major / weekly * 10) / 10, 1.5);
+  assert.equal(simulateMatch(a, b).weight, 1);
+  for (const k of ["major", "weekly", "qualifier", "", null, "season", "monthly"]) assert.equal(ladderWeight(k), server.ladderWeight(k), String(k));
+});

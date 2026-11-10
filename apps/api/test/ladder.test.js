@@ -198,3 +198,14 @@ test("randomizeSeedOrder handles tiny lists without moving players", () => {
   assert.deepEqual(result.map((p) => p.id), ["a", "b"]);
 });
 
+
+test('major events move MMR more than weekly cups (K times the event weight)', () => {
+  const game = (id, kind) => ({ id, tournament_id: kind, player1_id: 'a', player2_id: 'b', score1: 2, score2: 0, played_at: '2026-11-01', event_kind: kind });
+  const delta = (kind) => computeLadder([game(1, kind)]).history[0].delta;
+  assert.equal(delta('weekly'), 100);
+  assert.equal(delta(null), 100);
+  assert.equal(delta('major'), 150);
+  assert.equal(delta('season'), 150);
+  assert.equal(delta('qualifier'), 125);
+  assert.equal(computeLadder([game(1, 'major')]).history[0].weight, 1.5);
+});

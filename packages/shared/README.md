@@ -12,6 +12,9 @@ way, kept in one place so they cannot drift apart:
   (`resolveTemplate`).
 - `round-format.js` — games per match for each bracket round ("BO3" on a
   round header): the round keys, valid best-ofs and scores that can end one.
+- `ladder-weight.js` — how much an event's games move ladder MMR, by event
+  kind (major events more than weekly cups); the server's ladder and the
+  site's MMR preview both use it.
 
 Plain ES modules without dependencies. Import as
 `@potato-cup/shared/banpick.js`; both apps list the package as
