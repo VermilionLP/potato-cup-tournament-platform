@@ -35,8 +35,24 @@
   let activeTournaments = $derived(tournaments.filter((t) => t.status !== "completed"));
   let historyTournaments = $derived(tournaments.filter((t) => t.status === "completed"));
   // The event on top (LobbyHero); the list below shows the others.
-  let featured = $derived(featuredEvent(activeTournaments));
-  let otherActive = $derived(activeTournaments.filter((t) => t.id !== featured?.id));
+  // A signed-in player's own events first (the hero, then the list).
+  let mine = $state(new Set());
+  $effect(() => {
+    const id = userState.id;
+    if (!id) {
+      mine = new Set();
+      return;
+    }
+    API.getMyActiveEvents(id)
+      .then((res) => {
+        if (userState.id === id) mine = new Set((res.events || []).map((e) => e.id));
+      })
+      .catch(() => {});
+  });
+  let featured = $derived(featuredEvent(activeTournaments, mine));
+  let otherActive = $derived(
+    activeTournaments.filter((t) => t.id !== featured?.id).sort((a, b) => mine.has(b.id) - mine.has(a.id)),
+  );
   // Other active events by status ("" = all); statuses with none are hidden.
   let activeStatus = $state("");
   const ACTIVE_STATUSES = [
@@ -209,7 +225,7 @@
       </div>
     {:else}
       {#if featured}
-        <LobbyHero t={featured} onchanged={load} {isAdmin} ondelete={deleteTournament} />
+        <LobbyHero t={featured} onchanged={load} {isAdmin} mine={mine.has(featured.id)} ondelete={deleteTournament} />
       {/if}
       {#if otherActive.length}
         <div class="space-y-3">
@@ -229,7 +245,7 @@
           {/if}
           <div class="divide-y divide-border border border-border bg-card/30 rounded-2xl overflow-hidden shadow-sm">
             {#each shownActive as t (t.id)}
-              <ActiveEventRow {t} {isAdmin} ondelete={deleteTournament} />
+              <ActiveEventRow {t} {isAdmin} registered={mine.has(t.id)} ondelete={deleteTournament} />
             {/each}
           </div>
           {@render more(filteredActive.length, shownActive.length, () => (activeLimit += ACTIVE_PAGE), () => (activeLimit = Infinity), ACTIVE_PAGE)}

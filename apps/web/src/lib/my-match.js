@@ -76,3 +76,25 @@ export function myMatchInfo(t, playerId, { order = null } = {}) {
   if (report.mine) return { ...base, report, state: report.kind === "walkover" ? "claim" : "reported" };
   return { ...base, report, state: report.kind === "walkover" ? "claimed" : "confirm" };
 }
+
+/**
+ * The one thing a player should do now on the event page, for the phone's
+ * action bar (PlayerActionBar): { kind, title, label, match? } or null.
+ *   register  sign-ups are open and the player isn't in yet
+ *   checkin   check-in is open and they haven't checked in
+ *   report    their match can be played: report the score after it
+ *   confirm   the opponent reported a score: confirm or dispute it
+ */
+export function playerAction(t, playerId, { order = null, canSignUp = false, isRegistered = false } = {}) {
+  if (!t) return null;
+  if (t.status === "registration" && canSignUp && !isRegistered) {
+    return { kind: "register", title: "报名进行中", label: "立即报名" };
+  }
+  const info = myMatchInfo(t, playerId, { order });
+  if (!info) return null;
+  if (info.state === "checkin") return { kind: "checkin", title: "签到已开放", label: "立即签到" };
+  const vs = info.opponent ? `对手 ${info.opponent.display_name || info.opponentId}` : "";
+  if (info.state === "play") return { kind: "report", title: `轮到你比赛了 · ${vs}`, label: "填报比分", match: info.match };
+  if (info.state === "confirm") return { kind: "confirm", title: `对手已报分 · ${info.report.myScore} : ${info.report.theirScore}`, label: "去确认", match: info.match };
+  return null;
+}

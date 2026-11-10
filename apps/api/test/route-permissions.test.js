@@ -214,3 +214,14 @@ test('a player gets a QQ bind code only for themselves', async () => {
   assert.equal(own.statusCode, 200, `${own.statusCode} ${own.error?.message}`);
   assert.match(own.payload.data.code, /^\d{6}$/);
 });
+
+test('players saving their own profile choose a nationality', async () => {
+  const { inject } = await buildRoutes(modules, fakeDb());
+  const save = (body, headers = player('p1')) => inject({ method: 'POST', url: '/players', headers, body: { id: 'p1', battle_tags: { qq: '123456' }, ...body } });
+  const none = await save({});
+  assert.equal(none.statusCode, 400);
+  assert.match(none.error.message, /国籍/);
+  assert.equal((await save({ flag: 'china' })).statusCode, 400);
+  assert.ok((await save({ flag: 'JP' })).statusCode < 400);
+  assert.ok((await save({}, ADMIN)).statusCode < 400, 'admins may leave it out');
+});

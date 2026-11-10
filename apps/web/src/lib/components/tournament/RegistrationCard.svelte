@@ -75,11 +75,11 @@
   </button>
 {/snippet}
 
-<Card.Root class="border-border bg-card/40">
+<Card.Root id="registration-card" class="border-border bg-card/40">
   <Card.Header class="p-6">
     <Card.Title class="text-base font-bold flex items-center gap-2">
       <UsersIcon class="w-5 h-5 text-brand-ink" />
-      选手报名管理
+      {isAdmin ? "选手报名管理" : "报名"}
     </Card.Title>
     <Card.Description class="text-xs">
       {#if isAdmin}
@@ -92,13 +92,15 @@
   <Card.Content class="p-6 pt-0 space-y-4">
     <div class="p-4 rounded-xl border border-border bg-muted/20 flex flex-col sm:flex-row items-center justify-between gap-4">
       {#if userState.id}
-        <div class="flex items-center gap-3">
-          <div data-no-i18n class="w-10 h-10 rounded-full bg-linear-to-br from-amber-500 to-orange-600 flex items-center justify-center text-xs font-bold text-white uppercase">
+        <div class="flex items-center gap-3 self-stretch sm:self-auto">
+          <div data-no-i18n class="w-10 h-10 shrink-0 rounded-full bg-linear-to-br from-amber-500 to-orange-600 flex items-center justify-center text-xs font-bold text-white uppercase">
             {userState.id.slice(0, 2)}
           </div>
-          <div>
-            <p class="text-xs text-muted-foreground">你的选手 ID</p>
-            <h4 class="font-bold text-foreground text-sm">{userState.id}</h4>
+          <div class="min-w-0">
+            <p class="text-sm"><span class="text-muted-foreground">{isRegistered ? "已报名：" : "报名选手："}</span><span class="font-bold text-foreground">{userState.id}</span></p>
+            <p class="text-small text-muted-foreground">
+              <span class="num">已报名 {tournament.players?.length || 0} / {tournament.player_capacity || 0} 人</span>{#if tournament.checkin?.enabled}<span> · 开赛前 30 分钟签到</span>{/if}
+            </p>
           </div>
         </div>
         {#if isRegistered}
@@ -116,7 +118,7 @@
             </Button>
           </div>
         {:else}
-          <Button onclick={() => onregister("")} size="sm" disabled={blocked} class="font-bold text-xs h-8 cursor-pointer">一键快速报名</Button>
+          <Button onclick={() => onregister("")} disabled={blocked} class="w-full font-bold sm:w-auto cursor-pointer">一键快速报名</Button>
         {/if}
       {:else}
         <div class="flex items-center gap-3">

@@ -12,7 +12,7 @@
   import ArrowRightIcon from "@lucide/svelte/icons/arrow-right";
   import Trash2Icon from "@lucide/svelte/icons/trash-2";
 
-  let { t, isAdmin = false, ondelete } = $props();
+  let { t, isAdmin = false, registered = false, ondelete } = $props();
 
   let href = $derived(`/tournament/${encodeURIComponent(t.id)}`);
   let filled = $derived(t.status === "voting" ? t.voter_count || 0 : t.player_count || 0);
@@ -34,6 +34,7 @@
           {t.name}
         </h3>
         <Tag tone={statusTone(t.status)} dot={t.status === "in_progress"}>{statusLabel(t.status)}</Tag>
+        {#if registered}<Tag tone="success">已报名</Tag>{/if}
       </div>
       <EventTags {t} />
     </div>

@@ -1,11 +1,16 @@
 <script>
-  // Sign-in fields for a visitor: required contact, player ID, and quick
-  // picks of existing players (recently active first). While the ID is
+  // Sign-in fields for a visitor: the in-game name as player ID (with a
+  // note that it is the name shown in game, not the numeric account ID),
+  // nationality and contact (both required), and quick picks of existing
+  // players (recently active first). While the ID is
   // typed, /players/lookup says whether it is already a player (with their
   // event count), an old ID of one, or close to one, so people find their
   // existing record instead of making a second player. `lookup` is bound so
   // the dialog can ask before a new ID is saved next to a similar one.
   import { isRecentlySeen } from "#lib/players.js";
+  import { looksLikeAccountId } from "#lib/flag-options.js";
+  import FlagSelect from "./FlagSelect.svelte";
+  import TriangleAlertIcon from "@lucide/svelte/icons/triangle-alert";
   import { parseContact } from "#lib/contact.js";
   import { API } from "#lib/api.js";
   import { Input } from "#lib/components/ui/input/index.js";
@@ -16,6 +21,8 @@
     idInput = $bindable(""),
     contactInput = $bindable(""),
     contactError = "",
+    flag = $bindable(""),
+    flagError = "",
     players = [],
     lookup = $bindable(null), // { name, exact, alias, similar } for idInput
     onsubmit,
@@ -38,6 +45,13 @@
     return () => clearTimeout(timer);
   });
   let current = $derived(lookup && lookup.name === idInput.trim() ? lookup : null);
+  // An existing player brings their nationality along.
+  $effect(() => {
+    const exact = current?.exact;
+    if (!exact || flag) return;
+    const known = players.find((p) => p.id === exact.id)?.flag;
+    if (known) flag = known;
+  });
 
   const eventsText = (p) => (p.events ? `参加过 ${p.events} 场赛事` : "还没有参赛记录");
   const useId = (id) => (idInput = id);
@@ -51,6 +65,7 @@
     idInput = player.id;
     const contact = parseContact(player?.battle_tags);
     contactInput = contact.qq || contact.discord || "";
+    if (player?.flag) flag = player.flag;
   }
 
   const onEnter = (e) => {
@@ -72,24 +87,7 @@
 
 <div class="space-y-4 py-2">
   <div class="space-y-1.5">
-    <label for="layout-contact-input" class="text-small font-semibold text-muted-foreground">QQ 号 / Discord 用户名（必填）</label>
-    <Input
-      id="layout-contact-input"
-      bind:value={contactInput}
-      placeholder="例如: 123456789 或 username"
-      class="bg-background"
-      onkeydown={onEnter}
-    />
-    <p class="text-small text-muted-foreground/70">
-      赛务联系用，报名和投票前必须填写。纯数字视为 QQ 号，其余视为 Discord 用户名；会写入选手资料。
-    </p>
-    {#if contactError}
-      <p class="text-small text-destructive font-medium animate-pulse">{contactError}</p>
-    {/if}
-  </div>
-
-  <div class="space-y-1.5">
-    <label for="player-id-input" class="text-small font-semibold text-muted-foreground">选手游戏昵称 / ID</label>
+    <label for="player-id-input" class="text-small font-semibold text-muted-foreground">游戏内昵称（选手 ID，必填）</label>
     <Input
       id="player-id-input"
       bind:value={idInput}
@@ -97,6 +95,15 @@
       class="bg-background"
       onkeydown={onEnter}
     />
+    <p class="text-small text-muted-foreground/70">
+      填你在战争雷霆里显示的名字，不是一串数字的账号 ID。对手和裁判要靠这个名字在游戏房间里找到你。
+    </p>
+    {#if looksLikeAccountId(idInput)}
+      <p class="flex gap-1.5 rounded-lg border border-amber-500/30 bg-amber-500/10 p-2 text-small text-amber-700 dark:text-amber-300">
+        <TriangleAlertIcon class="mt-0.5 h-3.5 w-3.5 shrink-0" />
+        <span>「{idInput.trim()}」看起来是数字账号 ID。请填游戏里显示的昵称；如果你的游戏昵称本来就是这串数字，可以忽略这条。</span>
+      </p>
+    {/if}
   </div>
 
   {#if current}
@@ -165,4 +172,28 @@
       {/if}
     </div>
   {/if}
+
+  <div class="space-y-1.5">
+    <label for="layout-flag-select" class="text-small font-semibold text-muted-foreground">国籍 / 地区（必填）</label>
+    <FlagSelect id="layout-flag-select" bind:value={flag} invalid={Boolean(flagError)} />
+    {#if flagError}<p class="text-small font-medium text-destructive">{flagError}</p>{/if}
+  </div>
+
+  <div class="space-y-1.5">
+    <label for="layout-contact-input" class="text-small font-semibold text-muted-foreground">QQ 号 / Discord 用户名（必填）</label>
+    <Input
+      id="layout-contact-input"
+      bind:value={contactInput}
+      placeholder="例如: 123456789 或 username"
+      class="bg-background"
+      onkeydown={onEnter}
+    />
+    <p class="text-small text-muted-foreground/70">
+      赛务联系用，报名和投票前必须填写。纯数字视为 QQ 号，其余视为 Discord 用户名；会写入选手资料。
+    </p>
+    {#if contactError}
+      <p class="text-small text-destructive font-medium animate-pulse">{contactError}</p>
+    {/if}
+  </div>
+
 </div>

@@ -113,9 +113,13 @@ export const statusStyle = (status) => TAG_TONE[statusTone(status)];
 /**
  * The event the lobby puts on top: one being played, else the next one
  * taking sign-ups (soonest start first, no time last), else one voting on
- * its time. null when nothing is coming up.
+ * its time. null when nothing is coming up. With `mine` (ids of the
+ * events the visitor signed up for), one of those is picked first.
  */
-export function featuredEvent(list = []) {
+export function featuredEvent(list = [], mine = new Set()) {
+  // The visitor's own events come first (same order among them).
+  const own = mine.size ? list.filter((t) => mine.has(t.id)) : [];
+  if (own.length) return featuredEvent(own);
   const live = list.filter((t) => t.status === "in_progress");
   if (live.length) return live[0];
   const when = (t) => scheduledDateTime(t)?.getTime() ?? Infinity;

@@ -62,6 +62,7 @@ export const API = {
   reportClientError: (report) =>
     request('/client-errors', { method: 'POST', body: JSON.stringify(report), keepalive: true }),
   getClientErrors: () => request('/client-errors'),
+  getMyActiveEvents: (playerId) => request(`/players/${enc(playerId)}/active-events`),
   getAdminPending: () => request('/admin/pending'),
   getAlertPlayers: () => request('/admin/alert-players'),
   setAlertPlayers: (players) => request('/admin/alert-players', { method: 'PUT', body: JSON.stringify({ players }) }),

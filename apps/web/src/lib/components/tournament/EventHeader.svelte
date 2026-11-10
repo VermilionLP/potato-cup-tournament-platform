@@ -34,8 +34,6 @@
     hasGroupBrackets = false,
     swissRoundsLabel = "",
     isRegistered = false,
-    onregister,
-    onunregister,
     onreload,
     onedittime,
     oncheckinchange,
@@ -120,15 +118,9 @@
       {/if}
     {/if}
     <Tag tone={statusTone(tournament.status)} dot={tournament.status === "in_progress"}>{statusText}</Tag>
-    {#if canSignUp}
-      {#if isRegistered}
-        <span class="inline-flex items-center gap-2 text-xs">
-          <Tag tone="success">已报名 ✓</Tag>
-          <button type="button" onclick={() => onunregister?.()} class="text-muted-foreground hover:text-destructive cursor-pointer">取消报名</button>
-        </span>
-      {:else}
-        <Button size="sm" onclick={() => onregister?.()}>立即报名</Button>
-      {/if}
+    <!-- Signing up is in the overview's registration card (and the phone's action bar); here just the state. -->
+    {#if canSignUp && isRegistered}
+      <Tag tone="success">已报名 ✓</Tag>
     {/if}
   </div>
 

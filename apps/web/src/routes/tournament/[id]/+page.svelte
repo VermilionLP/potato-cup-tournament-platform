@@ -36,6 +36,7 @@
   import StatusControls from "#lib/components/tournament/StatusControls.svelte";
   import PhaseStepper from "#lib/components/tournament/PhaseStepper.svelte";
   import MyMatchCard from "#lib/components/tournament/MyMatchCard.svelte";
+  import PlayerActionBar from "#lib/components/tournament/PlayerActionBar.svelte";
   import EventTabBar from "#lib/components/tournament/EventTabBar.svelte";
   import EventOverviewTab from "#lib/components/tournament/EventOverviewTab.svelte";
   import EventBracketCard from "#lib/components/tournament/EventBracketCard.svelte";
@@ -347,8 +348,6 @@
         {hasGroupBrackets}
         {swissRoundsLabel}
         {isRegistered}
-        onregister={() => doRegister("")}
-        onunregister={() => doUnregister(userState.id)}
         onreload={load}
         onedittime={() => timeEditDialog?.start()}
         oncheckinchange={setCheckin}
@@ -365,9 +364,8 @@
       {/if}
     </div>
 
-    <PhaseStepper {tournament} />
-
-    <!-- The signed-in player's next step: check-in, next match, reports -->
+    <!-- The signed-in player's next step: check-in, next match, reports
+         (right under the header: it is what a player comes here for). -->
     <MyMatchCard
       {tournament}
       {tid}
@@ -382,6 +380,9 @@
       onwithdraw={(m) => matchReport?.withdrawReport(m)}
       onreload={load}
     />
+
+    <!-- Phones: the status chip in the header says the stage. -->
+    <div class="hidden sm:block"><PhaseStepper {tournament} /></div>
 
     <EventTabBar
       {tabs}
@@ -471,6 +472,20 @@
       {/await}
     {/if}
   </div>
+
+  <!-- Phones: the player's next action, once its own button is out of view. -->
+  <PlayerActionBar
+    {tournament}
+    {tid}
+    playerId={userState.id}
+    order={matchOrder}
+    canSignUp={tournament.status === "registration" && !tournament.source_url}
+    {isRegistered}
+    {needsIdentity}
+    onregister={() => doRegister("")}
+    onreport={(m) => matchReport?.report(m)}
+    onreload={load}
+  />
 {/if}
 
 <!-- Reporting a match: Ban / Pick, score, walkover, correction -->

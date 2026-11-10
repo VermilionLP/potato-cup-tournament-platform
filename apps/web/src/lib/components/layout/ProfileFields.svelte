@@ -1,15 +1,15 @@
 <script>
-  // Profile fields of the signed-in player: ID (admins only), contact,
-  // flag, team and Liquipedia page.
+  // Profile fields of the signed-in player: ID (admins only; the in-game
+  // name), contact, nationality, team and an optional Liquipedia page.
   import { userState } from "#lib/user.svelte.js";
   import { Input } from "#lib/components/ui/input/index.js";
-  import Flag from "#lib/components/Flag.svelte";
+  import FlagSelect from "./FlagSelect.svelte";
 
   let {
     idInput = $bindable(""),
     qq = $bindable(""),
     discord = $bindable(""),
-    flag = $bindable("cn"),
+    flag = $bindable(""),
     team = $bindable(""),
     link = $bindable(""),
   } = $props();
@@ -19,11 +19,11 @@
 
 <div class="space-y-3 py-1 max-h-[65vh] overflow-y-auto pr-1">
   <div class="space-y-1">
-    <label for="player-id-input" class="text-small font-semibold text-muted-foreground">选手游戏昵称 / ID</label>
+    <label for="player-id-input" class="text-small font-semibold text-muted-foreground">游戏内昵称（选手 ID）</label>
     <Input id="player-id-input" bind:value={idInput} disabled={!!userState.id && !userState.adminToken} class={field} />
-    {#if userState.id && !userState.adminToken}
-      <p class="text-small text-muted-foreground/70">修改选手 ID 需要管理员权限；普通用户只能维护资料。</p>
-    {/if}
+    <p class="text-small text-muted-foreground/70">
+      应与战争雷霆里显示的名字一致（不是数字账号 ID）。{#if userState.id && !userState.adminToken}游戏里改了名，请联系管理员改选手 ID，以前的战绩会一起带过去。{/if}
+    </p>
   </div>
 
   <div class="space-y-2">
@@ -41,13 +41,10 @@
     <p class="text-small text-muted-foreground/60">赛务联系用，会显示在选手列表中。</p>
   </div>
 
-  <div class="grid grid-cols-2 gap-3">
+  <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
     <div class="space-y-1">
-      <label for="edit-flag" class="text-small font-semibold text-muted-foreground">国籍 (Flag)</label>
-      <div class="flex items-center gap-2">
-        <Flag code={flag} size={20} />
-        <Input id="edit-flag" bind:value={flag} placeholder="cn / hk / tw" class="{field} flex-1" />
-      </div>
+      <label for="edit-flag" class="text-small font-semibold text-muted-foreground">国籍 / 地区</label>
+      <FlagSelect id="edit-flag" bind:value={flag} />
     </div>
     <div class="space-y-1">
       <label for="edit-team" class="text-small font-semibold text-muted-foreground">战队</label>
@@ -56,11 +53,10 @@
   </div>
 
   <div class="space-y-1">
-    <label for="edit-link" class="text-small font-semibold text-muted-foreground">Wiki 页面名称</label>
-    <Input id="edit-link" bind:value={link} placeholder="例如: Vermilion" class={field} />
+    <label for="edit-link" class="text-small font-semibold text-muted-foreground">Liquipedia Wiki 页面（可选）</label>
+    <Input id="edit-link" bind:value={link} placeholder="没有可以留空" class={field} />
     <p class="text-small text-muted-foreground/60">
-      Liquipedia Wiki 页面名称，最终将链接至
-      https://liquipedia.net/warthunder/&lt;名称&gt;
+      只有在 Liquipedia 上有个人页面的选手才需要填，链接到 https://liquipedia.net/warthunder/&lt;名称&gt;；留空不影响报名和比赛。
     </p>
   </div>
 </div>
