@@ -151,3 +151,39 @@ test('a number typed straight after the command still counts', () => {
   assert.equal(unglue('绑定abc'), null);
   assert.equal(unglue('战绩Alpha'), null, 'names are not split');
 });
+
+import { createRenderer, openEventsCard, scheduleCard, statsCard } from '../src/cards.js';
+
+test('cards render to PNG with the site font, and long names do not break them', async () => {
+  const r = createRenderer();
+  const png = await r.schedule({
+    player_id: 'Alpha',
+    events: [{ name: 'Potato Cup 超长的赛事名称 '.repeat(4), status: 'registration', scheduled_time: '2026-11-14T20:00', checkin_enabled: true }],
+    now: [{ tournament: 'W', kind: 'confirm', opponent: 'Bravo', score: [1, 2] }],
+  }, new Date('2026-11-10T03:00:00Z'));
+  assert.equal(png.subarray(1, 4).toString(), 'PNG');
+  assert.equal(png.readUInt32BE(16), 1440, '2x width');
+  for (const tree of [openEventsCard({ events: [] }), statsCard({ id: 'New' }), scheduleCard({ player_id: 'X', events: [], now: [] })]) {
+    const out = await r.render(tree);
+    assert.equal(out.subarray(1, 4).toString(), 'PNG');
+  }
+});
+
+test('a failing card falls back to the text reply', async () => {
+  const { createRequire } = await import('node:module');
+  const { Context } = createRequire(import.meta.url)('koishi');
+  const { registerCommands } = await import('../src/commands.js');
+  const handlers = {};
+  const fakeCtx = { platform: () => fakeCtx, middleware() {}, command: (decl) => {
+    const cmd = { alias: () => cmd, action: (fn) => { handlers[decl.split(' ')[0]] = fn; return cmd; } };
+    return cmd;
+  } };
+  const site = { whois: async () => 'Alpha', schedule: async () => ({ player_id: 'Alpha', events: [], now: [] }) };
+  const broken = { cards: { schedule: async () => { throw new Error('no font'); } }, h: { image: () => 'IMAGE' } };
+  registerCommands(fakeCtx, site, { warn() {} }, broken);
+  assert.match(await handlers['赛程']({ session: { userId: 'OPENID' } }), /没有报名未结束的比赛/);
+  const working = { cards: { schedule: async () => Buffer.from('png') }, h: { image: (buf, type) => `IMAGE:${type}:${buf}` } };
+  registerCommands(fakeCtx, site, { warn() {} }, working);
+  assert.equal(await handlers['赛程']({ session: { userId: 'OPENID' } }), 'IMAGE:image/png:png');
+  void Context;
+});
