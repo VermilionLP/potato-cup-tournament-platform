@@ -43,6 +43,7 @@
 
 <div
   data-match-card
+  data-match-id={match.id}
   role="button"
   tabindex="0"
   onclick={open}
@@ -87,12 +88,14 @@
   {#each [1, 2] as slot (slot)}
     {@const id = slot === 1 ? match.player1_id : match.player2_id}
     {@const won = Boolean(id) && match.winner_id === id}
-    <div class="flex h-[28px] items-center justify-between {slot === 1 ? 'border-b border-border' : ''}">
+    <!-- The signed-in player's own row stands out ("find me" on the bracket). -->
+    {@const me = Boolean(id) && id === userId}
+    <div class="flex h-[28px] items-center justify-between {slot === 1 ? 'border-b border-border' : ''} {me ? 'bg-primary/12 shadow-[inset_3px_0_0_var(--primary)]' : ''}" data-me={me || undefined}>
       <div class="flex min-w-0 flex-1 items-center gap-1.5 pl-2">
         {#if id}<Flag code={flagOf(id)} size={14} />{/if}
         <span
           class="truncate text-small
-            {won ? 'font-black text-foreground' : id ? 'font-medium text-muted-foreground' : 'italic text-muted-foreground/70'}"
+            {won ? 'font-black text-foreground' : me ? 'font-bold text-brand-ink' : id ? 'font-medium text-muted-foreground' : 'italic text-muted-foreground/70'}"
         >
           {nameOf(match, slot)}
         </span>

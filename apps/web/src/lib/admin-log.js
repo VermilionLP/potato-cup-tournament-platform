@@ -113,6 +113,8 @@ export function describeEntry(entry) {
     case "pool.create": return `新建载具池模板「${d.name || ""}」`;
     case "pool.update": return `修改载具池模板「${d.name || target}」`;
     case "pool.delete": return "删除载具池模板";
+    case "admin.alert_players": return (d.players || []).length ? `设置提醒的管理员：${d.players.join("、")}` : "清空提醒的管理员";
+    case "admin.backup": return "手动备份数据库";
     default: return String(entry?.action || "");
   }
 }

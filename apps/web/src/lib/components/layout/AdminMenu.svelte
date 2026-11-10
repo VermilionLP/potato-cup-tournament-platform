@@ -11,9 +11,18 @@
   import PlaneIcon from "@lucide/svelte/icons/plane";
   import BugIcon from "@lucide/svelte/icons/bug";
   import HistoryIcon from "@lucide/svelte/icons/history";
+  import GaugeIcon from "@lucide/svelte/icons/gauge";
+  import TriangleAlertIcon from "@lucide/svelte/icons/triangle-alert";
+  import { adminPending } from "#lib/admin-pending.svelte.js";
+  import { pendingHref, pendingText } from "#lib/admin-pending.js";
   import SettingsIcon from "@lucide/svelte/icons/settings";
 
   let { onadmin } = $props();
+  // Matches waiting for an admin: polled while signed in as admin.
+  $effect(() => {
+    if (userState.adminToken) return adminPending.start();
+  });
+  let pending = $derived(adminPending.items);
   let open = $state(false);
   let events = $state(null);
 
@@ -50,8 +59,25 @@
       class="relative w-8 h-8 flex items-center justify-center rounded-md transition-colors cursor-pointer text-emerald-500 bg-emerald-500/10 hover:bg-emerald-500/15"
     >
       {@render shield()}
+      {#if pending.length}
+        <span class="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-600 px-1 text-label font-bold leading-none text-white num" aria-label="{pending.length} 场比赛等待管理员处理">{pending.length}</span>
+      {/if}
     </Popover.Trigger>
     <Popover.Content align="end" class="w-72 gap-1 p-1.5">
+      {#if pending.length}
+        <p class="label-caps px-2 pt-1 text-red-600 dark:text-red-400">等待管理员处理</p>
+        {#each pending.slice(0, 5) as i (i.match_id)}
+          <a href={pendingHref(i)} class={item} onclick={() => (open = false)}>
+            <TriangleAlertIcon class="h-4 w-4 shrink-0 text-red-500" />
+            <span class="min-w-0 flex-1">
+              <span class="block truncate">{pendingText(i)}</span>
+              <span class="block truncate text-small text-muted-foreground">{i.tournament}</span>
+            </span>
+          </a>
+        {/each}
+        {#if pending.length > 5}<a href="/admin" class="{item} text-small text-muted-foreground" onclick={() => (open = false)}>还有 {pending.length - 5} 场…</a>{/if}
+        <div class="my-1 h-px bg-border"></div>
+      {/if}
       <p class="label-caps px-2 pt-1 text-muted-foreground">比赛日控制台</p>
       {#if events === null}
         <p class="px-2 py-1.5 text-small text-muted-foreground">加载中…</p>
@@ -68,6 +94,7 @@
       {/if}
       <div class="my-1 h-px bg-border"></div>
       <a href="/pools" class={item} onclick={() => (open = false)}><PlaneIcon class="h-4 w-4 text-muted-foreground" />载具池模板</a>
+      <a href="/admin" class={item} onclick={() => (open = false)}><GaugeIcon class="h-4 w-4 text-muted-foreground" />管理面板（待处理、提醒、备份）</a>
       <a href="/log" class={item} onclick={() => (open = false)}><HistoryIcon class="h-4 w-4 text-muted-foreground" />操作记录</a>
       <a href="/errors" class={item} onclick={() => (open = false)}><BugIcon class="h-4 w-4 text-muted-foreground" />报错记录</a>
       <div class="my-1 h-px bg-border"></div>

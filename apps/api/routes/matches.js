@@ -1,3 +1,4 @@
+import { needsAdmin, notifyAdmins } from '../lib/admin-alerts.js';
 import { MatchRepo } from '../repositories/match-repo.js';
 import { getRequesterId, isAdminRequest, requireAdmin, requireMatchPlayerOrAdmin } from '../lib/admin.js';
 import { inTransaction } from '../lib/transaction.js';
@@ -57,6 +58,8 @@ export default async function matchesRoutes(fastify) {
     if (action === 'store') {
       notifyReportToConfirm(fastify.db, req.params.id, match, pending, fastify.log).catch(() => {});
     }
+    // A dispute or a walkover claim waits for an admin: tell them.
+    if (needsAdmin(pending)) notifyAdmins(fastify.db, req.params.id, match, pending, fastify.log).catch(() => {});
     return { match: await repo.getById(match.id), report: action === 'dispute' ? 'disputed' : 'pending' };
   }
 
@@ -214,6 +217,7 @@ export default async function matchesRoutes(fastify) {
     const disputed = { ...report, disputed: true, disputed_by: getRequesterId(req) || 'admin', disputed_at: new Date().toISOString() };
     await fastify.db.query('UPDATE axsuck.matches SET pending_report = $1 WHERE id = $2', [JSON.stringify(disputed), match.id]);
     emitReport(req.params.id, match.id, 'match_report_disputed');
+    if (!isAdminRequest(req)) notifyAdmins(fastify.db, req.params.id, match, disputed, fastify.log).catch(() => {});
     return { match: await repo.getById(match.id) };
   });
 

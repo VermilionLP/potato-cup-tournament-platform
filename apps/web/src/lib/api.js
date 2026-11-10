@@ -62,6 +62,12 @@ export const API = {
   reportClientError: (report) =>
     request('/client-errors', { method: 'POST', body: JSON.stringify(report), keepalive: true }),
   getClientErrors: () => request('/client-errors'),
+  getAdminPending: () => request('/admin/pending'),
+  getAlertPlayers: () => request('/admin/alert-players'),
+  setAlertPlayers: (players) => request('/admin/alert-players', { method: 'PUT', body: JSON.stringify({ players }) }),
+  getBackups: () => request('/admin/backups'),
+  verifyBackup: (file) => request('/admin/backups/verify', { method: 'POST', body: JSON.stringify({ file }) }),
+  runBackup: () => request('/admin/backups/run', { method: 'POST', body: '{}' }),
   getAdminLog: ({ tournament = '', before = '' } = {}) => request(`/admin/log?${new URLSearchParams({ ...(tournament ? { tournament } : {}), ...(before ? { before } : {}) })}`),
   clearClientErrors: () => request('/client-errors', { method: 'DELETE' }),
 

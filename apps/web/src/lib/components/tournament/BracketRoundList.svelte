@@ -2,6 +2,7 @@
   // Phone view of an elimination bracket: round tabs (opening on the round
   // being played) and that round's matches as a list of the same cards as
   // the bracket (BracketMatchCard; tabs from #lib/round-list.js).
+  import { untrack } from "svelte";
   import { roundTabs, currentTabKey } from "#lib/round-list.js";
   import BracketMatchCard from "#lib/components/BracketMatchCard.svelte";
   import RoundBestOf from "./RoundBestOf.svelte";
@@ -19,6 +20,7 @@
     isAdmin = false,
     userId = "",
     banpickEnabled = false,
+    focus = null, // { match, at }: open that match's round ("find me")
     onopen = () => {},
     onbanpick = () => {},
     ontoggleactive = () => {},
@@ -26,6 +28,13 @@
 
   let tabs = $derived(roundTabs(matches, roundLabel, order));
   let chosen = $state("");
+  $effect(() => {
+    const id = focus?.match?.id;
+    if (!id) return;
+    // Only when asked (focus changes), not on every live update of the tabs.
+    const tab = untrack(() => tabs.find((t) => t.matches.some((m) => m.id === id)));
+    if (tab) chosen = tab.key;
+  });
   let shownKey = $derived(tabs.some((t) => t.key === chosen) ? chosen : currentTabKey(tabs));
   let shown = $derived(tabs.find((t) => t.key === shownKey));
   const format = roundFormat();

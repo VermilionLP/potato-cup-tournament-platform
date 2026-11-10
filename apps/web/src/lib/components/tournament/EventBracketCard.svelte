@@ -4,11 +4,11 @@
   // the section controls of big single-elimination brackets (32 players per
   // section on desktop, 16 on phones). On phones elimination brackets open
   // as a list per round (BracketRoundList), with a switch to the bracket.
-  import { onMount } from "svelte";
+  import { onMount, tick } from "svelte";
   import { userState } from "#lib/user.svelte.js";
   import { maxRound } from "#lib/bracket.js";
   import { eventFormatLabel } from "#lib/tournament.js";
-  import { bracketSections, eliminationRounds, groupStageMatchesOf } from "#lib/event-view.js";
+  import { bracketSections, eliminationRounds, groupStageMatchesOf, myFocusMatch, sectionOfMatch } from "#lib/event-view.js";
   import * as Card from "#lib/components/ui/card/index.js";
   import { Button } from "#lib/components/ui/button/index.js";
   import { Badge } from "#lib/components/ui/badge/index.js";
@@ -19,6 +19,7 @@
   import SingleElimBracket from "./SingleElimBracket.svelte";
   import BracketRoundList from "./BracketRoundList.svelte";
   import ShieldCheckIcon from "@lucide/svelte/icons/shield-check";
+  import LocateFixedIcon from "@lucide/svelte/icons/locate-fixed";
   import { toast } from "svelte-sonner";
   import { API } from "#lib/api.js";
   import { setRoundFormat } from "#lib/round-format.js";
@@ -101,6 +102,31 @@
   let phoneView = $state("list"); // list | bracket
   let eliminationShown = $derived(!swissShown && !groupBracketsShown && bracketMatches.length > 0);
   let listShown = $derived(isMobileViewport && eliminationShown && phoneView === "list");
+
+  // "Find me": the signed-in player's next (else last) match in what is
+  // shown; their rows are highlighted on every card (BracketMatchCard).
+  let shownMatches = $derived(
+    swissShown ? (tournament.matches || []).filter((m) => m.bracket === "sw") : groupBracketsShown ? groupStageMatches : bracketMatches,
+  );
+  let myMatch = $derived(myFocusMatch(shownMatches, userState.id, matchOrder));
+  let listFocus = $state(null); // the phone round list opens this match's round
+  async function locateMe() {
+    const m = myMatch;
+    if (!m) return;
+    if (listShown) listFocus = { match: m, at: Date.now() };
+    else if (eliminationShown && !isDoubleElim && sections.sectionCount > 1) {
+      const place = sectionOfMatch(eliminationRounds(bracketMatches), m, { mobile: isMobileViewport });
+      viewMode = place.mode;
+      if (place.mode === "sections") sectionIndex = place.index;
+    }
+    await tick();
+    const card = document.querySelector(`[data-match-id="${m.id}"]`);
+    if (!card) return;
+    card.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
+    const flash = ["ring-4", "ring-primary/70"];
+    card.classList.add(...flash);
+    setTimeout(() => card.classList.remove(...flash), 1800);
+  }
 </script>
 
 <Card.Root class="border-border bg-card/40">
@@ -141,6 +167,11 @@
         {/if}
       </Card.Description>
     </div>
+    {#if myMatch}
+      <Button variant="outline" size="sm" onclick={locateMe} class="h-8 shrink-0 gap-1.5 text-xs font-semibold" title="跳到你的下一场（没有就是最近一场）">
+        <LocateFixedIcon class="h-3.5 w-3.5" />定位到我
+      </Button>
+    {/if}
   </Card.Header>
 
   {#if isMobileViewport && eliminationShown}
@@ -277,6 +308,7 @@
         {isAdmin}
         userId={userState.id}
         {banpickEnabled}
+        focus={listFocus}
         {onopen}
         {onbanpick}
         {ontoggleactive}

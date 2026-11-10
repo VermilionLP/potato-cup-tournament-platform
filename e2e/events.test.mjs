@@ -523,6 +523,53 @@ test('the admin log: an admin\'s score shows with who did it; the event filter; 
   assert.equal(res.status, 401);
 });
 
+test('admins see a disputed score on the shield and the admin panel; players find themselves on the bracket', async () => {
+  const players = [];
+  for (let i = 0; i < 8; i += 1) players.push(await makePlayer('dp'));
+  const id = await makeEvent({ players, start: true });
+  const match = (await api('GET', `/tournaments/${id}`)).matches.find((m) => m.player1_id && m.player2_id && m.status === 'pending');
+  const report = async (pid, score1, score2) => {
+    const res = await fetch(`${BASE}/api/tournaments/${id}/matches/${match.id}/result`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-player-id': pid },
+      body: JSON.stringify({ score1, score2 }),
+    });
+    assert.equal(res.status, 200, await res.text());
+  };
+  // A reports 2:0, B reports 0:2 for themselves: a dispute.
+  await report(match.player1_id, 2, 0);
+  await report(match.player2_id, 0, 2);
+  const pending = await api('GET', '/admin/pending');
+  assert.ok(pending.items.some((i) => i.match_id === match.id && i.kind === 'dispute'));
+  assert.equal((await fetch(`${BASE}/api/admin/pending`)).status, 401);
+
+  const { browser, page, errors } = await openPage({ admin: true });
+  try {
+    await page.goto(`${BASE}/admin`);
+    await page.getByText(`${match.player1_id} vs ${match.player2_id}：比分有异议`).first().waitFor({ timeout: T });
+    await page.getByRole('heading', { name: '数据库备份' }).waitFor({ timeout: T });
+    assert.ok(Number(await page.locator('#header-admin-button span').last().innerText()) >= 1, 'the shield shows a count');
+    await page.screenshot({ path: 'e2e-shot-admin-panel.png', fullPage: true });
+    assert.deepEqual(errors, [], 'no uncaught errors in the page');
+  } finally {
+    await browser.close();
+  }
+
+  // A player in the event: their rows are marked and 定位到我 scrolls to their match.
+  const me = players.find((p) => p !== match.player1_id && p !== match.player2_id);
+  const view = await openPage({ player: me });
+  try {
+    await view.page.goto(`${BASE}/tournament/${id}#bracket`);
+    await view.page.getByRole('button', { name: '定位到我' }).click({ timeout: T });
+    const mine = view.page.locator('[data-me]');
+    assert.ok((await mine.count()) >= 1);
+    await mine.first().waitFor({ timeout: T });
+    assert.deepEqual(view.errors, [], 'no uncaught errors in the page');
+  } finally {
+    await view.browser.close();
+  }
+});
+
 test('a live score during the match: shown on the bracket, cleared by the result', async () => {
   const players = [];
   for (let i = 0; i < 4; i += 1) players.push(await makePlayer('lsc'));

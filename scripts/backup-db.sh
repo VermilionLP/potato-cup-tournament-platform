@@ -11,7 +11,9 @@
 #   bash /home/admin/suck/scripts/backup-db.sh --install-cron
 # which adds this line to the user's crontab (if it isn't there yet):
 #   17 4 * * * KEEP=14 bash /home/admin/suck/scripts/backup-db.sh daily >> /home/admin/suck-backups/db/backup.log 2>&1
-# `--remove-cron` takes it out again.
+# `--remove-cron` takes it out again. The site's admin panel (/admin) shows
+# the newest backups, whether the daily line is installed, checks a dump
+# reads back (pg_restore --list) and can run a manual backup.
 #
 # Restore (stop the service first; replaces everything in schema axsuck):
 #   pm2 stop suck-tournament
