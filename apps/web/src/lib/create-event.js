@@ -93,7 +93,8 @@ export function formFromEvent(t, season = "", now = new Date()) {
     eventPool: t.vehicle_pool || form.eventPool,
     format: twoStage ? "two_stage" : t.format || form.format,
     loserAdvances: Boolean(Number(t.loser_advances)),
-    grandFinalReset: t.grand_final_reset !== false,
+    // Kept from a double-elimination event; otherwise the default (on).
+    grandFinalReset: t.format === "double_elim" || t.playoff_format === "double_elim" ? t.grand_final_reset !== false : true,
     swissRoundsMode: t.swiss_rounds ? "manual" : "auto",
     swissRounds: t.swiss_rounds || form.swissRounds,
     groupFormat: twoStage ? t.format : form.groupFormat,
@@ -257,6 +258,30 @@ export function groupPreview(form) {
   };
 }
 
+/** What is wrong with the format and its options, or "" (create wizard and event settings). */
+export function bracketProblem(form) {
+  if (usesSwissRounds(form) && form.swissRoundsMode === "manual" && !isValidSwissRounds(form.swissRounds)) {
+    return `瑞士轮轮数必须在 ${MIN_SWISS_ROUNDS} 至 ${MAX_SWISS_ROUNDS} 之间`;
+  }
+  return isTwoStage(form) ? groupSetupError(form, "，留空表示不分组") : "";
+}
+
+/** The bracket part of the request body (POST /tournaments, PATCH /tournaments/:id). */
+export function bracketFields(form) {
+  const twoStage = isTwoStage(form);
+  const manualRounds = usesSwissRounds(form) && form.swissRoundsMode === "manual";
+  return {
+    // Two-stage: `format` is the group stage, `playoff_format` the playoff.
+    format: twoStage ? form.groupFormat : form.format,
+    loser_advances: form.format === "single_elim" && form.loserAdvances ? 1 : 0,
+    grand_final_reset: (twoStage ? form.playoffFormat === "double_elim" : form.format === "double_elim") ? form.grandFinalReset : false,
+    swiss_rounds: manualRounds ? Number(form.swissRounds) : null,
+    playoff_format: twoStage ? form.playoffFormat : null,
+    swiss_group_size: twoStage ? groupSizeValue(form) : null,
+    advance_per_group: twoStage ? Number(form.advancePerGroup) : null,
+  };
+}
+
 /**
  * Request body for POST /tournaments, or { error } with the first problem.
  * Returns { id, body }.
@@ -273,15 +298,8 @@ export function createEventBody(form) {
   if (form.capacity < 2 || form.capacity > 128) return { error: "选手容量必须在 2 至 128 人之间" };
   const limitError = limitProblem(form.ladderLimit, form.ladderMaxMmr);
   if (limitError) return { error: limitError };
-  const manualRounds = usesSwissRounds(form) && form.swissRoundsMode === "manual";
-  if (manualRounds && !isValidSwissRounds(form.swissRounds)) {
-    return { error: `瑞士轮轮数必须在 ${MIN_SWISS_ROUNDS} 至 ${MAX_SWISS_ROUNDS} 之间` };
-  }
-  const twoStage = isTwoStage(form);
-  if (twoStage) {
-    const err = groupSetupError(form, "，留空表示不分组");
-    if (err) return { error: err };
-  }
+  const bracketError = bracketProblem(form);
+  if (bracketError) return { error: bracketError };
   return {
     id,
     body: {
@@ -289,7 +307,7 @@ export function createEventBody(form) {
       name,
       player_capacity: form.capacity,
       hold_third_place: 0,
-      loser_advances: form.format === "single_elim" && form.loserAdvances ? 1 : 0,
+      ...bracketFields(form),
       scheduled_time: form.scheduledTime || null,
       game_mode: form.gameMode,
       vehicle_pool: form.eventPool,
@@ -297,16 +315,7 @@ export function createEventBody(form) {
       points_season: form.pointsEnabled ? form.pointsSeason.trim() : null,
       points_kind: form.pointsEnabled ? form.pointsKind : null,
       points_invite: form.pointsEnabled && form.pointsInvite,
-      // Two-stage: `format` is the group stage, `playoff_format` the playoff.
-      format: twoStage ? form.groupFormat : form.format,
-      grand_final_reset: (twoStage ? form.playoffFormat === "double_elim" : form.format === "double_elim")
-        ? form.grandFinalReset
-        : false,
-      swiss_rounds: manualRounds ? Number(form.swissRounds) : null,
       banpick_enabled: form.banpickEnabled,
-      playoff_format: twoStage ? form.playoffFormat : null,
-      swiss_group_size: twoStage ? groupSizeValue(form) : null,
-      advance_per_group: twoStage ? Number(form.advancePerGroup) : null,
       checkin_enabled: Boolean(form.checkinEnabled),
       ...limitFields(form.ladderLimit, form.ladderMaxMmr),
       // Copied events keep their tier / kind and template; new ones get defaults.
