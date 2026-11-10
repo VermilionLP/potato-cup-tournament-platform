@@ -29,8 +29,8 @@
     }
   }
 
-  async function copyKey() {
-    const ok = await copyText(userState.key);
+  async function copyKey(e) {
+    const ok = await copyText(userState.key, { near: e?.currentTarget });
     if (ok) toast.success("设备密钥已复制，请妥善保管，不要发给别人");
     else toast.error("复制失败，请手动选中后复制");
   }

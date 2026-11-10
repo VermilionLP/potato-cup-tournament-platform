@@ -92,9 +92,9 @@
     }
   }
 
-  async function copy() {
+  async function copy(e) {
     if (!text) return;
-    const ok = await copyText(text);
+    const ok = await copyText(text, { near: e?.currentTarget });
     if (ok) toast.success("Wiki 代码已复制到剪贴板");
     else toast.error("复制失败，请手动选中后复制");
   }

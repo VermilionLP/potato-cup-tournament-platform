@@ -2042,4 +2042,5 @@ export default {
   "报名人数已满": "The event is full",
   "已经报名了": "Already registered",
   "报名已截止，请联系管理员退出": "Registration is closed; ask an admin to take you off the list",
+  "已选中绑定指令，请长按或按 ⌘C 复制": "The command is selected: long-press or press ⌘C to copy it",
 };
