@@ -7,7 +7,7 @@
 import { normalizeRules } from "./banpick.js";
 import { gameModeInfo, vehiclePoolLabel } from "./tournament.js";
 import { ladderLimitLabel } from "./ladder-limit.js";
-import { eventTimeText } from "./bracket-image.js";
+import { eventTimeText } from "./bracket-share.js";
 import { formFromEvent, isTwoStage, stepSummary } from "./create-event.js";
 import { DISCORD_INVITE } from "./discord-invite.js";
 

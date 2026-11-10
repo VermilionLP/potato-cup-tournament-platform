@@ -11,7 +11,7 @@
   import { initialBanPick, newerRecord } from "#lib/banpick.js";
   import { canCorrectResult } from "#lib/tournament.js";
   import { correctionWarning, hasDependentMatchPlayed, recordedResultLabel, resultMessage } from "#lib/event-view.js";
-  import MatchResultDialog from "./MatchResultDialog.svelte";
+  import { lazy } from "#lib/lazy.js";
   import { userState } from "#lib/user.svelte.js";
 
   let {
@@ -31,6 +31,30 @@
   } = $props();
 
   let showMatchDialog = $state(false);
+  // The dialog (score form, Ban / Pick) loads when first opened; while an
+  // event is running it is fetched once the page is idle, so it opens at once.
+  const loadDialog = lazy(() => import("./MatchResultDialog.svelte"));
+  let MatchResultDialog = $state(null);
+  function ensureDialog() {
+    if (MatchResultDialog) return;
+    loadDialog().then(
+      (m) => (MatchResultDialog = m.default),
+      (e) => {
+        showMatchDialog = false;
+        toast.error("加载失败: " + e.message);
+      },
+    );
+  }
+  $effect(() => {
+    if (showMatchDialog) ensureDialog();
+  });
+  $effect(() => {
+    if (tournament?.status !== "in_progress" || MatchResultDialog) return;
+    const idle = window.requestIdleCallback || ((fn) => setTimeout(fn, 1500));
+    const cancel = window.cancelIdleCallback || clearTimeout;
+    const handle = idle(() => loadDialog().then((m) => (MatchResultDialog ??= m.default), () => {}));
+    return () => cancel(handle);
+  });
   let reportStep = $state("banpick");
   // True while an admin is correcting a match that already has a result.
   let correctingMatch = $state(false);
@@ -255,6 +279,7 @@
 </script>
 
 <!-- Match Result Submission Dialog -->
+{#if MatchResultDialog}
 <MatchResultDialog
   bind:open={showMatchDialog}
   bind:step={reportStep}
@@ -283,3 +308,4 @@
   onsavelive={saveLiveScore}
   {savingLive}
 />
+{/if}

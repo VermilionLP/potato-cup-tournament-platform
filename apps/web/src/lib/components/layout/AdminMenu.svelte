@@ -2,7 +2,7 @@
   // The header's shield. Signed out: opens the admin sign-in (AdminDialog).
   // Signed in: a menu with the admin tools in one place: the match-day
   // console of each running / upcoming event, the vehicle pool templates,
-  // the error reports, and the admin settings (sign out).
+  // the admin operation log, the error reports, and the admin settings (sign out).
   import * as Popover from "#lib/components/ui/popover/index.js";
   import { API } from "#lib/api.js";
   import { userState } from "#lib/user.svelte.js";
@@ -10,6 +10,7 @@
   import MonitorPlayIcon from "@lucide/svelte/icons/monitor-play";
   import PlaneIcon from "@lucide/svelte/icons/plane";
   import BugIcon from "@lucide/svelte/icons/bug";
+  import HistoryIcon from "@lucide/svelte/icons/history";
   import SettingsIcon from "@lucide/svelte/icons/settings";
 
   let { onadmin } = $props();
@@ -67,6 +68,7 @@
       {/if}
       <div class="my-1 h-px bg-border"></div>
       <a href="/pools" class={item} onclick={() => (open = false)}><PlaneIcon class="h-4 w-4 text-muted-foreground" />载具池模板</a>
+      <a href="/log" class={item} onclick={() => (open = false)}><HistoryIcon class="h-4 w-4 text-muted-foreground" />操作记录</a>
       <a href="/errors" class={item} onclick={() => (open = false)}><BugIcon class="h-4 w-4 text-muted-foreground" />报错记录</a>
       <div class="my-1 h-px bg-border"></div>
       <button type="button" class="{item} w-full text-left" onclick={() => ((open = false), onadmin())}>
