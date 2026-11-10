@@ -31,7 +31,7 @@
    - 手机 QQ 扫码登录，未实名的号要先实名，然后创建机器人
    - 「开发设置」里记下 **AppID** 和 **AppSecret**（AppSecret 只显示一次，立刻保存）
    - 「开发设置」的 **IP 白名单** 填服务器公网 IP
-   - 「沙箱配置」里添加测试用的群；正式上线前机器人只能在沙箱群里使用
+   - 「服务范围」里保持"允许被添加到任意群聊"关闭，由你自己把机器人拉进群；不要把群加进"白名单群聊"（那是撤回、禁言、踢人等管理权限）
 3. **Docker 镜像加速地址**：阿里云控制台 → 容器镜像服务 → 镜像工具 → 镜像加速器，复制个人加速地址。大陆服务器直连 Docker Hub 通常拉不下来镜像。
 
 ### 二、部署代码
@@ -69,7 +69,7 @@ OneBot 的 WebSocket 服务（端口 3001 + 令牌）已经由脚本写好，**�
 ```ini
 QQ_APP_ID=你的AppID
 QQ_APP_SECRET=你的AppSecret
-QQ_SANDBOX=true
+QQ_SANDBOX=false
 
 ONEBOT_SELF_ID=机器人QQ号
 ONEBOT_GROUPS=Potato Cup群号,测试群号
@@ -88,14 +88,16 @@ pm2 logs potato-bot
 ### 六、验证
 
 - 在 Potato Cup 群里发 `状态` → 社区机器人回复"社区机器人在线。网站 API：正常"
-- 在沙箱群里 `@官方机器人 状态` → 官方机器人回复"官方机器人在线。网站 API：正常"
+- 在群里 `@官方机器人 状态` → 官方机器人回复"官方机器人在线。网站 API：正常"
 
 ## 常见问题
 
 | 现象 | 原因和处理 |
 |---|---|
 | 日志里获取 AccessToken 报 11298 或 IP 相关错误 | 服务器公网 IP 不在开放平台的 IP 白名单里 |
-| 官方机器人在线但群里 @ 它没反应 | 该群不在沙箱配置里，或 `QQ_SANDBOX` 与平台设置不一致 |
+| 日志反复出现 `invalid intents` | `QQ_INTENTS` 填错，删掉这一行使用默认值 |
+| 连接的是 `sandbox.api.sgroup.qq.com` 且被拒绝 | 新版后台没有沙箱，设置 `QQ_SANDBOX=false` |
+| 官方机器人在线但群里 @ 它没反应 | 机器人还没被拉进这个群 |
 | `adapter failed to connect to ws://127.0.0.1:3001`，code 1006 | NapCat 没在运行或还没登录：`cd /home/admin/napcat && docker compose ps`，再看 `docker compose logs napcat` |
 | 连上后立刻断开、提示鉴权失败 | `apps/bot/.env` 的 `ONEBOT_TOKEN` 与 `/home/admin/napcat/.env` 不一致 |
 | 社区机器人在某个群不回复 | 群号不在 `ONEBOT_GROUPS` 里（这是有意的） |

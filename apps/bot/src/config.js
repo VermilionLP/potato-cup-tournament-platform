@@ -1,3 +1,6 @@
+/** QQ gateway intent: GROUP_AT_MESSAGE_CREATE + C2C_MESSAGE_CREATE. */
+export const QQ_USER_MESSAGE = 1 << 25;
+
 // Reads the bot settings from environment variables (apps/bot/.env). Pure,
 // so it can be tested without starting Koishi.
 
@@ -16,7 +19,13 @@ export function readConfig(env) {
       qq = {
         appId: env.QQ_APP_ID.trim(),
         appSecret: env.QQ_APP_SECRET.trim(),
-        sandbox: env.QQ_SANDBOX !== 'false',
+        // The new QQ bot console (q.qq.com, 2026) has no sandbox: an
+        // unpublished bot is limited by its 服务范围 instead.
+        sandbox: env.QQ_SANDBOX === 'true',
+        // Events to receive. Default USER_MESSAGE (1 << 25): group messages
+        // that @ the bot and private (C2C) messages. Without intents the
+        // gateway answers "invalid intents".
+        intents: Number(env.QQ_INTENTS) || QQ_USER_MESSAGE,
       };
     }
   }
