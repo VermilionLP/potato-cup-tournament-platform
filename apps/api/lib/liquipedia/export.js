@@ -13,6 +13,7 @@ import { normalizePlace } from './export-meta.js';
 import { parseBracketTemplate } from './bracket-template.js';
 import { DOUBLE_ELIM_TEMPLATE_MATCHES } from './de-templates.js';
 import { liquipediaTierOf } from '../event-tier.js';
+import { bestOfFor } from '@potato-cup/shared/round-format.js';
 
 const decided = (m) => m.status === 'completed' || m.status === 'walkover';
 const isBye = (m) => decided(m) && (!m.player1_id || !m.player2_id);
@@ -430,7 +431,7 @@ export function buildWikiPage({ t, players = [], matches = [], groupStage = null
         w(`<!-- ${label} -->`);
         lastLabel = label;
       }
-      w(`|${key}=${matchBody(m, `|bestof=${finals.has(m.id) ? boLast : bo}`, sdate)}`);
+      w(`|${key}=${matchBody(m, `|bestof=${bestOfFor(t, m) ?? (finals.has(m.id) ? boLast : bo)}`, sdate)}`);
     }
     w('}}');
     if (toggle) w('{{Toggle bracket end}}');
@@ -450,7 +451,7 @@ export function buildWikiPage({ t, players = [], matches = [], groupStage = null
       w(`==={{HiddenSort|Round ${r.round}}}===`);
       w(`{{Matchlist|id=${r.id}|title=Round ${r.round}|collapsed=1`);
       r.matches.forEach((m, j) => {
-        w(`|M${j + 1}=${matchBody(m, j === 0 ? `|bestof=${boGroup}|matchsection=Round ${r.round}` : '', matchlistDate)}`);
+        w(`|M${j + 1}=${matchBody(m, j === 0 ? `|bestof=${bestOfFor(t, m) ?? boGroup}|matchsection=Round ${r.round}` : '', matchlistDate)}`);
       });
       w('}}');
       w(i < all.length - 1 ? '{{Box|break|padding=1em}}' : '{{box|end}}');
@@ -485,7 +486,7 @@ export function buildWikiPage({ t, players = [], matches = [], groupStage = null
           for (const r of swissRounds(own, 's')) {
             r.matches.forEach((m, j) => {
               i += 1;
-              w(`|M${i}=${matchBody(m, `|bestof=${boGroup}${j === 0 ? `|matchsection=Round ${r.round}` : ''}`, day)}`);
+              w(`|M${i}=${matchBody(m, `|bestof=${bestOfFor(t, m) ?? boGroup}${j === 0 ? `|matchsection=Round ${r.round}` : ''}`, day)}`);
             });
           }
           w('}}');

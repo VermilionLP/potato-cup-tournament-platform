@@ -10,6 +10,8 @@ way, kept in one place so they cannot drift apart:
 - `vehicle-pools.js` — vehicle pool templates: cleaning vehicles and
   templates for storage, and which template an event uses
   (`resolveTemplate`).
+- `round-format.js` — games per match for each bracket round ("BO3" on a
+  round header): the round keys, valid best-ofs and scores that can end one.
 
 Plain ES modules without dependencies. Import as
 `@potato-cup/shared/banpick.js`; both apps list the package as

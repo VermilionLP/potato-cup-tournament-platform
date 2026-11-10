@@ -2204,4 +2204,18 @@ export default {
   "比赛中掉线或出现意外？": "Disconnected or something went wrong mid-match?",
   "和对手协商重赛或按约定处理，有争议时找管理员裁决。": "Agree a replay with your opponent or follow the event's rules; if you disagree, an admin decides.",
   "补充说明最多 {0:n} 字": "Notes can be at most {0} characters",
+  // Games per round (RoundBestOf, #lib/round-format.js).
+  "一局定胜负": "One game decides it",
+  "先赢 {0:n} 局": "First to {0} wins",
+  "本轮 BO{0:n}，先赢 {1:n} 局的一方获胜，请确认比分是否正确": "This round is BO{0}: the first to {1} wins. Please check the score",
+  "本轮 BO{0:n}，先赢 {1:n} 局的一方获胜": "This round is BO{0}: the first to {1} wins",
+  "设置本轮局数": "Set games per match for this round",
+  "{0} BO{1:n}，点击修改局数": "{0} BO{1}, click to change",
+  "设置{0}的局数": "Set games per match for {0}",
+  "{0} · 每场局数": "{0} · games per match",
+  "不显示局数": "Don't show games per match",
+  "本轮每场 BO{0:n}，先赢 {1:n} 局": "Every match this round is BO{0}, first to {1} wins",
+  "轮次无效": "Invalid round",
+  "局数必须是 1 至 {0:n} 之间的奇数": "Games per match must be an odd number from 1 to {0}",
+  "每场打几局看「对阵」里每一轮标题上的标记：BO3 即先赢 2 局，BO5 先赢 3 局，BO1 一局定胜负。": "Games per match: see the mark on each round header in the Bracket tab. BO3 means first to 2 wins, BO5 first to 3, BO1 a single game.",
 };

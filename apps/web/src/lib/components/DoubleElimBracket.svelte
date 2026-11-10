@@ -2,6 +2,8 @@
   // Double-elimination bracket (Challonge style): winners band with the
   // grand final as its last column, losers band below, SVG connectors.
   // Layout maths in #lib/bracket.js, card helpers in #lib/match-card.js.
+  import { roundKey } from "#lib/round-format.js";
+  import RoundBestOf from "#lib/components/tournament/RoundBestOf.svelte";
   import BracketMatchCard from "#lib/components/BracketMatchCard.svelte";
   import {
     bracketRoundLabel,
@@ -133,11 +135,12 @@
   }
 </script>
 
-{#snippet bandHeader(label)}
+{#snippet bandHeader(label, key = "")}
   <div
-    class="flex h-7 items-center justify-center rounded-full bg-secondary px-3 text-small font-bold text-secondary-foreground"
+    class="flex h-7 items-center justify-center gap-1.5 rounded-full bg-secondary px-3 text-small font-bold text-secondary-foreground"
   >
     {label}
+    <RoundBestOf {key} {label} />
   </div>
 {/snippet}
 
@@ -237,7 +240,10 @@
               class="absolute"
               style="left: {column.x}px; top: 0; width: {CARD_W}px"
             >
-              {@render bandHeader(column.grandFinal ? "总决赛" : columnLabel("wb", column.round, wbTotal))}
+              {@render bandHeader(
+                column.grandFinal ? "总决赛" : columnLabel("wb", column.round, wbTotal),
+                column.grandFinal ? roundKey(grandFinals[0] || { bracket: "gf", round: 1 }) : `${wbCode}:${column.round}`,
+              )}
             </div>
           {/each}
 
@@ -249,10 +255,11 @@
       {#if thirdPlace.length}
         <div class="mt-3 space-y-1.5">
           <div
-            class="flex h-7 items-center justify-center rounded-full bg-secondary px-3 text-small font-bold text-secondary-foreground"
+            class="flex h-7 items-center justify-center gap-1.5 rounded-full bg-secondary px-3 text-small font-bold text-secondary-foreground"
             style="width: {CARD_W}px"
           >
             三四名决赛
+            <RoundBestOf key={roundKey(thirdPlace[0])} label="三四名决赛" />
           </div>
           {#each thirdPlace as match (match.id)}
             <div style="width: {CARD_W}px; height: {CARD_H}px">
@@ -286,7 +293,7 @@
               class="absolute"
               style="left: {column.x}px; top: 0; width: {CARD_W}px"
             >
-              {@render bandHeader(columnLabel("lb", column.round, lbTotal))}
+              {@render bandHeader(columnLabel("lb", column.round, lbTotal), `${lbCode}:${column.round}`)}
             </div>
           {/each}
 

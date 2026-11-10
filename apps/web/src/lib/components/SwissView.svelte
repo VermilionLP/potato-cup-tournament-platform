@@ -1,5 +1,6 @@
 <script>
   import BracketMatchCard from "#lib/components/BracketMatchCard.svelte";
+  import RoundBestOf from "#lib/components/tournament/RoundBestOf.svelte";
   import CrownIcon from "@lucide/svelte/icons/crown";
   import Flag from "#lib/components/Flag.svelte";
   import { groupSwissRounds } from "#lib/bracket.js";
@@ -193,6 +194,7 @@
     <section>
       <div class="mb-2 flex items-center gap-2">
         <span class="text-xs font-bold text-foreground">第 {r.round} 轮</span>
+        <span class="text-small font-bold"><RoundBestOf key="sw:{r.round}" label="第 {r.round} 轮" /></span>
         <span class="text-small text-muted-foreground">
           {r.matches.filter((m) => m.status !== "pending").length} / {r.matches.length} 场已完成
         </span>

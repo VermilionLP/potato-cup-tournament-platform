@@ -15,6 +15,7 @@ import { groupStageOf } from '../lib/group-stage-view.js';
 import { GAME_MODES, startBlockedReason, VEHICLE_POOLS } from '../lib/tournament-config.js';
 import { EVENT_KINDS, EVENT_TIERS, normalizeKind, normalizeTier } from '../lib/event-tier.js';
 import { BRACKET_FIELDS, bracketSettingsProblem, normalizeBracketSettings } from '../lib/bracket-settings.js';
+import { isRoundKey, MAX_BEST_OF, normalizeBestOf } from '@potato-cup/shared/round-format.js';
 import {
   currentSwissRound,
   effectiveSwissRounds,
@@ -187,6 +188,28 @@ export default async function tournamentSettingsRoutes(fastify) {
       fastify.tournamentEvents.emit(`update:${req.params.id}`, { type: 'time_changed', scheduled_time: time });
     }
     return updated;
+  });
+
+  // Games per match of one bracket round ("BO3" on the round header):
+  // { key: "main:1", best_of: 5 }, best_of null clears it. Any time.
+  fastify.put('/tournaments/:id/round-best-of', async (req) => {
+    requireAdmin(fastify, req);
+    const { key, best_of: raw } = req.body || {};
+    if (!isRoundKey(key)) throw fastify.httpErrors.badRequest('轮次无效');
+    const clear = raw === null || raw === undefined || raw === '';
+    const bestOf = clear ? null : normalizeBestOf(raw);
+    if (!clear && !bestOf) throw fastify.httpErrors.badRequest(`局数必须是 1 至 ${MAX_BEST_OF} 之间的奇数`);
+    const res = await fastify.db.query(
+      bestOf
+        ? `UPDATE axsuck.tournaments SET round_best_of = round_best_of || jsonb_build_object($2::text, $3::int), updated_at = NOW()
+           WHERE id = $1 RETURNING round_best_of`
+        : `UPDATE axsuck.tournaments SET round_best_of = round_best_of - $2::text, updated_at = NOW()
+           WHERE id = $1 RETURNING round_best_of`,
+      bestOf ? [req.params.id, key, bestOf] : [req.params.id, key],
+    );
+    if (!res.rows[0]) throw fastify.httpErrors.notFound('Tournament not found');
+    fastify.tournamentEvents.emit(`update:${req.params.id}`, { type: 'round_format_changed' });
+    return { round_best_of: res.rows[0].round_best_of };
   });
 
   fastify.post('/tournaments/:id/status', async (req) => {
