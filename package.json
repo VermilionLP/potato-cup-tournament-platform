@@ -11,6 +11,6 @@
     "build:web": "pnpm --filter suck-tournament-web build",
     "build:all": "pnpm -r build",
     "migrate": "pnpm --filter suck-tournament-api migrate",
-    "test": "pnpm --filter suck-tournament-web test && pnpm --filter suck-tournament-api test && pnpm --filter potato-cup-bot test && node --test tools/wt-autoscene/test.mjs"
+    "test": "pnpm --filter suck-tournament-web test && pnpm --filter suck-tournament-api test && pnpm --filter potato-cup-bot test && pnpm --filter @potato-cup/file-type-compat test && node --test tools/wt-autoscene/test.mjs"
   }
 }

@@ -1,0 +1,16 @@
+{
+  "name": "@potato-cup/file-type-compat",
+  "version": "16.5.4-compat.1",
+  "private": true,
+  "description": "file-type 16's API (FileType.fromBuffer) on top of a patched file-type, for @cordisjs/plugin-http 0.6 (koishi 4.18).",
+  "main": "index.cjs",
+  "exports": {
+    ".": "./index.cjs"
+  },
+  "scripts": {
+    "test": "node --test test.mjs"
+  },
+  "dependencies": {
+    "file-type": "^21.3.1"
+  }
+}
