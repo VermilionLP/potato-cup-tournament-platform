@@ -1,10 +1,12 @@
 <script>
-  // Finished event: champion podium (with admin exports), final standings,
+  // Finished event: champion podium (with admin exports), 本场看点
+  // (EventHighlights), final standings,
   // and the vehicles flown with each match's Ban / Pick (BanPickRecap).
   import * as Card from "#lib/components/ui/card/index.js";
   import { Button } from "#lib/components/ui/button/index.js";
   import Flag from "#lib/components/Flag.svelte";
   import BanPickRecap from "./BanPickRecap.svelte";
+  import EventHighlights from "./EventHighlights.svelte";
   import TrophyIcon from "@lucide/svelte/icons/trophy";
   import CrownIcon from "@lucide/svelte/icons/crown";
   import DownloadIcon from "@lucide/svelte/icons/download";
@@ -52,6 +54,8 @@
     {/if}
   </div>
 {/if}
+
+<EventHighlights {tournament} {playerName} />
 
 {#if standings.length > 0}
   <Card.Root class="border-border bg-card/40 max-w-2xl mx-auto mt-6">

@@ -17,7 +17,7 @@ const iso = (v) => {
   return Number.isNaN(d.getTime()) ? null : d.toISOString();
 };
 /** When the event was played: played_at, the scheduled day, else created. "YYYY-MM-DD..." for sorting. */
-function dateOf(t) {
+export function dateOf(t) {
   if (t.played_at) return iso(t.played_at);
   const m = /^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/.exec(String(t.scheduled_time || ''));
   if (m) return `${m[1]}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}`;

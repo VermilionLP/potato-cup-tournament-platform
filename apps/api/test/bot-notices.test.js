@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { noticeText, queueBotNotice, qqNumbersOf } from '../lib/bot-notices.js';
-import { queueEventReminders } from '../lib/bot-scheduler.js';
+import { queueEventReminders, queueTopReveals } from '../lib/bot-scheduler.js';
 
 // A database that answers the few queries these helpers make.
 function db({ players = [], events = [], registered = [], claimed = new Set() } = {}) {
@@ -102,4 +102,44 @@ test('the hour-before reminder goes out once per event, inside the window only',
     const again = db({ players, events, registered: ['Alpha'], claimed });
     assert.equal(await queueEventReminders(again, Date.UTC(2026, 10, 14, 11, 20)), 0, 'once per event');
   });
+});
+
+test('season Top 20: each reveal is announced once, with a mention', async () => {
+  const start = Date.UTC(2026, 11, 1, 12);
+  const row = { season: '2026', ranking: ['Alpha', 'Bravo', 'Charlie'], start_at: new Date(start).toISOString(), announced: 0 };
+  const topDb = () => {
+    const base = db({ players });
+    return {
+      inserted: base.inserted,
+      async query(sql, params) {
+        if (/FROM axsuck\.season_top/.test(sql)) return { rows: [{ ...row }] };
+        if (/UPDATE axsuck\.season_top/.test(sql)) {
+          if (Number(row.announced) !== params[2]) return { rows: [], rowCount: 0 };
+          row.announced = params[1];
+          return { rows: [{ season: params[0] }], rowCount: 1 };
+        }
+        return base.query(sql, params);
+      },
+    };
+  };
+  const describe = async (season, id) => ({ name: id, line: `${season} line` });
+  await withToken(async () => {
+    const before = topDb();
+    assert.equal(await queueTopReveals(before, start - 60_000, console, describe), 0);
+    const first = topDb();
+    assert.equal(await queueTopReveals(first, start + 60_000, console, describe), 1);
+    assert.match(first.inserted[0].text, /2026 年度 Top20】第 3 名：Charlie/);
+    assert.match(first.inserted[0].text, /明天同一时间揭晓下一位/);
+    assert.deepEqual(first.inserted[0].mentions, []);
+    assert.equal(await queueTopReveals(topDb(), start + 120_000, console, describe), 0, 'once per place');
+    const last = topDb();
+    assert.equal(await queueTopReveals(last, start + 2 * 86400000 + 60_000, console, describe), 2);
+    assert.match(last.inserted.at(-1).text, /第 1 名：Alpha[\s\S]*全部揭晓/);
+    assert.deepEqual(last.inserted.at(-1).mentions, ['10001']);
+  });
+});
+
+test('the Top 20 stats line leaves out what is empty', () => {
+  assert.equal(noticeText.topStats({ points: { total: 245 }, events: 4, matches: 9, wins: 7, losses: 2, titles: 2 }), '年度积分 245 · 参赛 4 场 · 7 胜 2 负 · 冠军 2 次');
+  assert.equal(noticeText.topStats({ points: null, events: 1, matches: 0, titles: 0 }), '参赛 1 场');
 });

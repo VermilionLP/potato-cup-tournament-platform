@@ -42,6 +42,15 @@ export const noticeText = {
   result: (event, a, s1, s2, b, winner) => `${tag(event)}赛果：${a} ${s1} : ${s2} ${b}，${winner} 胜出`,
   walkover: (event, winner, loser) => `${tag(event)}赛果：${winner} 不战而胜${loser ? `（${loser} 弃权）` : ''}`,
   open: (event, when, capacity, checkin) => `${tag(event)}开放报名！比赛时间 ${when}，名额 ${capacity} 人${checkin ? '，需要签到' : ''}。\n在群里 @土豆杯机器人 发送「报名」即可报名，也可以到网站报名。`,
+  // The season's Top 20, one place a day (lib/season-top.js).
+  topReveal: (season, rank, name, line) => `【${season} 年度 Top20】第 ${rank} 名：${name}${line ? `\n${line}` : ''}\n${rank > 1 ? '明天同一时间揭晓下一位。' : '年度 Top20 全部揭晓！'}完整名单在网站「排行 → 年度 Top20」。`,
+  // A revealed player's season in one line (lib/player-awards.js buildSeasonRecap).
+  topStats: (r) => [
+    r.points ? `年度积分 ${r.points.total}` : '',
+    `参赛 ${r.events} 场`,
+    r.matches ? `${r.wins} 胜 ${r.losses} 负` : '',
+    r.titles ? `冠军 ${r.titles} 次` : '',
+  ].filter(Boolean).join(' · '),
   // Matches waiting for an admin (lib/admin-alerts.js).
   adminDispute: (event, a, b, reporter, first, disputer) => `${tag(event)}需要管理员处理：${a} vs ${b} 的结果有异议（${reporter} 报 ${first}，${disputer ? `${disputer} 不同意` : '对手不同意'}）\n请管理员到网站的比赛日控制台裁决。`,
   adminWalkover: (event, a, b, by) => `${tag(event)}需要管理员确认：${by} 在 ${a} vs ${b} 申报对手弃权\n请管理员到网站的比赛日控制台处理。`,

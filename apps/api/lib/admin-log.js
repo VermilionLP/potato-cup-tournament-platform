@@ -55,6 +55,7 @@ export const ACTIONS = {
   'PUT /vehicle-pools/:id': 'pool.update',
   'DELETE /vehicle-pools/:id': 'pool.delete',
   'PUT /admin/alert-players': 'admin.alert_players',
+  'PUT /seasons/:season/top': 'season.top',
   'POST /admin/backups/run': 'admin.backup',
 };
 

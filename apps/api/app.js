@@ -31,6 +31,7 @@ import vehicleSpecsRoutes from './routes/vehicle-specs.js';
 import adminRoutes from './routes/admin.js';
 import adminLogRoutes from './routes/admin-log.js';
 import adminSystemRoutes from './routes/admin-system.js';
+import playerAwardsRoutes, { topDescriber } from './routes/player-awards.js';
 import { registerAdminLog } from './lib/admin-log.js';
 import vehiclePoolRoutes from './routes/vehicle-pools.js';
 import pointsRoutes from './routes/points.js';
@@ -105,6 +106,7 @@ await fastify.register(vehicleSpecsRoutes, { prefix: '/api' });
 await fastify.register(adminRoutes, { prefix: '/api' });
 await fastify.register(adminLogRoutes, { prefix: '/api' });
 await fastify.register(adminSystemRoutes, { prefix: '/api' });
+await fastify.register(playerAwardsRoutes, { prefix: '/api' });
 await fastify.register(vehiclePoolRoutes, { prefix: '/api' });
 await fastify.register(pointsRoutes, { prefix: '/api' });
 await fastify.register(clientErrorRoutes, { prefix: '/api' });
@@ -114,7 +116,7 @@ await fastify.register(clientErrorRoutes, { prefix: '/api' });
 if (process.env.BACKGROUND_JOBS !== 'off') {
   startPushScheduler(fastify);
   startReportScheduler(fastify);
-  startBotScheduler(fastify);
+  startBotScheduler(fastify, { describeTop: topDescriber(fastify.db) });
 }
 
 fastify.get('/api/ping', async () => ({ pong: true }));
