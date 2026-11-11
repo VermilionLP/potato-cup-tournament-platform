@@ -70,7 +70,7 @@ function playerNumbers(id, ctx, events, history) {
       if (place.from <= 3) n.podiums += 1;
       if (place.from === 1) {
         n.titles += 1;
-        n.titleEvents.push({ id: t.id, name: t.name });
+        n.titleEvents.push({ id: t.id, name: t.name, date: dateOf(t) });
         if (normalizeKind(t.event_kind) === 'major') n.majorTitles += 1;
         if (!lostMap && ms.length) n.perfectRuns += 1;
       }

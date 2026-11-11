@@ -30,14 +30,32 @@ export function recapTiles(r) {
   ];
 }
 
-/** The lines under the tiles: [{ label, text }], only those with something to say. */
+/** The events the player won, newest first, as short names. */
+export function recapTitles(r) {
+  return [...(r.title_events || [])]
+    .sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")))
+    .map((e) => short(e.name));
+}
+
+/**
+ * The title chips that fit in `slots`: all of them, or the first slots - 1
+ * and a "+N more" chip. [{ text, more }].
+ */
+export function titleChips(names, slots) {
+  if (slots <= 0) return [];
+  if (names.length <= slots) return names.map((text) => ({ text, more: false }));
+  const shown = names.slice(0, Math.max(0, slots - 1)).map((text) => ({ text, more: false }));
+  return [...shown, { text: `+${names.length - shown.length} more`, more: true }];
+}
+
+/**
+ * The lines under the tiles: [{ label, text }], only those with something
+ * to say. With titles the best finish is a title, so the titles block
+ * (recapTitles) says it instead.
+ */
 export function recapRows(r) {
   const rows = [];
-  if (r.best) rows.push({ label: "Best finish", text: `${ordinal(r.best.place, r.best.to)}  ·  ${short(r.best.event?.name)}` });
-  if (r.title_events?.length) {
-    const names = r.title_events.map((e) => short(e.name));
-    rows.push({ label: r.title_events.length === 1 ? "Title" : "Titles", text: names.length > 3 ? `${names.slice(0, 3).join(", ")} +${names.length - 3}` : names.join(", ") });
-  }
+  if (r.best && !r.title_events?.length) rows.push({ label: "Best finish", text: `${ordinal(r.best.place, r.best.to)}  ·  ${short(r.best.event?.name)}` });
   if (r.rival) rows.push({ label: "Most faced", text: `${r.rival.name}  ·  ${r.rival.won}-${r.rival.played - r.rival.won} in ${r.rival.played} match${r.rival.played === 1 ? "" : "es"}` });
   if (r.vehicle) rows.push({ label: "Most played vehicle", text: `${r.vehicle.name}  ·  ${r.vehicle.times} match${r.vehicle.times === 1 ? "" : "es"}` });
   return rows;
@@ -110,7 +128,7 @@ export async function drawSeasonRecap(canvas, r) {
   ctx.fillStyle = "#ffffff";
   ctx.font = `900 ${size}px ${FONT}`;
   ctx.fillText(name, startX + flagW + (flagW ? 22 : 0), y + 72);
-  y += 100;
+  y += 116;
 
   const pts = pointsLine(r);
   if (pts) {
@@ -127,7 +145,7 @@ export async function drawSeasonRecap(canvas, r) {
   const x0 = 90;
   const gap = 20;
   const tw = (W - 2 * x0 - 2 * gap) / 3;
-  const th = 170;
+  const th = 158;
   tiles.forEach((t, i) => {
     const tx = x0 + (i % 3) * (tw + gap);
     const ty = y + Math.floor(i / 3) * (th + gap);
@@ -137,25 +155,70 @@ export async function drawSeasonRecap(canvas, r) {
     ctx.textAlign = "center";
     ctx.font = `700 22px ${FONT}`;
     ctx.fillStyle = "#94a3b8";
-    ctx.fillText(t.label, tx + tw / 2, ty + 44);
+    ctx.fillText(t.label, tx + tw / 2, ty + 40);
     ctx.fillStyle = t.label === "TITLES" && t.value !== "0" ? "#fbbf24" : "#ffffff";
     fit(ctx, t.value, tw - 30, 64);
-    ctx.fillText(t.value, tx + tw / 2, ty + 112);
+    ctx.fillText(t.value, tx + tw / 2, ty + 104);
     if (t.sub) {
       ctx.font = `600 20px ${FONT}`;
       ctx.fillStyle = "#64748b";
-      ctx.fillText(t.sub, tx + tw / 2, ty + 148);
+      ctx.fillText(t.sub, tx + tw / 2, ty + 138);
     }
   });
-  y += 2 * th + gap + 40;
+  y += 2 * th + gap + 24;
 
-  // Lines: label on the left, text on the right.
+  // The lines go at the bottom; the titles fill the space above them.
   const rows = recapRows(r);
   const rowH = 74;
+  const rowsTop = H - 70 - rows.length * (rowH + 12) + 12;
+  const titles = recapTitles(r);
+  if (titles.length) {
+    // One title gets a wide chip, a few two columns, more three.
+    const cols = titles.length === 1 ? 1 : titles.length <= 4 ? 2 : 3;
+    const chipGap = 8;
+    const chipH = 42;
+    const headH = 38;
+    const chipW = (W - 2 * x0 - chipGap * (cols - 1)) / cols;
+    const free = rowsTop - 16 - y;
+    const fitRows = Math.max(1, Math.floor((free - headH + chipGap) / (chipH + chipGap)));
+    const chips = titleChips(titles, fitRows * cols);
+    const lines = Math.ceil(chips.length / cols);
+    const blockH = headH + lines * (chipH + chipGap) - chipGap;
+    // Centred in the space between the tiles and the lines.
+    y += Math.max(0, Math.floor((free - blockH) / 2));
+    ctx.textAlign = "center";
+    ctx.font = `800 24px ${FONT}`;
+    ctx.fillStyle = "#fbbf24";
+    ctx.fillText(titles.length === 1 ? "🏆  TITLE" : `🏆  ${titles.length} TITLES`, W / 2, y + 20);
+    y += headH;
+    chips.forEach((c, i) => {
+      // The last line is centred when it isn't full.
+      const row = Math.floor(i / cols);
+      const inRow = row === lines - 1 ? chips.length - row * cols : cols;
+      const offset = ((cols - inRow) * (chipW + chipGap)) / 2;
+      const cx = x0 + offset + (i % cols) * (chipW + chipGap);
+      const cy = y + row * (chipH + chipGap);
+      ctx.fillStyle = c.more ? "rgba(24, 29, 37, 0.96)" : "rgba(58, 44, 14, 0.96)";
+      ctx.strokeStyle = c.more ? "#334155" : "rgba(251, 191, 36, 0.55)";
+      ctx.lineWidth = 2;
+      rounded(ctx, cx, cy, chipW, chipH, 12);
+      ctx.fill();
+      ctx.stroke();
+      ctx.textAlign = "center";
+      ctx.fillStyle = c.more ? "#94a3b8" : "#fde68a";
+      fit(ctx, c.text, chipW - 24, cols === 3 ? 22 : 24, 700);
+      ctx.fillText(c.text, cx + chipW / 2, cy + chipH / 2 + 7);
+    });
+    y += lines * (chipH + chipGap) + 2;
+  }
+
+  // Lines: label on the left, text on the right.
   rows.forEach((row, i) => {
-    const top = y + i * (rowH + 12);
-    if (top + rowH > H - 70) return;
-    ctx.fillStyle = "rgba(24, 29, 37, 0.7)";
+    // Without titles the lines sit in the middle of the space left.
+    const first = titles.length ? Math.max(y, rowsTop) : y + Math.max(0, Math.floor((rowsTop - y) / 2));
+    const top = first + i * (rowH + 12);
+    if (top + rowH > H - 58) return;
+    ctx.fillStyle = "rgba(24, 29, 37, 0.94)";
     rounded(ctx, x0, top, W - 2 * x0, rowH, 16);
     ctx.fill();
     ctx.textAlign = "left";
