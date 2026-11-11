@@ -124,3 +124,24 @@ test('after a write the recently used cache entries are refilled in the backgrou
   assert.equal(await cached(db, 'stats', load, t0 + 2000), 3, 'the next visitor gets the warm value');
   assert.equal(loads, 3);
 });
+
+test('the win-rate board needs a finished placement (10 matches)', async () => {
+  const { WIN_RATE_MIN_MATCHES } = await import('../lib/player-statistics.js');
+  assert.equal(WIN_RATE_MIN_MATCHES, 10);
+  const ts = [{ id: 'w', name: 'W', status: 'completed', format: 'swiss', game_mode: 'rb', vehicle_pool: 'prop', tier: 'C', event_kind: 'weekly' }];
+  // x plays 10 (wins 6), y plays 9 (wins all).
+  const ms = [];
+  let id = 0;
+  const game = (p1, p2) => ms.push({ id: (id += 1), tournament_id: 'w', bracket: 'sw', round: id, position: 1, player1_id: p1, player2_id: p2, winner_id: p1, score1: 2, score2: 0, status: 'completed' });
+  for (let i = 0; i < 6; i += 1) game('x', `o${i}`);
+  for (let i = 0; i < 4; i += 1) game(`o${i}`, 'x');
+  for (let i = 0; i < 9; i += 1) game('y', `p${i}`);
+  const ids = [...new Set(ms.flatMap((m) => [m.player1_id, m.player2_id]))];
+  const stats = buildPlayerStatistics({
+    players: ids.map((pid) => ({ id: pid, display_name: pid, flag: '', team: '' })),
+    tournaments: ts, scope: statsScope({}), ladder: { byId: new Map() }, now: Date.parse('2026-10-29'),
+    registrations: ids.map((pid, i) => ({ tournament_id: 'w', player_id: pid, seed: i + 1 })),
+    matches: ms, playedMatches: ms.map(() => ({ tournament_id: 'w' })),
+  });
+  assert.deepEqual(stats.rankings.by_win_rate.map((p) => p.id), ['x']);
+});
