@@ -110,6 +110,7 @@ export function describeEntry(entry) {
     case "points.season_end": return `结束 ${d.season} 赛季积分`;
     case "points.season_reopen": return `重新开放 ${d.season} 赛季积分`;
     case "points.season_current": return "设置当前积分赛季";
+    case "season.top": return `修改 ${d.season} 年度 Top20 名单（${(d.ranking || []).length} 人）`;
     case "pool.create": return `新建载具池模板「${d.name || ""}」`;
     case "pool.update": return `修改载具池模板「${d.name || target}」`;
     case "pool.delete": return "删除载具池模板";

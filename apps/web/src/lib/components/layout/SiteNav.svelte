@@ -10,14 +10,14 @@
   // placement: "top" (in the header, wide screens) or "bottom" (phones).
   let { placement = "top" } = $props();
 
-  // Four sections. 排行 holds the ladder and the season points (two tabs,
+  // Four sections. 排行 holds the ladder, the season points and the 年度 Top20 (tabs,
   // RankingTabs); 数据 the statistics, vehicles and hall of fame. Admin
   // tools (console, vehicle pools, error reports) are in the shield menu.
   // `match`: the paths that keep a section highlighted.
   const LINKS = [
     { href: "/", label: "赛事大厅", short: "赛事", icon: TrophyIcon, match: ["/tournament"] },
     { href: "/players", label: "选手", icon: UsersIcon, match: ["/player"] },
-    { href: "/ladder", label: "排行", icon: SwordsIcon, match: ["/points"] },
+    { href: "/ladder", label: "排行", icon: SwordsIcon, match: ["/points", "/top"] },
     { href: "/stats", label: "数据", icon: TrendingUpIcon, match: ["/hall"] },
   ];
   const under = (path, base) => path === base || path.startsWith(base + "/");

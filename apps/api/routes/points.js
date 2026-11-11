@@ -94,6 +94,25 @@ export async function computeBoards(db, season, events) {
   return boards;
 }
 
+/**
+ * A season's boards as the leaderboard shows them: frozen for an ended
+ * season, live otherwise (the season recap and Top 20 rank from these).
+ */
+export async function seasonBoards(db, season) {
+  const row = (await db.query('SELECT ended_at, snapshot FROM axsuck.points_seasons WHERE season = $1', [season])).rows[0];
+  if (row?.ended_at) return row.snapshot?.boards || [];
+  const events = (await db.query(EVENTS_SQL)).rows;
+  return computeBoards(db, season, events);
+}
+
+/** The season the site is in: the current one, else the latest with events. */
+export async function currentSeason(db) {
+  const row = (await db.query('SELECT season FROM axsuck.points_seasons WHERE is_current LIMIT 1')).rows[0];
+  if (row?.season) return row.season;
+  const latest = (await db.query('SELECT MAX(points_season) AS season FROM axsuck.tournaments WHERE points_season IS NOT NULL')).rows[0];
+  return latest?.season || String(new Date().getFullYear());
+}
+
 export default async function pointsRoutes(fastify) {
   const db = fastify.db;
 

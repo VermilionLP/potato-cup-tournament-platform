@@ -72,7 +72,7 @@ export function rewardText(r) {
   return [prize, points].filter(Boolean).join("  ·  ");
 }
 
-const load = (src) =>
+export const load = (src) =>
   new Promise((resolve) => {
     if (!src) return resolve(null);
     const img = new Image();
@@ -81,11 +81,11 @@ const load = (src) =>
     img.src = src;
   });
 
-const FONT = '"Noto Sans SC", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif';
+export const FONT = '"Noto Sans SC", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif';
 const MEDAL = { 1: "#fbbf24", 2: "#cbd5e1", 3: "#f59e0b" };
 
 // Rounded rectangle path (ctx.roundRect is missing on older phone browsers).
-function rounded(ctx, x, y, w, h, r) {
+export function rounded(ctx, x, y, w, h, r) {
   ctx.beginPath();
   if (ctx.roundRect) return ctx.roundRect(x, y, w, h, r);
   ctx.moveTo(x + r, y);
@@ -96,7 +96,7 @@ function rounded(ctx, x, y, w, h, r) {
   ctx.closePath();
 }
 
-function fit(ctx, text, max, size, weight = 900) {
+export function fit(ctx, text, max, size, weight = 900) {
   let s = size;
   ctx.font = `${weight} ${s}px ${FONT}`;
   while (s > 12 && ctx.measureText(text).width > max) {

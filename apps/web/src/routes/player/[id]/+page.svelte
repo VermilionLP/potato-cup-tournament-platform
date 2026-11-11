@@ -1,7 +1,8 @@
 <script>
   // Player page: the player card (PlayerCard: profile, league, MMR
   // sparkline, recent form, favourite vehicles), titles and placings, MMR curve, records per event
-  // type and game mode, this season's points and head-to-head records. All
+  // type and game mode, this season's points (with the season recap image,
+  // SeasonRecapDialog), achievements (PlayerAchievements) and head-to-head records. All
   // from existing endpoints (/players/:id, /players/statistics,
   // /ladder/players/:id, /points-leaderboard); maths in #lib/player-profile.js.
   import { EmptyState } from "#lib/components/ui/empty-state/index.js";
@@ -18,6 +19,13 @@
   import TrophyIcon from "@lucide/svelte/icons/trophy";
   import MedalIcon from "@lucide/svelte/icons/medal";
   import ArrowLeftIcon from "@lucide/svelte/icons/arrow-left";
+  import ImageIcon from "@lucide/svelte/icons/image";
+  import PlayerAchievements from "#lib/components/players/PlayerAchievements.svelte";
+  import { lazy } from "#lib/lazy.js";
+
+  const loadRecapDialog = lazy(() => import("#lib/components/players/SeasonRecapDialog.svelte"));
+  let recapOpen = $state(false);
+  let season = $state("");
 
   let id = $derived(page.params.id);
 
@@ -55,6 +63,7 @@
     stats = statistics?.players?.find((p) => p.id === playerId) || null;
     ladder = ladderAll = overall;
     points = pointsRows(board?.boards || [], playerId);
+    season = board?.season || String(new Date().getFullYear());
     loading = false;
   }
 
@@ -117,6 +126,8 @@
       </div>
     </div>
 
+    <PlayerAchievements playerId={id} />
+
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <div class="lg:col-span-2 space-y-6">
         <!-- MMR -->
@@ -167,7 +178,16 @@
       <div class="space-y-6">
         <!-- Points -->
         <Card.Root class="border-border bg-card/40">
-          <Card.Header class="p-5 pb-2"><Card.Title class="text-sm font-bold">本赛季积分</Card.Title></Card.Header>
+          <Card.Header class="p-5 pb-2">
+            <div class="flex items-center justify-between gap-2">
+              <Card.Title class="text-sm font-bold">本赛季积分</Card.Title>
+              {#if stats?.tournaments_played}
+                <button type="button" onclick={() => (recapOpen = true)} class="inline-flex items-center gap-1 rounded-md border border-border px-2 py-0.5 text-small font-semibold hover:border-primary/50 hover:text-brand-ink cursor-pointer">
+                  <ImageIcon class="h-3.5 w-3.5" />{season} 赛季回顾
+                </button>
+              {/if}
+            </div>
+          </Card.Header>
           <Card.Content class="p-5 pt-0 space-y-1.5">
             {#each points as r (r.pool)}
               <a href="/points" class="flex items-center justify-between text-xs rounded-lg border border-border/60 bg-background/40 px-3 py-1.5 hover:border-primary/40">
@@ -240,4 +260,10 @@
       </div>
     </div>
   </div>
+{/if}
+
+{#if recapOpen}
+  {#await loadRecapDialog() then m}
+    <m.default playerId={id} {season} bind:open={recapOpen} />
+  {/await}
 {/if}
