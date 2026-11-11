@@ -5,7 +5,10 @@
 import { GAME_MODES, VEHICLE_POOLS } from './tournament-config.js';
 import { isQualifierEvent, tournamentChampion } from './champions.js';
 import { betterPlace, eventPlacements } from './placements.js';
-import { ACTIVE_DAYS } from './ladder.js';
+import { ACTIVE_DAYS, PROVISIONAL_GAMES } from './ladder.js';
+
+/** Matches a player needs to be on the win-rate board: the ladder's placement games. */
+export const WIN_RATE_MIN_MATCHES = PROVISIONAL_GAMES;
 
 /**
  * @param {object} data
@@ -279,7 +282,9 @@ export function buildPlayerStatistics({ players, tournaments, registrations, mat
   const scoped = scope.tier || scope.kind;
   const shown = scoped ? playerStats.filter((p) => p.tournaments_played > 0) : playerStats;
 
-  const eligibleForRate = shown.filter(p => p.matches_played >= 5);
+  // The win-rate board needs a finished placement (as many matches as the
+  // ladder's placement games), so a 3-0 newcomer doesn't top it.
+  const eligibleForRate = shown.filter(p => p.matches_played >= WIN_RATE_MIN_MATCHES);
 
   return {
     players: shown,

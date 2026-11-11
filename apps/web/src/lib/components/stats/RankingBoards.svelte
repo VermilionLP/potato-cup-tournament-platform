@@ -1,6 +1,6 @@
 <script>
   // Career boards (名人堂): titles and runner-ups (with counts per tier),
-  // win rate (5+ matches), matches played and walkovers, each a LeaderBoard.
+  // win rate (10+ matches: placement done, apps/api/lib/player-statistics.js), matches played and walkovers, each a LeaderBoard.
   import { TAG_BASE, TAG_TONE } from "#lib/tags.js";
   import { TIER_TAG, tierBreakdown } from "#lib/tournament.js";
   import LeaderBoard from "./LeaderBoard.svelte";
@@ -36,10 +36,10 @@
     },
     {
       key: "win-rate",
-      title: "胜率榜（至少 5 场）",
+      title: "胜率榜（完成定级，至少 10 场）",
       icon: TrendingUpIcon,
       tone: "text-emerald-600 dark:text-emerald-400",
-      empty: "暂无胜率排行（至少 5 场）",
+      empty: "暂无胜率排行（完成定级，至少 10 场）",
       rows: (rankings.by_win_rate || []).map((p) => ({ ...base(p), value: `${Math.round(p.match_win_rate * 100)}%`, note: `${p.matches_won} / ${p.matches_played}` })),
     },
     {
