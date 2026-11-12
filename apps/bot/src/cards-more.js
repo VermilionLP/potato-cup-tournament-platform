@@ -1,7 +1,8 @@
 // More picture replies for the official bot, in the same look as cards.js:
 // 天梯 (ladder top and my place), 积分 (each points board's top and my
 // place), Top20 (the season's revealed places), 成就 (badges), 交手 (two
-// players' history) and 回顾 (a player's season). Each builds a Satori tree;
+// players' history) and 回顾 (a player's season); and the community bot's
+// results picture when an event ends (finalCard). Each builds a Satori tree;
 // cards.js renders them (createRenderer).
 
 import {
@@ -329,3 +330,48 @@ export function recapCard(r, now, assets = NO_ASSETS) {
   }, body, now, assets);
 }
 
+
+// ---- 比赛结束 (the community bot's post when an event is marked finished) ----
+
+const placeTitle = (place) => ({ 1: '冠军', 2: '亚军', 3: '季军' })[place] || `第 ${place} 名`;
+
+/** `data`: the notice's data (apps/api/lib/event-final-notice.js): { event, day, players, rows }. */
+export function finalCard({ event, day = '', players = 0, rows = [] }, now, assets = NO_ASSETS) {
+  const [champ, ...rest] = rows;
+  const reward = (r) => [r.points ? `积分 +${r.points}` : null, r.prize ? `金鹰币 ${r.prize}` : null].filter(Boolean).join(' · ');
+  const body = [];
+  if (champ) {
+    body.push(box({
+      alignItems: 'center', gap: 18, borderRadius: 18, padding: '20px 22px',
+      background: '#fffbeb', border: '2px solid #fbbf24',
+    }, [
+      iconTile('trophy', 64, 'prize'),
+      box({ flexDirection: 'column', flexGrow: 1, flexShrink: 1, minWidth: 0 }, [
+        text({ fontSize: 15, fontWeight: 700, color: '#b45309' }, '冠军'),
+        box({ alignItems: 'center', gap: 10, marginTop: 2 }, [
+          img(assets.flag(champ.flag), 34, 25, { borderRadius: 4, flexShrink: 0 }),
+          text({ fontSize: 30, fontWeight: 700, ...ellipsis }, champ.name),
+        ]),
+        reward(champ) ? text({ fontSize: 14, color: C.muted, marginTop: 4 }, reward(champ)) : null,
+      ]),
+      icon('crown', 34, '#d97706'),
+    ]));
+  }
+  if (rest.length) {
+    body.push(card({ flexDirection: 'column', gap: 2, padding: '8px 8px' }, rest.map((r) => box({
+      alignItems: 'center', gap: 12, padding: '9px 12px', borderRadius: 12,
+      background: r.from <= 3 ? '#fafaf9' : 'transparent',
+    }, [
+      num({ width: 56, height: 34, borderRadius: 10, background: MEDAL[r.from]?.[0] || C.soft, color: MEDAL[r.from]?.[1] || C.muted, fontSize: r.to > r.from ? 18 : 20, alignItems: 'center', justifyContent: 'center', flexShrink: 0 }, r.place),
+      img(assets.flag(r.flag), 26, 19, { borderRadius: 3, flexShrink: 0 }),
+      box({ flexDirection: 'column', flexGrow: 1, flexShrink: 1, minWidth: 0 }, [
+        text({ fontSize: 18, fontWeight: 700, ...ellipsis }, r.name),
+        text({ fontSize: 13, color: C.muted, marginTop: 1 }, [placeTitle(r.place), reward(r)].filter(Boolean).join(' · ')),
+      ]),
+    ]))));
+  }
+  if (!rows.length) body.push(empty('没有排名数据'));
+  body.push(nextUp([['战绩 选手名', '选手的战绩'], ['积分', '赛季积分榜']]));
+  const sub = [day, players ? `${players} 名选手` : null, '最终排名'].filter(Boolean).join(' · ');
+  return page({ iconName: 'trophy', title: event || '比赛结束', subtitle: sub }, body, now, assets);
+}

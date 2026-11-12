@@ -287,3 +287,18 @@ test("events carry the site's tags and times", () => {
   assert.equal(whenText('2026-11-20T20:00'), '11/20 周五 20:00');
   assert.equal(whenText(''), '时间待定');
 });
+
+test('an event\'s final placings go with a results picture; text only when drawing fails', async () => {
+  const data = { event: 'Weekly #40', rows: [{ id: 'A', name: 'A', from: 1, to: 1, place: '1' }] };
+  const notice = { id: 9, kind: 'final', text: '【Weekly #40】比赛结束！', mentions: ['10001'], data };
+  const sent = [];
+  const bot = { sendMessage: async (_g, msg) => sent.push(msg) };
+  const cards = { final: async (d) => (assert.equal(d, data), Buffer.from('png')) };
+  await deliverOnce({ site: fakeSite([notice]), getBot: () => bot, groupId: 1, h, pause: async () => {}, logger: { warn() {} }, cards });
+  assert.ok(sent[0].some((p) => String(p).startsWith('<img')), 'has the picture');
+  const broken = { final: async () => { throw new Error('font'); } };
+  const site = fakeSite([notice]);
+  await deliverOnce({ site, getBot: () => bot, groupId: 1, h, pause: async () => {}, logger: { warn() {} }, cards: broken });
+  assert.ok(!sent[1].some((p) => String(p).startsWith('<img')));
+  assert.deepEqual(site.marked, [9]);
+});

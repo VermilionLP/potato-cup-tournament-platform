@@ -92,3 +92,15 @@ test('the new cards render to PNG, empty ones too', async () => {
   ]);
   for (const png of outs) assert.equal(png.subarray(1, 4).toString(), 'PNG');
 });
+
+test('the results picture renders', async () => {
+  const r = createRenderer();
+  const rows = ['A', 'Bravo_Long_Name_123', 'C', 'D', 'E', 'F', 'G', 'H'].map((id, i) => {
+    const from = i < 2 ? i + 1 : i < 4 ? 3 : 5;
+    const to = i < 2 ? from : i < 4 ? 4 : 8;
+    return { id, name: id, flag: 'cn', from, to, place: from === to ? String(from) : `${from}-${to}`, points: [10, 6, 3, 3, 1, 1, 1, 1][i], prize: i ? 0 : 500 };
+  });
+  const png = await r.final({ event: 'Weekly #40', day: '2026-11-12', players: 16, rows }, new Date('2026-11-12T14:00:00Z'));
+  assert.ok(png.length > 1000);
+  if (process.env.CARD_OUT) (await import('node:fs')).writeFileSync(process.env.CARD_OUT, png);
+});

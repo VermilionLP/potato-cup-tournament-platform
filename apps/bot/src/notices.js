@@ -14,6 +14,10 @@
 // @s someone who is not, and a player's profile can carry a wrong or old QQ
 // number. If a message with @s still fails, it is sent once more without
 // them (the names are in the text anyway).
+//
+// An event's final placings (kind 'final') also carry a results picture,
+// drawn here from the notice's data (cards.final); text only if drawing
+// fails or there is no renderer.
 
 export const POLL_MS = 5_000;
 export const MAX_TRIES = 3;
@@ -47,7 +51,7 @@ export function pauseMs(random = Math.random) {
  * The message: one @ per QQ number (only group members when `members` is a
  * Set), then the text. `h` is Koishi's element builder.
  */
-export function noticeMessage(h, notice, members = null) {
+export function noticeMessage(h, notice, members = null, image = null) {
   const parts = [];
   for (const qq of notice.mentions || []) {
     if (members && !members.has(String(qq))) continue;
@@ -55,6 +59,7 @@ export function noticeMessage(h, notice, members = null) {
   }
   if (parts.length) parts.push('\n');
   parts.push(notice.text);
+  if (image) parts.push(h.image(image, 'image/png'));
   return parts;
 }
 
@@ -83,7 +88,7 @@ export function withTimeout(promise, ms, what = 'timed out') {
  */
 export async function deliverOnce({
   site, getBot, groupId, h, logger = console, pause = sleep, random = Math.random, failures = new Map(), timeoutMs = SEND_TIMEOUT_MS,
-  memberCache = {},
+  memberCache = {}, cards = null,
 }) {
   const bot = getBot();
   if (!bot) return 0;
@@ -97,15 +102,23 @@ export async function deliverOnce({
     const key = ids.join(',');
     const outside = members ? (notice.mentions || []).filter((qq) => !members.has(String(qq))) : [];
     if (outside.length) logger.warn?.(`[notices] #${key}: not @-ing ${outside.join(', ')} (not in the group)`);
+    let image = null;
+    if (notice.kind === 'final' && notice.data?.rows?.length && cards) {
+      try {
+        image = await cards.final(notice.data, new Date());
+      } catch (err) {
+        logger.warn?.(`[notices] #${key}: drawing the results picture failed, text only: ${short(err)}`);
+      }
+    }
     try {
-      const message = noticeMessage(h, notice, members);
+      const message = noticeMessage(h, notice, members, image);
       try {
         await send(message);
       } catch (err) {
         // A message with @s that fails: once more without them.
-        if (message.length === 1) throw err;
+        if (!(notice.mentions || []).some((qq) => !members || members.has(String(qq)))) throw err;
         logger.warn?.(`[notices] #${key} with @ failed (${short(err)}), sending without @`);
-        await send(noticeMessage(h, { ...notice, mentions: [] }));
+        await send(noticeMessage(h, { ...notice, mentions: [] }, null, image));
       }
     } catch (err) {
       const tries = (failures.get(key) || 0) + 1;
