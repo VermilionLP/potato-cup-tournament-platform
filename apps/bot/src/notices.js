@@ -8,26 +8,60 @@
 // that fails is tried again next round; one that fails MAX_TRIES times is
 // given up so it does not hold up the rest. The site drops notices after
 // 30 minutes.
+//
+// @ only goes to QQ numbers that are in the group (the member list, read
+// every MEMBERS_TTL_MS): NapCat refuses a whole message (retcode 1200) that
+// @s someone who is not, and a player's profile can carry a wrong or old QQ
+// number. If a message with @s still fails, it is sent once more without
+// them (the names are in the text anyway).
 
 export const POLL_MS = 5_000;
 export const MAX_TRIES = 3;
 export const SEND_TIMEOUT_MS = 20_000;
+export const MEMBERS_TTL_MS = 10 * 60 * 1000;
+
+/**
+ * The group's member QQ numbers (a Set), from the bot; cached in `cache`
+ * for MEMBERS_TTL_MS. null when the list cannot be read (then nobody is
+ * filtered out).
+ */
+export async function groupMembers(bot, groupId, cache = {}, now = Date.now()) {
+  if (cache.set && now - cache.at < MEMBERS_TTL_MS) return cache.set;
+  try {
+    const res = await bot.getGuildMemberList(String(groupId));
+    const set = new Set((res?.data || []).map((m) => String(m.user?.id ?? m.userId ?? '')).filter(Boolean));
+    if (!set.size) return cache.set || null;
+    Object.assign(cache, { set, at: now });
+    return set;
+  } catch {
+    return cache.set || null;
+  }
+}
 
 /** Milliseconds to wait after a message: a few seconds, not always the same. */
 export function pauseMs(random = Math.random) {
   return 3000 + Math.floor(random() * 4000);
 }
 
-/** The message: one @ per QQ number, then the text. `h` is Koishi's element builder. */
-export function noticeMessage(h, notice) {
+/**
+ * The message: one @ per QQ number (only group members when `members` is a
+ * Set), then the text. `h` is Koishi's element builder.
+ */
+export function noticeMessage(h, notice, members = null) {
   const parts = [];
-  for (const qq of notice.mentions || []) parts.push(h.at(String(qq)), ' ');
+  for (const qq of notice.mentions || []) {
+    if (members && !members.has(String(qq))) continue;
+    parts.push(h.at(String(qq)), ' ');
+  }
   if (parts.length) parts.push('\n');
   parts.push(notice.text);
   return parts;
 }
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// Errors from the adapter repeat the whole request; the gist is enough.
+const short = (err) => String(err?.message || err).replace(/args: \{.*\}, /, '').slice(0, 160);
 
 const idsOf = (notice) => (Array.isArray(notice.ids) && notice.ids.length ? notice.ids : [notice.id]);
 
@@ -49,25 +83,39 @@ export function withTimeout(promise, ms, what = 'timed out') {
  */
 export async function deliverOnce({
   site, getBot, groupId, h, logger = console, pause = sleep, random = Math.random, failures = new Map(), timeoutMs = SEND_TIMEOUT_MS,
+  memberCache = {},
 }) {
   const bot = getBot();
   if (!bot) return 0;
   const notices = await site.notices();
+  if (!notices.length) return 0;
+  const members = typeof bot.getGuildMemberList === 'function' ? await groupMembers(bot, groupId, memberCache) : null;
   let posted = 0;
+  const send = (msg) => withTimeout(bot.sendMessage(String(groupId), msg), timeoutMs, `no answer in ${timeoutMs / 1000} s`);
   for (const notice of notices) {
     const ids = idsOf(notice);
     const key = ids.join(',');
+    const outside = members ? (notice.mentions || []).filter((qq) => !members.has(String(qq))) : [];
+    if (outside.length) logger.warn?.(`[notices] #${key}: not @-ing ${outside.join(', ')} (not in the group)`);
     try {
-      await withTimeout(bot.sendMessage(String(groupId), noticeMessage(h, notice)), timeoutMs, `no answer in ${timeoutMs / 1000} s`);
+      const message = noticeMessage(h, notice, members);
+      try {
+        await send(message);
+      } catch (err) {
+        // A message with @s that fails: once more without them.
+        if (message.length === 1) throw err;
+        logger.warn?.(`[notices] #${key} with @ failed (${short(err)}), sending without @`);
+        await send(noticeMessage(h, { ...notice, mentions: [] }));
+      }
     } catch (err) {
       const tries = (failures.get(key) || 0) + 1;
       failures.set(key, tries);
       if (tries < MAX_TRIES) {
-        logger.warn?.(`[notices] posting #${key} failed (${tries}/${MAX_TRIES}): ${err?.message || err}`);
+        logger.warn?.(`[notices] posting #${key} failed (${tries}/${MAX_TRIES}): ${short(err)}`);
         break; // try again next round
       }
       // Given up: mark it so the rest are not held up behind it.
-      logger.warn?.(`[notices] giving up on #${key} after ${tries} tries: ${err?.message || err}`);
+      logger.warn?.(`[notices] giving up on #${key} after ${tries} tries: ${short(err)}`);
       failures.delete(key);
       try {
         await site.markSent(ids);
@@ -95,10 +143,11 @@ export function startNoticeLoop(options) {
   let stopped = false;
   let timer = null;
   const failures = new Map();
+  const memberCache = {};
   const round = async () => {
     let posted = 0;
     try {
-      posted = await deliverOnce({ ...options, failures });
+      posted = await deliverOnce({ ...options, failures, memberCache });
     } catch (err) {
       options.logger?.warn?.(`[notices] ${err?.message || err}`);
     }
