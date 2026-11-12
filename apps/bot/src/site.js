@@ -38,7 +38,8 @@ export function createSite({ siteUrl, botToken, timeoutMs = 8000, fetchImpl = fe
   const enc = encodeURIComponent;
   return {
     notices: () => call('GET', '/bot/notices'),
-    markSent: (id) => call('POST', `/bot/notices/${enc(id)}/sent`, {}),
+    /** `ids`: the notices one posted message carried. */
+    markSent: (ids) => call('POST', '/bot/notices/sent', { ids: Array.isArray(ids) ? ids : [ids] }),
     bind: (code, openid) => call('POST', '/bot/bind', { code, openid }),
     unbind: (openid) => call('DELETE', `/bot/bind/${enc(openid)}`),
     /** The bound player id, or null. */

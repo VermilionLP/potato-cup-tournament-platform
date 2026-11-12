@@ -10,6 +10,13 @@
 // posted late (a "your match is ready" from an hour ago only confuses).
 // Texts are pure functions so they can be tested and read in one place;
 // they carry no links (links in frequent messages draw QQ's risk checks).
+//
+// Keeping up on match days (the bot pauses a few seconds between messages):
+// urgent notices go first (admin, score to confirm, ban turn, then match
+// ready; results and announcements last), notices overtaken by events are
+// dropped (the match was played, the score handled, a later ban turn came),
+// and ready / result notices of one event are merged into one message
+// (noticeBatches).
 
 import { isBotConfigured } from './bot-auth.js';
 import { parseContact } from './contact.js';
@@ -35,12 +42,18 @@ export function clockOf(parsed) {
   return parsed ? `${String(parsed.hour).padStart(2, '0')}:${String(parsed.minute).padStart(2, '0')}` : '稍后';
 }
 
+export const resultLine = (a, s1, s2, b, winner) => `${a} ${s1} : ${s2} ${b}，${winner} 胜出`;
+export const walkoverLine = (winner, loser) => `${winner} 不战而胜${loser ? `（${loser} 弃权）` : ''}`;
+
 export const noticeText = {
   ready: (event, a, b) => `${tag(event)}比赛就绪：${a} vs ${b}\n请双方准备，房间信息以网站和裁判安排为准。打完后在群里 @土豆杯机器人 发送「报分 2:1」（自己的比分在前），或到网站填报。`,
   confirm: (event, a, s1, s2, b) => `${tag(event)}请确认比分：${a} ${s1} : ${s2} ${b}\n对手已提交。在群里 @土豆杯机器人 发送「确认」或「有异议」，也可以到网站处理；10 分钟内不处理将自动生效。`,
   ban: (event, who, before) => `${tag(event)}轮到 ${who} 禁用${before ? `（${before}）` : ''}\n请到网站的 Ban/Pick 里选择要禁用的大组。`,
-  result: (event, a, s1, s2, b, winner) => `${tag(event)}赛果：${a} ${s1} : ${s2} ${b}，${winner} 胜出`,
-  walkover: (event, winner, loser) => `${tag(event)}赛果：${winner} 不战而胜${loser ? `（${loser} 弃权）` : ''}`,
+  result: (event, a, s1, s2, b, winner) => `${tag(event)}赛果：${resultLine(a, s1, s2, b, winner)}`,
+  walkover: (event, winner, loser) => `${tag(event)}赛果：${walkoverLine(winner, loser)}`,
+  // Several at once (noticeBatches).
+  readyMany: (event, pairs) => `${tag(event)}比赛就绪：\n${pairs.map(([a, b]) => `${a} vs ${b}`).join('\n')}\n请双方准备，房间信息以网站和裁判安排为准。打完后在群里 @土豆杯机器人 发送「报分 2:1」（自己的比分在前），或到网站填报。`,
+  resultMany: (event, lines) => `${tag(event)}赛果：\n${lines.join('\n')}`,
   open: (event, when, capacity, checkin) => `${tag(event)}开放报名！比赛时间 ${when}，名额 ${capacity} 人${checkin ? '，需要签到' : ''}。\n在群里 @土豆杯机器人 发送「报名」即可报名，也可以到网站报名。`,
   // The season's Top 20, one place a day (lib/season-top.js).
   topReveal: (season, rank, name, line) => `【${season} 年度 Top20】第 ${rank} 名：${name}${line ? `\n${line}` : ''}\n${rank > 1 ? '明天同一时间揭晓下一位。' : '年度 Top20 全部揭晓！'}完整名单在网站「排行 → 年度 Top20」。`,
@@ -73,14 +86,14 @@ export async function qqNumbersOf(db, playerIds) {
  * are just named in the text). Returns the new row id, or null when the
  * bots are off. Never throws: a notice must not fail the request behind it.
  */
-export async function queueBotNotice(db, { kind, tournamentId = null, text, mention = [] }, log = console) {
+export async function queueBotNotice(db, { kind, tournamentId = null, text, mention = [], matchId = null, data = null }, log = console) {
   if (!botNoticesEnabled()) return null;
   try {
     const qq = (await qqNumbersOf(db, mention)).slice(0, MAX_MENTIONS);
     const { rows } = await db.query(
-      `INSERT INTO axsuck.bot_notices (kind, tournament_id, text, mentions)
-       VALUES ($1, $2, $3, $4::text[]) RETURNING id`,
-      [kind, tournamentId, text, qq],
+      `INSERT INTO axsuck.bot_notices (kind, tournament_id, text, mentions, match_id, data)
+       VALUES ($1, $2, $3, $4::text[], $5, $6) RETURNING id`,
+      [kind, tournamentId, text, qq, matchId, data ? JSON.stringify(data) : null],
     );
     return rows[0]?.id ?? null;
   } catch (err) {
@@ -119,19 +132,75 @@ export const RESULT_MESSAGES = {
   several: (names) => `你同时有 ${names.length} 场比赛：${names.join('、')}，请到网站操作。`,
 };
 
-/** Unsent notices not older than NOTICE_TTL_MS, oldest first. Drops old rows. */
+// Which notices go first: someone is waiting on these.
+export const NOTICE_PRIORITY = { admin: 0, confirm: 1, ban: 1, ready: 2, soon: 2, result: 3, open: 4, top: 4 };
+// Ready / result notices of one event merged into one message, at most this many.
+export const MERGE_MAX = 8;
+
+/**
+ * The messages to post, from unsent rows in posting order: ready and result
+ * rows of the same event (with their `data`) become one message (up to
+ * MERGE_MAX, the @s of all of them); the rest go one by one. Each batch
+ * carries the row ids to mark sent. Pure.
+ */
+export function noticeBatches(rows) {
+  const out = [];
+  const open = new Map(); // "kind:tournament" -> batch still taking rows
+  for (const r of rows) {
+    const mergeable = (r.kind === 'ready' && r.data?.a) || (r.kind === 'result' && r.data?.line);
+    const key = `${r.kind}:${r.tournament_id}`;
+    const batch = mergeable ? open.get(key) : null;
+    if (batch && batch.rows.length < MERGE_MAX && batch.mentions.length + (r.mentions?.length || 0) <= MAX_MENTIONS) {
+      batch.rows.push(r);
+      for (const qq of r.mentions || []) if (!batch.mentions.includes(qq)) batch.mentions.push(qq);
+      continue;
+    }
+    const fresh = { kind: r.kind, tournament_id: r.tournament_id, rows: [r], mentions: [...(r.mentions || [])] };
+    out.push(fresh);
+    if (mergeable) open.set(key, fresh);
+  }
+  return out.map((b) => {
+    const [first] = b.rows;
+    let text = first.text;
+    if (b.rows.length > 1 && b.kind === 'ready') text = noticeText.readyMany(first.data.event, b.rows.map((r) => [r.data.a, r.data.b]));
+    if (b.rows.length > 1 && b.kind === 'result') text = noticeText.resultMany(first.data.event, b.rows.map((r) => r.data.line));
+    const ids = b.rows.map((r) => Number(r.id));
+    return { id: ids[0], ids, kind: b.kind, tournament_id: b.tournament_id, text, mentions: b.mentions, created_at: first.created_at };
+  });
+}
+
+/**
+ * Messages to post now (noticeBatches of the unsent rows not older than
+ * NOTICE_TTL_MS, most urgent first). Drops old rows and ones overtaken by
+ * events: a ready notice for a match that was played, a score to confirm
+ * that was handled, a ban turn when the match is past it or a later turn
+ * was announced.
+ */
 export async function pendingNotices(db, limit = 20) {
   await db.query(`
     DELETE FROM axsuck.bot_notices
     WHERE (sent_at IS NOT NULL AND sent_at < NOW() - INTERVAL '7 days')
        OR (sent_at IS NULL AND created_at < NOW() - INTERVAL '1 day')
   `);
+  await db.query(`
+    DELETE FROM axsuck.bot_notices n
+    USING axsuck.matches m
+    WHERE n.sent_at IS NULL AND n.match_id = m.id AND (
+      (n.kind = 'ready' AND m.status <> 'pending')
+      OR (n.kind = 'confirm' AND (m.status <> 'pending' OR m.pending_report IS NULL))
+      OR (n.kind = 'ban' AND (
+        m.status <> 'pending'
+        OR COALESCE(m.banpick->'state'->>'phase', '') <> 'ban'
+        OR EXISTS (SELECT 1 FROM axsuck.bot_notices later WHERE later.match_id = n.match_id AND later.kind = 'ban' AND later.id > n.id)
+      ))
+    )
+  `);
   const { rows } = await db.query(`
-    SELECT id, kind, tournament_id, text, mentions, created_at
+    SELECT id, kind, tournament_id, text, mentions, data, created_at
     FROM axsuck.bot_notices
     WHERE sent_at IS NULL AND created_at > NOW() - ($1::int * INTERVAL '1 millisecond')
-    ORDER BY id
+    ORDER BY CASE kind ${Object.entries(NOTICE_PRIORITY).map(([k, v]) => `WHEN '${k}' THEN ${v}`).join(' ')} ELSE 3 END, id
     LIMIT $2
-  `, [NOTICE_TTL_MS, limit]);
-  return rows.map((r) => ({ ...r, id: Number(r.id) }));
+  `, [NOTICE_TTL_MS, limit * MERGE_MAX]);
+  return noticeBatches(rows.map((r) => ({ ...r, id: Number(r.id) }))).slice(0, limit);
 }

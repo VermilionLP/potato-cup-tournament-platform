@@ -1,8 +1,9 @@
 // Routes for the QQ bots (apps/bot), behind BOT_TOKEN (lib/bot-auth.js),
 // and the site side of binding a QQ account to a player.
 //
-// Community bot: GET /bot/notices -> post each in the group -> POST
-// /bot/notices/:id/sent (lib/bot-notices.js queues them).
+// Community bot: GET /bot/notices (messages, each with the ids of the
+// notices it carries) -> post each in the group -> POST /bot/notices/sent
+// {ids} (lib/bot-notices.js queues, orders and merges them).
 // Official bot: a player gets a code on the site (POST
 // /players/:id/qq-bind-code, 10 minutes) and sends "绑定 <code>" to the bot,
 // which calls POST /bot/bind with the openid QQ gave it for that person;
@@ -70,6 +71,14 @@ export default async function botRoutes(fastify) {
   fastify.get('/bot/notices', async (req) => {
     requireBot(fastify, req);
     return { data: await pendingNotices(fastify.db) };
+  });
+
+  fastify.post('/bot/notices/sent', async (req) => {
+    requireBot(fastify, req);
+    const ids = Array.isArray(req.body?.ids) ? req.body.ids.map(Number) : [];
+    if (!ids.length || ids.length > 100 || !ids.every((id) => Number.isSafeInteger(id) && id > 0)) throw fastify.httpErrors.badRequest('Bad notice ids');
+    await fastify.db.query('UPDATE axsuck.bot_notices SET sent_at = NOW() WHERE id = ANY($1::bigint[]) AND sent_at IS NULL', [ids]);
+    return { data: { ids } };
   });
 
   fastify.post('/bot/notices/:id/sent', async (req) => {

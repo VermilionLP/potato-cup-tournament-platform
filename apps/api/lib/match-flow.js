@@ -8,7 +8,7 @@
 import { MatchRepo } from '../repositories/match-repo.js';
 import { getPlayerDisplayName } from '../repositories/player-repo.js';
 import { claimNotice, pushEnabled, sendToPlayers } from './push-sender.js';
-import { botNoticesEnabled, noticeText, queueBotNotice } from './bot-notices.js';
+import { botNoticesEnabled, noticeText, queueBotNotice, resultLine, walkoverLine } from './bot-notices.js';
 import { inTransaction } from './transaction.js';
 
 /**
@@ -96,11 +96,15 @@ export async function notifyReadyMatches(db, tournamentId, log) {
     if (!(await claimNotice(db, m.id, `ready:${m.player1_id}:${m.player2_id}`))) continue;
     const url = `/tournament/${encodeURIComponent(tournamentId)}`;
     if (qq) {
+      const a = names.get(m.player1_id) || m.player1_id;
+      const b = names.get(m.player2_id) || m.player2_id;
       await queueBotNotice(db, {
         kind: 'ready',
         tournamentId,
-        text: noticeText.ready(event.name, names.get(m.player1_id) || m.player1_id, names.get(m.player2_id) || m.player2_id),
+        text: noticeText.ready(event.name, a, b),
         mention: [m.player1_id, m.player2_id],
+        matchId: m.id,
+        data: { event: event.name, a, b },
       }, log);
     }
     if (!push) continue;
@@ -133,6 +137,7 @@ export async function notifyReportToConfirm(db, tournamentId, match, report, log
       tournamentId,
       text: noticeText.confirm(event?.name, names.get(match.player1_id) || match.player1_id, report.score1, report.score2, names.get(match.player2_id) || match.player2_id),
       mention: [opponent],
+      matchId: match.id,
     }, log);
   }
   if (!push) return 0;
@@ -182,10 +187,13 @@ export async function notifyResults(db, tournamentId, log) {
     if (!m.player1_id || !m.player2_id) continue;
     if (!(await claimNotice(db, m.id, `qq-result:${m.status}:${m.winner_id}:${m.score1}:${m.score2}`))) continue;
     const loser = m.winner_id === m.player1_id ? m.player2_id : m.player1_id;
+    const line = m.status === 'walkover'
+      ? walkoverLine(m.winner_id, loser)
+      : resultLine(m.player1_id, m.score1, m.score2, m.player2_id, m.winner_id);
     const text = m.status === 'walkover'
       ? noticeText.walkover(event.name, m.winner_id, loser)
       : noticeText.result(event.name, m.player1_id, m.score1, m.score2, m.player2_id, m.winner_id);
-    if (await queueBotNotice(db, { kind: 'result', tournamentId, text }, log)) queued += 1;
+    if (await queueBotNotice(db, { kind: 'result', tournamentId, text, matchId: m.id, data: { event: event.name, line } }, log)) queued += 1;
   }
   return queued;
 }
@@ -214,6 +222,7 @@ export async function notifyBanTurn(db, tournamentId, match, record, log) {
       tournamentId,
       text: noticeText.ban(event?.name, playerId, before.replace(/，$/, '')),
       mention: [playerId],
+      matchId: match.id,
     }, log);
   }
   if (!push) return 0;
