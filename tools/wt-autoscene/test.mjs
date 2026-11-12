@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { detectState, nextScene, obsAuth, stateTracker } from './detect.mjs';
+import { detectState, nextScene, obsAuth, reportState, stateTracker } from './detect.mjs';
 
 test('detectState', () => {
   assert.equal(detectState({ reachable: false }), 'offline');
@@ -40,7 +40,7 @@ test('options: command line > config.json > defaults', () => {
   assert.equal(opt.obs, undefined, 'empty values are ignored');
   assert.equal(opt['dry-run'], true);
   assert.equal(opt.ask, true);
-  assert.equal(opt['scene-battle'], 'ingame');
+  assert.equal(opt['min-battle'], '60');
 });
 
 test('nextScene: leaving a battle is its end, loading gaps are ignored', () => {
@@ -74,4 +74,12 @@ test('the recorded spectated battle: hangar, battle, back to hangar', () => {
     }
   }
   assert.deepEqual(scenes, ['hangar', 'battle', 'ended+delay']);
+});
+
+test('reportState: a short battle is not the end of a match', () => {
+  assert.equal(reportState('battle', null), 'battle');
+  assert.equal(reportState('hangar', null), 'hangar');
+  assert.equal(reportState('ended', 5 * 60_000), 'ended');
+  assert.equal(reportState('ended', 20_000), 'hangar', 'left after 20 s: a disconnect or the wrong room');
+  assert.equal(reportState('ended', 20_000, 10_000), 'ended');
 });

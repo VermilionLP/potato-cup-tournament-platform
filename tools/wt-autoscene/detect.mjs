@@ -39,6 +39,18 @@ export function nextScene(lastActive, to) {
 }
 
 /**
+ * The game state to report to the site for a scene from nextScene():
+ * "battle", "hangar", or "ended" — but a battle left after less than
+ * `minBattleMs` (a disconnect, joining the wrong room) is not the end of a
+ * match: it reports "hangar".
+ */
+export function reportState(scene, battleMs, minBattleMs = 60_000) {
+  if (scene === 'battle') return 'battle';
+  if (scene === 'ended') return battleMs != null && battleMs < minBattleMs ? 'hangar' : 'ended';
+  return 'hangar';
+}
+
+/**
  * Debounce: a new state counts once it has been seen `stable` polls in a
  * row, so loading screens and one-off read errors do not flip scenes.
  */

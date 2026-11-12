@@ -14,6 +14,9 @@
   import RadioIcon from "@lucide/svelte/icons/radio";
   import CopyIcon from "@lucide/svelte/icons/copy";
   import TimerIcon from "@lucide/svelte/icons/timer";
+  import GamepadIcon from "@lucide/svelte/icons/gamepad-2";
+  import { untrack } from "svelte";
+  import { gameStatus } from "#lib/game-scene.js";
 
   let {
     tournament,
@@ -33,6 +36,7 @@
     onstreamend,
     onclearhud,
     onchannel,
+    onopenmatch,
   } = $props();
 
   // Stage for the intro-scene link ("" = the current stage).
@@ -130,6 +134,45 @@
   const clearCountdown = () => startCountdown({ clear: true }, "已清除倒计时");
 
   let liveMatch = $derived(tournament.matches?.find((m) => m.id === tournament.active_match_id));
+
+  // The auto-scene script (tools/wt-autoscene) on the streaming PC: whether
+  // it checks in, what the game is doing, pause / resume.
+  let gameClock = $state(Date.now());
+  $effect(() => {
+    const timer = setInterval(() => (gameClock = Date.now()), 5000);
+    return () => clearInterval(timer);
+  });
+  let game = $derived(tournament?.game || null);
+  let script = $derived(gameStatus(game, gameClock + clockOffset));
+  const GAME_TEXT = { battle: "战斗中", hangar: "在机库", ended: "本局结束（已回到机库）" };
+  const offlineText = (ms) =>
+    ms < 60_000 ? `离线 · ${Math.max(1, Math.round(ms / 1000))} 秒前还在线` : ms < 3_600_000 ? `离线 · ${Math.round(ms / 60_000)} 分钟前还在线` : "离线";
+  async function setPaused(paused) {
+    try {
+      await API.setAutoscenePaused(tid, paused, channel);
+      toast.success(paused ? "已暂停自动切换：大屏按这里选的场景显示" : "已恢复自动切换");
+    } catch (err) {
+      toast.error("操作失败: " + err.message);
+    }
+  }
+  // A battle of the live match ended: remind whoever is at the console to
+  // enter the score.
+  let lastGame = null;
+  $effect(() => {
+    const key = game ? `${game.state}:${game.changed_at}` : null;
+    untrack(() => {
+      const ended = lastGame && key !== lastGame && game?.state === "ended" && script.live && isAdmin;
+      lastGame = key;
+      const m = ended && liveMatch && game.match_id === liveMatch.id && liveMatch.status === "pending" ? liveMatch : null;
+      if (m) {
+        toast.warning("本局结束，请填写比分", {
+          description: `${playerName(m.player1_id)} vs ${playerName(m.player2_id)}`,
+          duration: 30_000,
+          action: onopenmatch ? { label: "录入比分", onClick: () => onopenmatch(m) } : undefined,
+        });
+      }
+    });
+  });
 </script>
 
 <Card.Root class="border-border bg-card/40">
@@ -262,6 +305,34 @@
             </div>
           </div>
 
+          <div class="flex flex-col gap-1.5 pt-2 border-t border-primary/10">
+            <div class="flex items-center justify-between gap-2">
+              <span class="flex items-center gap-1.5 text-small font-bold text-brand-ink shrink-0"><GamepadIcon class="w-3.5 h-3.5" />自动切换脚本:</span>
+              {#if !script.seen}
+                <span class="text-small text-muted-foreground">未连接</span>
+              {:else if script.stale}
+                <span class="text-small font-bold text-amber-600 dark:text-amber-400">{offlineText(script.age)}</span>
+              {:else}
+                <span class="flex items-center gap-1.5 text-small font-bold {script.paused ? 'text-muted-foreground' : 'text-emerald-600 dark:text-emerald-400'}">
+                  <span class="h-1.5 w-1.5 rounded-full {script.paused ? 'bg-muted-foreground' : 'bg-emerald-500 animate-pulse'}"></span>
+                  <span>{script.paused ? "已暂停" : "在线"}</span><span>{GAME_TEXT[game.state] || "等待游戏"}</span>
+                </span>
+              {/if}
+            </div>
+            {#if script.seen}
+              <div class="flex items-center justify-between gap-2">
+                <span class="text-small text-muted-foreground leading-normal">
+                  {script.paused ? "暂停中：大屏只按上面选的场景显示。" : "进入战斗切到 HUD，战斗结束切到对阵图；在上面选场景会接管到下一次状态变化。"}
+                </span>
+                <Button size="sm" variant="outline" class="h-7 text-xs cursor-pointer shrink-0" onclick={() => setPaused(!script.paused)}>
+                  {script.paused ? "恢复自动" : "暂停自动"}
+                </Button>
+              </div>
+            {:else}
+              <span class="text-small text-muted-foreground leading-normal">在直播电脑上运行 tools/wt-autoscene（填好网站地址、管理员令牌、赛事 ID 和频道），进入战斗和战斗结束时大屏会自动切换。</span>
+            {/if}
+          </div>
+
           {#if tournament.overlay_scene === "intro"}
             <div class="flex items-center justify-between gap-2 pt-2 border-t border-primary/10">
               <span class="text-small font-semibold text-muted-foreground shrink-0">展示轮次:</span>
@@ -289,7 +360,7 @@
         <div class="space-y-1.5 p-2.5 rounded-xl border border-primary/20 bg-primary/5">
           <span class="font-bold text-brand-ink block text-small">✨ 推荐：全自动智能切换直播源 (Unified Auto)</span>
           <span class="text-small text-muted-foreground block leading-normal mb-1">
-            放入 OBS 浏览器源即可，跟随上面「当前显示大屏」的选择。选 Auto 时：直播对局开启了 Ban/Pick 时显示 Ban/Pick 画面，确认结果后展示抽中的载具 20 秒，再切到游戏 HUD（透明底，已保存实时比分时立即切换）；无直播对局时显示场间对阵大屏（深色底）。
+            放入 OBS 浏览器源即可（放在游戏画面采集上面，OBS 里只用这一个场景，大屏自己带转场），跟随上面「当前显示大屏」的选择。选 Auto 时：直播对局开启了 Ban/Pick 时显示 Ban/Pick 画面，确认结果后展示抽中的载具 20 秒，再切到游戏 HUD（透明底，已保存实时比分时立即切换；运行自动切换脚本时先显示对位预告，进入战斗才切 HUD）；无直播对局时显示场间对阵大屏（深色底）。
           </span>
           <div class="flex items-center gap-1.5">
             <input

@@ -6,7 +6,7 @@ import { MatchRepo } from '../repositories/match-repo.js';
 import { LadderRepo } from '../repositories/ladder-repo.js';
 import { requireAdmin } from '../lib/admin.js';
 import { LiveChannelRepo } from '../repositories/live-channel-repo.js';
-import { MAX_LIVE_CHANNELS, OVERLAY_SCENES, OVERLAY_STAGE_RE, countdownEnd, parseChannel } from '../lib/live-channels.js';
+import { GAME_HEARTBEAT_MS, GAME_STATES, MAX_LIVE_CHANNELS, OVERLAY_SCENES, OVERLAY_STAGE_RE, countdownEnd, parseChannel } from '../lib/live-channels.js';
 
 export default async function tournamentBracketRoutes(fastify) {
   const repo = TournamentRepo(fastify.db);
@@ -51,6 +51,41 @@ export default async function tournamentBracketRoutes(fastify) {
     const state = await channels.setCountdown(req.params.id, channel, end);
     fastify.tournamentEvents.emit(`update:${req.params.id}`, { type: 'overlay_state_updated', channel, countdown_end: state.countdown_end });
     return state;
+  });
+
+  // The auto-scene script (tools/wt-autoscene) checking in about one
+  // channel's game: { channel, state: hangar | battle | ended }. Pages hear
+  // about a change at once, and every GAME_HEARTBEAT_MS that the script is
+  // still there. The answer says whether automation is paused (the script
+  // shows it).
+  const lastHeartbeat = new Map();
+  fastify.post('/tournaments/:id/game-state', async (req) => {
+    requireAdmin(fastify, req);
+    const state = req.body?.state;
+    if (!GAME_STATES.includes(state)) throw fastify.httpErrors.badRequest(`state must be one of ${GAME_STATES.join(', ')}`);
+    const channel = channelOf(req);
+    const t = await repo.getById(req.params.id);
+    if (!t) throw fastify.httpErrors.notFound('Tournament not found');
+    const { channel: row, changed } = await channels.reportGame(req.params.id, channel, state);
+    const key = `${req.params.id}:${channel}`;
+    const now = Date.now();
+    if (changed || now - (lastHeartbeat.get(key) || 0) >= GAME_HEARTBEAT_MS) {
+      lastHeartbeat.set(key, now);
+      fastify.tournamentEvents.emit(`update:${req.params.id}`, { type: 'game_state', channel, state, changed });
+    }
+    return { channel, state: row.game?.state, paused: Boolean(row.game?.paused), active_match_id: row.active_match_id };
+  });
+
+  // Pause / resume the overlay following the game (console or script).
+  fastify.post('/tournaments/:id/autoscene', async (req) => {
+    requireAdmin(fastify, req);
+    if (typeof req.body?.paused !== 'boolean') throw fastify.httpErrors.badRequest('paused must be true or false');
+    const channel = channelOf(req);
+    const t = await repo.getById(req.params.id);
+    if (!t) throw fastify.httpErrors.notFound('Tournament not found');
+    const row = await channels.setPaused(req.params.id, channel, req.body.paused);
+    fastify.tournamentEvents.emit(`update:${req.params.id}`, { type: 'game_state', channel, paused: req.body.paused });
+    return { channel, paused: Boolean(row.game?.paused) };
   });
 
   fastify.post('/tournaments/:id/seeds', async (req) => {

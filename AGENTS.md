@@ -78,7 +78,7 @@ Ban / Pick 的载具池是 `axsuck.vehicle_pools` 里的模板（迁移 027）�
 
 - **样式**：用自己的深色青色风格：海军蓝径向背景 #1B3A63 → #0A1630、强调青色 `cyan-400` #22D3EE、面板 rgba(24,40,70,0.92)、次要文字 #AFC0D8 / #7184A3，A/B 仍是 `side-a` / `side-b`；画面文字全部英文（阶段名用 `stageLabels()` 的 `en` / `tag`，联赛 `tierEnglish()`，赛事标签 `eventTagsEnglish()`，均在 `#lib/overlay.js`）。公共部件：`OverlayTopBar`（logo、阶段步骤胶囊、右侧插槽）、`LeagueBadge`（段位图标，等级标记画成白色）。
 - **场景**：`intro` 开场对阵（胜率和双方输赢的 MMR 变化）、`hybrid` 对阵图 + 侧栏、`versus` 对位预告（`MatchupScene.svelte`；原 `intermission` 场间场景已合并进来，旧的 `scene=intermission` 和服务器上存的 `intermission` 都按 `versus` 显示；双方段位、MMR、近 5 场、常用载具、数据对比和历史交手，`#lib/versus.js` 的 `headToHeadRecent`）、`banpick`、`ingame` 游戏内 HUD（透明底）。带 `scene=` 的浏览器源固定显示那个场景，不跟随控制台。
-- **自动模式**：赛事开启了 BP（且有载具池）、直播对局还没开打（没有实时比分）时显示 `banpick`；确认结果后再停留 20 秒展示揭晓画面（从确认那一步的服务器时间算，有实时比分立即结束），然后转到 `ingame`；没有直播对局时显示 `hybrid`。
+- **自动模式**：赛事开启了 BP（且有载具池）、直播对局还没开打（没有实时比分）时显示 `banpick`；确认结果后再停留 20 秒展示揭晓画面（从确认那一步的服务器时间算，有实时比分立即结束），然后转到 `ingame`（自动切换脚本在线时先显示 `versus`，进入战斗才 `ingame`，见下面 `tools/wt-autoscene`）；没有直播对局时显示 `hybrid`。
 - **Ban / Pick 场景**：三段动画：大组抽取全屏 → 大组面板缩到左侧、载具抽取占主体 → 结果揭晓。揭晓画面用 wiki 大图（`/api/vehicle-images/images/<unit>.png`，拿不到退回 slots 小图），底部选手栏显示双方开这辆载具的战绩（`WITH THIS 3W · 1L`，没打过显示 `FIRST PLAY`），右侧四张数据卡：性能、引擎、武器、襟翼与限速（拿不到数据时显示所在大组的载具和禁用）。载具数据由服务器从 War Thunder wiki 的载具页抓取（`apps/api/lib/vehicle-specs.js` 解析服务端渲染的 `.game-unit_chars-block` 和 `data-feature-popover`，`GET /api/vehicle-specs/:unit`，磁盘缓存 `.cache/vehicle-specs`，一周后后台刷新，失败一小时内不重试；页面结构变了就更新解析器和 `test/fixtures/wiki-*.html`，并把 `SPECS_VERSION` 加一），前端 `#lib/vehicle-specs.js` 的 `specCards()` 排成四张卡（按赛事 `game_mode` 取 RB / AB 数值）。
 - **比赛开始倒计时**：按频道存（`live_channels.countdown_end`，迁移 045，`POST /tournaments/:id/countdown`，`{ seconds }`、`{ end }` 或 `{ clear: true }`）：HUD 以外的遮盖层顶栏右侧显示，最后 10 秒全屏，归零后自动模式和控制台选的场景都改显示 HUD（`?scene=` 指定的单场景链接不变）；之后在控制台换场景会清掉已结束的倒计时。倒计时按服务器时间算（用 `synced_at` 校正本机时钟）。
 - **「我要直播」**：赛事页按阶段带大屏走完一场（`LiveHandoff.svelte`，每个计时阶段 30 秒，可「立即切换」或「延后 +30s」）：选下一场 → `versus` → 开启 BP 时 `banpick` 等结果确认（任何人确认都算，可「跳过 BP」）→ 准备开始游戏（画面不变）→ `ingame`；出结果后（任何途径）→ `hybrid` → 再弹出选下一场；管理员撤销 BP 结果会回到 BP 阶段，在控制台手动选场景会停止阶段。
@@ -134,7 +134,7 @@ Ban / Pick 的载具池是 `axsuck.vehicle_pools` 里的模板（迁移 027）�
 
 ## Auto scene switching
 
-`tools/wt-autoscene/` 是在直播电脑上运行的独立小程序（Node 22，无依赖）：读取战争雷霆本地接口 `localhost:8111` 的 `map_info.json` / `mission.json`，判断机库 / 战斗中，把"从战斗回到机库"当作比赛结束（观战时 `mission.json` 一直是 running），然后调用 `POST /tournaments/:id/overlay-state` 切换某个直播频道的大屏场景（保留当前轮次），也可以通过 obs-websocket v5 切 OBS 场景。判断规则在 `detect.mjs`（有测试）；`--record` 记录原始数据用于校准。
+`tools/wt-autoscene/` 是在直播电脑上运行的独立小程序（Node 22，无依赖）：读取战争雷霆本地接口 `localhost:8111` 的 `map_info.json` / `mission.json`，判断机库 / 战斗中，把"从战斗回到机库"当作比赛结束（观战时 `mission.json` 一直是 running；战斗不满 `minBattle` 秒（默认 60）就退出的报告为机库），然后把这个直播频道的游戏状态报给网站（`POST /tournaments/:id/game-state {channel, state: hangar|battle|ended}`，每 10 秒和每次变化；迁移 052 在 `live_channels` 存 `game_state`、对应的直播对局 `game_match_id`、`game_changed_at`、`game_seen_at`、`autoscene_paused`，以及控制台选场景的时间 `overlay_set_at`）。网站大屏据此切换（`#lib/game-scene.js`：战斗中 → HUD，本局结束 → 对阵图，只在状态变化晚于控制台最后一次选场景时生效；Auto 模式下 BP 揭晓后先显示对位预告，进入战斗才切 HUD），所以 OBS 里只用一个场景（游戏采集 + 跟随频道的大屏浏览器源），转场由大屏的 stinger 完成。75 秒没有报到算离线，暂停（脚本按 P，或控制台「暂停自动」，`POST /tournaments/:id/autoscene {channel, paused}`）时大屏和以前一样不看游戏状态。控制台显示脚本在线状态，战斗结束时提醒裁判填写比分；「我要直播」的准备阶段在脚本在线时等进入战斗，不再计时。这两个接口在 `CACHE_NEUTRAL_ROUTES` 里，不清天梯缓存；服务器最多每 30 秒推送一次「脚本还在」（`game_state` 消息走增量刷新）。也可以另外切 OBS 场景（obs-websocket v5，可选）。判断规则在 `detect.mjs`（有测试）；`--record` 记录原始数据用于校准。
 
 ## Hall of fame and sharing
 

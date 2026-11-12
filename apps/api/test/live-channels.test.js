@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { countdownEnd, liveChannelsView, parseChannel } from '../lib/live-channels.js';
+import { countdownEnd, gameView, liveChannelsView, parseChannel } from '../lib/live-channels.js';
 import { LiveChannelRepo } from '../repositories/live-channel-repo.js';
 import { tournamentDetail } from '../lib/tournament-detail.js';
 
@@ -30,7 +30,7 @@ test('the detail lists every channel; the old fields mirror channel 1', () => {
     channels: [{ channel: 1, active_match_id: 5, overlay_scene: 'hybrid', overlay_round: 3, overlay_stage: 'wb:3' }, ...channels],
   });
   assert.deepEqual([withMain.active_match_id, withMain.overlay_scene, withMain.overlay_round, withMain.overlay_stage], [5, 'hybrid', 3, 'wb:3']);
-  assert.deepEqual(liveChannelsView([]), [{ channel: 1, active_match_id: null, overlay_scene: 'auto', overlay_round: null, overlay_stage: null, countdown_end: null }]);
+  assert.deepEqual(liveChannelsView([]), [{ channel: 1, active_match_id: null, overlay_scene: 'auto', overlay_round: null, overlay_stage: null, countdown_end: null, overlay_set_at: null, game: null }]);
 });
 
 function fakeDb({ matchesOfEvent = [1, 2, 3], live = [] } = {}) {
@@ -70,6 +70,27 @@ function fakeDb({ matchesOfEvent = [1, 2, 3], live = [] } = {}) {
         else rows.push({ tournament_id: tid, channel, active_match_id: null, overlay_scene: 'auto', overlay_round: null, overlay_stage: null, countdown_end: end });
         return { rowCount: 1, rows: [] };
       }
+      if (text.startsWith('INSERT INTO axsuck.live_channels (tournament_id, channel, game_state')) {
+        const [tid, channel, state, changed] = params;
+        let row = rows.find((r) => r.tournament_id === tid && r.channel === channel);
+        if (!row) {
+          rows.push({ tournament_id: tid, channel, active_match_id: null, overlay_scene: 'auto', game_state: state, game_match_id: null, game_changed_at: 'now', game_seen_at: 'now' });
+          return { rowCount: 1, rows: [] };
+        }
+        if (changed) {
+          row.game_match_id = state === 'ended' ? row.game_match_id ?? row.active_match_id : row.active_match_id;
+          row.game_changed_at = `changed:${state}`;
+        }
+        Object.assign(row, { game_state: state, game_seen_at: `seen:${state}` });
+        return { rowCount: 1, rows: [] };
+      }
+      if (text.startsWith('INSERT INTO axsuck.live_channels (tournament_id, channel, autoscene_paused)')) {
+        const [tid, channel, paused] = params;
+        const row = rows.find((r) => r.tournament_id === tid && r.channel === channel);
+        if (row) row.autoscene_paused = paused;
+        else rows.push({ tournament_id: tid, channel, active_match_id: null, overlay_scene: 'auto', autoscene_paused: paused });
+        return { rowCount: 1, rows: [] };
+      }
       if (text.startsWith('SELECT channel, active_match_id, overlay_scene')) {
         const hit = rows.filter((r) => r.tournament_id === params[0] && (params[1] === undefined || r.channel === params[1]));
         return { rowCount: hit.length, rows: hit };
@@ -105,7 +126,7 @@ test('overlay scene and stage are per channel; a missing stage keeps the old one
   assert.deepEqual([one.overlay_scene, one.overlay_round, one.overlay_stage], ['hybrid', 3, 'wb:2']);
   const two = await repo.get('t', 2);
   assert.deepEqual([two.overlay_scene, two.overlay_round, two.overlay_stage], ['ingame', 1, null]);
-  assert.deepEqual(await repo.get('t', 5), { channel: 5, active_match_id: null, overlay_scene: 'auto', overlay_round: null, overlay_stage: null, countdown_end: null });
+  assert.deepEqual(await repo.get('t', 5), { channel: 5, active_match_id: null, overlay_scene: 'auto', overlay_round: null, overlay_stage: null, countdown_end: null, overlay_set_at: null, game: null });
 });
 
 test('match start countdown: seconds or an end time, within 24 hours; per channel', async () => {
@@ -123,4 +144,28 @@ test('match start countdown: seconds or an end time, within 24 hours; per channe
   assert.equal((await repo.setCountdown('t', 2, end)).countdown_end, end);
   assert.equal((await repo.get('t', 1)).countdown_end, null, 'channel 1 untouched');
   assert.equal((await repo.setCountdown('t', 2, null)).countdown_end, null);
+});
+
+test('the auto-scene script: game state per channel, the match it was about, pause', async () => {
+  assert.equal(gameView({}), null, 'no script ever reported');
+  assert.deepEqual(gameView({ autoscene_paused: true }), { state: null, match_id: null, changed_at: null, seen_at: null, paused: true });
+
+  const db = fakeDb({ live: [{ channel: 1, active_match_id: 1 }] });
+  const repo = LiveChannelRepo(db);
+  let r = await repo.reportGame('t', 1, 'hangar');
+  assert.equal(r.changed, true);
+  r = await repo.reportGame('t', 1, 'battle');
+  assert.deepEqual([r.changed, r.channel.game.state, r.channel.game.match_id], [true, 'battle', 1]);
+  // The battle ends after the console moved on to the next match: still about match 1.
+  await repo.setActiveMatch('t', 1, 2);
+  r = await repo.reportGame('t', 1, 'ended');
+  assert.deepEqual([r.changed, r.channel.game.match_id], [true, 1]);
+  // A heartbeat: no change, the change time stays.
+  const changedAt = r.channel.game.changed_at;
+  r = await repo.reportGame('t', 1, 'ended');
+  assert.deepEqual([r.changed, r.channel.game.changed_at], [false, changedAt]);
+  assert.equal((await repo.get('t', 2)).game, null, 'channel 2 untouched');
+
+  assert.equal((await repo.setPaused('t', 1, true)).game.paused, true);
+  assert.equal((await repo.setPaused('t', 1, false)).game.paused, false);
 });

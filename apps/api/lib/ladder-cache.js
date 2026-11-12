@@ -86,6 +86,9 @@ export const CACHE_NEUTRAL_ROUTES = new Set([
   'POST /tournaments/:id/checkin',
   'DELETE /tournaments/:id/checkin',
   'POST /tournaments/:id/overlay-state',
+  // The auto-scene script checks in every 10 s.
+  'POST /tournaments/:id/game-state',
+  'POST /tournaments/:id/autoscene',
   'POST /tournaments/:id/active-match',
   'POST /tournaments/:id/matches/:matchId/live-score',
   'POST /tournaments/:id/matches/:matchId/report/dispute',

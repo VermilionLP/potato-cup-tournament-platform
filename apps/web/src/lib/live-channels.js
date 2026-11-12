@@ -29,8 +29,8 @@ export function channelState(tournament, channel = 1) {
  */
 export function withChannel(tournament, channel = 1) {
   if (!tournament) return tournament;
-  const { active_match_id, overlay_scene, overlay_round, overlay_stage, countdown_end = null } = channelState(tournament, channel);
-  return { ...tournament, active_match_id, overlay_scene, overlay_round, overlay_stage, countdown_end, live_channel: channel };
+  const { active_match_id, overlay_scene, overlay_round, overlay_stage, countdown_end = null, overlay_set_at = null, game = null } = channelState(tournament, channel);
+  return { ...tournament, active_match_id, overlay_scene, overlay_round, overlay_stage, countdown_end, overlay_set_at, game, live_channel: channel };
 }
 
 /** Matches live on the other channels: match id -> channel. */
