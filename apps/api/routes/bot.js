@@ -12,17 +12,27 @@
 // passes (POST /bot/register, /bot/unregister, /bot/checkin), with the same
 // rules as the site (lib/registration.js); GET /bot/open-events lists the
 // events taking sign-ups, in the order the bot numbers them.
+// Results: POST /bot/report (the bound player's score, theirs first),
+// /bot/confirm and /bot/dispute (the opponent's answer), with the site's
+// rules (lib/player-reports.js, lib/match-reports.js).
+// A binding code works for two openids (a group and a private chat: QQ
+// gives a person a different openid in each) within its 10 minutes.
 
 import { randomInt } from 'crypto';
 import { requireBot } from '../lib/bot-auth.js';
-import { BIND_MESSAGES, REGISTER_MESSAGES, pendingNotices } from '../lib/bot-notices.js';
+import { BIND_MESSAGES, REGISTER_MESSAGES, RESULT_MESSAGES, pendingNotices } from '../lib/bot-notices.js';
 import { checkinState } from '../lib/checkin.js';
 import { registerPlayer, setCheckin, unregisterPlayer } from '../lib/registration.js';
+import { confirmReport, disputeReport, rejectGroupEditDuringPlayoffs, requireOpenMatch, submitReport } from '../lib/player-reports.js';
+import { canConfirm, canDispute, scoreProblem } from '../lib/match-reports.js';
+import { MatchRepo } from '../repositories/match-repo.js';
 import { requireSelfOrAdmin } from '../lib/admin.js';
 import { attentionItems } from '../lib/attention.js';
 import { getPlayerDisplayName } from '../repositories/player-repo.js';
 
 export const BIND_CODE_TTL_MINUTES = 10;
+// One code binds a group and a private chat (different openids).
+export const BIND_CODE_USES = 2;
 
 // What the bot's cards show as an event's tags (as the site's event list:
 // tier and kind, mode, vehicle pool, format).
@@ -119,7 +129,8 @@ export default async function botRoutes(fastify) {
     const code = String(req.body?.code || '').trim();
     if (!/^\d{6}$/.test(code)) throw fastify.httpErrors.badRequest(BIND_MESSAGES.badCode);
     const used = await fastify.db.query(
-      'DELETE FROM axsuck.qq_bind_codes WHERE code = $1 AND expires_at > NOW() RETURNING player_id', [code],
+      'UPDATE axsuck.qq_bind_codes SET uses = uses + 1 WHERE code = $1 AND expires_at > NOW() AND uses < $2 RETURNING player_id',
+      [code, BIND_CODE_USES],
     );
     const playerId = used.rows[0]?.player_id;
     if (!playerId) throw fastify.httpErrors.notFound(BIND_MESSAGES.unknownCode);
@@ -264,4 +275,96 @@ export default async function botRoutes(fastify) {
     }
     return { data: { player_id: playerId, checked_in: done } };
   });
+
+  // ---- Results ----
+
+  // The bound player's open matches (both players known, in running events),
+  // with names for the replies.
+  async function openMatchesOf(playerId) {
+    const { rows } = await fastify.db.query(`
+      SELECT m.*, t.name AS tournament_name
+      FROM axsuck.matches m
+      JOIN axsuck.tournaments t ON t.id = m.tournament_id
+      WHERE t.status = 'in_progress' AND m.status = 'pending'
+        AND (m.player1_id = $1 OR m.player2_id = $1)
+        AND m.player1_id IS NOT NULL AND m.player2_id IS NOT NULL AND m.player1_id <> m.player2_id
+      ORDER BY t.scheduled_time, m.id
+    `, [playerId]);
+    const ids = [...new Set(rows.flatMap((m) => [m.player1_id, m.player2_id]))];
+    const names = new Map(ids.length ? (await fastify.db.query(
+      'SELECT id, battle_tags FROM axsuck.players WHERE id = ANY($1::text[])', [ids],
+    )).rows.map((p) => [p.id, getPlayerDisplayName(p) || p.id]) : []);
+    return rows.map((m) => ({ ...m, names }));
+  }
+  const nameOf = (m, id) => m.names.get(id) || id;
+  // A match as the bot words it: the asking player first.
+  const view = (m, me, extra = {}) => {
+    const first = m.player1_id === me;
+    const opp = first ? m.player2_id : m.player1_id;
+    const r = m.pending_report;
+    return {
+      match_id: m.id,
+      tournament_id: m.tournament_id,
+      tournament: m.tournament_name,
+      me: nameOf(m, me),
+      opponent: nameOf(m, opp),
+      report: r ? {
+        kind: r.kind,
+        mine: r.kind === 'score' ? (first ? r.score1 : r.score2) : null,
+        theirs: r.kind === 'score' ? (first ? r.score2 : r.score1) : null,
+        by_me: r.by === me,
+        disputed: Boolean(r.disputed),
+      } : null,
+      ...extra,
+    };
+  };
+  const notFoundMatch = (msg) => {
+    const err = fastify.httpErrors.notFound(msg);
+    err.code = 'NO_MATCH';
+    return err;
+  };
+  // With several open matches, one has to be picked (by event name or id).
+  function pickMatch(list, tournament, what) {
+    if (!list.length) throw notFoundMatch(what);
+    if (tournament) {
+      const q = String(tournament).trim().toLowerCase();
+      const hit = list.filter((m) => m.tournament_id === tournament || String(m.tournament_name).toLowerCase().includes(q));
+      if (hit.length === 1) return hit[0];
+    }
+    if (list.length === 1) return list[0];
+    const err = fastify.httpErrors.conflict(RESULT_MESSAGES.several(list.map((m) => m.tournament_name)));
+    err.code = 'SEVERAL';
+    throw err;
+  }
+
+  // "报分 2:1": the bound player's own score first.
+  fastify.post('/bot/report', async (req) => {
+    requireBot(fastify, req);
+    const playerId = await boundPlayer(openidOf(fastify, req.body?.openid));
+    const mine = Number(req.body?.mine);
+    const theirs = Number(req.body?.theirs);
+    const problem = scoreProblem(mine, theirs);
+    if (problem) throw fastify.httpErrors.badRequest(problem);
+    const m = pickMatch(await openMatchesOf(playerId), req.body?.tournament_id, RESULT_MESSAGES.noMatch);
+    requireOpenMatch(fastify, m);
+    await rejectGroupEditDuringPlayoffs(fastify, m);
+    const first = m.player1_id === playerId;
+    const out = await submitReport(fastify, m.tournament_id, m, playerId, { kind: 'score', score1: first ? mine : theirs, score2: first ? theirs : mine });
+    return { data: view(m, playerId, { result: out.report, mine, theirs }) };
+  });
+
+  // The opponent's answer to a pending score: confirm it or dispute it.
+  async function answer(req, action) {
+    requireBot(fastify, req);
+    const playerId = await boundPlayer(openidOf(fastify, req.body?.openid));
+    const allowed = action === 'confirm' ? canConfirm : canDispute;
+    const list = (await openMatchesOf(playerId)).filter((m) => allowed(m, playerId));
+    const m = pickMatch(list, req.body?.tournament_id, action === 'confirm' ? RESULT_MESSAGES.nothingToConfirm : RESULT_MESSAGES.nothingToDispute);
+    if (action === 'confirm') await confirmReport(fastify, m.tournament_id, m, { by: playerId });
+    else await disputeReport(fastify, m.tournament_id, m, { by: playerId });
+    const after = await MatchRepo(fastify.db).getById(m.id);
+    return { data: view(m, playerId, { result: action === 'confirm' ? 'confirmed' : 'disputed', status: after?.status || null }) };
+  }
+  fastify.post('/bot/confirm', (req) => answer(req, 'confirm'));
+  fastify.post('/bot/dispute', (req) => answer(req, 'dispute'));
 }

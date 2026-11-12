@@ -14,6 +14,7 @@ import { requireAdmin, isAdminRequest } from '../lib/admin.js';
 import { currentSeason, seasonBoards } from './points.js';
 import { noticeText } from '../lib/bot-notices.js';
 import { buildSeasonSummary, seasonList } from '../lib/season-summary.js';
+import { buildHeadToHead } from '../lib/head-to-head.js';
 
 const EVENT_COLUMNS = 'id, name, status, format, playoff_format, swiss_rounds, swiss_group_size, advance_per_group, source_title, tier, event_kind, vehicle_pool, game_mode, points_season, scheduled_time, played_at, created_at';
 
@@ -39,7 +40,7 @@ export function awardsData(db) {
       db.query(`SELECT ${EVENT_COLUMNS} FROM axsuck.tournaments WHERE status = 'completed'`).then((r) => r.rows),
       db.query('SELECT tournament_id, player_id, seed, swiss_group FROM axsuck.tournament_players').then((r) => r.rows),
       db.query("SELECT * FROM axsuck.matches WHERE status IN ('completed', 'walkover')").then((r) => r.rows),
-      db.query('SELECT tournament_id, player1_id, player2_id, banpick FROM axsuck.matches WHERE banpick IS NOT NULL').then((r) => r.rows),
+      db.query('SELECT id, tournament_id, player1_id, player2_id, banpick FROM axsuck.matches WHERE banpick IS NOT NULL').then((r) => r.rows),
       playerRepo.list(),
       ladderRepo.getRatings({ includeInactive: true }),
     ]);
@@ -190,5 +191,15 @@ export default async function playerAwardsRoutes(fastify) {
         ? { size: top.size, revealed: top.revealed.length, started: top.started, done: top.done, next: top.next, first: first ? { id: first.id, ...name(first.id) } : null }
         : null,
     };
+  });
+
+  // Two players against each other (finished events): the QQ bot's 交手.
+  fastify.get('/players/:id/vs/:other', async (req) => {
+    const a = String(req.params.id);
+    const b = String(req.params.other);
+    if (a === b) throw fastify.httpErrors.badRequest('请填两位不同的选手');
+    const ctx = await context();
+    for (const id of [a, b]) if (!ctx.names.has(id)) throw fastify.httpErrors.notFound(`没有找到选手「${id}」`);
+    return buildHeadToHead(a, b, ctx);
   });
 }

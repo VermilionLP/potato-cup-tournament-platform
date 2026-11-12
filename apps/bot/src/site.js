@@ -66,5 +66,19 @@ export function createSite({ siteUrl, botToken, timeoutMs = 8000, fetchImpl = fe
     unregister: (openid, tournamentId) => call('POST', '/bot/unregister', { openid, tournament_id: tournamentId }),
     /** Without a tournament: every event of theirs whose check-in is open. */
     checkin: (openid, tournamentId) => call('POST', '/bot/checkin', { openid, ...(tournamentId ? { tournament_id: tournamentId } : {}) }),
+    // Results: the bound player's score (theirs first), the opponent's answer.
+    report: (openid, mine, theirs, tournamentId) => call('POST', '/bot/report', { openid, mine, theirs, ...(tournamentId ? { tournament_id: tournamentId } : {}) }),
+    confirm: (openid) => call('POST', '/bot/confirm', { openid }),
+    dispute: (openid) => call('POST', '/bot/dispute', { openid }),
+    // Public data for the ranking cards.
+    ladderBoard: () => call('GET', '/ladder'),
+    pointsSeasons: () => call('GET', '/points-seasons'),
+    points: (season = '') => call('GET', `/points-leaderboard${season ? `?season=${enc(season)}` : ''}`),
+    seasonTop: (season) => call('GET', `/seasons/${enc(season)}/top`),
+    achievements: (playerId) => call('GET', `/players/${enc(playerId)}/achievements`),
+    seasonRecap: (playerId, season = '') => call('GET', `/players/${enc(playerId)}/season-recap${season ? `?season=${enc(season)}` : ''}`),
+    headToHead: (a, b) => call('GET', `/players/${enc(a)}/vs/${enc(b)}`),
+    /** { exact, alias, similar } for a typed name (the site's sign-in lookup). */
+    lookup: (name) => call('GET', `/players/lookup?name=${enc(name)}`),
   };
 }
