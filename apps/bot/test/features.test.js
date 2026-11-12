@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
-import { MAX_TRIES, deliverOnce, noticeMessage, pauseMs, withTimeout } from '../src/notices.js';
+import { MAX_TRIES, deliverOnce, groupMembers, noticeMessage, pauseMs, withTimeout } from '../src/notices.js';
 import { findPlayer, formatSchedule, formatStats, shortTime } from '../src/format.js';
 import { attemptLimiter } from '../src/commands.js';
 import { readConfig } from '../src/config.js';
@@ -53,6 +53,41 @@ test('a message that keeps failing is given up so the rest go out', async () => 
   assert.deepEqual(sent, ['c']);
   assert.deepEqual(site.marked, [2, 5, 3], 'the stuck one (both its notices) marked so it is not tried forever');
   assert.equal(failures.size, 0);
+});
+
+test('only group members are @-ed; a failing message goes again without @', async () => {
+  const sent = [];
+  const members = { data: [{ user: { id: '111' } }, { user: { id: '222' } }] };
+  const bot = {
+    getGuildMemberList: async () => members,
+    // NapCat refuses a message that @s 333 (retcode 1200).
+    sendMessage: async (group, msg) => {
+      if (msg.some((p) => p?.attrs?.id === '999')) throw new Error('Error with request send_group_msg, args: {"x":1}, retcode: 1200');
+      sent.push(msg.filter((p) => p?.type === 'at').map((p) => p.attrs.id));
+    },
+  };
+  const warns = [];
+  const site = fakeSite([{ id: 1, text: 'a', mentions: ['111', '333'] }]);
+  assert.equal(await deliverOnce({ site, getBot: () => bot, groupId: 1, h, pause: async () => {}, logger: { warn: (m) => warns.push(m) } }), 1);
+  assert.deepEqual(sent, [['111']], '333 is not in the group');
+  assert.match(warns[0], /not @-ing 333/);
+  // In the list but still refused: sent without any @.
+  members.data.push({ user: { id: '999' } });
+  const again = fakeSite([{ id: 2, text: 'b', mentions: ['999', '111'] }]);
+  assert.equal(await deliverOnce({ site: again, getBot: () => bot, groupId: 1, h, pause: async () => {}, logger: { warn: (m) => warns.push(m) } }), 1);
+  assert.deepEqual(sent.at(-1), []);
+  assert.deepEqual(again.marked, [2]);
+  assert.ok(!warns.at(-1).includes('args'), 'logs keep the gist, not the whole request');
+});
+
+test('the member list is cached, and a failing read filters nobody', async () => {
+  let reads = 0;
+  const bot = { getGuildMemberList: async () => { reads += 1; return { data: [{ user: { id: '1' } }] }; } };
+  const cache = {};
+  assert.deepEqual([...await groupMembers(bot, 5, cache, 0)], ['1']);
+  await groupMembers(bot, 5, cache, 1000);
+  assert.equal(reads, 1);
+  assert.equal(await groupMembers({ getGuildMemberList: async () => { throw new Error('x'); } }, 5, {}), null);
 });
 
 test('a send that never answers times out', async () => {
