@@ -1,4 +1,6 @@
 // Picture replies for the official bot: 报名, 赛程, 战绩 and 帮助 as PNG
+// (天梯, 积分, Top20, 成就, 交手 and 回顾 are in cards-more.js, built from the
+// blocks exported here)
 // cards that look like pages of the site: the black top bar with the
 // POTATO CUP wordmark, a page header (orange icon tile, title, subtitle),
 // white rounded cards on the light page, the site's tags (tier, mode,
@@ -25,15 +27,16 @@ import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { iconUri } from './icons.js';
+import { achievementsCard, headToHeadCard, ladderCard, pointsCard, recapCard, topCard } from './cards-more.js';
 
 const WIDTH = 720;
 // The site's light theme (apps/web/src/app.css) and tag tones (lib/tags.js).
-const C = {
+export const C = {
   page: '#f7f7f5', card: '#ffffff', ink: '#14161b', muted: '#5b6170', faint: '#8b95a5', border: '#e5e5e2', soft: '#f1f1ee',
   bar: '#0b0d12', orange: '#f97316', orangeInk: '#c2410c', orangeSoft: '#ffedd5', orangeSoftInk: '#9a3412',
   win: '#16a34a', winSoft: '#dcfce7', loss: '#e11d48', lossSoft: '#ffe4e6', prize: '#d97706',
 };
-const TONES = {
+export const TONES = {
   neutral: ['#ececea', '#3f4451'],
   brand: [C.orangeSoft, C.orangeSoftInk],
   info: ['#e0f2fe', '#075985'],
@@ -45,7 +48,7 @@ const TONES = {
 const WEIGHTS = { 400: 'Regular', 700: 'Bold' };
 const DISPLAY = 'DISPLAY'; // replaced by Barlow Condensed + the HarmonyOS list
 export const DEFAULT_SITE_HOST = 'potatocup-warthunder.com';
-const BOT = '@土豆杯机器人';
+export const BOT = '@土豆杯机器人';
 
 const require = createRequire(import.meta.url);
 const here = dirname(fileURLToPath(import.meta.url));
@@ -90,9 +93,9 @@ function withFamilies(node, body, display) {
 }
 
 // Cards built without the site's pictures (tests) just leave them out.
-const NO_ASSETS = { wordmark: () => null, flag: () => null, league: () => null, host: DEFAULT_SITE_HOST };
+export const NO_ASSETS = { wordmark: () => null, flag: () => null, league: () => null, host: DEFAULT_SITE_HOST };
 
-const svgUri = (svg) => `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`;
+export const svgUri = (svg) => `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`;
 
 export function createRenderer({
   fontDir = defaultFontDir(),
@@ -123,14 +126,28 @@ export function createRenderer({
     league: (group) => (/^[a-z]+$/.test(String(group || '')) ? asset(join(staticDir, 'sc2-icons', 'league', `${group}.svg`), 'image/svg+xml') : null),
   };
 
+  // wawoff2 is one WebAssembly instance: two decompressions at once (two
+  // cards drawn together) corrupt each other, so they take turns.
+  let turn = Promise.resolve();
+  const decompress = (file) => {
+    const next = turn.then(async () => Buffer.from(await wawoff.decompress(readFileSync(file))));
+    turn = next.catch(() => {});
+    return next;
+  };
+
   async function fontsFor(text) {
     const cps = [...new Set([...text].map((c) => c.codePointAt(0)))];
     const fonts = [];
     for (const [weight, list] of Object.entries(sets)) {
       for (const f of list) {
         if (!cps.some((cp) => f.ranges.some(([a, b]) => cp >= a && cp <= b))) continue;
-        if (!ttf.has(f.file)) ttf.set(f.file, Buffer.from(await wawoff.decompress(readFileSync(join(fontDir, f.file)))));
-        fonts.push({ name: `hm-${f.file.replace(/\.woff2$/, '')}`, data: ttf.get(f.file), weight: Number(weight), style: 'normal' });
+        if (!ttf.has(f.file)) {
+          ttf.set(f.file, decompress(join(fontDir, f.file)).catch((err) => {
+            ttf.delete(f.file); // try again next time
+            throw err;
+          }));
+        }
+        fonts.push({ name: `hm-${f.file.replace(/\.woff2$/, '')}`, data: await ttf.get(f.file), weight: Number(weight), style: 'normal' });
       }
     }
     return fonts;
@@ -152,17 +169,24 @@ export function createRenderer({
     openEvents: (data, now) => render(openEventsCard(data, now, assets)),
     stats: (player, ladder, now) => render(statsCard(player, ladder, now, assets)),
     help: (now) => render(helpCard(now, assets)),
+    // src/cards-more.js
+    ladder: (data, now) => render(ladderCard(data, now, assets)),
+    points: (data, now) => render(pointsCard(data, now, assets)),
+    top: (data, now) => render(topCard(data, now, assets)),
+    achievements: (data, now) => render(achievementsCard(data, now, assets)),
+    headToHead: (h, now) => render(headToHeadCard(h, now, assets)),
+    recap: (r, now) => render(recapCard(r, now, assets)),
   };
 }
 
 // ---- Building blocks ----
 
 const el = (type, style, children) => ({ type, props: { style, children } });
-const box = (style, children) => el('div', { display: 'flex', ...style }, children);
-const text = (style, value) => el('div', { display: 'flex', ...style }, String(value));
-const num = (style, value) => text({ fontFamily: DISPLAY, fontWeight: 700, ...style }, value);
-const img = (src, width, height, style = {}) => (src ? { type: 'img', props: { src, width, height, style } } : null);
-const icon = (name, size, color, style = {}) => img(iconUri(name, color), size, size, { flexShrink: 0, ...style });
+export const box = (style, children) => el('div', { display: 'flex', ...style }, children);
+export const text = (style, value) => el('div', { display: 'flex', ...style }, String(value));
+export const num = (style, value) => text({ fontFamily: DISPLAY, fontWeight: 700, ...style }, value);
+export const img = (src, width, height, style = {}) => (src ? { type: 'img', props: { src, width, height, style } } : null);
+export const icon = (name, size, color, style = {}) => img(iconUri(name, color), size, size, { flexShrink: 0, ...style });
 
 const WEEK = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
 
@@ -194,7 +218,7 @@ function stamp(now = new Date()) {
 }
 
 /** A tag as on the site; `dot` for live states ("● 比赛进行中"). */
-function tag(label, tone = 'neutral', { dot = false, iconName = null } = {}) {
+export function tag(label, tone = 'neutral', { dot = false, iconName = null } = {}) {
   const [bg, fg] = TONES[tone] || TONES.neutral;
   return box({ alignItems: 'center', gap: 5, background: bg, color: fg, borderRadius: 7, padding: '3px 9px', flexShrink: 0 }, [
     dot ? box({ width: 7, height: 7, borderRadius: 999, background: fg }, []) : null,
@@ -207,7 +231,7 @@ function tag(label, tone = 'neutral', { dot = false, iconName = null } = {}) {
  * A command to send, as a chip: filled orange for the main next step (the
  * site's orange button), outlined for the others.
  */
-function cmd(label, { main = false, size = 15 } = {}) {
+export function cmd(label, { main = false, size = 15 } = {}) {
   return box({
     alignItems: 'center', gap: 6, flexShrink: 0, borderRadius: 9, padding: main ? '7px 13px' : '6px 12px',
     background: main ? C.orange : C.card, border: main ? `1px solid ${C.orange}` : `1px solid ${C.border}`,
@@ -218,15 +242,15 @@ function cmd(label, { main = false, size = 15 } = {}) {
   ]);
 }
 
-const card = (style, children) => box({ background: C.card, border: `1px solid ${C.border}`, borderRadius: 18, padding: '16px 18px', ...style }, children);
+export const card = (style, children) => box({ background: C.card, border: `1px solid ${C.border}`, borderRadius: 18, padding: '16px 18px', ...style }, children);
 
-const section = (label, extra = '') => box({ alignItems: 'baseline', gap: 8, marginTop: 6 }, [
+export const section = (label, extra = '') => box({ alignItems: 'baseline', gap: 8, marginTop: 6 }, [
   text({ fontSize: 17, fontWeight: 700, color: C.ink }, label),
   extra ? text({ fontSize: 13, color: C.faint }, extra) : null,
 ]);
 
 /** The site's icon tile (PageHeader, stat cards). */
-const iconTile = (name, size = 52, tone = 'brand') => {
+export const iconTile = (name, size = 52, tone = 'brand') => {
   const [bg, fg] = tone === 'brand' ? [C.orangeSoft, C.orangeInk] : TONES[tone] || TONES.neutral;
   return box({ width: size, height: size, borderRadius: Math.round(size * 0.28), background: bg, border: `1px solid ${tone === 'brand' ? '#fed7aa' : 'transparent'}`, alignItems: 'center', justifyContent: 'center', flexShrink: 0 }, [
     icon(name, Math.round(size * 0.48), fg),
@@ -234,14 +258,14 @@ const iconTile = (name, size = 52, tone = 'brand') => {
 };
 
 /** A grey box saying there is nothing here, and what to do instead. */
-const empty = (label, sub = '', action = null) => card({ flexDirection: 'column', alignItems: 'center', padding: '28px 20px', gap: 8 }, [
+export const empty = (label, sub = '', action = null) => card({ flexDirection: 'column', alignItems: 'center', padding: '28px 20px', gap: 8 }, [
   text({ fontSize: 19, fontWeight: 700, color: C.muted }, label),
   sub ? text({ fontSize: 14, color: C.faint, textAlign: 'center' }, sub) : null,
   action,
 ]);
 
 /** The page: top bar, page header, body, footer. */
-function page({ iconName, title, titleLead = null, subtitle = '', side = null }, body, now, assets = NO_ASSETS) {
+export function page({ iconName, title, titleLead = null, subtitle = '', side = null }, body, now, assets = NO_ASSETS) {
   const wordmark = assets.wordmark();
   return box({ flexDirection: 'column', width: WIDTH, background: C.page, color: C.ink }, [
     // The site's top bar.
@@ -351,7 +375,7 @@ function stepper(title, steps, note = `在群里 ${BOT} 后发送指令`) {
 }
 
 /** "下一步": other commands worth knowing here. */
-function nextUp(items) {
+export function nextUp(items) {
   return card({ alignItems: 'center', gap: 12, padding: '12px 16px', flexWrap: 'wrap' }, [
     text({ fontSize: 14, fontWeight: 700, color: C.muted }, '还可以'),
     ...items.map(([c, what]) => box({ alignItems: 'center', gap: 6 }, [cmd(c, { size: 14 }), text({ fontSize: 13, color: C.muted }, what)])),
@@ -379,8 +403,8 @@ export function eventTagList(e) {
   return out;
 }
 
-const eventTitle = (name, style = {}) => num({ fontSize: 25, lineHeight: 1.15, textTransform: 'uppercase', ...style }, name);
-const meta = (iconName, label, style = {}) => box({ alignItems: 'center', gap: 5 }, [
+export const eventTitle = (name, style = {}) => num({ fontSize: 25, lineHeight: 1.15, textTransform: 'uppercase', ...style }, name);
+export const meta = (iconName, label, style = {}) => box({ alignItems: 'center', gap: 5 }, [
   icon(iconName, 15, C.faint),
   text({ fontSize: 14, color: C.muted, ...style }, label),
 ]);
@@ -441,9 +465,9 @@ export function openEventsCard(data, now, assets = NO_ASSETS) {
 
 const STATUS = { registration: ['报名中', 'brand', false], in_progress: ['比赛进行中', 'live', true], voting: ['投票中', 'info', false] };
 const ACTIONS = {
-  confirm: { title: '请确认比分', iconName: 'circle-check', how: '在网站确认或提出异议，10 分钟内不处理会自动生效' },
+  confirm: { title: '请确认比分', iconName: 'circle-check', how: '比分对就发「确认」，不对就发「有异议」；10 分钟内不处理会自动生效', cmds: ['确认', '有异议'] },
   ban: { title: '轮到你禁用', iconName: 'swords', how: '在网站打开这场比赛，完成 Ban / Pick' },
-  ready: { title: '可以开打了', iconName: 'flag', how: '进游戏开打，结束后任一方在网站填报比分' },
+  ready: { title: '可以开打了', iconName: 'flag', how: '进游戏开打，打完后任一方发「报分 2:1」（自己的比分在前）', cmds: ['报分 2:1'] },
 };
 
 function actionCard(i, host) {
@@ -460,6 +484,7 @@ function actionCard(i, host) {
           text({ fontSize: 15, color: C.muted }, `对手 ${i.opponent || '—'}`),
         ]),
         a.how ? text({ fontSize: 13, color: C.muted, marginTop: 4 }, a.how) : null,
+        a.cmds ? box({ gap: 8, marginTop: 8 }, a.cmds.map((c, n) => cmd(c, { main: n === 0, size: 14 }))) : null,
       ]),
       num({ fontSize: 44, color: C.orangeInk, lineHeight: 1, flexShrink: 0 }, detail),
     ]),
@@ -524,7 +549,7 @@ export function scheduleCard(s, now, assets = NO_ASSETS) {
 // ---- 战绩 ----
 
 /** A ring for the win rate (drawn as SVG; the number is laid over it). */
-function ring(share) {
+export function ring(share) {
   const r = 52;
   const len = 2 * Math.PI * r;
   const on = Math.max(0, Math.min(1, share)) * len;
@@ -558,7 +583,7 @@ function sparkline(history, width = 600, height = 70) {
 }
 
 /** The ladder page's stat card: icon tile, label, value. */
-const statTile = (iconName, label, value, { tone = 'brand', color = C.ink, sub = '' } = {}) => card({ alignItems: 'center', gap: 12, flexGrow: 1, flexBasis: 0, padding: '14px 14px' }, [
+export const statTile = (iconName, label, value, { tone = 'brand', color = C.ink, sub = '' } = {}) => card({ alignItems: 'center', gap: 12, flexGrow: 1, flexBasis: 0, padding: '14px 14px' }, [
   iconTile(iconName, 40, tone),
   box({ flexDirection: 'column' }, [
     text({ fontSize: 13, color: C.muted }, label),
@@ -670,10 +695,20 @@ export const HELP_GROUPS = [
     ['取消报名 1', '退出第 1 个赛事（报名截止前）'],
     ['签到', '开赛前 30 分钟开放，一次签到所有赛事'],
   ]],
-  ['查询', 'calendar-days', [
+  ['比赛中', 'swords', [
     ['赛程', '我的比赛，以及现在要做的事'],
-    ['战绩', '我的胜负、冠亚军和天梯'],
-    ['战绩 选手名', '查其他选手'],
+    ['报分 2:1', '打完后报比分，自己的比分在前'],
+    ['确认', '对手报的比分没错'],
+    ['有异议', '比分不对，交给管理员处理'],
+  ]],
+  ['战绩和排行', 'trending-up', [
+    ['战绩', '我的胜负、冠亚军和天梯走势'],
+    ['交手 选手名', '我和他的交手记录（交手 A B 查任意两位）'],
+    ['天梯', '天梯排行和我的名次'],
+    ['积分', '本赛季积分榜和我的名次'],
+    ['Top20', '年度 Top20 已揭晓的名单'],
+    ['成就', '我的成就徽章和进度'],
+    ['回顾', '我的赛季回顾图'],
   ]],
   ['账号', 'at-sign', [
     ['绑定 123456', '绑定码在网站右上角铃铛 →「QQ 群提醒」'],
@@ -691,9 +726,17 @@ export function helpCard(now, assets = NO_ASSETS) {
       text({ fontSize: 14, color: C.muted, flexShrink: 1 }, what),
     ])),
   ]));
+  // Names of other players work loosely (case, old names, near misses), and
+  // private chats work too (bound separately).
+  const tips = card({ flexDirection: 'column', gap: 8, padding: '14px 18px', background: '#fffaf5', border: '1px solid #fed7aa' }, [
+    box({ alignItems: 'center', gap: 8 }, [icon('sparkles', 17, C.orangeInk), text({ fontSize: 16, fontWeight: 700 }, '小贴士')]),
+    text({ fontSize: 14, color: C.muted }, '· 选手名不分大小写，改过名的用旧名也能查到；打错指令会提示你是不是想发哪一个。'),
+    text({ fontSize: 14, color: C.muted }, '· 私聊机器人也能用，不会刷屏。私聊要单独绑定：同一个绑定码 10 分钟内可以在群里和私聊各绑定一次。'),
+    text({ fontSize: 14, color: C.muted }, '· 加了选手名的指令（战绩、交手、成就、回顾）可以查任何人，例如「回顾 Vermilion」。'),
+  ]);
   return page({
     iconName: 'circle-question-mark',
     title: '机器人指令',
-    subtitle: `在群里 ${BOT} 后发送；前面加不加 / 都可以`,
-  }, [stepper('第一次参加？', steps, '按顺序来'), ...groups], now, assets);
+    subtitle: `在群里 ${BOT} 后发送，或者私聊；前面加不加 / 都可以`,
+  }, [stepper('第一次参加？', steps, '按顺序来'), ...groups, tips], now, assets);
 }

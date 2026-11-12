@@ -1,27 +1,18 @@
-import { needsAdmin, notifyAdmins } from '../lib/admin-alerts.js';
 import { MatchRepo } from '../repositories/match-repo.js';
 import { getRequesterId, isAdminRequest, requireAdmin, requireMatchPlayerOrAdmin } from '../lib/admin.js';
 import { inTransaction } from '../lib/transaction.js';
-import { canConfirm, canDispute, liveScoreProblem, playerReport, reportToApply, scoreProblem } from '../lib/match-reports.js';
-import { afterResult, applyReport, notifyBanTurn, notifyReportToConfirm, recordScore, recordWalkover } from '../lib/match-flow.js';
+import { liveScoreProblem, scoreProblem } from '../lib/match-reports.js';
+import { afterResult, notifyBanTurn, recordScore, recordWalkover } from '../lib/match-flow.js';
+import {
+  confirmReport, disputeReport, rejectGroupEditDuringPlayoffs as frozenGroup, requireOpenMatch as openMatch, submitReport,
+} from '../lib/player-reports.js';
 import { act, emptyRecord, groupVehicles } from '@potato-cup/shared/banpick.js';
 import { normalizeRules, resolveTemplate } from '@potato-cup/shared/vehicle-pools.js';
 
 export default async function matchesRoutes(fastify) {
   const repo = MatchRepo(fastify.db);
 
-  // Playoff seeding came from the group stage, so its results are frozen
-  // until the playoff is withdrawn.
-  async function rejectGroupEditDuringPlayoffs(match) {
-    if (!['sw', 'gse', 'gwb', 'glb'].includes(match.bracket)) return;
-    const res = await fastify.db.query(
-      'SELECT current_stage FROM axsuck.tournaments WHERE id = $1',
-      [match.tournament_id],
-    );
-    if (res.rows[0]?.current_stage === 'playoff') {
-      throw fastify.httpErrors.badRequest('淘汰赛已开始，修改小组赛结果前请先撤回淘汰赛');
-    }
-  }
+  const rejectGroupEditDuringPlayoffs = (match) => frozenGroup(fastify, match);
 
   async function matchOf(req) {
     const match = await repo.getById(parseInt(req.params.matchId));
@@ -31,37 +22,9 @@ export default async function matchesRoutes(fastify) {
     return match;
   }
 
-  // A player reports on an open match with both players in it.
-  function requireOpenMatch(match) {
-    if (match.status !== 'pending' || !match.player1_id || !match.player2_id) {
-      throw fastify.httpErrors.badRequest('这场比赛现在不能提交结果');
-    }
-  }
-
-  function emitReport(tournamentId, matchId, type) {
-    fastify.tournamentEvents.emit(`update:${tournamentId}`, { type, matchId });
-  }
-
-  // A player's report (lib/match-reports.js): stored for the opponent (or an
-  // admin) to confirm, applied when it matches the opponent's, or disputed.
-  async function playerReports(req, match, report) {
-    const by = getRequesterId(req);
-    const { action, pending } = playerReport(match, by, report);
-    if (action === 'confirm') {
-      const result = await applyReport(fastify.db, req.params.id, match.id, pending);
-      emitReport(req.params.id, match.id, 'match_result_submitted');
-      await afterResult(fastify, req.params.id);
-      return { ...result, report: 'confirmed' };
-    }
-    await fastify.db.query('UPDATE axsuck.matches SET pending_report = $1 WHERE id = $2', [JSON.stringify(pending), match.id]);
-    emitReport(req.params.id, match.id, action === 'dispute' ? 'match_report_disputed' : 'match_report_submitted');
-    if (action === 'store') {
-      notifyReportToConfirm(fastify.db, req.params.id, match, pending, fastify.log).catch(() => {});
-    }
-    // A dispute or a walkover claim waits for an admin: tell them.
-    if (needsAdmin(pending)) notifyAdmins(fastify.db, req.params.id, match, pending, fastify.log).catch(() => {});
-    return { match: await repo.getById(match.id), report: action === 'dispute' ? 'disputed' : 'pending' };
-  }
+  const requireOpenMatch = (match) => openMatch(fastify, match);
+  const emitReport = (tournamentId, matchId, type) => fastify.tournamentEvents.emit(`update:${tournamentId}`, { type, matchId });
+  const playerReports = (req, match, report) => submitReport(fastify, req.params.id, match, getRequesterId(req), report);
 
   // Admins' results take effect at once; players' wait for the opponent.
   fastify.post('/tournaments/:id/matches/:matchId/result', async (req) => {
@@ -191,34 +154,14 @@ export default async function matchesRoutes(fastify) {
   fastify.post('/tournaments/:id/matches/:matchId/report/confirm', async (req) => {
     const match = await matchOf(req);
     await requireMatchPlayerOrAdmin(fastify, req, match);
-    const report = match.pending_report;
-    if (!report || match.status !== 'pending') throw fastify.httpErrors.badRequest('这场比赛没有待确认的结果');
-    const admin = isAdminRequest(req);
-    if (!admin && !canConfirm(match, getRequesterId(req))) {
-      throw fastify.httpErrors.forbidden(report.kind === 'walkover' ? '弃权申报需要管理员确认' : '只有对手可以确认这个比分');
-    }
-    await rejectGroupEditDuringPlayoffs(match);
-    const chosen = reportToApply(report, admin ? req.body?.which : 'report');
-    const result = await applyReport(fastify.db, req.params.id, match.id, chosen);
-    emitReport(req.params.id, match.id, 'match_result_submitted');
-    await afterResult(fastify, req.params.id);
-    return result;
+    return confirmReport(fastify, req.params.id, match, { admin: isAdminRequest(req), by: getRequesterId(req), which: req.body?.which });
   });
 
   // The opponent disputes a pending report: it waits for an admin.
   fastify.post('/tournaments/:id/matches/:matchId/report/dispute', async (req) => {
     const match = await matchOf(req);
     await requireMatchPlayerOrAdmin(fastify, req, match);
-    const report = match.pending_report;
-    if (!report) throw fastify.httpErrors.badRequest('这场比赛没有待确认的结果');
-    if (!isAdminRequest(req) && !canDispute(match, getRequesterId(req))) {
-      throw fastify.httpErrors.forbidden('只有对手可以对这个结果提出异议');
-    }
-    const disputed = { ...report, disputed: true, disputed_by: getRequesterId(req) || 'admin', disputed_at: new Date().toISOString() };
-    await fastify.db.query('UPDATE axsuck.matches SET pending_report = $1 WHERE id = $2', [JSON.stringify(disputed), match.id]);
-    emitReport(req.params.id, match.id, 'match_report_disputed');
-    if (!isAdminRequest(req)) notifyAdmins(fastify.db, req.params.id, match, disputed, fastify.log).catch(() => {});
-    return { match: await repo.getById(match.id) };
+    return disputeReport(fastify, req.params.id, match, { admin: isAdminRequest(req), by: getRequesterId(req) });
   });
 
   // The reporter takes a report back (before it is settled), or an admin drops it.

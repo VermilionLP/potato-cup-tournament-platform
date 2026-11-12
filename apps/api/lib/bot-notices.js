@@ -36,8 +36,8 @@ export function clockOf(parsed) {
 }
 
 export const noticeText = {
-  ready: (event, a, b) => `${tag(event)}比赛就绪：${a} vs ${b}\n请双方准备，房间信息以网站和裁判安排为准。`,
-  confirm: (event, a, s1, s2, b) => `${tag(event)}请确认比分：${a} ${s1} : ${s2} ${b}\n对手已提交，请到网站确认或提出异议；10 分钟内不处理将自动生效。`,
+  ready: (event, a, b) => `${tag(event)}比赛就绪：${a} vs ${b}\n请双方准备，房间信息以网站和裁判安排为准。打完后在群里 @土豆杯机器人 发送「报分 2:1」（自己的比分在前），或到网站填报。`,
+  confirm: (event, a, s1, s2, b) => `${tag(event)}请确认比分：${a} ${s1} : ${s2} ${b}\n对手已提交。在群里 @土豆杯机器人 发送「确认」或「有异议」，也可以到网站处理；10 分钟内不处理将自动生效。`,
   ban: (event, who, before) => `${tag(event)}轮到 ${who} 禁用${before ? `（${before}）` : ''}\n请到网站的 Ban/Pick 里选择要禁用的大组。`,
   result: (event, a, s1, s2, b, winner) => `${tag(event)}赛果：${a} ${s1} : ${s2} ${b}，${winner} 胜出`,
   walkover: (event, winner, loser) => `${tag(event)}赛果：${winner} 不战而胜${loser ? `（${loser} 弃权）` : ''}`,
@@ -109,6 +109,14 @@ export function queueRegistrationOpen(db, event, log = console) {
 // Replies of the bot's registration routes (routes/bot.js).
 export const REGISTER_MESSAGES = {
   notBound: '你还没有绑定选手。请在网站右上角铃铛的「QQ 群提醒」里获取绑定码，然后 @我 发送「绑定 123456」。',
+};
+
+// The official bot's replies about results (routes/bot.js).
+export const RESULT_MESSAGES = {
+  noMatch: '你现在没有可以报分的比赛。',
+  nothingToConfirm: '你现在没有等你确认的比分。',
+  nothingToDispute: '你现在没有可以提出异议的结果。',
+  several: (names) => `你同时有 ${names.length} 场比赛：${names.join('、')}，请到网站操作。`,
 };
 
 /** Unsent notices not older than NOTICE_TTL_MS, oldest first. Drops old rows. */

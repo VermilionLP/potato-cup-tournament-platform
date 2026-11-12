@@ -2551,4 +2551,8 @@ export default {
   "暂停自动": "Pause",
   "在直播电脑上运行 tools/wt-autoscene（填好网站地址、管理员令牌、赛事 ID 和频道），进入战斗和战斗结束时大屏会自动切换。": "Run tools/wt-autoscene on the streaming PC (with the site address, admin token, event ID and channel) and the overlay switches by itself when a battle starts and ends.",
   "放入 OBS 浏览器源即可（放在游戏画面采集上面，OBS 里只用这一个场景，大屏自己带转场），跟随上面「当前显示大屏」的选择。选 Auto 时：直播对局开启了 Ban/Pick 时显示 Ban/Pick 画面，确认结果后展示抽中的载具 20 秒，再切到游戏 HUD（透明底，已保存实时比分时立即切换；运行自动切换脚本时先显示对位预告，进入战斗才切 HUD）；无直播对局时显示场间对阵大屏（深色底）。": "Add it as an OBS browser source (above the game capture; OBS needs this one scene only, the overlay has its own transitions). It follows the scene picked above. On Auto: with Ban/Pick on for the live match it shows Ban/Pick, then the drawn vehicle for 20 s, then the in-game HUD (transparent; at once once a live score is saved; with the auto-scene script running, the matchup card until the battle starts); with no live match, the bracket (dark background).",
+  "绑定后，在群里 @土豆杯机器人（或私聊它）发送「赛程」「报分」「确认」「战绩」等指令，不用打开网站就能查比赛、报比分。": "Once bound, @ the Potato Cup bot in the group (or message it privately) with commands such as schedule, score report, confirm or stats, and check your matches and report scores without opening the site.",
+  "10 分钟内在 QQ 群里 @土豆杯机器人 发送（私聊机器人也要绑定的话，再私聊发一次同样的内容）：": "Within 10 minutes, @ the Potato Cup bot in the QQ group with this (to use the bot in a private chat too, send the same there):",
+  "请填两位不同的选手": "Enter two different players",
+  "没有找到选手「{0}」": "Player “{0}” not found",
 };

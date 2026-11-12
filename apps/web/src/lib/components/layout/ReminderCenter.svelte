@@ -244,10 +244,10 @@
       </div>
       <p class="text-small text-muted-foreground">群里的比赛就绪、确认比分、轮到禁用和开赛提醒会 @ 你个人资料里填写的 QQ 号。</p>
       {#if mine}
-        <p class="mt-1 text-small text-muted-foreground">绑定后，在群里 @土豆杯机器人 发送「赛程」或「战绩」就能查询自己的比赛。</p>
+        <p class="mt-1 text-small text-muted-foreground">绑定后，在群里 @土豆杯机器人（或私聊它）发送「赛程」「报分」「确认」「战绩」等指令，不用打开网站就能查比赛、报比分。</p>
         {#if qqCode}
           <div class="mt-2 rounded-md bg-muted/60 p-2">
-            <p class="text-small text-muted-foreground">10 分钟内在 QQ 群里 @土豆杯机器人 发送：</p>
+            <p class="text-small text-muted-foreground">10 分钟内在 QQ 群里 @土豆杯机器人 发送（私聊机器人也要绑定的话，再私聊发一次同样的内容）：</p>
             <p bind:this={codeEl} class="num mt-0.5 select-all text-lg font-black tracking-wide">绑定 {qqCode.code}</p>
           </div>
         {/if}
