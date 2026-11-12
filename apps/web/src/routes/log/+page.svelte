@@ -3,6 +3,7 @@
   // each row), newest first, by day. ?event=<id> shows one event (the link
   // in its settings dialog). Each row opens to the stored fields.
   import PageHeader from "#lib/components/PageHeader.svelte";
+  import AdminTabs from "#lib/components/layout/AdminTabs.svelte";
   import { onMount } from "svelte";
   import { page } from "$app/state";
   import { goto } from "$app/navigation";
@@ -11,7 +12,7 @@
   import { userState } from "#lib/user.svelte.js";
   import { formatInZone } from "#lib/datetime.js";
   import { describeEntry, groupByDay } from "#lib/admin-log.js";
-  import HistoryIcon from "@lucide/svelte/icons/history";
+  import ShieldIcon from "@lucide/svelte/icons/shield";
 
   let isAdmin = $derived(!!userState.adminToken);
   let eventId = $derived(page.url.searchParams.get("event") || "");
@@ -63,16 +64,19 @@
   });
 </script>
 
-<svelte:head><title>操作记录 · Potato Cup</title></svelte:head>
+<svelte:head><title>操作记录 · 管理 · Potato Cup</title></svelte:head>
 
 <div class="space-y-4">
-  <PageHeader title="操作记录" icon={HistoryIcon} description="管理员做过的修改：比分、弃权、赛事设置、选手和载具池。记录的是当时浏览器登录的选手 ID。">
+  <div class="space-y-3">
+  <PageHeader title="管理" icon={ShieldIcon} description="管理员做过的修改：比分、弃权、赛事设置、选手和载具池。记录的是当时浏览器登录的选手 ID。">
     {#snippet actions()}
       {#if isAdmin}
         <button type="button" onclick={load} class="h-8 rounded-md border border-border px-3 text-xs font-semibold hover:bg-muted cursor-pointer">刷新</button>
       {/if}
     {/snippet}
   </PageHeader>
+  {#if isAdmin}<AdminTabs />{/if}
+  </div>
 
   {#if eventId}
     <div class="flex flex-wrap items-center gap-2 text-xs">

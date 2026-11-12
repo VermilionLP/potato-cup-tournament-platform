@@ -2,12 +2,13 @@
   // Admins: errors visitors' browsers ran into (#lib/error-report.js sends
   // them; the API keeps the newest 500, the same error counted on one row).
   import PageHeader from "#lib/components/PageHeader.svelte";
+  import AdminTabs from "#lib/components/layout/AdminTabs.svelte";
   import { onMount } from "svelte";
   import { toast } from "svelte-sonner";
   import { API } from "#lib/api.js";
   import { userState } from "#lib/user.svelte.js";
   import { formatInZone } from "#lib/datetime.js";
-  import BugIcon from "@lucide/svelte/icons/bug";
+  import ShieldIcon from "@lucide/svelte/icons/shield";
 
   let isAdmin = $derived(!!userState.adminToken);
   let errors = $state([]);
@@ -47,10 +48,11 @@
   });
 </script>
 
-<svelte:head><title>前端报错 · Potato Cup</title></svelte:head>
+<svelte:head><title>前端报错 · 管理 · Potato Cup</title></svelte:head>
 
 <div class="space-y-4">
-  <PageHeader title="前端报错" icon={BugIcon} description="访客浏览器里没处理的错误，同一个错误合并计数，只保留最近 500 条。">
+  <div class="space-y-3">
+  <PageHeader title="管理" icon={ShieldIcon} description="访客浏览器里没处理的错误，同一个错误合并计数，只保留最近 500 条。">
     {#snippet actions()}
     {#if isAdmin}
       <div class="flex gap-2 text-xs">
@@ -66,6 +68,8 @@
     {/if}
     {/snippet}
   </PageHeader>
+  {#if isAdmin}<AdminTabs />{/if}
+  </div>
 
   {#if !isAdmin}
     <p class="py-16 text-center text-sm text-muted-foreground">需要管理员权限，请先点击右上角盾牌图标登录。</p>

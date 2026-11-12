@@ -6,6 +6,8 @@
   // backup-status.js): the newest, whether the daily one runs, a check that
   // a dump reads back, and a backup on demand.
   import PageHeader from "#lib/components/PageHeader.svelte";
+  import AdminTabs from "#lib/components/layout/AdminTabs.svelte";
+  import ShieldIcon from "@lucide/svelte/icons/shield";
   import { toast } from "svelte-sonner";
   import { API } from "#lib/api.js";
   import { userState } from "#lib/user.svelte.js";
@@ -15,7 +17,6 @@
   import { backupAge, formatBytes } from "#lib/backup-view.js";
   import * as Card from "#lib/components/ui/card/index.js";
   import { Button } from "#lib/components/ui/button/index.js";
-  import GaugeIcon from "@lucide/svelte/icons/gauge";
   import TriangleAlertIcon from "@lucide/svelte/icons/triangle-alert";
   import BellRingIcon from "@lucide/svelte/icons/bell-ring";
   import DatabaseIcon from "@lucide/svelte/icons/database";
@@ -105,7 +106,7 @@
   const when = (iso) => (iso ? formatInZone(new Date(iso)) : "");
 </script>
 
-<svelte:head><title>管理面板 · Potato Cup</title></svelte:head>
+<svelte:head><title>待处理与备份 · 管理 · Potato Cup</title></svelte:head>
 
 {#snippet head(Icon, title, hint = "")}
   <div class="flex items-start gap-2.5 border-b border-border px-5 py-3.5">
@@ -118,7 +119,10 @@
 {/snippet}
 
 <div class="space-y-5">
-  <PageHeader title="管理面板" icon={GaugeIcon} description="等待处理的比赛、谁会收到提醒，以及数据库备份。" />
+  <div class="space-y-3">
+    <PageHeader title="管理" icon={ShieldIcon} description="等待处理的比赛、谁会收到提醒，以及数据库备份。" />
+    {#if isAdmin}<AdminTabs />{/if}
+  </div>
 
   {#if !isAdmin}
     <p class="py-16 text-center text-sm text-muted-foreground">需要管理员权限，请先点击右上角盾牌图标登录。</p>

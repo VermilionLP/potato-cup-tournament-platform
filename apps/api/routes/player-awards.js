@@ -1,5 +1,6 @@
 // 本场看点 (lib/event-highlights.js), achievements and season recaps
-// (lib/player-awards.js) and the season's Top 20 (lib/season-top.js).
+// (lib/player-awards.js), the season's Top 20 (lib/season-top.js) and the
+// season at a glance (lib/season-summary.js).
 
 import { LadderRepo } from '../repositories/ladder-repo.js';
 import { PlayerRepo } from '../repositories/player-repo.js';
@@ -12,6 +13,7 @@ import { normalizeSeason } from '../lib/points.js';
 import { requireAdmin, isAdminRequest } from '../lib/admin.js';
 import { currentSeason, seasonBoards } from './points.js';
 import { noticeText } from '../lib/bot-notices.js';
+import { buildSeasonSummary, seasonList } from '../lib/season-summary.js';
 
 const EVENT_COLUMNS = 'id, name, status, format, playoff_format, swiss_rounds, swiss_group_size, advance_per_group, source_title, tier, event_kind, vehicle_pool, game_mode, points_season, scheduled_time, played_at, created_at';
 
@@ -160,5 +162,33 @@ export default async function playerAwardsRoutes(fastify) {
       ON CONFLICT (season) DO UPDATE SET ranking = EXCLUDED.ranking, start_at = EXCLUDED.start_at, updated_at = NOW()
     `, [season, JSON.stringify(ranking), startAt]);
     return { season, ranking, start_at: startAt ? startAt.toISOString() : null };
+  });
+
+  // A season at a glance (the /season page): numbers, champions, leaders,
+  // each points board's top 3 and how far the Top 20 is. No season: the
+  // current one.
+  fastify.get('/season-summary', async (req) => {
+    const season = await seasonOf(req.query?.season);
+    const ctx = await context();
+    const [boards, pointsSeasons, topRow] = await Promise.all([
+      seasonBoards(db, season).catch(() => []),
+      db.query('SELECT DISTINCT points_season AS season FROM axsuck.tournaments WHERE points_season IS NOT NULL').then((r) => r.rows.map((x) => x.season)),
+      db.query('SELECT season, ranking, start_at, announced FROM axsuck.season_top WHERE season = $1', [season]).then((r) => r.rows[0] || null),
+    ]);
+    const top = topRow ? publicView(topRow, Date.now()) : null;
+    const name = (id) => ctx.names.get(id) || { name: id, flag: '' };
+    const first = top?.revealed?.find((r) => r.rank === 1);
+    return {
+      ...buildSeasonSummary(season, ctx),
+      seasons: seasonList(pointsSeasons, ctx.tournaments),
+      boards: (boards || []).map((b) => ({
+        pool: b.pool,
+        events: b.events?.length || 0,
+        top: (b.players || []).slice(0, 3).map((p) => ({ id: p.id || p.player_id, name: p.display_name || name(p.id || p.player_id).name, flag: p.flag || '', total: p.total, rank: p.rank })),
+      })),
+      top: top && top.size
+        ? { size: top.size, revealed: top.revealed.length, started: top.started, done: top.done, next: top.next, first: first ? { id: first.id, ...name(first.id) } : null }
+        : null,
+    };
   });
 }
