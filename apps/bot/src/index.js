@@ -74,20 +74,19 @@ app.command('状态', '检查机器人和网站是否连通')
 
 if (config.botToken) {
   const site = createSite({ siteUrl: config.siteUrl, botToken: config.botToken });
-  if (config.qq) {
-    // Picture replies for 报名 / 赛程 / 战绩; text if the renderer cannot start.
-    let pictures = null;
-    try {
-      pictures = { cards: createRenderer({ siteHost: config.siteHost }), h };
-    } catch (err) {
-      console.warn(`[bot] picture replies are off: ${err?.message || err}`);
-    }
-    registerCommands(app, site, console, pictures);
+  // Picture cards (the official bot's replies, the community bot's results
+  // post); text if the renderer cannot start.
+  let pictures = null;
+  try {
+    pictures = { cards: createRenderer({ siteHost: config.siteHost }), h };
+  } catch (err) {
+    console.warn(`[bot] picture cards are off: ${err?.message || err}`);
   }
+  if (config.qq) registerCommands(app, site, console, pictures);
   if (config.onebot) {
     // The online OneBot bot, or null while NapCat is down or logging in.
     const getBot = () => app.bots.find((b) => b.platform === 'onebot' && b.status === Universal.Status.ONLINE) || null;
-    startNoticeLoop({ site, getBot, groupId: config.onebot.noticeGroup, h });
+    startNoticeLoop({ site, getBot, groupId: config.onebot.noticeGroup, h, cards: pictures?.cards || null });
   }
 } else {
   console.warn('[bot] BOT_TOKEN is not set: group notices and the official bot\'s commands are off (only 状态 works).');

@@ -9,6 +9,7 @@ import { requireAdmin } from '../lib/admin.js';
 import { normalizeLadderLimit } from '../lib/ladder-limit.js';
 import { inTransaction } from '../lib/transaction.js';
 import { afterResult } from '../lib/match-flow.js';
+import { notifyEventFinished } from '../lib/event-final-notice.js';
 import { normalizePointsKind, normalizePointsTable, normalizeSeason } from '../lib/points.js';
 import { endedSeason } from '../lib/points-seasons.js';
 import { groupStageOf } from '../lib/group-stage-view.js';
@@ -253,6 +254,12 @@ export default async function tournamentSettingsRoutes(fastify) {
     }
 
     const updated = await repo.getById(req.params.id);
+    if (status === 'completed' && t.status !== 'completed') {
+      // The QQ group hears the final placings (not awaited: a notice must not hold up the request).
+      Promise.all([repo.getPlayers(req.params.id), repo.getMatches(req.params.id)])
+        .then(([players, matches]) => notifyEventFinished(fastify.db, { event: updated, players, matches }, fastify.log))
+        .catch((err) => fastify.log.error({ err, tournament: req.params.id }, 'final placings notice failed'));
+    }
     
     // Trigger real-time broadcast
     fastify.tournamentEvents.emit(`update:${req.params.id}`, { type: 'status_changed', status });

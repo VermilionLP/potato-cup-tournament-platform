@@ -16,7 +16,8 @@
 // ready; results and announcements last), notices overtaken by events are
 // dropped (the match was played, the score handled, a later ban turn came),
 // and ready / result notices of one event are merged into one message
-// (noticeBatches).
+// (noticeBatches). When an event is marked finished, its final placings
+// (lib/event-final-notice.js).
 
 import { isBotConfigured } from './bot-auth.js';
 import { parseContact } from './contact.js';
@@ -54,6 +55,15 @@ export const noticeText = {
   // Several at once (noticeBatches).
   readyMany: (event, pairs) => `${tag(event)}比赛就绪：\n${pairs.map(([a, b]) => `${a} vs ${b}`).join('\n')}\n请双方准备，房间信息以网站和裁判安排为准。打完后在群里 @土豆杯机器人 发送「报分 2:1」（自己的比分在前），或到网站填报。`,
   resultMany: (event, lines) => `${tag(event)}赛果：\n${lines.join('\n')}`,
+  // podium: [{ from, place, name }] (places 1-3, best first).
+  final: (event, podium) => {
+    const title = (r) => (r.place === '1' ? '冠军' : r.place === '2' ? '亚军' : r.place === '3' ? '季军' : `第 ${r.place} 名`);
+    const lines = [...new Set(podium.map((r) => r.place))].map((place) => {
+      const same = podium.filter((r) => r.place === place);
+      return `${title(same[0])} ${same.map((r) => r.name).join(' / ')}`;
+    });
+    return `${tag(event)}比赛结束！\n${lines.join('\n')}\n恭喜各位！完整排名和积分见网站赛事页。`;
+  },
   open: (event, when, capacity, checkin) => `${tag(event)}开放报名！比赛时间 ${when}，名额 ${capacity} 人${checkin ? '，需要签到' : ''}。\n在群里 @土豆杯机器人 发送「报名」即可报名，也可以到网站报名。`,
   // The season's Top 20, one place a day (lib/season-top.js).
   topReveal: (season, rank, name, line) => `【${season} 年度 Top20】第 ${rank} 名：${name}${line ? `\n${line}` : ''}\n${rank > 1 ? '明天同一时间揭晓下一位。' : '年度 Top20 全部揭晓！'}完整名单在网站「排行 → 年度 Top20」。`,
@@ -133,7 +143,7 @@ export const RESULT_MESSAGES = {
 };
 
 // Which notices go first: someone is waiting on these.
-export const NOTICE_PRIORITY = { admin: 0, confirm: 1, ban: 1, ready: 2, soon: 2, result: 3, open: 4, top: 4 };
+export const NOTICE_PRIORITY = { admin: 0, confirm: 1, ban: 1, ready: 2, soon: 2, result: 3, final: 3, open: 4, top: 4 };
 // Ready / result notices of one event merged into one message, at most this many.
 export const MERGE_MAX = 8;
 
@@ -165,7 +175,9 @@ export function noticeBatches(rows) {
     if (b.rows.length > 1 && b.kind === 'ready') text = noticeText.readyMany(first.data.event, b.rows.map((r) => [r.data.a, r.data.b]));
     if (b.rows.length > 1 && b.kind === 'result') text = noticeText.resultMany(first.data.event, b.rows.map((r) => r.data.line));
     const ids = b.rows.map((r) => Number(r.id));
-    return { id: ids[0], ids, kind: b.kind, tournament_id: b.tournament_id, text, mentions: b.mentions, created_at: first.created_at };
+    // The final placings travel along: the bot draws them as a picture.
+    const data = b.kind === 'final' && first.data ? { data: first.data } : {};
+    return { id: ids[0], ids, kind: b.kind, tournament_id: b.tournament_id, text, mentions: b.mentions, created_at: first.created_at, ...data };
   });
 }
 

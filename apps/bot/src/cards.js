@@ -27,7 +27,7 @@ import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { iconUri } from './icons.js';
-import { achievementsCard, headToHeadCard, ladderCard, pointsCard, recapCard, topCard } from './cards-more.js';
+import { achievementsCard, finalCard, headToHeadCard, ladderCard, pointsCard, recapCard, topCard } from './cards-more.js';
 
 const WIDTH = 720;
 // The site's light theme (apps/web/src/app.css) and tag tones (lib/tags.js).
@@ -176,6 +176,7 @@ export function createRenderer({
     achievements: (data, now) => render(achievementsCard(data, now, assets)),
     headToHead: (h, now) => render(headToHeadCard(h, now, assets)),
     recap: (r, now) => render(recapCard(r, now, assets)),
+    final: (data, now) => render(finalCard(data, now, assets)),
   };
 }
 
