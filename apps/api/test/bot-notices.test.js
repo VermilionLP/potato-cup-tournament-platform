@@ -143,3 +143,31 @@ test('the Top 20 stats line leaves out what is empty', () => {
   assert.equal(noticeText.topStats({ points: { total: 245 }, events: 4, matches: 9, wins: 7, losses: 2, titles: 2 }), '年度积分 245 · 参赛 4 场 · 7 胜 2 负 · 冠军 2 次');
   assert.equal(noticeText.topStats({ points: null, events: 1, matches: 0, titles: 0 }), '参赛 1 场');
 });
+
+test('noticeBatches: ready and result notices of one event become one message', async () => {
+  const { noticeBatches, MERGE_MAX } = await import('../lib/bot-notices.js');
+  const ready = (id, a, b, t = 't1') => ({ id, kind: 'ready', tournament_id: t, text: `${a}-${b}`, mentions: [`q${a}`, `q${b}`], data: { event: 'W', a, b } });
+  const rows = [
+    { id: 1, kind: 'confirm', tournament_id: 't1', text: 'confirm', mentions: ['q9'] },
+    ready(2, 'A', 'B'),
+    ready(3, 'C', 'D'),
+    ready(4, 'E', 'F', 't2'),
+    { id: 5, kind: 'result', tournament_id: 't1', text: 'r1', mentions: [], data: { event: 'W', line: 'A 2 : 0 B，A 胜出' } },
+    { id: 6, kind: 'result', tournament_id: 't1', text: 'r2', mentions: [], data: { event: 'W', line: 'C 2 : 1 D，C 胜出' } },
+    { id: 7, kind: 'ready', tournament_id: 't1', text: 'old row without data', mentions: [] },
+  ];
+  const out = noticeBatches(rows);
+  assert.deepEqual(out.map((b) => b.ids), [[1], [2, 3], [4], [5, 6], [7]]);
+  assert.equal(out[1].text, noticeText.readyMany('W', [['A', 'B'], ['C', 'D']]));
+  assert.match(out[1].text, /比赛就绪：\nA vs B\nC vs D\n请双方准备/);
+  assert.deepEqual(out[1].mentions, ['qA', 'qB', 'qC', 'qD']);
+  assert.equal(out[2].text, 'E-F', 'a single one keeps its own text');
+  assert.equal(out[3].text, '【W】赛果：\nA 2 : 0 B，A 胜出\nC 2 : 1 D，C 胜出');
+  const many = noticeBatches(Array.from({ length: MERGE_MAX + 2 }, (_, i) => ready(i + 1, `P${i}`, `Q${i}`)));
+  assert.deepEqual(many.map((b) => b.ids.length), [MERGE_MAX, 2]);
+});
+
+test('single result texts read as before', () => {
+  assert.equal(noticeText.result('W', 'A', 2, 1, 'B', 'A'), '【W】赛果：A 2 : 1 B，A 胜出');
+  assert.equal(noticeText.walkover('W', 'A', 'B'), '【W】赛果：A 不战而胜（B 弃权）');
+});

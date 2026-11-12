@@ -96,6 +96,7 @@ export const CACHE_NEUTRAL_ROUTES = new Set([
   'POST /client-errors',
   // QQ bots: notices and account bindings never move ratings.
   'POST /bot/notices/:id/sent',
+  'POST /bot/notices/sent',
   'POST /bot/bind',
   'DELETE /bot/bind/:openid',
   'POST /players/:id/qq-bind-code',

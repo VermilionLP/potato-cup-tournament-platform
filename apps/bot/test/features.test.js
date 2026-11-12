@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
-import { deliverOnce, noticeMessage, pauseMs } from '../src/notices.js';
+import { MAX_TRIES, deliverOnce, noticeMessage, pauseMs, withTimeout } from '../src/notices.js';
 import { findPlayer, formatSchedule, formatStats, shortTime } from '../src/format.js';
 import { attemptLimiter } from '../src/commands.js';
 import { readConfig } from '../src/config.js';
@@ -24,9 +24,9 @@ function fakeSite(notices, { failMark = false } = {}) {
   return {
     marked,
     notices: async () => notices,
-    markSent: async (id) => {
+    markSent: async (ids) => {
       if (failMark) throw new Error('site down');
-      marked.push(id);
+      marked.push(...ids);
     },
   };
 }
@@ -39,6 +39,28 @@ test('delivery posts in order, marks each sent, and stops at the first failure',
   assert.equal(posted, 1);
   assert.deepEqual(sent, [['111', 'a']]);
   assert.deepEqual(site.marked, [1], 'the failed one and the rest wait for the next round');
+});
+
+test('a message that keeps failing is given up so the rest go out', async () => {
+  const sent = [];
+  const bot = { sendMessage: async (group, msg) => { if (msg.at(-1) === 'boom') throw new Error('risk control'); sent.push(msg.at(-1)); } };
+  const site = fakeSite([{ id: 2, ids: [2, 5], text: 'boom', mentions: [] }, { id: 3, text: 'c', mentions: [] }]);
+  const failures = new Map();
+  const round = () => deliverOnce({ site, getBot: () => bot, groupId: 1, h, pause: async () => {}, logger: { warn() {} }, failures });
+  for (let i = 1; i < MAX_TRIES; i += 1) assert.equal(await round(), 0);
+  assert.deepEqual(site.marked, []);
+  assert.equal(await round(), 1);
+  assert.deepEqual(sent, ['c']);
+  assert.deepEqual(site.marked, [2, 5, 3], 'the stuck one (both its notices) marked so it is not tried forever');
+  assert.equal(failures.size, 0);
+});
+
+test('a send that never answers times out', async () => {
+  await assert.rejects(withTimeout(new Promise(() => {}), 20, 'no answer'), /no answer/);
+  assert.equal(await withTimeout(Promise.resolve(7), 20), 7);
+  const site = fakeSite([{ id: 1, text: 'a', mentions: [] }]);
+  const stuck = { sendMessage: () => new Promise(() => {}) };
+  assert.equal(await deliverOnce({ site, getBot: () => stuck, groupId: 1, h, pause: async () => {}, logger: { warn() {} }, timeoutMs: 20 }), 0);
 });
 
 test('no online bot: nothing fetched; a failed mark stops the round', async () => {
