@@ -48,5 +48,6 @@
     {onstreamstart}
     {onstreamend}
     {onclearhud}
+    {onopenmatch}
   />
 </div>

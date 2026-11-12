@@ -1,19 +1,17 @@
 {
-  "obs": "ws://127.0.0.1:4455",
-  "obsPassword": "",
-  "obsBattle": "游戏中",
-  "obsEnded": "间歇",
-  "obsHangar": "间歇",
-  "endDelay": 8,
-  "record": "",
-  "dryRun": false,
-
   "site": "",
   "adminToken": "",
   "event": "",
   "channel": 1,
   "askEvent": true,
-  "sceneBattle": "ingame",
-  "sceneEnded": "versus",
-  "sceneHangar": "hybrid"
+  "endDelay": 8,
+  "minBattle": 60,
+  "record": "",
+  "dryRun": false,
+
+  "obs": "",
+  "obsPassword": "",
+  "obsBattle": "",
+  "obsEnded": "",
+  "obsHangar": ""
 }

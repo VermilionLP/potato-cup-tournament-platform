@@ -1,15 +1,18 @@
 #!/usr/bin/env node
-// War Thunder → live scene switcher. Runs on the streaming PC (the one with
-// the spectating game client and OBS): polls the game's local web map API,
-// and when a battle starts / ends / returns to the hangar it switches the
-// event's overlay scene on the site (one live channel) and, optionally, the
-// OBS program scene. Node 22+, no dependencies. See README.md.
+// War Thunder → live overlay. Runs on the streaming PC (the one with the
+// spectating game client and OBS): polls the game's local web map API and
+// reports the game state of one live channel to the site (hangar / battle /
+// ended, every 10 s and on each change). The site's overlay follows it — a
+// battle shows the HUD, its end the bracket — with its own transitions, so
+// OBS needs one scene only. Optionally it also switches OBS scenes. P pauses
+// and resumes (the site's console can too). Node 22+, no dependencies. See
+// README.md.
 
 import { appendFileSync, readFileSync, writeFileSync } from 'node:fs';
 import { createInterface } from 'node:readline/promises';
 import { resolve as resolvePath } from 'node:path';
 import { parseArgs } from 'node:util';
-import { detectState, nextScene, obsAuth, stateTracker } from './detect.mjs';
+import { detectState, nextScene, obsAuth, reportState, stateTracker } from './detect.mjs';
 import { mergeOptions } from './config.mjs';
 
 const { values: cli } = parseArgs({
@@ -22,9 +25,7 @@ const { values: cli } = parseArgs({
     interval: { type: 'string' },
     stable: { type: 'string' },
     'end-delay': { type: 'string' },
-    'scene-battle': { type: 'string' },
-    'scene-ended': { type: 'string' },
-    'scene-hangar': { type: 'string' },
+    'min-battle': { type: 'string' },
     obs: { type: 'string' },
     'obs-battle': { type: 'string' },
     'obs-ended': { type: 'string' },
@@ -40,9 +41,11 @@ if (cli.help) {
   console.log(`用法: node wt-autoscene.mjs --site https://你的网站 --event <赛事ID> [--channel 1]
   或: node wt-autoscene.mjs --config config.json   （一键启动用 start-autoscene.bat）
   管理员令牌放在环境变量 POTATO_ADMIN_TOKEN 或 config.json 的 adminToken
-  --scene-battle/--scene-ended/--scene-hangar  网站大屏场景（auto|intro|ingame|versus|hybrid|banpick，none = 不切；intermission 等同 versus）
-  --end-delay 8        战斗结束后等几秒再切
-  --obs ws://127.0.0.1:4455   同时切 OBS 场景（密码放在环境变量 OBS_PASSWORD 或 config.json 的 obsPassword）
+  把游戏状态（机库 / 战斗中 / 本局结束）报给网站，网站大屏自己切换画面（带转场）
+  --end-delay 8        战斗结束后等几秒再报告（让观众看完结算）
+  --min-battle 60      战斗不满几秒就退出的不算比赛结束（掉线、进错房间）
+  运行中按 P 暂停 / 恢复自动切换（网站控制台也能暂停）
+  --obs ws://127.0.0.1:4455   另外切 OBS 场景（可选；密码放在环境变量 OBS_PASSWORD 或 config.json 的 obsPassword）
   --obs-battle/--obs-ended/--obs-hangar  对应的 OBS 场景名
   --record log.jsonl   记录游戏接口返回的原始数据（用来校准）
   --ask                启动时询问赛事 ID 和频道（回车沿用上次的值）
@@ -150,6 +153,15 @@ async function readGame() {
 
 // ---------------------------------------------------------------- site
 
+let paused = false;
+let reported = null; // the game state last sent (or to send) to the site
+
+// The window title shows what the script is doing.
+function title() {
+  const what = paused ? '已暂停（按 P 恢复）' : { battle: '战斗中', hangar: '机库', ended: '本局结束' }[reported] || '等待游戏';
+  if (process.stdout.isTTY) process.stdout.write(`\x1b]0;自动切换 · ${what}\x07`);
+}
+
 async function siteRequest(path, init = {}) {
   const res = await fetch(`${base}/api${path}`, {
     ...init,
@@ -160,19 +172,42 @@ async function siteRequest(path, init = {}) {
   return res.json();
 }
 
-async function setSiteScene(scene) {
-  if (!siteOn || !scene || scene === 'none') return;
-  if (opt['dry-run']) return log(`[试运行] 网站频道 ${channel} → ${scene}`);
-  // Keep the channel's round / stage: the endpoint replaces the round.
-  const event = await siteRequest(`/tournaments/${encodeURIComponent(opt.event)}`);
-  const current = (event.live_channels || []).find((c) => c.channel === channel) || {};
-  if (current.overlay_scene === scene) return;
-  await siteRequest(`/tournaments/${encodeURIComponent(opt.event)}/overlay-state`, {
+// Tells the site the channel's game state; the answer says whether
+// automation is paused (from the console or P here).
+async function reportGame(state, { quiet = false } = {}) {
+  if (!siteOn || !state) return;
+  if (opt['dry-run']) return quiet || log(`[试运行] 网站频道 ${channel}: ${state}`);
+  const res = await siteRequest(`/tournaments/${encodeURIComponent(opt.event)}/game-state`, {
     method: 'POST',
-    body: JSON.stringify({ channel, overlay_scene: scene, overlay_round: current.overlay_round ?? null }),
+    body: JSON.stringify({ channel, state }),
   });
-  log(`网站频道 ${channel} → ${scene}`);
+  if (!quiet) log(`网站频道 ${channel}: ${{ battle: '战斗中', hangar: '机库', ended: '本局结束' }[state]}`);
+  if (Boolean(res.paused) !== paused) {
+    paused = Boolean(res.paused);
+    log(paused ? '网站控制台暂停了自动切换（按 P 恢复）' : '网站控制台恢复了自动切换');
+    title();
+  }
 }
+
+async function setPaused(next) {
+  paused = next;
+  title();
+  log(paused ? '已暂停自动切换：大屏和 OBS 不再跟随游戏（按 P 恢复）' : '已恢复自动切换');
+  if (siteOn && !opt['dry-run']) {
+    await siteRequest(`/tournaments/${encodeURIComponent(opt.event)}/autoscene`, {
+      method: 'POST',
+      body: JSON.stringify({ channel, paused }),
+    }).catch((e) => log('通知网站暂停状态失败:', e.message));
+  }
+  // Back on: catch OBS up with the game.
+  if (!paused && shownState) setObsScene(obsSceneOf(shownState)).catch(() => {});
+}
+
+// Every 10 s: the site counts the script gone after 75 s without news.
+const HEARTBEAT_MS = 10_000;
+setInterval(() => {
+  if (reported) reportGame(reported, { quiet: true }).catch((e) => log('连接网站失败:', e.message));
+}, HEARTBEAT_MS).unref();
 
 // ---------------------------------------------------------------- OBS
 
@@ -225,7 +260,7 @@ function connectObs() {
 }
 
 async function setObsScene(name) {
-  if (!opt.obs || !name) return;
+  if (!opt.obs || !name || paused) return;
   if (opt['dry-run']) return log(`[试运行] OBS → ${name}`);
   if (!obs) await Promise.race([obsReady, new Promise((r) => setTimeout(r, 2000))]);
   if (!obs) return log('OBS 未连接，跳过切换');
@@ -241,16 +276,20 @@ const NAMES = { offline: '游戏未运行', hangar: '机库', battle: '战斗中
 const track = stateTracker(Number(opt.stable));
 let pending = null;
 
-let shownState = null; // last state whose scenes were applied
+let shownState = null; // last scene whose OBS scene was applied
+let battleStart = null; // when the current battle was first seen
+let battleMs = null; // how long the last battle lasted
 const obsSceneOf = (state) => ({ battle: opt['obs-battle'], ended: opt['obs-ended'], hangar: opt['obs-hangar'] })[state];
 
-async function apply(state) {
-  shownState = state;
-  const site = { battle: opt['scene-battle'], ended: opt['scene-ended'], hangar: opt['scene-hangar'] }[state];
-  const obsScene = obsSceneOf(state);
+async function apply(scene) {
+  shownState = scene;
+  const state = reportState(scene, battleMs, Number(opt['min-battle']) * 1000);
+  if (scene === 'ended' && state === 'hangar') log(`战斗只持续了 ${Math.round(battleMs / 1000)} 秒，不算比赛结束`);
+  reported = state;
+  title();
   await Promise.all([
-    setSiteScene(site).catch((e) => log('网站切换失败:', e.message)),
-    setObsScene(obsScene).catch((e) => log('OBS 切换失败:', e.message)),
+    reportGame(state).catch((e) => log('连接网站失败:', e.message)),
+    setObsScene(obsSceneOf(state === 'hangar' && scene === 'ended' ? 'hangar' : scene)).catch((e) => log('OBS 切换失败:', e.message)),
   ]);
 }
 
@@ -260,14 +299,19 @@ async function tick() {
   const change = track(detectState(await readGame()));
   if (change) {
     log(`状态: ${NAMES[change.from] || '启动'} → ${NAMES[change.to]}`);
+    if (change.to === 'battle' && !battleStart) battleStart = Date.now();
+    if (lastActive === 'battle' && change.to === 'hangar' && battleStart) {
+      battleMs = Date.now() - battleStart;
+      battleStart = null;
+    }
     const next = nextScene(lastActive, change.to);
     if (change.to !== 'offline') lastActive = change.to;
     if (next) {
       clearTimeout(pending);
       pending = null;
       if (next.delayed) {
-        // Let viewers see the result first.
-        log(`比赛结束，${opt['end-delay']} 秒后切换`);
+        // Let viewers see the result first; back in a battle by then = nothing happened.
+        log(`离开战斗，${opt['end-delay']} 秒后报告`);
         pending = setTimeout(() => apply(next.scene), Number(opt['end-delay']) * 1000);
       } else {
         await apply(next.scene);
@@ -277,6 +321,18 @@ async function tick() {
   setTimeout(tick, Number(opt.interval));
 }
 
+// P pauses / resumes; Ctrl+C quits.
+if (process.stdin.isTTY) {
+  process.stdin.setRawMode(true);
+  process.stdin.resume();
+  process.stdin.on('data', (buf) => {
+    const key = buf.toString();
+    if (key === '\u0003') process.exit(0);
+    if (key === 'p' || key === 'P') setPaused(!paused);
+  });
+}
+
 connectObs();
-log(`开始读取 ${opt.game}` + (siteOn ? `，赛事 ${opt.event} 频道 ${channel}` : '') + (opt.record ? `，记录到 ${resolvePath(opt.record)}` : '（未开启记录）') + (opt['dry-run'] ? '（试运行）' : ''));
+title();
+log(`开始读取 ${opt.game}` + (siteOn ? `，赛事 ${opt.event} 频道 ${channel}` : '') + (opt.record ? `，记录到 ${resolvePath(opt.record)}` : '（未开启记录）') + (opt['dry-run'] ? '（试运行）' : '') + '。按 P 暂停 / 恢复，Ctrl+C 退出');
 tick();

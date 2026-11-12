@@ -9,7 +9,9 @@
   //                anyone, on the server; 跳过 BP moves on);
   //   3. prep    — time to start the game (the scene stays), then the
   //                in-game HUD; an admin undoing the Ban / Pick result goes
-  //                back to 2;
+  //                back to 2. With the auto-scene script checking in
+  //                (#lib/game-scene.js) there is no timer: the battle
+  //                starting switches the overlay to the HUD by itself;
   //   4. review  — after the result: the bracket scene, then the next-match
   //                dialog (blocking while the event is in progress and no
   //                match is live on the channel).
@@ -24,6 +26,7 @@
   import NextMatchDialog from "./NextMatchDialog.svelte";
   import StreamChecklistDialog from "./StreamChecklistDialog.svelte";
   import ClockIcon from "@lucide/svelte/icons/clock";
+  import { gameStatus } from "#lib/game-scene.js";
 
   let {
     tournament,
@@ -108,6 +111,24 @@
     });
   });
 
+  // The auto-scene script: while it checks in, the battle starting ends prep
+  // (the overlay follows the game by itself).
+  let gameClock = $state(Date.now());
+  $effect(() => {
+    const timer = setInterval(() => (gameClock = Date.now()), 5000);
+    return () => clearInterval(timer);
+  });
+  let gameLive = $derived(gameStatus(tournament?.game, gameClock).live);
+  $effect(() => {
+    const battle = gameLive && tournament?.game?.state === "battle";
+    untrack(() => {
+      if (battle && stage?.name === "prep") {
+        stopStage();
+        toast.success("已进入战斗，大屏切到游戏内 HUD");
+      }
+    });
+  });
+
   // Stop timers when leaving the page.
   $effect(() => () => stopStage());
 
@@ -180,10 +201,13 @@
     await setScene("banpick");
   }
 
-  // The scene stays (the Ban / Pick result or the VS card) while the game starts.
+  // The scene stays (the Ban / Pick result or the VS card) while the game
+  // starts; with the script running it waits for the battle.
   function startPrep(s) {
-    stage = { ...s, name: "prep", seconds: STAGE_SECONDS };
-    timed(switchToHud);
+    if (timer) clearInterval(timer);
+    timer = null;
+    stage = { ...s, name: "prep", seconds: STAGE_SECONDS, waitGame: gameLive };
+    if (!gameLive) timed(switchToHud);
   }
 
   async function switchToHud() {
@@ -256,7 +280,11 @@
     class="fixed bottom-5 left-1/2 z-[60] flex max-w-[calc(100vw-1.5rem)] -translate-x-1/2 flex-wrap items-center justify-center gap-x-3 gap-y-2 rounded-xl border border-primary/30 bg-card/95 px-4 py-3 shadow-lg backdrop-blur"
   >
     <ClockIcon class="h-4 w-4 shrink-0 text-brand-ink {stage.name === 'banpick' ? 'animate-pulse' : ''}" />
-    {#if stage.name === "banpick"}
+    {#if stage.name === "prep" && stage.waitGame}
+      <span class="text-xs font-bold">{TITLE.prep}</span>
+      <span class="text-xs font-medium">进入战斗时自动切到游戏内 HUD</span>
+      <Button size="sm" class="h-7 cursor-pointer text-xs" onclick={advance}>立即切换</Button>
+    {:else if stage.name === "banpick"}
       <span class="text-xs font-medium">大屏显示 Ban/Pick，等待结果确认…</span>
       <Button size="sm" variant="outline" class="h-7 cursor-pointer text-xs" onclick={() => startPrep(stage)}>跳过 BP</Button>
     {:else}

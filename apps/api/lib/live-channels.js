@@ -14,7 +14,26 @@ export function parseChannel(value) {
 
 /** State of a channel with no stored row. */
 export function emptyChannel(channel) {
-  return { channel, active_match_id: null, overlay_scene: 'auto', overlay_round: null, overlay_stage: null, countdown_end: null };
+  return { channel, active_match_id: null, overlay_scene: 'auto', overlay_round: null, overlay_stage: null, countdown_end: null, overlay_set_at: null, game: null };
+}
+
+// Game states the auto-scene script reports (tools/wt-autoscene).
+export const GAME_STATES = ['hangar', 'battle', 'ended'];
+// The script checks in every 10 s; the server tells pages at most this often
+// that it is still there, and pages count it gone after GAME_STALE_MS.
+export const GAME_HEARTBEAT_MS = 30_000;
+export const GAME_STALE_MS = 75_000;
+
+/** A channel row's game part for pages, or null when no script ever reported. */
+export function gameView(r = {}) {
+  if (!r.game_seen_at && !r.autoscene_paused) return null;
+  return {
+    state: r.game_state ?? null,
+    match_id: r.game_match_id ?? null,
+    changed_at: r.game_changed_at ?? null,
+    seen_at: r.game_seen_at ?? null,
+    paused: Boolean(r.autoscene_paused),
+  };
 }
 
 /**
@@ -32,6 +51,8 @@ export function liveChannelsView(rows = []) {
       overlay_round: r.overlay_round ?? null,
       overlay_stage: r.overlay_stage ?? null,
       countdown_end: r.countdown_end ?? null,
+      overlay_set_at: r.overlay_set_at ?? null,
+      game: r.game !== undefined ? r.game : gameView(r),
     }))
     .sort((a, b) => a.channel - b.channel);
 }

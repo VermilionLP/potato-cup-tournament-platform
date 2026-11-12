@@ -4,9 +4,11 @@
   // answers to the old "intermission"), 1920x1080 scaled to the window.
   // Every scene uses the cyan overlay style, in English, with the shared
   // top bar (OverlayTopBar).
-  // The scene comes from ?scene=, else the dashboard's choice, else the live
-  // match (its Ban / Pick until the result is confirmed and 20 s of the
-  // locked-in reveal, then ingame).
+  // The scene comes from ?scene=, else the game state the auto-scene script
+  // reports (a battle → ingame, its end → hybrid; #lib/game-scene.js), else
+  // the dashboard's choice, else the live match (its Ban / Pick until the
+  // result is confirmed and 20 s of the locked-in reveal, then ingame — or,
+  // with the script running, the versus card until the battle starts).
   // A scene change plays a short stinger (SceneStinger; ?stinger=false
   // turns it off).
   // ?channel=N follows one live channel (its live match and scene), so
@@ -30,6 +32,7 @@
   import SceneStinger, { STINGER_COVER_MS } from "#lib/components/overlay/SceneStinger.svelte";
   import MatchupScene from "#lib/components/overlay/MatchupScene.svelte";
   import { liveSync } from "#lib/live-sync.js";
+  import { gameStatus, overlayScene } from "#lib/game-scene.js";
 
   let tid = $derived(page.params.id);
   let sceneParam = $derived(page.url.searchParams.get("scene") || "auto"); // auto, intro, ingame, versus (intermission), hybrid, banpick
@@ -129,14 +132,27 @@
     },
   });
 
-  let currentScene = $derived.by(() => {
-    if (sceneParam && sceneParam !== "auto") return sceneParam;
-    // The countdown ran out: the match is on.
-    if (countdown?.over) return "ingame";
-    if (tournament?.overlay_scene && tournament.overlay_scene !== "auto") return tournament.overlay_scene;
-    if (activeMatch && (bpPending(activeMatch) || revealHold)) return "banpick";
-    return activeMatch ? "ingame" : "hybrid";
+  // Whether the auto-scene script is checking in (re-checked every 5 s).
+  let gameClock = $state(Date.now());
+  $effect(() => {
+    const timer = setInterval(() => (gameClock = Date.now()), 5000);
+    return () => clearInterval(timer);
   });
+  let gameLive = $derived(gameStatus(tournament?.game, gameClock + clockOffset).live);
+
+  let currentScene = $derived(
+    overlayScene({
+      param: sceneParam,
+      countdownOver: Boolean(countdown?.over),
+      chosen: tournament?.overlay_scene,
+      game: tournament?.game,
+      live: gameLive,
+      activeMatchId: activeMatch?.id ?? null,
+      overlaySetAt: tournament?.overlay_set_at,
+      bp: Boolean(activeMatch && (bpPending(activeMatch) || revealHold)),
+      decided: Boolean(activeMatch && isDecided(activeMatch)),
+    }),
+  );
   // The live match still needs its Ban / Pick: the event has one (and a
   // vehicle pool), the match is not played yet (no live score) and its
   // result is not confirmed.
