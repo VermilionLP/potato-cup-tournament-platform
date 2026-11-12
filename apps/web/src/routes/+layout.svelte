@@ -13,6 +13,7 @@
   import { contactIsEmpty, parseContact } from "#lib/contact.js";
   import { ensurePlayerKey, notifyKeyConflict } from "#lib/player-session.js";
   import SiteNav from "#lib/components/layout/SiteNav.svelte";
+  import SiteSearch from "#lib/components/layout/SiteSearch.svelte";
   import ReminderCenter from "#lib/components/layout/ReminderCenter.svelte";
   import AttentionBanner from "#lib/components/layout/AttentionBanner.svelte";
   import { reminders } from "#lib/reminders.svelte.js";
@@ -114,6 +115,7 @@
 
         <!-- Right: Notifications + Dark mode + Profile -->
         <div class="flex items-center gap-2">
+          <SiteSearch />
           <ReminderCenter />
 
           <!-- Language toggle: 中文 / English -->

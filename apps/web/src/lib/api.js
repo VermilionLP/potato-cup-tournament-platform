@@ -161,6 +161,8 @@ export const API = {
   getAchievements: (id) => request(`/players/${enc(id)}/achievements`),
   getSeasonRecap: (id, season = '') => request(`/players/${enc(id)}/season-recap${season ? `?season=${enc(season)}` : ''}`),
   // The season's Top 20, revealed a place a day (admins also get the full list to edit).
+  // A season at a glance (no season: the current one).
+  getSeasonSummary: (season = '') => request(`/season-summary${season ? `?season=${enc(season)}` : ''}`),
   getSeasonTop: (season) => request(`/seasons/${enc(season)}/top`),
   saveSeasonTop: (season, data) => request(`/seasons/${enc(season)}/top`, { method: 'PUT', body: JSON.stringify(data) }),
   getPlayTimes: () => request('/stats/play-times'),

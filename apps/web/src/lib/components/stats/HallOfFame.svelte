@@ -106,7 +106,7 @@
         <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           {#each seasonLeaders as s (s.season)}
             <div class="rounded-xl border border-border bg-card p-4 shadow-sm">
-              <div class="mb-2 text-sm font-bold">{s.season} 赛季</div>
+              <a href="/season/{encodeURIComponent(s.season)}" class="mb-2 flex items-center justify-between text-sm font-bold hover:text-brand-ink">{s.season} 赛季<span class="text-small font-semibold text-muted-foreground">赛季总览 →</span></a>
               {#each s.leaders as l (l.pool)}
                 <a href="/player/{encodeURIComponent(l.top.id)}" class="flex items-center gap-2 rounded-md px-1 py-1.5 text-sm hover:bg-muted/50">
                   <span class="{TAG_BASE} {POOL_TAG[l.pool] || TAG_TONE.neutral} w-20 justify-center truncate">{vehiclePoolLabel(l.pool) || l.pool}</span>
