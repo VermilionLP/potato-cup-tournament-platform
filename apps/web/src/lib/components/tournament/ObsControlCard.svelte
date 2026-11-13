@@ -173,6 +173,8 @@
       }
     });
   });
+  // The auto-scene program (tools/wt-autoscene), rebuilt on every change by .github/workflows/autoscene-exe.yml.
+  const AUTOSCENE_DOWNLOAD = "https://github.com/VermilionLP/potato-cup-tournament-platform/releases/download/autoscene/PotatoCup-AutoScene.exe";
 </script>
 
 <Card.Root class="border-border bg-card/40">
@@ -329,7 +331,10 @@
                 </Button>
               </div>
             {:else}
-              <span class="text-small text-muted-foreground leading-normal">在直播电脑上运行 tools/wt-autoscene（填好网站地址、管理员令牌、赛事 ID 和频道），进入战斗和战斗结束时大屏会自动切换。</span>
+              <span class="text-small text-muted-foreground leading-normal">
+                在直播电脑上运行自动切换程序（在它的面板里填好网站地址、管理员令牌、赛事和频道），进入战斗和战斗结束时大屏会自动切换。
+                <a href={AUTOSCENE_DOWNLOAD} target="_blank" rel="noopener noreferrer" class="font-semibold text-brand-ink underline underline-offset-2 hover:no-underline">下载程序（Windows）</a>
+              </span>
             {/if}
           </div>
 

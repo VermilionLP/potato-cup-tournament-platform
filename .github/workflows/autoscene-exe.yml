@@ -1,0 +1,51 @@
+name: Auto-scene program
+
+# Builds tools/wt-autoscene into a Windows program (build-exe.mjs) on every
+# change to it, and publishes it as the "autoscene" release, so the link
+# .../releases/download/autoscene/PotatoCup-AutoScene.exe (the live console
+# links to it) always gives the latest one.
+
+on:
+  push:
+    branches: [main]
+    paths: ['tools/wt-autoscene/**', '.github/workflows/autoscene-exe.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: autoscene-exe
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node --test tools/wt-autoscene/test.mjs
+      - name: Build
+        run: |
+          VERSION="$(TZ=Asia/Tokyo date +%Y.%m.%d)-${GITHUB_SHA::7}"
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          node tools/wt-autoscene/build-exe.mjs --version "$VERSION" --out dist
+          sha256sum dist/PotatoCup-AutoScene.exe | tee dist/SHA256.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PotatoCup-AutoScene-${{ env.VERSION }}
+          path: dist/PotatoCup-AutoScene.exe
+      - name: Publish the "autoscene" release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          NOTES="自动切换直播画面程序 ${VERSION}（${GITHUB_SHA::7}）。双击 PotatoCup-AutoScene.exe 打开面板，用法见 tools/wt-autoscene/README.md。
+          SHA-256：$(cut -d' ' -f1 dist/SHA256.txt)"
+          if gh release view autoscene >/dev/null 2>&1; then
+            gh release upload autoscene dist/PotatoCup-AutoScene.exe --clobber
+            gh release edit autoscene --title "自动切换直播画面 ${VERSION}" --notes "$NOTES"
+          else
+            gh release create autoscene dist/PotatoCup-AutoScene.exe --title "自动切换直播画面 ${VERSION}" --notes "$NOTES" --target "$GITHUB_SHA" --latest=false
+          fi
