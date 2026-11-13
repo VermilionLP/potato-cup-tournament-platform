@@ -83,3 +83,83 @@ test('reportState: a short battle is not the end of a match', () => {
   assert.equal(reportState('ended', 20_000), 'hangar', 'left after 20 s: a disconnect or the wrong room');
   assert.equal(reportState('ended', 20_000, 10_000), 'ended');
 });
+
+import http from 'node:http';
+import { applyChanges, panelEngineConfig, toEngineConfig } from './config.mjs';
+import { configProblems, createEngine } from './engine.mjs';
+
+test('panel config: types are checked, secrets kept apart, record next to config.json', () => {
+  const f = applyChanges({ site: '', channel: 1 }, { site: ' https://x.com/ ', channel: '3', dryRun: 1, nope: 'x', adminToken: ' t ' });
+  assert.deepEqual(f, { site: 'https://x.com', channel: 3, dryRun: true, adminToken: 't' });
+  assert.throws(() => applyChanges({}, { channel: 'abc' }));
+  assert.throws(() => applyChanges({}, { channel: 1.5 }));
+  assert.throws(() => applyChanges({}, { site: 5 }));
+  const cfg = panelEngineConfig({ site: 'https://x.com', event: 'e', adminToken: 't', record: 'wt-log.jsonl', endDelay: 5 }, '/apps');
+  assert.equal(cfg.token, 't');
+  assert.equal(cfg.endDelay, 5);
+  assert.equal(cfg.record, '/apps/wt-log.jsonl');
+  assert.deepEqual(configProblems(cfg), []);
+});
+
+test('config problems are said in words', () => {
+  const base = toEngineConfig({ channel: '1', game: 'http://127.0.0.1:8111', interval: '1000', stable: '2', 'end-delay': '8', 'min-battle': '60' });
+  assert.match(configProblems(base).join(), /至少需要网站地址/);
+  assert.match(configProblems({ ...base, site: 'https://x', event: 'e' }).join(), /缺少管理员令牌/);
+  assert.deepEqual(configProblems({ ...base, site: 'https://x', event: 'e', dryRun: true }), []);
+  assert.match(configProblems({ ...base, site: 'x.com', event: 'e', token: 't' }).join(), /https/);
+  assert.match(configProblems({ ...base, obs: 'http://x' }).join(), /ws:\/\//);
+  assert.match(configProblems({ ...base, obs: 'ws://x', channel: 12 }).join(), /1-9/);
+});
+
+test('engine: hangar, battle, back to hangar reports hangar → battle → ended', async () => {
+  let gameState = 'hangar';
+  const reports = [];
+  const game = http.createServer((req, res) => {
+    res.setHeader('content-type', 'application/json');
+    if (req.url === '/map_info.json') return res.end(JSON.stringify({ valid: gameState === 'battle' }));
+    return res.end(JSON.stringify({ status: 'running' }));
+  });
+  const site = http.createServer(async (req, res) => {
+    let body = '';
+    for await (const c of req) body += c;
+    if (req.headers['x-admin-token'] !== 'tok') {
+      res.statusCode = 401;
+      return res.end('{}');
+    }
+    reports.push([req.url, JSON.parse(body)]);
+    res.end(JSON.stringify({ paused: false }));
+  });
+  await Promise.all([game, site].map((s) => new Promise((r) => s.listen(0, '127.0.0.1', r))));
+  const statuses = [];
+  const engine = createEngine({ onChange: (s) => statuses.push(s) });
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  try {
+    engine.start({
+      ...toEngineConfig({}),
+      site: `http://127.0.0.1:${site.address().port}`, token: 'tok', event: 'w1', channel: 2,
+      game: `http://127.0.0.1:${game.address().port}`, interval: 200, stable: 1, endDelay: 1, minBattle: 0,
+    });
+    await wait(600);
+    gameState = 'battle';
+    await wait(600);
+    gameState = 'hangar';
+    await wait(400);
+    assert.ok(engine.status().endAt, 'the end waits for the end delay');
+    await wait(1100);
+    const states = reports.filter(([u]) => u.endsWith('/game-state')).map(([, b]) => b.state);
+    assert.deepEqual([...new Set(states)], ['hangar', 'battle', 'ended']);
+    assert.equal(reports[0][0], '/api/tournaments/w1/game-state');
+    assert.equal(reports[0][1].channel, 2);
+    await engine.setPaused(true);
+    assert.deepEqual(reports.at(-1), ['/api/tournaments/w1/autoscene', { channel: 2, paused: true }]);
+    assert.equal(engine.status().paused, true);
+    assert.equal(engine.status().site.ok, true);
+    engine.stop();
+    assert.equal(engine.status().running, false);
+    assert.ok(statuses.length > 3);
+  } finally {
+    engine.stop();
+    game.close();
+    site.close();
+  }
+});
