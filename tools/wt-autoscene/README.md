@@ -15,11 +15,12 @@
 
 ## 下载和使用（推荐）
 
-下载 [PotatoCup-AutoScene.exe](https://github.com/VermilionLP/potato-cup-tournament-platform/releases/download/autoscene/PotatoCup-AutoScene.exe)（网站直播控制台里也有下载链接），放进一个单独的文件夹，双击运行。不用安装 Node.js。
+下载 [PotatoCup-AutoScene.exe](https://github.com/VermilionLP/potato-cup-tournament-platform/releases/download/autoscene/PotatoCup-AutoScene.exe)（网站直播控制台里也有下载链接），双击运行。不用安装 Node.js。
 
-- 双击后会打开一个黑色窗口（程序本体，关掉它程序就退出）和一个面板窗口。面板关掉不影响运行，再双击程序就会重新打开面板。
+- 双击后只打开面板窗口（用 Edge 或 Chrome 的应用窗口显示，没有黑色命令行窗口）。**面板窗口就是程序本身：关掉它，程序在 15 秒后退出**（正在自动切换时会先提示）。再双击程序就重新打开。
+- 第一次运行时会在程序旁边创建 `PotatoCup-AutoScene` 文件夹，设置 `config.json`、日志 `panel.log` 和校准记录都放在里面（面板「高级」页可以打开这个文件夹）。如果程序本身就放在叫 `PotatoCup-AutoScene` 的文件夹里，就直接用那个文件夹。旧版本放在程序旁边的 `config.json` 会自动搬进去。
 - 第一次运行时 Windows 可能提示"已保护你的电脑"（程序没有付费签名）：点「更多信息」→「仍要运行」。
-- 设置保存在程序旁边的 `config.json`，和命令行版通用。
+- 启动失败（比如端口被占用）会弹出提示框。
 
 面板里：
 
@@ -80,7 +81,7 @@ node wt-autoscene.mjs --record wt-log.jsonl
 node tools/wt-autoscene/build-exe.mjs --version 2026.11.13
 ```
 
-用 esbuild 把 `panel.mjs`（连同 `engine.mjs`、`config.mjs`、`detect.mjs` 和 `panel.html`）打成一个文件，再用 pkg 和 Node.js 22 打包成 `dist/PotatoCup-AutoScene.exe`（Linux 上也能打 Windows 版；构建工具第一次会装到 `.build-tools/`）。合并到 main 后 `.github/workflows/autoscene-exe.yml` 会自动打包并更新 `autoscene` 这个 release，下载链接不变。
+用 esbuild 把 `panel.mjs`（连同 `engine.mjs`、`config.mjs`、`detect.mjs` 和 `panel.html`）打成一个文件，再用 pkg 和 Node.js 22 打包成 `dist/PotatoCup-AutoScene.exe`，并把它标成窗口程序（PE 头的 Subsystem 改为 GUI，所以没有命令行窗口）（Linux 上也能打 Windows 版；构建工具第一次会装到 `.build-tools/`）。合并到 main 后 `.github/workflows/autoscene-exe.yml` 会自动打包并更新 `autoscene` 这个 release，下载链接不变。
 
 ## 说明
 

@@ -2,24 +2,29 @@
 // The control panel of wt-autoscene (what the .exe runs, see build-exe.mjs):
 // a small web server on 127.0.0.1 that serves panel.html and drives the
 // engine (engine.mjs), opened as an app window of Edge or Chrome (any
-// browser if neither is found). Settings live in config.json next to the
-// .exe (the same file the command line reads). Starting it again while it
-// runs only opens the window again.
+// browser if neither is found). The .exe is a windowed program (no console,
+// build-exe.mjs): the panel is its window, and closing it quits the program
+// (after QUIT_AFTER_MS without a panel, so a reload is not a close).
+// Settings (config.json, the same file the command line reads), the log
+// (panel.log) and recordings live in a PotatoCup-AutoScene folder next to the
+// .exe, made on the first run (the .exe's own folder if it already has that
+// name). Starting it again while it runs only opens the window again.
 //
 // Only this computer can reach the panel, and every request needs the key
 // in the window's address (a page on another site cannot drive it), JSON
 // bodies (no form posts) and the 127.0.0.1 Host (no DNS rebinding).
 //
 //   node panel.mjs [--dir <folder for config.json>] [--port 47115] [--no-open]
+//   (--no-open: no window, and it keeps running without one)
 
 import http from 'node:http';
 import { randomBytes } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { appendFileSync, existsSync, mkdirSync, readFileSync, renameSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
-import { DEFAULT_FILE, applyChanges, panelEngineConfig } from './config.mjs';
+import { DEFAULT_FILE, applyChanges, dataDirFor, panelEngineConfig, stamp } from './config.mjs';
 import { configProblems, createEngine, obsSceneList, probeGame } from './engine.mjs';
 
 /* global __PANEL_HTML__, __VERSION__ */
@@ -27,6 +32,9 @@ export const VERSION = typeof __VERSION__ !== 'undefined' ? __VERSION__ : 'dev';
 export const APP = 'potato-cup-autoscene';
 export const PANEL_PORT = 47115;
 const LOG_KEEP = 500;
+const QUIT_AFTER_MS = 15_000; // no panel window this long: it was closed
+const FIRST_WINDOW_MS = 120_000; // a window that never came: give up
+const LOG_FILE_MAX = 1_000_000;
 
 const { values: args } = parseArgs({
   options: {
@@ -37,8 +45,47 @@ const { values: args } = parseArgs({
 });
 
 const here = process.pkg ? dirname(process.execPath) : import.meta.url ? dirname(fileURLToPath(import.meta.url)) : process.cwd();
-const appDir = args.dir || here;
+const appDir = args.dir || (process.pkg ? dataDirFor(here) : here);
 const configPath = join(appDir, 'config.json');
+// The windowed .exe has no console: the log goes to panel.log instead.
+const windowed = Boolean(process.pkg) && process.platform === 'win32';
+const logPath = join(appDir, 'panel.log');
+const quitWithWindow = !args['no-open'];
+
+mkdirSync(appDir, { recursive: true });
+// An older version kept config.json (and its recording) beside the .exe.
+if (process.pkg && appDir !== here) {
+  for (const name of ['config.json', 'wt-log.jsonl']) {
+    const old = join(here, name);
+    try {
+      if (!existsSync(old) || existsSync(join(appDir, name))) continue;
+      if (name === 'config.json' && !('site' in JSON.parse(readFileSync(old, 'utf8')))) continue; // someone else's
+      renameSync(old, join(appDir, name));
+    } catch {
+      // leave it
+    }
+  }
+}
+if (windowed) {
+  try {
+    if (statSync(logPath).size > LOG_FILE_MAX) writeFileSync(logPath, '');
+  } catch {
+    // no log yet
+  }
+}
+
+/** A line for whoever is watching: the console, or panel.log for the .exe. */
+function out(line) {
+  if (!windowed) {
+    console.log(line);
+    return;
+  }
+  try {
+    appendFileSync(logPath, `${stamp(new Date())} ${line}\n`);
+  } catch {
+    // nowhere to write
+  }
+}
 const PAGE = typeof __PANEL_HTML__ !== 'undefined' ? __PANEL_HTML__ : readFileSync(join(here, 'panel.html'), 'utf8');
 
 // ------------------------------------------------------------------ config
@@ -83,7 +130,8 @@ function log(msg) {
   const entry = { id: ++logId, at: Date.now(), msg };
   logs.push(entry);
   if (logs.length > LOG_KEEP) logs.shift();
-  console.log(new Date(entry.at).toLocaleTimeString(), msg);
+  if (windowed) out(msg);
+  else console.log(new Date(entry.at).toLocaleTimeString(), msg);
   broadcast('log', entry);
 }
 
@@ -216,10 +264,7 @@ const ROUTES = {
     return { ok: true };
   },
   'POST /api/quit': () => {
-    setTimeout(() => {
-      engine.stop({ quiet: true });
-      process.exit(0);
-    }, 200);
+    setTimeout(() => quit(0), 200);
     return { ok: true };
   },
 };
@@ -240,10 +285,12 @@ function handler(req, res) {
     res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-store', connection: 'keep-alive' });
     res.write(`event: status\ndata: ${JSON.stringify(engine.status())}\n\n`);
     clients.add(res);
+    windowSeen = true;
     const ping = setInterval(() => res.write(': ping\n\n'), 20_000);
     req.on('close', () => {
       clearInterval(ping);
       clients.delete(res);
+      if (!clients.size) noWindowSince = Date.now();
     });
     return undefined;
   }
@@ -261,6 +308,43 @@ function handler(req, res) {
 }
 
 // ------------------------------------------------------------------ window
+
+let windowSeen = false;
+let noWindowSince = Date.now();
+
+function quit(code = 0) {
+  engine.stop({ quiet: true });
+  out('程序退出');
+  setTimeout(() => process.exit(code), 100);
+}
+
+// The panel window is the program: once closed (no panel for a while), quit.
+function watchWindow() {
+  setInterval(() => {
+    if (clients.size) return;
+    const gone = Date.now() - noWindowSince;
+    if (windowSeen ? gone > QUIT_AFTER_MS : gone > FIRST_WINDOW_MS) {
+      log(windowSeen ? '面板窗口已关闭，程序退出' : '面板窗口没有打开，程序退出（再双击程序试试）');
+      quit(0);
+    }
+  }, 2000).unref();
+}
+
+/** A message box (the .exe has no console to print to); the console elsewhere. */
+function alertUser(msg) {
+  if (!windowed) {
+    console.error(msg);
+    return Promise.resolve();
+  }
+  out(msg);
+  const text = msg.replaceAll("'", "''");
+  return new Promise((resolve) => {
+    const ps = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command',
+      `Add-Type -AssemblyName PresentationFramework; [void][System.Windows.MessageBox]::Show('${text}', '土豆杯 · 自动切换直播画面', 'OK', 'Warning')`], { windowsHide: true, stdio: 'ignore' });
+    ps.on('error', resolve);
+    ps.on('exit', resolve);
+  });
+}
 
 function openExternal(target, folder = false) {
   const opts = { detached: true, stdio: 'ignore' };
@@ -318,27 +402,34 @@ async function main() {
   process.title = '土豆杯 · 自动切换直播画面';
   const { other } = await listen();
   if (other) {
-    console.log('程序已经在运行，打开它的面板。');
+    out('程序已经在运行，打开它的面板。');
     openPanel(`http://127.0.0.1:${port}/?k=${other.key}`);
     setTimeout(() => process.exit(0), 500);
-  } else {
-    const url = `http://127.0.0.1:${port}/?k=${key}`;
-    console.log(`土豆杯 · 自动切换直播画面 ${VERSION}`);
-    console.log(`面板：${url}`);
-    console.log(`设置文件：${configPath}`);
-    console.log('关闭本窗口就会退出程序（面板窗口可以随时关掉，双击程序重新打开）。\n');
-    if (file.autoStart) {
-      try {
-        startEngine();
-      } catch (e) {
-        log(`没有自动开始：${e.message}`);
-      }
-    }
-    openPanel(url);
+    return;
   }
+  const url = `http://127.0.0.1:${port}/?k=${key}`;
+  out(`土豆杯 · 自动切换直播画面 ${VERSION}`);
+  out(`面板：${url}`);
+  out(`文件夹：${appDir}`);
+  if (!windowed) out(quitWithWindow ? '关掉面板窗口就会退出程序。\n' : 'Ctrl+C 退出。\n');
+  if (file.autoStart) {
+    try {
+      startEngine();
+    } catch (e) {
+      log(`没有自动开始：${e.message}`);
+    }
+  }
+  openPanel(url);
+  if (quitWithWindow) watchWindow();
 }
 
-main().catch((e) => {
-  console.error(e.message);
-  setTimeout(() => process.exit(1), 10_000);
+main().catch(async (e) => {
+  await alertUser(`程序没能启动：${e.message}`);
+  process.exit(1);
+});
+
+process.on('uncaughtException', async (e) => {
+  out(`出错了：${e.stack || e.message}`);
+  await alertUser(`程序出错退出：${e.message}`);
+  process.exit(1);
 });

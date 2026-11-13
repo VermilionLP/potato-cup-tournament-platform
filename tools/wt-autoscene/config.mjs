@@ -3,7 +3,7 @@
 // obsPassword) are read separately and never come from the command line.
 // Also the panel's (panel.mjs) checks of what it saves to config.json.
 
-import { isAbsolute, join } from 'node:path';
+import { basename, isAbsolute, join } from 'node:path';
 
 export const DEFAULTS = {
   channel: '1',
@@ -112,4 +112,17 @@ export function panelEngineConfig(file, dir) {
   const cfg = toEngineConfig(mergeOptions({}, file), { token: file.adminToken, obsPassword: file.obsPassword });
   if (cfg.record && !isAbsolute(cfg.record)) cfg.record = join(dir, cfg.record);
   return cfg;
+}
+
+export const DATA_FOLDER = 'PotatoCup-AutoScene';
+
+/** Where the .exe keeps its files: a PotatoCup-AutoScene folder beside it, or its own folder if that is one. */
+export function dataDirFor(exeDir) {
+  return basename(exeDir).toLowerCase() === DATA_FOLDER.toLowerCase() ? exeDir : join(exeDir, DATA_FOLDER);
+}
+
+/** 2026-11-13 17:49:52 in local time (for panel.log; no locale data needed). */
+export function stamp(d) {
+  const p = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
 }

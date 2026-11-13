@@ -85,7 +85,7 @@ test('reportState: a short battle is not the end of a match', () => {
 });
 
 import http from 'node:http';
-import { applyChanges, panelEngineConfig, toEngineConfig } from './config.mjs';
+import { applyChanges, dataDirFor, panelEngineConfig, stamp, toEngineConfig } from './config.mjs';
 import { configProblems, createEngine } from './engine.mjs';
 
 test('panel config: types are checked, secrets kept apart, record next to config.json', () => {
@@ -162,4 +162,10 @@ test('engine: hangar, battle, back to hangar reports hangar → battle → ended
     game.close();
     site.close();
   }
+});
+
+test('the .exe keeps its files in a PotatoCup-AutoScene folder', () => {
+  assert.equal(dataDirFor('/Users/a/Downloads'), '/Users/a/Downloads/PotatoCup-AutoScene');
+  assert.equal(dataDirFor('/Users/a/potatocup-autoscene'), '/Users/a/potatocup-autoscene');
+  assert.equal(stamp(new Date(2026, 10, 3, 7, 5, 9)), '2026-11-03 07:05:09');
 });
