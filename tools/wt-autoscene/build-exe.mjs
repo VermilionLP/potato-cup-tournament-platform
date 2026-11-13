@@ -2,8 +2,9 @@
 // Builds the Windows program: panel.mjs (with engine.mjs, config.mjs,
 // detect.mjs and panel.html inlined) bundled by esbuild into one CommonJS
 // file, then packed with Node.js 22 into a single .exe by pkg (no Node.js
-// needed on the streaming PC). Works on Linux and Windows; the build tools
-// are installed into .build-tools/ on first use.
+// needed on the streaming PC), marked as a windowed program so no console
+// window opens (the panel is its window). Works on Linux and Windows; the
+// build tools are installed into .build-tools/ on first use.
 //
 //   node tools/wt-autoscene/build-exe.mjs [--version 2026.11.13] [--out dist]
 //
@@ -11,7 +12,7 @@
 // the result as the "autoscene" release.
 
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { closeSync, existsSync, mkdirSync, openSync, readFileSync, readSync, statSync, writeFileSync, writeSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -71,4 +72,35 @@ await esbuild.build({
 const exe = join(out, EXE_NAME);
 const pkgBin = join(toolsDir, 'node_modules', '@yao-pkg', 'pkg', 'lib-es5', 'bin.js');
 execFileSync(process.execPath, [pkgBin, bundle, '--targets', NODE_TARGET, '--output', exe, '--compress', 'GZip', '--no-bytecode', '--public'], { stdio: 'inherit' });
+setWindowsSubsystem(exe);
 console.log(`built ${exe} (${(statSync(exe).size / 1e6).toFixed(1)} MB), version ${args.version}`);
+
+/**
+ * Marks a PE file as a windowed (GUI) program: the Subsystem field of the
+ * optional header, 3 (console) → 2 (windows). Only those two bytes change;
+ * pkg's payload is found by offsets that stay the same.
+ */
+export function setWindowsSubsystem(path) {
+  const fd = openSync(path, 'r+');
+  try {
+    const read = (pos, len) => {
+      const b = Buffer.alloc(len);
+      readSync(fd, b, 0, len, pos);
+      return b;
+    };
+    const pe = read(0x3c, 4).readUInt32LE(0);
+    if (read(pe, 4).toString('latin1') !== 'PE\0\0') throw new Error('not a PE file');
+    const optional = pe + 24;
+    const magic = read(optional, 2).readUInt16LE(0);
+    if (magic !== 0x20b && magic !== 0x10b) throw new Error(`unknown optional header ${magic.toString(16)}`);
+    const at = optional + 68; // the same place in PE32 and PE32+
+    const now = read(at, 2).readUInt16LE(0);
+    if (now === 2) return;
+    if (now !== 3) throw new Error(`unexpected subsystem ${now}`);
+    const two = Buffer.alloc(2);
+    two.writeUInt16LE(2, 0);
+    writeSync(fd, two, 0, 2, at);
+  } finally {
+    closeSync(fd);
+  }
+}
