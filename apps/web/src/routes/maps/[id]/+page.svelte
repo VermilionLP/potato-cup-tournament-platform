@@ -116,6 +116,12 @@
       </section>
     {/if}
 
+    {#if summary && !lists}
+      <section class="space-y-1">
+        <h2 class="text-sm font-bold">可用载具</h2>
+        <p class="text-sm text-muted-foreground">不限制载具：玩家用自己的载具，按房间设置。</p>
+      </section>
+    {/if}
     {#if lists}
       <section class="space-y-2">
         <h2 class="text-sm font-bold">可用载具</h2>
@@ -142,7 +148,7 @@
     {/if}
 
     {#if isAdmin}
-      <MissionEditor {mission} versions={data.versions} onchange={load} />
+      <MissionEditor {mission} versions={data.versions} previous={data.previous_limit} onchange={load} />
     {/if}
   {/if}
 </div>

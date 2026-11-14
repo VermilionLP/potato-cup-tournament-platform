@@ -9,6 +9,10 @@
 // // or /* */ comments. A mission keeps its settings in
 // mission_settings{ mission{ ... } }; the vehicles both teams may take are in
 // mission{ customRules{ teams{ teamA{ unlimitedUnits{ unit:b=yes } } } } }.
+// Without customRules there is no vehicle limit: players take their own
+// vehicles (the room's rules apply). Turning the limit off removes that
+// block; turning it on puts one back (the old one, or a new "sharedPool"
+// rule like TheArena's missions have).
 
 export const MAX_MISSION_BYTES = 2 * 1024 * 1024;
 
@@ -34,6 +38,7 @@ export const WEATHERS = ['clear', 'good', 'hazy', 'thin_clouds', 'cloudy', 'clou
 export const TEAMS = ['teamA', 'teamB'];
 const UNITS_PATH = (team) => ['mission_settings', 'mission', 'customRules', 'teams', team, 'unlimitedUnits'];
 const MISSION_PATH = ['mission_settings', 'mission'];
+const RULES_PATH = [...MISSION_PATH, 'customRules'];
 export const UNIT_ID = /^[A-Za-z0-9_][A-Za-z0-9_.-]{0,79}$/;
 
 const lineOf = (text, at) => text.slice(0, at).split('\n').length;
@@ -191,7 +196,7 @@ export function missionSummary(text) {
       units[team] = lists[i] ? entriesOf(text, blocks, lists[i]).filter((e) => e.type === 'b' && decode('b', e.raw)).map((e) => e.key) : [];
     });
   }
-  return { name: get('name'), level: get('level'), type: get('type'), unitTypes, fields, units };
+  return { name: get('name'), level: get('level'), type: get('type'), unitTypes, fields, units, vehicleLimit: Boolean(units) };
 }
 
 /** "levels/air_africa_desert.bin" → "air_africa_desert". */
@@ -235,6 +240,7 @@ function setField(text, key, value) {
 }
 
 function setUnits(text, team, units) {
+  if (!units.length) throw new Error('限制载具时至少要有一个载具（不想限制就关掉「限制载具」）');
   const { blocks } = scanBlocks(text);
   const list = findPath(blocks, UNITS_PATH(team));
   if (!list) throw new Error('这个地图没有载具列表（customRules → teams → unlimitedUnits），只能改原文');
@@ -244,6 +250,48 @@ function setUnits(text, team, units) {
   const closeIndent = /^[ \t]*$/.test(text.slice(lineStart, list.close)) ? text.slice(lineStart, list.close) : '  '.repeat(list.depth);
   const body = units.map((u) => `\n${indent}${u}:b=yes`).join('') + `\n${closeIndent}`;
   return text.slice(0, list.open + 1) + body + text.slice(list.close);
+}
+
+/** The customRules block's whole lines (to put back later), or null. */
+export function vehicleLimitBlock(text) {
+  if (missionProblems(text).length) return null;
+  const { blocks } = scanBlocks(text);
+  const rules = findPath(blocks, RULES_PATH);
+  if (!rules) return null;
+  const from = text.lastIndexOf('\n', rules.start) + 1;
+  const eol = text.indexOf('\n', rules.close);
+  const block = text.slice(from, eol < 0 ? text.length : eol + 1);
+  return block.endsWith('\n') ? block : `${block}\n`;
+}
+
+function removeVehicleLimit(text) {
+  const { blocks } = scanBlocks(text);
+  const rules = findPath(blocks, RULES_PATH);
+  if (!rules) return text;
+  const from = text.lastIndexOf('\n', rules.start) + 1;
+  const eol = text.indexOf('\n', rules.close);
+  return text.slice(0, from) + text.slice(eol < 0 ? text.length : eol + 1);
+}
+
+/** A new sharedPool rule (both teams may take `units`), indented like mission{}'s entries. */
+function newVehicleLimit(indent, units) {
+  const i = (n) => indent + '  '.repeat(n);
+  const team = (name) => [`${i(2)}${name}{`, `${i(3)}unlimitedUnits{`, ...units.map((u) => `${i(4)}${u}:b=yes`), `${i(3)}}`, `${i(2)}}`];
+  return [`${i(0)}customRules{`, `${i(1)}name:t="sharedPool"`, `${i(1)}teams{`, ...team('teamA'), ...team('teamB'), `${i(1)}}`, `${i(0)}}`, ''].join('\n');
+}
+
+function addVehicleLimit(text, block, units) {
+  const { blocks } = scanBlocks(text);
+  if (findPath(blocks, RULES_PATH)) return text;
+  const mission = findPath(blocks, MISSION_PATH);
+  if (!block) {
+    if (!units?.length) throw new Error('请填写可用的载具');
+    const indent = entriesOf(text, blocks, mission)[0]?.indent ?? '  '.repeat(mission.depth + 1);
+    block = newVehicleLimit(indent, units);
+  }
+  const eol = text.indexOf('\n', mission.open);
+  if (eol < 0 || eol > mission.close) return `${text.slice(0, mission.open + 1)}\n${block}${text.slice(mission.open + 1)}`;
+  return text.slice(0, eol + 1) + block + text.slice(eol + 1);
 }
 
 /** Vehicle ids from text: one per line or separated by commas / spaces; checked, no repeats. */
@@ -261,13 +309,22 @@ export function parseUnitList(input) {
 }
 
 /**
- * The text with `fields` ({ scoreLimit: 3, ... }) and `units` ({ teamA:
- * [...], teamB: [...] }) changed in place. Throws a message for people.
+ * The text with `fields` ({ scoreLimit: 3, ... }), `units` ({ teamA:
+ * [...], teamB: [...] }) and the vehicle limit (on / off) changed in place.
+ * Throws a message for people.
  */
-export function applyMissionEdits(text, { fields = {}, units = null } = {}) {
+export function applyMissionEdits(text, { fields = {}, units = null, vehicleLimit = undefined, limitBlock = null } = {}) {
   const problems = missionProblems(text);
   if (problems.length) throw new Error(problems[0]);
   let out = text;
+  // vehicleLimit false: remove the customRules block; true: put `limitBlock`
+  // back (an older version's), or a new one with `units` (team A's list).
+  if (vehicleLimit === false) {
+    out = removeVehicleLimit(out);
+    units = null;
+  } else if (vehicleLimit === true && !missionSummary(out).vehicleLimit) {
+    out = addVehicleLimit(out, limitBlock, units ? parseUnitList(units.teamA ?? []) : null);
+  }
   for (const [key, value] of Object.entries(fields || {})) {
     if (value === undefined) continue;
     out = setField(out, key, checkField(key, value));

@@ -53,6 +53,7 @@ export function missionFacts(summary) {
   if (f.weather) out.push(["天气", f.weather]);
   const lists = vehicleLists(summary);
   if (lists) out.push(["可用载具", lists.same ? `${lists.teamA.length} 种` : `${lists.teamA.length} / ${lists.teamB.length} 种`]);
+  else out.push(["可用载具", "不限"]);
   return out;
 }
 

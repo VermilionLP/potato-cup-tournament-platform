@@ -8,7 +8,10 @@
 //   POST /missions                     admin: add (text, or a link to import)
 //   PATCH /missions/:id                admin: name, description, credit, …
 //   PUT /missions/:id/content          admin: new text, or settings / vehicle
-//                                      edits (@potato-cup/shared/mission-blk.js)
+//                                      edits (@potato-cup/shared/mission-blk.js);
+//                                      vehicle_limit false removes the vehicle
+//                                      limit, true puts the newest older
+//                                      version's back (or a new one from units)
 //   POST /missions/:id/revert          admin: a new version with an old text
 //   DELETE /missions/:id               admin
 //   PUT /tournaments/:id/missions      admin: the maps an event uses
@@ -22,7 +25,7 @@
 import { readFile, stat } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
-import { applyMissionEdits, MAX_MISSION_BYTES, missionProblems, missionSummary } from '@potato-cup/shared/mission-blk.js';
+import { applyMissionEdits, MAX_MISSION_BYTES, missionProblems, missionSummary, vehicleLimitBlock } from '@potato-cup/shared/mission-blk.js';
 import { isAdminRequest, requireAdmin } from '../lib/admin.js';
 
 export const MISSION_FILE = /^[a-z0-9][a-z0-9_-]{0,79}\.blk$/i;
@@ -81,6 +84,17 @@ export default async function missionsRoutes(fastify) {
 
   const findMission = async (id) => (await db.query(`SELECT ${COLUMNS} FROM axsuck.missions WHERE id = $1`, [id])).rows[0] || null;
 
+  // The vehicle limit block of the newest version that had one (to turn the
+  // limit back on as it was), or null.
+  async function previousLimitBlock(id) {
+    const rows = (await db.query('SELECT content FROM axsuck.mission_versions WHERE mission_id = $1 ORDER BY version DESC LIMIT 30', [id])).rows;
+    for (const r of rows) {
+      const block = vehicleLimitBlock(r.content);
+      if (block) return block;
+    }
+    return null;
+  }
+
   async function serveFile(req, reply) {
     const { file } = req.params;
     if (!MISSION_FILE.test(file)) throw fastify.httpErrors.notFound('没有这个地图文件');
@@ -136,7 +150,13 @@ export default async function missionsRoutes(fastify) {
       SELECT id, name, status, scheduled_time FROM axsuck.tournaments
       WHERE $1 = ANY(missions) ORDER BY scheduled_time DESC NULLS LAST LIMIT 20
     `, [row.id])).rows;
-    return { mission: shape(row), versions, events };
+    // Admins turning a limit back on see the list it had.
+    let previous = null;
+    if (isAdminRequest(req) && !missionSummary(row.content)?.vehicleLimit) {
+      const block = await previousLimitBlock(row.id);
+      if (block) previous = { units: missionSummary(`mission_settings{\nmission{\n${block}}\n}\n`)?.units || null };
+    }
+    return { mission: shape(row), versions, events, previous_limit: previous };
   });
 
   async function saveVersion(id, content, note, by) {
@@ -228,14 +248,21 @@ export default async function missionsRoutes(fastify) {
       const problems = missionProblems(content);
       if (problems.length) throw fastify.httpErrors.badRequest(`地图文件读不出来：${problems[0]}`);
     } else {
+      const limit = body.vehicle_limit === undefined ? undefined : Boolean(body.vehicle_limit);
+      const limitBlock = limit === true ? await previousLimitBlock(row.id) : null;
       try {
-        content = applyMissionEdits(row.content, { fields: body.fields || {}, units: body.units || null });
+        content = applyMissionEdits(row.content, { fields: body.fields || {}, units: body.units || null, vehicleLimit: limit, limitBlock });
       } catch (e) {
         throw fastify.httpErrors.badRequest(e.message);
       }
     }
     if (content === row.content) return { mission: shape(row), unchanged: true };
-    const saved = await saveVersion(row.id, content, body.note || (typeof body.content === 'string' ? '修改原文' : '修改设置'), editor(req));
+    const note = body.note
+      || (typeof body.content === 'string' ? '修改原文'
+        : body.vehicle_limit === false ? '关闭载具限制'
+          : body.vehicle_limit === true && !missionSummary(row.content)?.vehicleLimit ? '开启载具限制'
+            : body.units ? '修改载具' : '修改设置');
+    const saved = await saveVersion(row.id, content, note, editor(req));
     return { mission: shape(saved) };
   });
 

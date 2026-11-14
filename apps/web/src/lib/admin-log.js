@@ -117,7 +117,7 @@ export function describeEntry(entry) {
     case "pool.delete": return "删除载具池模板";
     case "mission.create": return `添加比赛地图「${d.name || d.id || d.source_url || ""}」`;
     case "mission.update": return d.hidden === true ? `隐藏比赛地图 ${target}` : d.hidden === false && Object.keys(d).length <= 2 ? `显示比赛地图 ${target}` : `修改比赛地图 ${target} 的资料`;
-    case "mission.edit": return d.content_bytes ? `修改比赛地图 ${target} 的原文` : d.units ? `修改比赛地图 ${target} 的载具` : `修改比赛地图 ${target} 的设置`;
+    case "mission.edit": return d.vehicle_limit === false ? `关闭比赛地图 ${target} 的载具限制` : d.content_bytes ? `修改比赛地图 ${target} 的原文` : d.units ? `修改比赛地图 ${target} 的载具` : `修改比赛地图 ${target} 的设置`;
     case "mission.revert": return `把比赛地图 ${target} 恢复到第 ${d.version} 版`;
     case "mission.delete": return `删除比赛地图 ${target}`;
     case "admin.alert_players": return (d.players || []).length ? `设置提醒的管理员：${d.players.join("、")}` : "清空提醒的管理员";
