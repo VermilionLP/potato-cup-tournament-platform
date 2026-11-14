@@ -1,0 +1,79 @@
+selected_tag:t=""
+bin_dump_file:t=""
+
+mission_settings{
+  player{
+    army:i=2
+    wing:t="t1_player01"
+  }
+
+  player_teamB{
+    army:i=2
+    wing:t="t2_player01"
+  }
+
+  mission{
+  customRules{
+    name:t="sharedPool"
+    teams{
+      teamA{
+        unlimitedUnits{
+          f_15e:b=yes
+          su_27sm:b=yes
+          j_10c:b=yes
+        }
+      }
+      teamB{
+        unlimitedUnits{
+          f_15e:b=yes
+          su_27sm:b=yes
+          j_10c:b=yes
+        }
+      }
+    }
+  }
+
+  
+    name:t="JoustDesert_by_Demonuk"
+    level:t="levels/air_africa_desert.bin"
+    type:t="domination"
+    environment:t="Day"
+    weather:t="hazy"
+    chapter:t="duel"
+    locName:t="1v1 Joust by TheArena (Desert)"
+    locDesc:t="Made for https://thearena.dev/"
+    scoreLimit:i=3
+    timeLimit:i=60
+    deathPenaltyMul:r=0
+    isBotsAllowed:b=no
+    respawnTimeMultiplier:r=0
+    optionalTakeOff:b=no
+
+    missionType{
+      _Dom:b=no
+    }
+
+      allowedUnitTypes{
+    isAirplanesAllowed:b=yes
+    isTanksAllowed:b=no
+    isShipsAllowed:b=no
+    isHelicoptersAllowed:b=no
+  }
+
+    tags{}
+  }
+
+  atmosphere{
+    pressure:r=760
+    temperature:r=15
+  }
+}
+
+triggers{
+  isCategory:b=yes
+  is_enabled:b=yes
+  "start"{
+    is_enabled:b=yes
+    comments:t="zone {shrinks}"
+  }
+}

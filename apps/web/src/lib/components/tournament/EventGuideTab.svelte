@@ -1,9 +1,10 @@
 <script>
   // The event page's 说明 tab (#lib/event-guide.js): the organisers' own
   // notes, key facts, the steps from signing up to the end (the current one
-  // marked), then the rules: format, Ban / Pick, score reports, reminders
+  // marked), the event's 比赛地图, then the rules: format, Ban / Pick, score reports, reminders
   // and tools, and common questions.
   import { eventGuide } from "#lib/event-guide.js";
+  import EventMapsCard from "#lib/components/maps/EventMapsCard.svelte";
   import * as Card from "#lib/components/ui/card/index.js";
   import MegaphoneIcon from "@lucide/svelte/icons/megaphone";
   import ListChecksIcon from "@lucide/svelte/icons/list-checks";
@@ -55,6 +56,9 @@
         </div>
       {/each}
     </dl>
+
+    <!-- The maps players make their rooms with (admins choose them). -->
+    <EventMapsCard {tournament} />
 
     <!-- Steps -->
     <Card.Root class="gap-0 py-0">

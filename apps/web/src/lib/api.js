@@ -86,6 +86,23 @@ export const API = {
   updateVehiclePool: (id, changes) => request(`/vehicle-pools/${enc(id)}`, { method: 'PUT', body: JSON.stringify(changes) }),
   deleteVehiclePool: (id) => request(`/vehicle-pools/${enc(id)}`, { method: 'DELETE' }),
 
+  // 比赛地图 (War Thunder mission files, /maps)
+  getMissions: () => request('/missions'),
+  getMission: (id) => request(`/missions/${enc(id)}`),
+  createMission: (body) => request('/missions', { method: 'POST', body: JSON.stringify(body) }),
+  updateMission: (id, changes) => request(`/missions/${enc(id)}`, { method: 'PATCH', body: JSON.stringify(changes) }),
+  editMission: (id, body) => request(`/missions/${enc(id)}/content`, { method: 'PUT', body: JSON.stringify(body) }),
+  revertMission: (id, version) => request(`/missions/${enc(id)}/revert`, { method: 'POST', body: JSON.stringify({ version }) }),
+  deleteMission: (id) => request(`/missions/${enc(id)}`, { method: 'DELETE' }),
+  getMissionText: async (id, version = 0) => {
+    const res = await fetch(`${BASE}/missions/${enc(id)}.blk${version ? `?v=${version}` : ''}`, {
+      headers: typeof window !== 'undefined' && sessionStorage.getItem('suck_admin_token') ? { 'x-admin-token': sessionStorage.getItem('suck_admin_token') } : {},
+    });
+    if (!res.ok) throw new Error('没有这个地图文件');
+    return res.text();
+  },
+  setEventMissions: (id, missions) => request(`/tournaments/${enc(id)}/missions`, { method: 'PUT', body: JSON.stringify({ missions }) }),
+
   // Tournaments
   listTournaments: () => request('/tournaments'),
   getTournament: (id) => request(`/tournaments/${enc(id)}`),

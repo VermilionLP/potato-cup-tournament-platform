@@ -76,6 +76,13 @@ const READ_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 // data. Some run on every page load (touch, push re-subscribe), so letting
 // them drop the cache would make every visit recompute all ratings.
 export const CACHE_NEUTRAL_ROUTES = new Set([
+  // 比赛地图 (routes/missions.js): no results or players.
+  'POST /missions',
+  'PATCH /missions/:id',
+  'PUT /missions/:id/content',
+  'POST /missions/:id/revert',
+  'DELETE /missions/:id',
+  'PUT /tournaments/:id/missions',
   'POST /players/:id/touch',
   'POST /push/subscribe',
   'DELETE /push/unsubscribe',
