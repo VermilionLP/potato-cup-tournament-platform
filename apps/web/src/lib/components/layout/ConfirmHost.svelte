@@ -1,6 +1,8 @@
 <script>
   // Shows askConfirm / askText requests (#lib/confirm.svelte.js) as an
-  // in-page dialog. Mounted once in the root layout.
+  // in-page dialog. Mounted once in the root layout. It is usually asked
+  // from inside another dialog (修正比分 in the score dialog), so it sits a
+  // layer above dialogs (z-[70] over their z-50) whatever the DOM order.
   import { onMount } from "svelte";
   import * as Dialog from "#lib/components/ui/dialog/index.js";
   import { Button } from "#lib/components/ui/button/index.js";
@@ -16,7 +18,7 @@
 </script>
 
 <Dialog.Root open={req.open} onOpenChange={(open) => !open && req.open && cancel()}>
-  <Dialog.Content class="sm:max-w-[440px] bg-card border border-border">
+  <Dialog.Content class="z-[70] sm:max-w-[440px] bg-card border border-border" overlayClass="z-[70]">
     <Dialog.Header>
       <Dialog.Title class="text-sm font-bold">{req.danger ? "请确认" : "确认"}</Dialog.Title>
       <Dialog.Description class="whitespace-pre-line text-xs leading-relaxed text-foreground/90">{req.message}</Dialog.Description>
