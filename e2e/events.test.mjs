@@ -67,6 +67,42 @@ test('an admin reports a score from the bracket', async () => {
   }
 });
 
+test('an admin corrects a recorded score: the confirmation sits above the score dialog', async () => {
+  const players = [];
+  for (let i = 0; i < 4; i += 1) players.push(await makePlayer('fix'));
+  const id = await makeEvent({ players, start: true });
+  const match = (await api('GET', `/tournaments/${id}`)).matches.find((m) => m.player1_id && m.player2_id);
+  await api('POST', `/tournaments/${id}/matches/${match.id}/result`, { score1: 2, score2: 1 });
+  const me = await makePlayer('op');
+  const { browser, page, errors } = await openPage({ admin: true, player: me });
+  try {
+    await page.goto(`${BASE}/tournament/${id}#bracket`);
+    const card = page.getByRole('button').filter({ hasText: match.player1_id }).filter({ hasText: match.player2_id }).first();
+    await card.waitFor({ timeout: T });
+    await card.click();
+    await page.getByText('修正比赛结果').waitFor({ timeout: T });
+    await page.getByRole('button', { name: /^0\s*:\s*2$/ }).first().click();
+    await page.getByRole('button', { name: /提交修正/ }).click();
+    // The confirmation must take the click (it used to open under the score dialog).
+    const ok = page.getByRole('dialog').filter({ hasText: '请确认' }).getByRole('button', { name: '确定', exact: true });
+    await ok.waitFor({ timeout: T });
+    await ok.click({ timeout: 5000 });
+    for (let i = 0; i < 30; i += 1) {
+      const m = (await api('GET', `/tournaments/${id}`)).matches.find((x) => x.id === match.id);
+      if (m.score2 === 2) break;
+      await page.waitForTimeout(200);
+    }
+    const fixed = (await api('GET', `/tournaments/${id}`)).matches.find((x) => x.id === match.id);
+    assert.deepEqual([fixed.score1, fixed.score2, fixed.winner_id], [0, 2, match.player2_id]);
+    assert.deepEqual(errors, [], 'no uncaught errors in the page');
+  } catch (e) {
+    await page.screenshot({ path: 'e2e-correct.png', fullPage: true }).catch(() => {});
+    throw e;
+  } finally {
+    await browser.close();
+  }
+});
+
 test('a player signs up for an event', async () => {
   const player = await makePlayer('reg');
   const id = await makeEvent();
