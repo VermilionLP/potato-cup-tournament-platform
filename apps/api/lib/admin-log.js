@@ -54,6 +54,12 @@ export const ACTIONS = {
   'POST /vehicle-pools': 'pool.create',
   'PUT /vehicle-pools/:id': 'pool.update',
   'DELETE /vehicle-pools/:id': 'pool.delete',
+  'POST /missions': 'mission.create',
+  'PATCH /missions/:id': 'mission.update',
+  'PUT /missions/:id/content': 'mission.edit',
+  'POST /missions/:id/revert': 'mission.revert',
+  'DELETE /missions/:id': 'mission.delete',
+  'PUT /tournaments/:id/missions': 'event.missions',
   'PUT /admin/alert-players': 'admin.alert_players',
   'PUT /seasons/:season/top': 'season.top',
   'POST /admin/backups/run': 'admin.backup',
@@ -77,6 +83,11 @@ export function cleanDetail(value, depth = 0) {
       // Vehicle pool contents are long; their count is enough.
       if (k === 'vehicles' && Array.isArray(v)) {
         out.vehicle_count = v.length;
+        continue;
+      }
+      // A mission file's text (routes/missions.js): its size is enough.
+      if (k === 'content' && typeof v === 'string' && depth === 0) {
+        out.content_bytes = Buffer.byteLength(v);
         continue;
       }
       out[k] = cleanDetail(v, depth + 1);

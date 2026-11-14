@@ -103,6 +103,52 @@ test('an admin corrects a recorded score: the confirmation sits above the score 
   }
 });
 
+test('比赛地图: an admin changes a setting; players copy the http room link from the event', async () => {
+  const blk = [
+    'mission_settings{', '  mission{', '    name:t="E2E"', '    level:t="levels/air_africa_desert.bin"', '    scoreLimit:i=3', '    timeLimit:i=60',
+    '    allowedUnitTypes{', '      isAirplanesAllowed:b=yes', '    }', '  }', '}', '',
+  ].join('\n');
+  const mid = `e2e-map-${Math.random().toString(36).slice(2, 8)}`;
+  await api('POST', '/missions', { id: mid, name: `E2E ${mid}`, content: blk });
+  const players = [];
+  for (let i = 0; i < 2; i += 1) players.push(await makePlayer('map'));
+  const id = await makeEvent({ players });
+  await api('PUT', `/tournaments/${id}/missions`, { missions: [mid] });
+  const me = await makePlayer('op');
+  const { browser, page, errors } = await openPage({ admin: true, player: me });
+  try {
+    await page.goto(`${BASE}/maps/${mid}`);
+    const score = page.locator('#mf-scoreLimit');
+    await score.waitFor({ timeout: T });
+    await score.fill('5');
+    await page.getByRole('button', { name: '保存设置' }).click();
+    for (let i = 0; i < 30; i += 1) {
+      if ((await api('GET', `/missions/${mid}`)).mission.summary.fields.scoreLimit === 5) break;
+      await page.waitForTimeout(200);
+    }
+    const saved = await api('GET', `/missions/${mid}`);
+    assert.equal(saved.mission.summary.fields.scoreLimit, 5);
+    assert.equal(saved.mission.version, 2);
+    const text = await (await fetch(`${BASE}/api/missions/${mid}.blk`)).text();
+    assert.match(text, /scoreLimit:i=5/);
+    // The event's 说明 tab offers the map; the copied link is http:// (the game refuses https).
+    await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
+    await page.goto(`${BASE}/tournament/${id}#guide`);
+    const copy = page.getByRole('button', { name: '复制开房链接' }).first();
+    await copy.waitFor({ timeout: T });
+    await copy.click();
+    const copied = await page.evaluate(() => navigator.clipboard.readText());
+    assert.match(copied, new RegExp(`^http://[^/]+/api/missions/${mid}\\.blk$`));
+    assert.deepEqual(errors, [], 'no uncaught errors in the page');
+  } catch (e) {
+    await page.screenshot({ path: 'e2e-maps.png', fullPage: true }).catch(() => {});
+    throw e;
+  } finally {
+    await browser.close();
+    await api('DELETE', `/missions/${mid}`).catch(() => {});
+  }
+});
+
 test('a player signs up for an event', async () => {
   const player = await makePlayer('reg');
   const id = await makeEvent();

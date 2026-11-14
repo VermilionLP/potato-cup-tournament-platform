@@ -77,6 +77,7 @@ export function describeEntry(entry) {
     case "event.playoffs_withdraw": return "撤回淘汰赛";
     case "event.best_of": return d.best_of ? `${roundKeyLabel(d.key)}设为 BO${d.best_of}` : `取消${roundKeyLabel(d.key)}的局数`;
     case "event.import": return "导入赛事数据";
+    case "event.missions": return (d.missions || []).length ? `设置比赛地图：${d.missions.join("、")}` : "清空比赛地图";
     case "event.wiki": return "保存 Liquipedia 导出设置";
     case "seeds.manual": return "手动调整种子";
     case "seeds.auto": return "按天梯分重排种子";
@@ -114,6 +115,11 @@ export function describeEntry(entry) {
     case "pool.create": return `新建载具池模板「${d.name || ""}」`;
     case "pool.update": return `修改载具池模板「${d.name || target}」`;
     case "pool.delete": return "删除载具池模板";
+    case "mission.create": return `添加比赛地图「${d.name || d.id || d.source_url || ""}」`;
+    case "mission.update": return d.hidden === true ? `隐藏比赛地图 ${target}` : d.hidden === false && Object.keys(d).length <= 2 ? `显示比赛地图 ${target}` : `修改比赛地图 ${target} 的资料`;
+    case "mission.edit": return d.content_bytes ? `修改比赛地图 ${target} 的原文` : d.units ? `修改比赛地图 ${target} 的载具` : `修改比赛地图 ${target} 的设置`;
+    case "mission.revert": return `把比赛地图 ${target} 恢复到第 ${d.version} 版`;
+    case "mission.delete": return `删除比赛地图 ${target}`;
     case "admin.alert_players": return (d.players || []).length ? `设置提醒的管理员：${d.players.join("、")}` : "清空提醒的管理员";
     case "admin.backup": return "手动备份数据库";
     default: return String(entry?.action || "");

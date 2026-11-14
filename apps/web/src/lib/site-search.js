@@ -38,6 +38,7 @@ export const PAGES = [
   { href: "/stats", label: "数据", words: ["数据", "统计", "stats", "statistics"] },
   { href: "/stats#vehicles", label: "载具统计", words: ["载具", "vehicles", "ban", "pick"] },
   { href: "/pools", label: "载具池模板", words: ["载具池", "pools", "templates"] },
+  { href: "/maps", label: "比赛地图", words: ["地图", "maps", "mission", "任务", "开房", "自定义战斗", "custom"] },
 ];
 
 const byScore = (a, b) => a.score - b.score;
