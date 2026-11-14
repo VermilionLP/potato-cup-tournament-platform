@@ -20,7 +20,9 @@
   import RotateCcwIcon from "@lucide/svelte/icons/rotate-ccw";
   import Trash2Icon from "@lucide/svelte/icons/trash-2";
 
-  let { mission, versions = [], onchange } = $props();
+  // previous: { units } of the newest older version with a vehicle limit
+  // (when this one has none), to turn it back on as it was.
+  let { mission, versions = [], previous = null, onchange } = $props();
 
   const TABS = [
     ["settings", "比赛设置", SlidersIcon],
@@ -51,6 +53,7 @@
   let sameUnits = $state(true);
   let unitsA = $state("");
   let unitsB = $state("");
+  let limitOn = $state(false);
   let raw = $state("");
   let rawLoaded = $state(0); // the version the text was loaded at
   let rawNote = $state("");
@@ -62,9 +65,12 @@
     const f = mission.summary?.fields || {};
     fields = Object.fromEntries(FIELDS.map(([k]) => [k, f[k] ?? (FIELDS.find((x) => x[0] === k)[2] === "bool" ? false : "")]));
     const u = mission.summary?.units;
-    unitsA = (u?.teamA || []).join("\n");
-    unitsB = (u?.teamB || []).join("\n");
-    sameUnits = !u || unitsA === unitsB;
+    // No limit now: the form starts from the last list it had.
+    const start = u || previous?.units;
+    unitsA = (start?.teamA || []).join("\n");
+    unitsB = (start?.teamB || []).join("\n");
+    sameUnits = !start || unitsA === unitsB;
+    limitOn = Boolean(u);
     rawLoaded = 0;
     info = { name: mission.name, description: mission.description, credit: mission.credit, source_url: mission.source_url, hidden: mission.hidden, sort_order: mission.sort_order };
   });
@@ -114,7 +120,9 @@
   }
 
   const saveFields = () => run(() => API.editMission(mission.id, { base_version: mission.version, fields: changedFields }), "已保存比赛设置（新版本）");
-  const saveUnits = () => run(() => API.editMission(mission.id, { base_version: mission.version, units: { teamA: unitsA, teamB: sameUnits ? unitsA : unitsB } }), "已保存载具（新版本）");
+  const limitSaved = $derived(Boolean(mission.summary?.vehicleLimit));
+  const saveUnits = () => run(() => API.editMission(mission.id, { base_version: mission.version, vehicle_limit: true, units: { teamA: unitsA, teamB: sameUnits ? unitsA : unitsB } }), limitSaved ? "已保存载具（新版本）" : "已开启载具限制（新版本）");
+  const saveNoLimit = () => run(() => API.editMission(mission.id, { base_version: mission.version, vehicle_limit: false }), "已关闭载具限制（新版本）");
   const saveRaw = () => run(() => API.editMission(mission.id, { base_version: rawLoaded, content: raw, note: rawNote.trim() || "修改原文" }), "已保存原文（新版本）");
   const saveInfo = () => run(() => API.updateMission(mission.id, info), "已保存资料");
 
@@ -184,29 +192,49 @@
         <p class="text-small text-muted-foreground">只改这些设置所在的那几行，文件其余内容保持原样。其他设置请在「原文」里改。</p>
       {/if}
     {:else if tab === "vehicles"}
-      {#if !mission.summary?.units}
-        <p class="text-sm text-muted-foreground">这个地图文件没有载具列表（customRules → teams → unlimitedUnits），可用载具由游戏规则决定。需要时请在任务编辑器里加上再上传。</p>
+      {#if !mission.summary}
+        <p class="text-sm text-loss">文件读不出来，请在「原文」里修改，或者恢复一个旧版本。</p>
       {:else}
-        <label class="flex items-center gap-2 text-sm font-semibold">
-          <input type="checkbox" bind:checked={sameUnits} class="size-4 accent-primary" />两队可用的载具相同
+        <label class="flex cursor-pointer items-start gap-3 rounded-lg border border-border px-3 py-2.5">
+          <input type="checkbox" bind:checked={limitOn} class="mt-0.5 size-4 accent-primary" />
+          <span>
+            <span class="block text-sm font-semibold">限制载具</span>
+            <span class="block text-small text-muted-foreground">开启：只能用下面列出的载具。关闭：玩家用自己的载具，按房间设置。</span>
+          </span>
         </label>
-        <div class="grid gap-3 {sameUnits ? '' : 'sm:grid-cols-2'}">
-          <div class="space-y-1">
-            <label class="text-small font-semibold text-muted-foreground" for="mu-a">{sameUnits ? `两队（${countOf(unitsA)} 种）` : `A 队（${countOf(unitsA)} 种）`}</label>
-            <textarea id="mu-a" class="field min-h-64 w-full py-2 font-mono text-xs" bind:value={unitsA} spellcheck="false"></textarea>
-          </div>
-          {#if !sameUnits}
-            <div class="space-y-1">
-              <label class="text-small font-semibold text-muted-foreground" for="mu-b">B 队（{countOf(unitsB)} 种）</label>
-              <textarea id="mu-b" class="field min-h-64 w-full py-2 font-mono text-xs" bind:value={unitsB} spellcheck="false"></textarea>
-            </div>
+
+        {#if limitOn}
+          {#if !limitSaved}
+            <p class="rounded-lg bg-primary/8 px-3 py-2 text-small text-brand-ink">{previous?.units ? "已填入这张地图上一次限制时的载具列表，可以修改后保存。" : "这张地图以前没有限制过载具，请填写可用的载具。"}</p>
           {/if}
-        </div>
-        <p class="text-small text-muted-foreground">每行一个游戏内载具 ID（例如 f_15e、su_27sm），和 War Thunder wiki 载具页地址里的名字一样。</p>
-        {#if unitsError}<p class="text-small font-semibold text-loss">{unitsError}</p>{/if}
-        <div class="flex justify-end">
-          <Button onclick={saveUnits} disabled={saving || Boolean(unitsError)}>保存载具</Button>
-        </div>
+          <label class="flex items-center gap-2 text-sm font-semibold">
+            <input type="checkbox" bind:checked={sameUnits} class="size-4 accent-primary" />两队可用的载具相同
+          </label>
+          <div class="grid gap-3 {sameUnits ? '' : 'sm:grid-cols-2'}">
+            <div class="space-y-1">
+              <label class="text-small font-semibold text-muted-foreground" for="mu-a">{sameUnits ? `两队（${countOf(unitsA)} 种）` : `A 队（${countOf(unitsA)} 种）`}</label>
+              <textarea id="mu-a" class="field min-h-64 w-full py-2 font-mono text-xs" bind:value={unitsA} spellcheck="false"></textarea>
+            </div>
+            {#if !sameUnits}
+              <div class="space-y-1">
+                <label class="text-small font-semibold text-muted-foreground" for="mu-b">B 队（{countOf(unitsB)} 种）</label>
+                <textarea id="mu-b" class="field min-h-64 w-full py-2 font-mono text-xs" bind:value={unitsB} spellcheck="false"></textarea>
+              </div>
+            {/if}
+          </div>
+          <p class="text-small text-muted-foreground">每行一个游戏内载具 ID（例如 f_15e、su_27sm），和 War Thunder wiki 载具页地址里的名字一样。</p>
+          {#if unitsError}<p class="text-small font-semibold text-loss">{unitsError}</p>{/if}
+          <div class="flex justify-end">
+            <Button onclick={saveUnits} disabled={saving || Boolean(unitsError) || !countOf(unitsA) || (!sameUnits && !countOf(unitsB))}>{limitSaved ? "保存载具" : "开启载具限制"}</Button>
+          </div>
+        {:else if limitSaved}
+          <p class="text-small text-muted-foreground">会从文件里删掉载具限制（customRules）。之后重新开启时，会自动填回现在的列表。</p>
+          <div class="flex justify-end">
+            <Button onclick={saveNoLimit} disabled={saving}>关闭载具限制</Button>
+          </div>
+        {:else}
+          <p class="text-sm text-muted-foreground">现在不限制载具：玩家用自己的载具，按房间设置。</p>
+        {/if}
       {/if}
     {:else if tab === "raw"}
       {#if !rawLoaded}

@@ -63,3 +63,27 @@ test('bad values and broken files are refused in words', () => {
   // Windows line endings.
   assert.equal(missionSummary(joust.replace(/\n/g, '\r\n')).fields.scoreLimit, 3);
 });
+
+test('the vehicle limit turns off (customRules removed) and back on (the old block, or a new one)', async () => {
+  const { vehicleLimitBlock } = await import('@potato-cup/shared/mission-blk.js');
+  const old = vehicleLimitBlock(joust);
+  assert.match(old, /^ {2}customRules\{\n[\s\S]*unlimitedUnits[\s\S]*\n {2}\}\n$/);
+  const off = applyMissionEdits(joust, { vehicleLimit: false });
+  assert.deepEqual(missionProblems(off), []);
+  const s = missionSummary(off);
+  assert.equal(s.vehicleLimit, false);
+  assert.equal(s.units, null);
+  assert.equal(s.fields.scoreLimit, 3, 'the rest stays');
+  assert.equal(off, joust.replace(old, ''), 'only the block goes');
+  // On again with the old block: the file is as before.
+  assert.equal(applyMissionEdits(off, { vehicleLimit: true, limitBlock: old }), joust);
+  // On again with a new list (no old block): a sharedPool rule for both teams.
+  const fresh = applyMissionEdits(off, { vehicleLimit: true, units: { teamA: 'f_15e\nj_10c' } });
+  assert.deepEqual(missionSummary(fresh).units, { teamA: ['f_15e', 'j_10c'], teamB: ['f_15e', 'j_10c'] });
+  assert.match(fresh, / {4}customRules\{\n {6}name:t="sharedPool"\n {6}teams\{\n {8}teamA\{\n {10}unlimitedUnits\{\n {12}f_15e:b=yes/);
+  assert.throws(() => applyMissionEdits(off, { vehicleLimit: true }), /请填写可用的载具/);
+  assert.throws(() => applyMissionEdits(joust, { units: { teamA: [] } }), /至少要有一个载具/);
+  // Already on / already off: nothing changes.
+  assert.equal(applyMissionEdits(joust, { vehicleLimit: true }), joust);
+  assert.equal(applyMissionEdits(off, { vehicleLimit: false }), off);
+});

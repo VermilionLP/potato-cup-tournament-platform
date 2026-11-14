@@ -131,6 +131,25 @@ test('比赛地图: an admin changes a setting; players copy the http room link 
     assert.equal(saved.mission.version, 2);
     const text = await (await fetch(`${BASE}/api/missions/${mid}.blk`)).text();
     assert.match(text, /scoreLimit:i=5/);
+    // The vehicle limit: on with a list, off, and on again with the list filled back in.
+    const missionOf = async () => (await api('GET', `/missions/${mid}`)).mission;
+    const until = async (ok) => {
+      for (let i = 0; i < 30 && !ok(await missionOf()); i += 1) await page.waitForTimeout(200);
+      return missionOf();
+    };
+    await page.getByRole('button', { name: '载具', exact: true }).click();
+    await page.getByText('限制载具', { exact: true }).click();
+    await page.locator('#mu-a').fill('f_15e\nsu_27sm');
+    await page.getByRole('button', { name: '开启载具限制' }).click();
+    let m = await until((x) => x.summary.vehicleLimit);
+    assert.deepEqual(m.summary.units, { teamA: ['f_15e', 'su_27sm'], teamB: ['f_15e', 'su_27sm'] });
+    await page.getByText('限制载具', { exact: true }).click();
+    await page.getByRole('button', { name: '关闭载具限制' }).click();
+    m = await until((x) => !x.summary.vehicleLimit);
+    assert.equal(m.summary.units, null);
+    assert.doesNotMatch(await (await fetch(`${BASE}/api/missions/${mid}.blk`)).text(), /customRules/);
+    await page.getByText('限制载具', { exact: true }).click();
+    assert.equal(await page.locator('#mu-a').inputValue(), 'f_15e\nsu_27sm', 'the last list comes back');
     // The event's 说明 tab offers the map; the copied link is http:// (the game refuses https).
     await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
     await page.goto(`${BASE}/tournament/${id}#guide`);
