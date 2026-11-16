@@ -3,7 +3,12 @@
   // the title (with an optional `badge` snippet next to it), one short line
   // under it (`description`, text or snippet), a folded 「说明」 for longer
   // explanations (`more` snippet) and buttons on the right (`actions`).
-  let { title, icon: Icon = null, description = undefined, badge = null, more = null, actions = null } = $props();
+  // `steady`: pages that are tabs of one section (排行, 地图和载具) keep the
+  // same height whatever their text, so the tab bar under it doesn't move:
+  // the line is kept to two lines on narrow screens (one from lg) and the
+  // 「说明」 row is kept even without one.
+  let { title, icon: Icon = null, description = undefined, badge = null, more = null, actions = null, steady = false } = $props();
+  const lineClass = $derived(steady ? "line-clamp-2 min-h-[2lh] lg:line-clamp-1 lg:min-h-0" : "");
 </script>
 
 <header class="flex flex-wrap items-start justify-between gap-x-4 gap-y-3 border-b border-border/60 pb-4">
@@ -19,9 +24,9 @@
         {@render badge?.()}
       </div>
       {#if typeof description === "function"}
-        <p class="text-xs text-muted-foreground">{@render description()}</p>
+        <p class="text-xs text-muted-foreground {lineClass}">{@render description()}</p>
       {:else if description}
-        <p class="text-xs text-muted-foreground">{description}</p>
+        <p class="text-xs text-muted-foreground {lineClass}" title={steady ? description : undefined}>{description}</p>
       {/if}
       {#if more}
         <details class="group max-w-3xl text-xs text-muted-foreground">
@@ -30,6 +35,8 @@
           </summary>
           <div class="mt-1.5 space-y-1.5 leading-relaxed">{@render more()}</div>
         </details>
+      {:else if steady}
+        <div class="text-xs" aria-hidden="true">&nbsp;</div>
       {/if}
     </div>
   </div>

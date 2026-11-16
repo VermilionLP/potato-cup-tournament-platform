@@ -41,8 +41,10 @@
 
 <svelte:head><title>比赛地图 · Potato Cup</title></svelte:head>
 
-<div class="mx-auto max-w-6xl space-y-5 px-4 py-6">
-  <PageHeader title="比赛地图" icon={MapIcon} description="复制开房链接，在自定义战斗里用 Missions by URL 创建比赛房间。">
+<!-- The same frame as /pools (its tab), so switching tabs moves nothing. -->
+<div class="mx-auto w-full min-w-0 max-w-6xl space-y-4 px-1 sm:px-4 py-2 sm:py-6">
+  <div class="space-y-3">
+  <PageHeader steady title="比赛地图" icon={MapIcon} description="复制开房链接，在自定义战斗里用 Missions by URL 创建比赛房间。">
     {#snippet more()}
       <MissionHowTo class="mt-2" />
     {/snippet}
@@ -51,6 +53,7 @@
     {/snippet}
   </PageHeader>
   <MapsTabs />
+  </div>
 
   {#if loading}
     <PageSkeleton />

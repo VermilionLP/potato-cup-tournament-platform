@@ -29,7 +29,7 @@
 
 <div class="space-y-6">
   <div class="space-y-3">
-    <PageHeader title="排行" icon={SwordsIcon} description="名人堂：生涯榜单、历史纪录、各赛季积分王和历届赛事的领奖台" />
+    <PageHeader steady title="排行" icon={SwordsIcon} description="名人堂：生涯榜单、历史纪录、各赛季积分王和历届赛事的领奖台" />
     <RankingTabs />
   </div>
 

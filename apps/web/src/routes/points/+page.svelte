@@ -100,7 +100,7 @@
      switching between the two tabs doesn't move the page. -->
 <div class="space-y-6">
   <div class="space-y-3">
-  <PageHeader title="排行" icon={SwordsIcon} description="年度积分榜：周赛和大型赛事按最终名次给分，每个赛季按比赛类型分别排名">
+  <PageHeader steady title="排行" icon={SwordsIcon} description="年度积分榜：周赛和大型赛事按最终名次给分，每个赛季按比赛类型分别排名">
     {#snippet more()}
       <p>计入积分榜的周赛和大型赛事按最终名次给分，每个赛季按比赛类型分别排名。冬季总决赛每个类型 16 人：管理员指定的直邀赛事冠军直接晋级（冠军已有资格时顺延给亚军），其余名额按积分排名。积分在赛事设置中定义，赛事结束后计入。</p>
     {/snippet}
