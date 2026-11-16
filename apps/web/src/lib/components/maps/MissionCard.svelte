@@ -49,7 +49,7 @@
         {#each facts as [label, value] (label)}
           <div class="min-w-0">
             <dt class="text-small text-muted-foreground">{label}</dt>
-            <dd class="truncate text-sm font-semibold" data-no-i18n={label === "时段" || label === "天气"}>{value}</dd>
+            <dd class="truncate text-sm font-semibold">{value}</dd>
           </div>
         {/each}
       </dl>

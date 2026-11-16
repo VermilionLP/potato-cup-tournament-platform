@@ -77,7 +77,7 @@
     <div class="flex flex-wrap items-center gap-2">
       <span class="flex size-7 items-center justify-center rounded-lg bg-primary/12 text-brand-ink"><MapIcon class="size-4" /></span>
       <h3 class="text-base font-bold">比赛地图</h3>
-      {#if sourceText}<span class="text-small text-muted-foreground" data-no-i18n={data.source === "pool"}>{sourceText}</span>{/if}
+      {#if sourceText}<span class="text-small text-muted-foreground">{sourceText}</span>{/if}
       <span class="ml-auto flex items-center gap-2">
         <a href="/maps" class="text-small font-semibold text-muted-foreground hover:text-foreground">全部地图</a>
         {#if isAdmin && !editing}

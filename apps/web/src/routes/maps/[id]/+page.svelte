@@ -104,7 +104,7 @@
         {#each missionFacts(summary) as [label, value] (label)}
           <div class="bg-card px-3.5 py-2.5">
             <dt class="text-small font-semibold text-muted-foreground">{label}</dt>
-            <dd class="mt-0.5 truncate text-sm font-bold" data-no-i18n={label === "场景" || label === "时段" || label === "天气"}>{value}</dd>
+            <dd class="mt-0.5 truncate text-sm font-bold" data-no-i18n={label === "场景" ? "" : undefined}>{value}</dd>
           </div>
         {/each}
       </dl>

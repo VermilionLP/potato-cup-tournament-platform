@@ -6,6 +6,26 @@ import { ENVIRONMENTS, levelName, WEATHERS } from "@potato-cup/shared/mission-bl
 
 export { ENVIRONMENTS, WEATHERS };
 
+// The game's names for them (its Chinese menu; the English one comes from
+// the translations). Hazy and Mist are both 薄雾 in the game's Chinese.
+const WEATHER_LABELS = {
+  clear: "晴朗", good: "局部多云", hazy: "薄雾（Hazy）", mist: "薄雾（Mist）", thin_clouds: "薄云", cloudy_windy: "雷暴云",
+  cloudy: "多云", overcast: "阴天", poor: "低云", blind: "浓雾", rain: "大雨", storm: "雷暴",
+};
+const TIME_LABELS = { Dawn: "黎明", Morning: "清晨", Noon: "正午", Day: "昼间", Evening: "傍晚", Dusk: "黄昏", Night: "夜间" };
+
+/** "晴朗" for "clear"; an unknown value as it is. */
+export const weatherLabel = (v) => WEATHER_LABELS[v] || String(v ?? "");
+/** "正午" for "Noon", "7:00" for "7"; an unknown value as it is. */
+export const timeLabel = (v) => TIME_LABELS[v] || (/^\d{1,2}$/.test(String(v)) ? `${v}:00` : String(v ?? ""));
+
+/** Options for a menu: the game's, plus the file's own value when it is not one of them. */
+export function menuOptions(values, label, current) {
+  const out = values.map((value) => ({ value, label: label(value) }));
+  if (current && !values.includes(current)) out.push({ value: current, label: `${current}（文件里的值）` });
+  return out;
+}
+
 /**
  * The link for 自定义战斗 → Missions by URL. The game takes http:// links
  * only (an https:// one is refused), so it is http even on an https site.
@@ -49,8 +69,8 @@ export function missionFacts(summary) {
   if (summary.level) out.push(["场景", levelName(summary.level)]);
   if (f.scoreLimit != null) out.push(["得分上限", String(f.scoreLimit)]);
   if (f.timeLimit != null) out.push(["时限", `${f.timeLimit} 分钟`]);
-  if (f.environment) out.push(["时段", f.environment]);
-  if (f.weather) out.push(["天气", f.weather]);
+  if (f.environment) out.push(["时段", timeLabel(f.environment)]);
+  if (f.weather) out.push(["天气", weatherLabel(f.weather)]);
   const lists = vehicleLists(summary);
   if (lists) out.push(["可用载具", lists.same ? `${lists.teamA.length} 种` : `${lists.teamA.length} / ${lists.teamB.length} 种`]);
   else out.push(["可用载具", "不限"]);
