@@ -90,20 +90,26 @@ test("percentile tiers follow the LotV league distribution", () => {
     counts[player.tier.group] = (counts[player.tier.group] || 0) + 1;
   }
   assert.deepEqual(counts, {
+    grandmaster: 1,
     master: 4,
     diamond: 23,
     platinum: 23,
-    gold: 23,
+    gold: 22, // the leagues share the 99 below the grandmaster: rounding
     silver: 23,
     bronze: 4,
   });
-  assert.equal(hundred[0].tier.key, "master-1");
+  assert.equal(hundred[0].tier.key, "grandmaster");
+  assert.equal(hundred[1].tier.key, "master-1");
   assert.equal(hundred[99].tier.key, "bronze-3");
 
   const small = assignPercentileTiers(
     Array.from({ length: 38 }, (_, i) => ({ id: `p${i}` })),
   );
-  assert.equal(small.some((player) => player.tier.group === "grandmaster"), false);
+  assert.equal(small.some((player) => player.tier.group === "grandmaster"), false, "under 50 players: no grandmaster");
+
+  // Grandmaster is the top 1%: 3 of 300.
+  const big = assignPercentileTiers(Array.from({ length: 300 }, (_, i) => ({ id: `p${i}` })));
+  assert.deepEqual(big.slice(0, 4).map((p) => p.tier.group), ["grandmaster", "grandmaster", "grandmaster", "master"]);
   assert.equal(small[0].tier.group, "master");
   assert.equal(small[small.length - 1].tier.group, "bronze");
 });

@@ -14,8 +14,10 @@ export const ACTIVE_DAYS = 365;
 export const PROVISIONAL_GAMES = 10;
 
 // SC2 LotV league target: Master 4%, Diamond 23%, Platinum 23%,
-// Gold 23%, Silver 23%, Bronze 4%. Grandmaster is a regional top-200 cut,
-// not a percentage; a small local pool has no GM (we only add one at 200+).
+// Gold 23%, Silver 23%, Bronze 4%. Grandmaster is the top 1% of the board,
+// taken before the leagues (rounded: a board of 50+ players has one; a
+// smaller one has none).
+export const GRANDMASTER_PERCENT = 1;
 export const LEAGUE_BANDS = Object.freeze([
   { group: "master", name: "大师", percent: 4 },
   { group: "diamond", name: "钻石", percent: 23 },
@@ -40,18 +42,17 @@ function subTierFor(index, count) {
 
 /**
  * Assign LotV percentile tiers to an already sorted player list.
- * Ranks are 0-based internally; the top 4% is Master, etc.
- * Grandmaster is intentionally absent until the pool reaches 200 players.
+ * Ranks are 0-based internally; the top 1% is Grandmaster, then the
+ * leagues share the rest (4% Master, etc.).
  */
 export function assignPercentileTiers(players = []) {
   const total = players.length;
   const result = players.map((player) => ({ ...player }));
   if (total === 0) return result;
 
-  const hasGm = total >= 200;
-  const base = hasGm ? 1 : 0;
-  if (hasGm) {
-    result[0].tier = { key: "grandmaster", group: "grandmaster", name: "宗师" };
+  const base = Math.round((total * GRANDMASTER_PERCENT) / 100);
+  for (let i = 0; i < base; i += 1) {
+    result[i].tier = { key: "grandmaster", group: "grandmaster", name: "宗师" };
   }
 
   const pool = total - base;

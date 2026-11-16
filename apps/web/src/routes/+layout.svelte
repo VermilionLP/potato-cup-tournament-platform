@@ -113,7 +113,7 @@
       class="dark sticky top-0 z-40 w-full border-b border-white/5 bg-header text-foreground"
     >
       <div
-        class="max-w-7xl mx-auto px-3 sm:px-4 h-14 flex items-center justify-between gap-2 sm:gap-6"
+        class="max-w-7xl mx-auto px-3 sm:px-4 h-14 flex items-center justify-between gap-2 sm:gap-3 2xl:gap-6"
       >
         <!-- Left: Logo (the POTATO CUP wordmark; the icon on phones) -->
         <a href="/" class="flex items-center shrink-0" aria-label="Potato Cup">
@@ -127,7 +127,7 @@
         <div class="flex-1"></div>
 
         <!-- Right: Notifications + Dark mode + Profile -->
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-1 xl:gap-2">
           <SiteSearch />
           <ReminderCenter />
 
@@ -179,7 +179,9 @@
             >
               {userState.id ? userState.id.slice(0, 2) : "?"}
             </div>
-            <div class="hidden sm:block text-left">
+            <!-- The name: on phones from sm and on wide screens from xl (the
+                 nav needs the room in between). -->
+            <div class="hidden sm:block md:hidden xl:block text-left">
               <div
                 class="text-xs font-semibold text-foreground leading-tight group-hover:text-brand-ink transition-colors"
               >

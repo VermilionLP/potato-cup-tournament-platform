@@ -68,7 +68,7 @@
         排行榜
       </Card.Title>
       <Card.Description class="text-small">
-        段位按大师 4%、钻石/白金/黄金/白银各 23%、青铜 4%；大段内按名次分 I/II/III；宗师为区域前 200，小池子不设。
+        段位按大师 4%、钻石/白金/黄金/白银各 23%、青铜 4%；大段内按名次分 I/II/III；宗师为前 1%（不足 50 人不设）。
         <span class="inline-flex items-center gap-1 whitespace-nowrap"><span class="size-1.5 rounded-full bg-amber-400"></span>定级中（前 10 场）</span>
       </Card.Description>
     </div>
