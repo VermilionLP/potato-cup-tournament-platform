@@ -120,18 +120,19 @@
   const eventDay = (t) => String(t.played_at || t.scheduled_time || "").slice(0, 10).replace("T", " ");
 </script>
 
-<!-- Header trigger: an icon on phones, a search field look on wide screens. -->
+<!-- Header trigger: an icon up to lg, a search field look from xl (the
+     header has no room for it at lg next to all the links). -->
 <button
   id="header-search-button"
   type="button"
   onclick={show}
   title="搜索选手和赛事"
   aria-label="搜索选手和赛事"
-  class="flex h-8 items-center gap-2 rounded-md text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground cursor-pointer w-8 justify-center lg:w-36 lg:justify-start lg:border lg:border-border/70 lg:bg-muted/30 lg:px-2.5"
+  class="flex h-8 items-center gap-2 rounded-md text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground cursor-pointer w-8 justify-center xl:w-36 xl:justify-start xl:border xl:border-border/70 xl:bg-muted/30 xl:px-2.5"
 >
   <SearchIcon class="h-4 w-4 shrink-0" />
-  <span class="hidden flex-1 whitespace-nowrap text-left text-xs lg:inline">搜索</span>
-  <kbd class="hidden rounded border border-border/80 px-1 text-label font-semibold lg:inline" data-no-i18n>{mac ? "⌘K" : "Ctrl K"}</kbd>
+  <span class="hidden flex-1 whitespace-nowrap text-left text-xs xl:inline">搜索</span>
+  <kbd class="hidden rounded border border-border/80 px-1 text-label font-semibold xl:inline" data-no-i18n>{mac ? "⌘K" : "Ctrl K"}</kbd>
 </button>
 
 <Dialog.Root bind:open>
