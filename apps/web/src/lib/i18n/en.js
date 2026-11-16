@@ -2790,4 +2790,6 @@ export default {
   "地图文件原文": "Map file text",
   "复制开房链接，在自定义战斗里用 Missions by URL 创建比赛房间。": "Copy a room link and open the match room in Custom battles with Missions by URL.",
   "规则、适用的比赛等": "Rules, which events it is for, etc.",
+  "每种比赛类型的载具分组、Ban / Pick 规则和比赛地图": "Each event type's vehicle groups, Ban / Pick rules and maps",
+  "地图与载具池": "Maps and vehicle pools",
 };

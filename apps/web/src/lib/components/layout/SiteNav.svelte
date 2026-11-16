@@ -24,8 +24,8 @@
     { href: "/ladder", label: "排行", icon: SwordsIcon, match: ["/points", "/top", "/hall", "/season"] },
     { href: "/stats", label: "数据", icon: TrendingUpIcon, match: [] },
     { href: "/me", label: "我的", icon: UserRoundIcon, match: [], narrow: true },
-    // 比赛地图: wide screens (lg up); elsewhere from events' 说明 tab and the search.
-    { href: "/maps", label: "地图", icon: MapIcon, match: [], narrow: true },
+    // 比赛地图 and 载具池模板 (MapsTabs): wide screens (lg up); elsewhere from events' tabs and the search.
+    { href: "/maps", label: "地图", icon: MapIcon, match: ["/pools"], narrow: true },
   ];
   const TOP = [LINKS[0], LINKS[1], LINKS[2], LINKS[3], LINKS[5], LINKS[4]];
   // Phones: 赛事 · 排行 · 数据 · 我的.

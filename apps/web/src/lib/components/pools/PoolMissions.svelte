@@ -39,17 +39,17 @@
 
 {#if isAdmin || chosen.length}
   <section class="space-y-2.5 rounded-lg border border-border/60 bg-background/60 p-3.5">
-    <div class="flex items-center gap-2">
+    <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
       <MapIcon class="size-4 text-brand-ink" />
       <h3 class="label-caps text-muted-foreground">比赛地图</h3>
-      <span class="text-small text-muted-foreground">用这个模板的赛事会显示这些地图（赛事可以另外指定）</span>
       <a href="/maps" class="ml-auto text-small font-semibold text-brand-ink hover:underline">全部地图</a>
+      <p class="w-full text-small text-muted-foreground">用这个模板的赛事会显示这些地图（赛事可以另外指定）</p>
     </div>
 
     {#if chosen.length}
-      <ul class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+      <ul class="grid min-w-0 gap-2 sm:grid-cols-2 lg:grid-cols-3">
         {#each chosen as m, i (m.id)}
-          <li class="flex items-center gap-2.5 rounded-lg border border-border bg-card p-1.5 pr-2">
+          <li class="flex min-w-0 items-center gap-2.5 rounded-lg border border-border bg-card p-1.5 pr-2">
             <MissionThumb mission={m} class="w-24 shrink-0 rounded-md" />
             <a href="/maps/{m.id}" class="min-w-0 flex-1">
               <span class="block truncate text-sm font-semibold" data-no-i18n>{m.name}</span>
@@ -71,7 +71,7 @@
         <div class="flex flex-wrap items-center gap-1.5">
           <span class="text-small text-muted-foreground">添加：</span>
           {#each others as m (m.id)}
-            <button type="button" class="rounded-md border border-dashed border-border px-2 py-0.5 text-small font-semibold hover:border-primary hover:text-brand-ink cursor-pointer" onclick={() => add(m.id)} data-no-i18n>+ {m.name}</button>
+            <button type="button" class="max-w-full truncate rounded-md border border-dashed border-border px-2 py-0.5 text-small font-semibold hover:border-primary hover:text-brand-ink cursor-pointer" onclick={() => add(m.id)} data-no-i18n>+ {m.name}</button>
           {/each}
         </div>
       {:else if loaded && !all.length}

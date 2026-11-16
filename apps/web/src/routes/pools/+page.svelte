@@ -8,7 +8,7 @@
   import { EmptyState } from "#lib/components/ui/empty-state/index.js";
   import PageSkeleton from "#lib/components/PageSkeleton.svelte";
   import PageHeader from "#lib/components/PageHeader.svelte";
-  import AdminTabs from "#lib/components/layout/AdminTabs.svelte";
+  import MapsTabs from "#lib/components/maps/MapsTabs.svelte";
   import { onMount } from "svelte";
   import { page } from "$app/state";
   import { toast } from "svelte-sonner";
@@ -202,7 +202,7 @@
      would otherwise grow to the vehicle table's width on phones. -->
 <div class="mx-auto w-full min-w-0 max-w-5xl space-y-4 px-1 sm:px-4 py-2 sm:py-6">
   <div class="space-y-3">
-  <PageHeader title={isAdmin ? "管理" : "载具池模板"} icon={PlaneIcon} description="载具池模板：每种比赛类型的载具分组和 Ban / Pick 规则">
+  <PageHeader title="载具池模板" icon={PlaneIcon} description="每种比赛类型的载具分组、Ban / Pick 规则和比赛地图">
     {#snippet more()}
       <p>
         每个模板属于一种比赛类型，可以限定游戏模式，并带有自己的 Ban / Pick 规则。比赛默认自动使用同类型里最匹配游戏模式的模板（按排序），管理员也可以在赛事页手动指定。{isAdmin
@@ -211,7 +211,7 @@
       </p>
     {/snippet}
   </PageHeader>
-  {#if isAdmin}<AdminTabs />{/if}
+  <MapsTabs />
   </div>
 
   {#if loading}

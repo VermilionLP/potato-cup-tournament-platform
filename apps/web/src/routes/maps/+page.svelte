@@ -12,6 +12,7 @@
   import MissionCard from "#lib/components/maps/MissionCard.svelte";
   import MissionHowTo from "#lib/components/maps/MissionHowTo.svelte";
   import MissionCreateDialog from "#lib/components/maps/MissionCreateDialog.svelte";
+  import MapsTabs from "#lib/components/maps/MapsTabs.svelte";
   import MapIcon from "@lucide/svelte/icons/map";
   import PlusIcon from "@lucide/svelte/icons/plus";
 
@@ -49,6 +50,7 @@
       {#if isAdmin}<Button onclick={() => (creating = true)}><PlusIcon class="size-4" />添加地图</Button>{/if}
     {/snippet}
   </PageHeader>
+  <MapsTabs />
 
   {#if loading}
     <PageSkeleton />
