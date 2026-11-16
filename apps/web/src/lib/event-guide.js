@@ -202,9 +202,7 @@ function toolPoints(t) {
     "QQ 机器人：在群里 @土豆杯机器人，可以「报名」「签到」「赛程」「战绩」；社区机器人会在群里通知开赛、轮到你比赛和确认比分。",
     `天梯：本场打出比分的比赛都计入 ${gameModeInfo(t.game_mode).code} 天梯（弃权不计）。`,
     ...(ladderWeight(t.event_kind) > 1
-      ? [t.event_kind === "qualifier"
-          ? `本场是预选赛，天梯加减分是周赛的 ${ladderWeight(t.event_kind)} 倍。`
-          : `本场是大型赛事，天梯加减分是周赛的 ${ladderWeight(t.event_kind)} 倍。`]
+      ? [`本场是大型赛事，天梯加减分是周赛的 ${ladderWeight(t.event_kind)} 倍。`]
       : []),
   ];
 }

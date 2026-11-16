@@ -206,6 +206,6 @@ test('major events move MMR more than weekly cups (K times the event weight)', (
   assert.equal(delta(null), 100);
   assert.equal(delta('major'), 150);
   assert.equal(delta('season'), 150);
-  assert.equal(delta('qualifier'), 125);
+  assert.equal(delta('qualifier'), 100, 'qualifiers count like weekly cups');
   assert.equal(computeLadder([game(1, 'major')]).history[0].weight, 1.5);
 });
