@@ -55,7 +55,7 @@
   {:else if !missions.length}
     <EmptyState icon={MapIcon} title="还没有比赛地图" hint={isAdmin ? "点右上角「添加地图」上传 .blk 文件或从链接导入。" : "管理员添加后会显示在这里。"} />
   {:else}
-    <div class="grid gap-4 md:grid-cols-2">
+    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {#each missions as m (m.id)}
         <MissionCard mission={m} />
       {/each}

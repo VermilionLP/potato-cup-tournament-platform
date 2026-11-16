@@ -65,6 +65,8 @@ const clampInt = (value, min, max) => {
  * Cleans a template for storage. With `partial`, only the fields present
  * are returned (for updates). Returns { template } or { error }.
  */
+export const MAX_TEMPLATE_MISSIONS = 10;
+
 export function normalizeTemplate(input, { eventTypes, gameModes, partial = false } = {}) {
   const body = input && typeof input === 'object' ? input : {};
   const out = {};
@@ -89,6 +91,14 @@ export function normalizeTemplate(input, { eventTypes, gameModes, partial = fals
     const { vehicles, error } = normalizeVehicles(body.vehicles);
     if (error) return { error };
     out.vehicles = vehicles;
+  }
+  // 比赛地图 (mission ids) the template's events use, in order.
+  if (!partial || has('missions')) {
+    const list = Array.isArray(body.missions) ? body.missions : [];
+    const ids = [...new Set(list.map((x) => String(x).trim().toLowerCase()).filter(Boolean))];
+    if (ids.some((x) => !/^[a-z0-9][a-z0-9-]{1,59}$/.test(x))) return { error: '比赛地图 ID 不对' };
+    if (ids.length > MAX_TEMPLATE_MISSIONS) return { error: `一个模板最多 ${MAX_TEMPLATE_MISSIONS} 张比赛地图` };
+    out.missions = ids;
   }
   return { template: out };
 }

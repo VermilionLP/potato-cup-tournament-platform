@@ -20,13 +20,14 @@ export function draftOf(t) {
     rules: { ...normalizeRules(t.rules) },
     sort_order: t.sort_order ?? 100,
     vehicles: (t.vehicles || []).map((v) => ({ ...v })),
+    missions: [...(t.missions || [])],
   };
 }
 
 /** A new template: a copy of `source` ("… 副本"), or empty for `eventType`. */
 export function newDraft(source, eventType) {
   if (source) return { ...draftOf(source), name: `${source.name} 副本`.slice(0, 40) };
-  return { name: "", event_type: eventType, game_modes: [], rules: { ...DEFAULT_BP_RULES }, sort_order: 100, vehicles: [emptyVehicle()] };
+  return { name: "", event_type: eventType, game_modes: [], rules: { ...DEFAULT_BP_RULES }, sort_order: 100, vehicles: [emptyVehicle()], missions: [] };
 }
 
 /** Game modes with `mode` switched on or off. */

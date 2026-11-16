@@ -120,6 +120,8 @@ export function describeEntry(entry) {
     case "mission.edit": return d.vehicle_limit === false ? `关闭比赛地图 ${target} 的载具限制` : d.content_bytes ? `修改比赛地图 ${target} 的原文` : d.units ? `修改比赛地图 ${target} 的载具` : `修改比赛地图 ${target} 的设置`;
     case "mission.revert": return `把比赛地图 ${target} 恢复到第 ${d.version} 版`;
     case "mission.delete": return `删除比赛地图 ${target}`;
+    case "mission.image": return `更换比赛地图 ${target} 的缩略图`;
+    case "mission.image_delete": return `删除比赛地图 ${target} 的缩略图`;
     case "admin.alert_players": return (d.players || []).length ? `设置提醒的管理员：${d.players.join("、")}` : "清空提醒的管理员";
     case "admin.backup": return "手动备份数据库";
     default: return String(entry?.action || "");

@@ -158,6 +158,27 @@ test('比赛地图: an admin changes a setting; players copy the http room link 
     await copy.click();
     const copied = await page.evaluate(() => navigator.clipboard.readText());
     assert.match(copied, new RegExp(`^http://[^/]+/api/missions/${mid}\\.blk$`));
+    // Without its own maps the event shows its vehicle pool template's (载具池 tab), with the picture.
+    await api('PUT', `/tournaments/${id}/missions`, { missions: [] });
+    const png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+    const pic = await api('POST', `/missions/${mid}/image`, { data: `data:image/png;base64,${png}` });
+    const ev = await api('GET', `/tournaments/${id}`);
+    const pool = (await api('GET', `/tournaments/${id}/vehicle-pool`)).template;
+    if (pool) {
+      const before = pool.missions || [];
+      await api('PUT', `/vehicle-pools/${pool.id}`, { missions: [mid] });
+      try {
+        const maps = await api('GET', `/tournaments/${id}/missions`);
+        assert.equal(maps.source, 'pool');
+        assert.deepEqual(maps.missions.map((x) => x.id), [mid]);
+        await page.goto(`${BASE}/tournament/${id}#pool`);
+        await page.getByText(`E2E ${mid}`).first().waitFor({ timeout: T });
+        await page.locator(`img[src="${pic.mission.image_url}"]`).first().waitFor({ timeout: T });
+      } finally {
+        await api('PUT', `/vehicle-pools/${pool.id}`, { missions: before.filter((x) => x !== mid) });
+      }
+    }
+    assert.ok(ev.id);
     assert.deepEqual(errors, [], 'no uncaught errors in the page');
   } catch (e) {
     await page.screenshot({ path: 'e2e-maps.png', fullPage: true }).catch(() => {});

@@ -82,6 +82,8 @@ export const CACHE_NEUTRAL_ROUTES = new Set([
   'PUT /missions/:id/content',
   'POST /missions/:id/revert',
   'DELETE /missions/:id',
+  'POST /missions/:id/image',
+  'DELETE /missions/:id/image',
   'PUT /tournaments/:id/missions',
   'POST /players/:id/touch',
   'POST /push/subscribe',

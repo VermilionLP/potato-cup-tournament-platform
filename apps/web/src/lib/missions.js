@@ -77,3 +77,31 @@ export async function copyText(text) {
     return ok;
   }
 }
+
+const MAX_IMAGE_BYTES = 1.5 * 1024 * 1024;
+const MAX_IMAGE_WIDTH = 1280;
+
+/**
+ * A picture file as a data URL for the server: as it is when small (PNG,
+ * JPEG, WebP up to 1280 px wide and 1.5 MB), else scaled to 1280 px wide
+ * as WebP (JPEG where the browser can't).
+ */
+export async function imageDataUrl(file) {
+  if (!/^image\/(png|jpeg|webp)$/.test(file.type)) throw new Error("只支持 PNG、JPEG 和 WebP 图片");
+  const asIs = () => new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result);
+    r.onerror = () => reject(new Error("读不出这张图片"));
+    r.readAsDataURL(file);
+  });
+  const bitmap = await createImageBitmap(file).catch(() => null);
+  if (!bitmap) throw new Error("读不出这张图片");
+  if (bitmap.width <= MAX_IMAGE_WIDTH && file.size <= MAX_IMAGE_BYTES) return asIs();
+  const scale = Math.min(1, MAX_IMAGE_WIDTH / bitmap.width);
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.round(bitmap.width * scale);
+  canvas.height = Math.round(bitmap.height * scale);
+  canvas.getContext("2d").drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  const webp = canvas.toDataURL("image/webp", 0.86);
+  return webp.startsWith("data:image/webp") ? webp : canvas.toDataURL("image/jpeg", 0.86);
+}
