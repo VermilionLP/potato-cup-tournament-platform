@@ -4,13 +4,12 @@ import { overlayStages } from "../src/lib/overlay.js";
 import {
   boardBands,
   layoutDoubleTree,
+  layoutSingleTree,
   pickFocusGroup,
   playerLookup,
   swissGroupViews,
-  treePositions,
+  treePlacement,
   treeRounds,
-  treeSections,
-  treeSpecs,
 } from "../src/lib/overlay-layout.js";
 
 let id = 0;
@@ -19,7 +18,7 @@ const m = (bracket, round, position, p1, p2, winner = null, extra = {}) => ({
   status: winner ? "completed" : "pending", ...extra,
 });
 
-// Single elimination with `n` players, nothing played.
+// Single elimination with `n` players, nothing played (rounds linked by position, as the server makes them).
 function singleElim(n) {
   const out = [];
   for (let r = Math.log2(n); r >= 1; r -= 1) {
@@ -43,33 +42,44 @@ test("treeRounds lists the first round first", () => {
   assert.deepEqual(rounds[0].matches.map((x) => x.position), [1, 2, 3, 4]);
 });
 
-test("small brackets are not split into sections", () => {
-  const s = treeSections(treeRounds(singleElim(16)));
-  assert.equal(s.isLarge, false);
-  assert.equal(s.rounds.length, 4);
+test("single elimination is drawn whole, each match between the two that feed it", () => {
+  const matches = singleElim(32);
+  const tree = layoutSingleTree(matches, (x) => `R${x.round}`);
+  assert.equal(tree.items.length, 31, "no sections: every match");
+  assert.equal(tree.headers.length, 5);
+  const at = (match) => tree.items.find((i) => i.match.id === match.id);
+  const final = matches.find((x) => x.round === 1);
+  const semis = matches.filter((x) => x.round === 2);
+  assert.equal(at(final).y, (at(semis[0]).y + at(semis[1]).y) / 2);
+  assert.ok(semis.every((s) => at(s).x < at(final).x));
+  assert.equal(tree.paths.length, 30);
+  assert.equal(layoutSingleTree([m("wb", 1, 1, "a", "b")]), null);
 });
 
-test("32-player brackets show 16-player sections until the final stage starts", () => {
-  const rounds = treeRounds(singleElim(32));
-  const first = treeSections(rounds, { sectionIndex: 1 });
-  assert.equal(first.isLarge, true);
-  assert.equal(first.sectionCount, 2);
-  assert.equal(first.showFinal, false);
-  assert.deepEqual(first.rounds.map((r) => r.matches.length), [8, 4, 2, 1]);
-  assert.equal(first.rounds[0].matches[0].player1_id, "p17");
-  // A live match in the final stage switches to it.
-  const live = treeSections(rounds, { activeRound: 2 });
-  assert.equal(live.showFinal, true);
-  assert.deepEqual(live.rounds.map((r) => r.round), [2, 1]);
+test("the third-place match sits under the final", () => {
+  const matches = singleElim(4);
+  const third = m("main", 0, 1, null, null);
+  const tree = layoutSingleTree([...matches, third], (x) => (x.round === 0 ? "3RD PLACE" : `R${x.round}`));
+  const at = (match) => tree.items.find((i) => i.match.id === match.id);
+  const final = matches.find((x) => x.round === 1);
+  assert.equal(at(third).x, at(final).x);
+  assert.ok(at(third).y > at(final).y);
+  assert.ok(tree.headers.some((h) => h.label === "3RD PLACE"));
+  assert.ok(tree.height >= at(third).y);
 });
 
-test("treePositions centres a match between the two that feed it", () => {
-  const rounds = treeRounds(singleElim(4));
-  const specs = treeSpecs(2);
-  const { centers } = treePositions(rounds, specs);
-  const [a, b] = rounds[0].matches;
-  const final = rounds[1].matches[0];
-  assert.equal(centers[final.id], (centers[a.id] + centers[b.id]) / 2);
+test("the side panel goes under a wide tree, stays beside a tall one", () => {
+  // Wide and short (a 12-player double elimination is about 1780 × 770).
+  const wide = treePlacement({ width: 1780, height: 770 });
+  assert.equal(wide.placement, "bottom");
+  // Tall (32-player single elimination).
+  const tall = treePlacement(layoutSingleTree(singleElim(32)));
+  assert.equal(tall.placement, "side");
+  assert.ok(tall.scale > 0.55, "still readable");
+  // Small: beside, at most 1.3×.
+  const small = treePlacement(layoutSingleTree(singleElim(4)));
+  assert.equal(small.placement, "side");
+  assert.equal(small.scale, 1.3);
 });
 
 test("layoutDoubleTree places the grand final right of both brackets", () => {

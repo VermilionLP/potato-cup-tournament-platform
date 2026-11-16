@@ -1,22 +1,22 @@
 <script>
   // Overlay bracket scene ("hybrid", the default between matches): the
-  // bracket of the current stage next to a side panel. Single elimination
-  // gets the tree (16-player sections for big fields), double elimination
-  // its two-band tree, grouped Swiss one group at a time, other Swiss and
-  // group stages the stage board.
+  // bracket of the current stage with a side panel. Single and double
+  // elimination get the whole tree (BracketTree), scaled to fit; the panel
+  // goes under the tree when that draws the tree bigger (treePlacement), so
+  // wide brackets keep room for the final. Grouped Swiss shows one group at
+  // a time, other Swiss and group stages the stage board.
   import { fade } from "svelte/transition";
   import {
     boardBands,
     isDecided,
     isPlayable,
     layoutDoubleTree,
+    layoutSingleTree,
     pickFocusGroup,
     swissGroupViews,
-    treeRounds,
-    treeSections,
+    treePlacement,
   } from "#lib/overlay-layout.js";
-  import SingleElimTree from "./SingleElimTree.svelte";
-  import DoubleElimTree from "./DoubleElimTree.svelte";
+  import BracketTree from "./BracketTree.svelte";
   import GroupedSwissBoard from "./GroupedSwissBoard.svelte";
   import StageBoard from "./StageBoard.svelte";
   import OverlaySidePanel from "./OverlaySidePanel.svelte";
@@ -46,28 +46,11 @@
     return format === "double_elim" ? "DOUBLE ELIMINATION" : format === "swiss" ? "SWISS" : "SINGLE ELIMINATION";
   });
 
-  // Single elimination tree, in 16-player sections for big fields.
+  // Single or double elimination: the whole tree, and where the panel goes.
   let isTree = $derived(matches.length > 0 && matches.every((m) => (m.bracket || "main") === "main"));
-  let sectionIndex = $state(0);
-  let tree = $derived(
-    treeSections(isTree ? treeRounds(matches) : [], {
-      sectionIndex,
-      activeRound: activeMatch?.round ?? null,
-      selectedRound: selectedStage?.round ?? null,
-    }),
-  );
-  $effect(() => {
-    if (sectionIndex >= tree.sectionCount) sectionIndex = 0;
-  });
-  $effect(() => {
-    if (!tree.isLarge || tree.showFinal || tree.sectionCount <= 1) return;
-    const timer = setInterval(() => {
-      sectionIndex = (sectionIndex + 1) % tree.sectionCount;
-    }, 10000);
-    return () => clearInterval(timer);
-  });
-
-  let deTree = $derived(isTree ? null : layoutDoubleTree(matches, stageLabel));
+  let tree = $derived(isTree ? layoutSingleTree(matches, stageLabel) : layoutDoubleTree(matches, stageLabel));
+  let place = $derived(treePlacement(tree));
+  let bottomPanel = $derived(Boolean(tree) && place.placement === "bottom");
 
   // Grouped Swiss: one group at a time; groups take turns every 8 s.
   let swissGroups = $derived(isSwiss ? swissGroupViews(stages, tournament?.group_stage, explicitStage) : []);
@@ -93,7 +76,7 @@
   let shownStage = $derived(focusGroup?.current || selectedStage);
   let panelNextMatch = $derived(focusGroup?.rounds.flatMap((r) => r.matches).find(isPlayable) || nextMatch);
 
-  let bands = $derived(isTree || deTree ? [] : boardBands(stages, selectedStage?.key));
+  let bands = $derived(tree ? [] : boardBands(stages, selectedStage?.key));
 
   // Swiss standings for a single pool (grouped Swiss uses focusGroup).
   let standings = $derived.by(() => {
@@ -106,17 +89,8 @@
 
   let doneCount = $derived(realMatches.filter(isDecided).length);
   let percent = $derived(realMatches.length ? Math.round((doneCount / realMatches.length) * 100) : 0);
-  let sectionText = $derived(tree.showFinal ? "FINAL STAGE" : `SECTION ${sectionIndex + 1} / ${tree.sectionCount}`);
-  let progress = $derived({
-    title: !tree.isLarge ? "MATCHES" : tree.showFinal ? "FINAL STAGE" : "SECTION",
-    value: !tree.isLarge ? `${doneCount} / ${realMatches.length}` : tree.showFinal ? "FINAL" : `${sectionIndex + 1} / ${tree.sectionCount}`,
-    done: doneCount,
-    total: realMatches.length,
-    percent,
-  });
-  let nextTag = $derived(
-    tree.isLarge ? (tree.showFinal ? "FINAL STAGE" : `SECTION ${sectionIndex + 1}`) : isTree ? "BRACKET" : shownStage?.short || "",
-  );
+  let progress = $derived({ title: "MATCHES", value: `${doneCount} / ${realMatches.length}`, done: doneCount, total: realMatches.length, percent });
+  let nextTag = $derived(isTree ? "BRACKET" : shownStage?.short || "");
 
   // Top bar: the shown stage and its neighbours, in English.
   let steps = $derived.by(() => {
@@ -144,24 +118,11 @@
     <span class="font-num text-lg font-bold tracking-[0.16em] text-cyan-200">{formatTag}</span>
     <span class="text-white/25">·</span>
     <span class="font-num text-lg font-bold tracking-[0.16em] text-[#AFC0D8]">{tournament.players?.length || 0} PLAYERS</span>
-    {#if tree.isLarge}
-      <span class="text-white/25">·</span>
-      <span class="font-num text-lg font-bold tracking-[0.16em] text-cyan-400">{sectionText}</span>
-      {#if !tree.showFinal}
-        <span class="ml-2 flex items-center gap-1.5">
-          {#each Array(tree.sectionCount) as _, i (i)}
-            <button type="button" onclick={() => (sectionIndex = i)} aria-label={`Show section ${i + 1}`} class="h-1.5 rounded-full transition-all {i === sectionIndex ? 'w-8 bg-cyan-400' : 'w-3 bg-white/20'}"></button>
-          {/each}
-        </span>
-      {/if}
-    {/if}
   </div>
 
-  <div class="absolute inset-x-16 bottom-12 top-[188px] flex items-stretch gap-8">
-    {#if isTree}
-      <SingleElimTree {tournament} rounds={tree.rounds} {stageLabel} {isAlive} {who} />
-    {:else if deTree}
-      <DoubleElimTree {tournament} tree={deTree} selectedKey={selectedStage?.key} {who} />
+  <div class="absolute inset-x-16 bottom-12 top-[188px] flex items-stretch gap-8 {bottomPanel ? 'flex-col' : ''}">
+    {#if tree}
+      <BracketTree {tournament} {tree} scale={place.scale} selectedKey={selectedStage?.key} {isAlive} {who} />
     {:else if focusGroup}
       <GroupedSwissBoard
         {tournament}
@@ -176,6 +137,7 @@
     {/if}
 
     <OverlaySidePanel
+      layout={bottomPanel ? "bottom" : "side"}
       {tournament}
       nextMatch={panelNextMatch}
       {activeMatch}

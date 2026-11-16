@@ -1,10 +1,13 @@
 <script>
   // Side panel of the overlay's bracket scene: the live match, the next one,
   // and the latest results (or, in Swiss and group stages, the standings).
+  // layout "bottom": a strip under a wide bracket tree (HybridScene), the
+  // same cards side by side and the results in two columns.
   import { fade } from "svelte/transition";
   import Flag from "#lib/components/Flag.svelte";
 
   let {
+    layout = "side",
     tournament,
     nextMatch = null,
     activeMatch = null,
@@ -43,6 +46,46 @@
   </div>
 {/snippet}
 
+{#snippet result(m)}
+  <div class="flex items-center gap-2.5 border-t border-white/[0.06] py-1.5">
+    <span class="min-w-0 flex-1 truncate text-lg font-bold {m.winner_id === m.player1_id ? '' : 'text-[#7184A3]'}">{who.name(m.player1_id)}</span>
+    <span class="shrink-0 font-display text-2xl font-extrabold text-cyan-400 tabular-nums">{score(m, 1)} : {score(m, 2)}</span>
+    <span class="min-w-0 flex-1 truncate text-right text-lg font-bold {m.winner_id === m.player2_id ? '' : 'text-[#7184A3]'}">{who.name(m.player2_id)}</span>
+  </div>
+{/snippet}
+
+{#if layout === "bottom"}
+<aside class="flex h-[176px] shrink-0 gap-5">
+  {#if activeMatch}
+    <div class="w-[420px] shrink-0 rounded-2xl border-2 border-cyan-400 bg-[rgba(24,40,70,0.92)] px-5 py-4 shadow-[0_0_40px_rgba(34,211,238,0.2)]">
+      {@render title("● NOW LIVE", stageLabel(activeMatch).toUpperCase())}
+      {@render row(activeMatch, activeMatch.player1_id, 1, activeMatch.live_score1 != null)}
+      <div class="my-1 h-px bg-white/10"></div>
+      {@render row(activeMatch, activeMatch.player2_id, 2, activeMatch.live_score1 != null)}
+    </div>
+  {/if}
+  <div class="w-[420px] shrink-0 rounded-2xl border border-white/[0.07] bg-[rgba(24,40,70,0.92)] px-5 py-4">
+    {@render title("UP NEXT", nextMatch ? `#${matchOrder.get(nextMatch.id) ?? ""} · ${stageLabel(nextMatch).toUpperCase()}` : nextTag)}
+    {#if nextMatch}
+      {@render row(nextMatch, nextMatch.player1_id, 1, false)}
+      <div class="my-1 h-px bg-white/10"></div>
+      {@render row(nextMatch, nextMatch.player2_id, 2, false)}
+    {:else}
+      <p class="text-lg text-[#7184A3]">No match ready to play.</p>
+    {/if}
+  </div>
+  <div class="min-w-0 flex-1 overflow-hidden rounded-2xl border border-white/[0.07] bg-[rgba(24,40,70,0.92)] px-5 py-4">
+    {@render title("LATEST RESULTS")}
+    {#if latest.length}
+      <div class="grid grid-cols-2 gap-x-8">
+        {#each latest as m (m.id)}{@render result(m)}{/each}
+      </div>
+    {:else}
+      <p class="text-lg text-[#7184A3]">No results yet.</p>
+    {/if}
+  </div>
+</aside>
+{:else}
 <aside class="flex w-[420px] shrink-0 flex-col gap-5">
   {#if activeMatch}
     <div class="rounded-2xl border-2 border-cyan-400 bg-[rgba(24,40,70,0.92)] px-5 py-4 shadow-[0_0_40px_rgba(34,211,238,0.2)]">
@@ -97,16 +140,11 @@
     <div class="min-h-0 flex-1 overflow-hidden rounded-2xl border border-white/[0.07] bg-[rgba(24,40,70,0.92)] px-5 py-4">
       {@render title("LATEST RESULTS")}
       {#each latest as m (m.id)}
-        <div class="border-t border-white/[0.06] py-1.5">
-          <div class="flex items-center gap-2.5">
-            <span class="min-w-0 flex-1 truncate text-lg font-bold {m.winner_id === m.player1_id ? '' : 'text-[#7184A3]'}">{who.name(m.player1_id)}</span>
-            <span class="shrink-0 font-display text-2xl font-extrabold text-cyan-400 tabular-nums">{score(m, 1)} : {score(m, 2)}</span>
-            <span class="min-w-0 flex-1 truncate text-right text-lg font-bold {m.winner_id === m.player2_id ? '' : 'text-[#7184A3]'}">{who.name(m.player2_id)}</span>
-          </div>
-        </div>
+        {@render result(m)}
       {:else}
         <p class="text-lg text-[#7184A3]">No results yet.</p>
       {/each}
     </div>
   {/if}
 </aside>
+{/if}
