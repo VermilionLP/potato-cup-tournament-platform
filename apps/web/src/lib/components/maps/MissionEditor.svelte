@@ -26,6 +26,7 @@
   // (when this one has none), to turn it back on as it was.
   let { mission, versions = [], previous = null, onchange } = $props();
 
+  /** @type {[string, string, any][]} */
   const TABS = [
     ["settings", "比赛设置", SlidersIcon],
     ["vehicles", "载具", PlaneIcon],
@@ -59,6 +60,7 @@
   let raw = $state("");
   let rawLoaded = $state(0); // the version the text was loaded at
   let rawNote = $state("");
+  /** @type {Record<string, any>} */
   let info = $state({});
   let seen = 0;
   $effect(() => {

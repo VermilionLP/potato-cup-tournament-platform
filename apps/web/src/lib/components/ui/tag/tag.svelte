@@ -4,7 +4,7 @@
   import { cn } from "#lib/utils.js";
   import { tagClass } from "#lib/tags.js";
 
-  let { tone = "neutral", dot = false, class: className, children, ...rest } = $props();
+  let { tone = "neutral", dot = false, class: className = undefined, children = undefined, ...rest } = $props();
 </script>
 
 <span class={cn(tagClass(tone), className)} {...rest}>

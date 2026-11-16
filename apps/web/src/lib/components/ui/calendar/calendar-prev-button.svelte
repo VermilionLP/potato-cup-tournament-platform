@@ -6,9 +6,9 @@
 
 	let {
 		ref = $bindable(null),
-		class: className,
-		children,
-		variant = "ghost",
+		class: className = undefined,
+		children = undefined,
+		variant = /** @type {any} */ ("ghost"),
 		...restProps
 	} = $props();
 </script>

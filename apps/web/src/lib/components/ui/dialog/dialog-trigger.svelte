@@ -3,7 +3,7 @@
 
 	let {
 		ref = $bindable(null),
-		type = "button",
+		type = /** @type {any} */ ("button"),
 		...restProps
 	} = $props();
 </script>

@@ -42,7 +42,7 @@ test("notes, facts and ladder limit", () => {
   const g = eventGuide({ ...base, description: "  BO3  ", ladder_max_mmr: 1500 });
   assert.equal(g.notes, "BO3");
   assert.ok(g.steps[1].lines.some((l) => l.includes("天梯分 ≤ 1500")));
-  assert.equal(new Map(g.facts).get("人数上限"), "32 人");
+  assert.equal(new Map(/** @type {any} */ (g.facts)).get("人数上限"), "32 人");
   assert.equal(eventGuide(null), null);
   assert.ok(formatText({ format: "double_elim" }).includes("双败"));
 });

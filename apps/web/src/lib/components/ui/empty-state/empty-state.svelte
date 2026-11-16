@@ -4,7 +4,7 @@
   import { cn } from "#lib/utils.js";
   import InboxIcon from "@lucide/svelte/icons/inbox";
 
-  let { title, hint = "", icon: Icon = InboxIcon, compact = false, class: className, children } = $props();
+  let { title = undefined, hint = "", icon: Icon = InboxIcon, compact = false, class: className = undefined, children = undefined } = $props();
 </script>
 
 <div

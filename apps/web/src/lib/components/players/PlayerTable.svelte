@@ -36,7 +36,7 @@
           <tr
             class="hover:bg-accent/30 transition-colors group cursor-pointer {isRecentlySeen(p) ? '' : 'opacity-60'}"
             onclick={(e) => {
-              if (!e.target.closest("a, button, input, select")) goto(`/player/${encodeURIComponent(p.id)}`);
+              if (!/** @type {HTMLElement} */ (e.target).closest("a, button, input, select")) goto(`/player/${encodeURIComponent(p.id)}`);
             }}
           >
             <td class="px-5 py-3">

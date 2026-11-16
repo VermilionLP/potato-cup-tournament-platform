@@ -90,8 +90,8 @@ test("layoutDoubleTree places the grand final right of both brackets", () => {
     m("wb", 2, 1, "a", "b", null, { next_match_id: wbFinal.id }), m("wb", 2, 2, "c", "d"), wbFinal,
     m("lb", 2, 1, "b", "d"), lbFinal, gf,
   ];
-  wbFinal.next_match_id = gf.id;
-  lbFinal.next_match_id = gf.id;
+  /** @type {any} */ (wbFinal).next_match_id = gf.id;
+  /** @type {any} */ (lbFinal).next_match_id = gf.id;
   const tree = layoutDoubleTree(matches, (x) => `${x.bracket}${x.round}`);
   const gfItem = tree.items.find((i) => i.match.id === gf.id);
   assert.ok(tree.items.every((i) => i.match.id === gf.id || i.x < gfItem.x));

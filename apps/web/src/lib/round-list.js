@@ -9,8 +9,9 @@ const isBye = (m) => decided(m) && (!m.player1_id || !m.player2_id);
 /**
  * Tabs [{ key, label, matches, done, total }] from the bracket's matches,
  * ordered by when they are played (`order`: match id -> number).
+ * @param {any[]} [matches] @param {Function} [roundLabel] @param {Map<any, number>} [order]
  */
-export function roundTabs(matches = [], roundLabel = () => "", order = new Map()) {
+export function roundTabs(matches = [], roundLabel = (_match) => "", order = new Map()) {
   const groups = new Map();
   for (const m of matches) {
     if (isBye(m)) continue;
@@ -26,7 +27,7 @@ export function roundTabs(matches = [], roundLabel = () => "", order = new Map()
   };
   return [...groups.entries()]
     .map(([key, ms]) => {
-      const sorted = [...ms].sort((a, b) => (a.round === 0) - (b.round === 0) || rank(a) - rank(b));
+      const sorted = [...ms].sort((a, b) => Number(a.round === 0) - Number(b.round === 0) || rank(a) - rank(b));
       const label = roundLabel(sorted.find((m) => m.round !== 0) || sorted[0]);
       return { key, label, matches: sorted, done: sorted.filter(decided).length, total: sorted.length, first: Math.min(...sorted.map(rank)) };
     })

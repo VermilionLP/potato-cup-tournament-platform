@@ -11,6 +11,6 @@
     "test": "node --test test.mjs"
   },
   "dependencies": {
-    "file-type": "^21.3.1"
+    "file-type": "^21.3.4"
   }
 }

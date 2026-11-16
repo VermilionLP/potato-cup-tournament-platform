@@ -51,7 +51,7 @@ test("step checks", () => {
   assert.match(stepError(form, "format"), /瑞士轮轮数/);
   form.format = "two_stage";
   form.groupFormat = "single_elim";
-  form.groupSize = "";
+  /** @type {any} */ (form).groupSize = ""; // the field left empty
   assert.equal(stepError(form, "group"), "淘汰制小组需要设置每组人数");
   form.groupSize = 4;
   form.advancePerGroup = 5;

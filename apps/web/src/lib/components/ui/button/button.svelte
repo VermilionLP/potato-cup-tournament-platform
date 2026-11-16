@@ -36,14 +36,14 @@
 
 <script>
 	let {
-		class: className,
-		variant = "default",
-		size = "default",
+		class: className = undefined,
+		variant = /** @type {any} */ ("default"),
+		size = /** @type {any} */ ("default"),
 		ref = $bindable(null),
 		href = undefined,
-		type = "button",
-		disabled,
-		children,
+		type = /** @type {any} */ ("button"),
+		disabled = undefined,
+		children = undefined,
 		...restProps
 	} = $props();
 </script>

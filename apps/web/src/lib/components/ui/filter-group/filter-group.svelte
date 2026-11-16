@@ -2,7 +2,7 @@
   // One filter of a page's filter bar: a small label and its options as a
   // pill segmented control. options: [{ id, label, count?, title? }].
   // Pages put several in one wrapping row (FilterBar), search on the right.
-  let { label = "", options = [], value = "", disabled = false, onpick } = $props();
+  let { label = "", options = [], value = "", disabled = false, onpick = undefined } = $props();
 </script>
 
 <div class="flex min-w-0 items-center gap-2" role="group" aria-label={label}>

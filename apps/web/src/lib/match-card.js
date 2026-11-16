@@ -30,7 +30,10 @@ export function isMine(match, userId) {
   return Boolean(userId && match.status === "pending" && (match.player1_id === userId || match.player2_id === userId));
 }
 
-/** "A 2 : 1 B" or "A 弃权胜" for a reported result (pending_report or its counter). */
+/**
+ * "A 2 : 1 B" or "A 弃权胜" for a reported result (pending_report or its counter).
+ * @param {any} match @param {any} report @param {Function} [playerName]
+ */
 export function formatReport(match, report, playerName = (id) => id) {
   if (!report) return "";
   if (report.kind === "walkover") return `${playerName(report.winner_id)} 对手弃权胜`;

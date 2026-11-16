@@ -46,7 +46,7 @@
           <button
             type="button"
             disabled={!complete || busy}
-            onclick={onStart}
+            onclick={() => onStart()}
             title={complete ? "按以下名单和种子生成淘汰赛对阵" : "小组赛全部打完后才能进入淘汰赛"}
             class="rounded-full bg-primary px-3 py-1 text-xs font-bold text-primary-foreground hover:bg-primary/85 disabled:opacity-45 cursor-pointer"
           >
@@ -57,7 +57,7 @@
           <button
             type="button"
             disabled={busy}
-            onclick={onWithdraw}
+            onclick={() => onWithdraw()}
             class="rounded-full border border-destructive/40 px-3 py-1 text-xs text-destructive hover:bg-destructive hover:text-white disabled:opacity-45 cursor-pointer"
           >
             撤回淘汰赛

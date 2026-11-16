@@ -12,8 +12,8 @@
 	import ChevronDownIcon from '@lucide/svelte/icons/chevron-down';
 	let {
 		ref = $bindable(null),
-		class: className,
-		children,
+		class: className = undefined,
+		children = undefined,
 		...restProps
 	} = $props();
 </script>

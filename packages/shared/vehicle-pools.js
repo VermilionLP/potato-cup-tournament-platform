@@ -67,6 +67,7 @@ const clampInt = (value, min, max) => {
  */
 export const MAX_TEMPLATE_MISSIONS = 10;
 
+/** @param {any} input @param {{ eventTypes?: string[], gameModes?: string[], partial?: boolean }} [opts] */
 export function normalizeTemplate(input, { eventTypes, gameModes, partial = false } = {}) {
   const body = input && typeof input === 'object' ? input : {};
   const out = {};
@@ -107,6 +108,7 @@ export function normalizeTemplate(input, { eventTypes, gameModes, partial = fals
  * The template an event uses: the admin's choice when it exists; otherwise,
  * among templates of the event's type (by sort_order), the first made for its
  * game mode, else the first made for every mode, else the first of the type.
+ * @param {any[]} [templates] @param {{ vehicle_pool?: string, game_mode?: string, vehicle_template?: string | null }} [event]
  */
 export function resolveTemplate(templates = [], { vehicle_pool: type, game_mode: mode, vehicle_template: chosen } = {}) {
   if (chosen) {

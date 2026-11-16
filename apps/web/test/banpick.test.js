@@ -87,7 +87,7 @@ test("repeated vehicle names are listed once per group", () => {
 test("every bundled pool groups without duplicate names", async () => {
   const { readFileSync } = await import("node:fs");
   for (const file of ["ProLeague-Lineup", "Prop-Lineup", "Lagecy-Jet-Lineup", "Prop-AB-Lineup"]) {
-    const vehicles = JSON.parse(readFileSync(new URL(`../src/lib/data/${file}.json`, import.meta.url)));
+    const vehicles = JSON.parse(readFileSync(new URL(`../src/lib/data/${file}.json`, import.meta.url), "utf8"));
     for (const g of groupVehicles(vehicles)) {
       const names = g.vehicles.map((v) => v.name);
       assert.equal(new Set(names).size, names.length, `${file} / ${g.group} has duplicate names`);

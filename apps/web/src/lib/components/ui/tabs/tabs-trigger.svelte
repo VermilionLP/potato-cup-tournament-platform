@@ -4,7 +4,7 @@
 
 	let {
 		ref = $bindable(null),
-		class: className,
+		class: className = undefined,
 		...restProps
 	} = $props();
 </script>
@@ -19,5 +19,5 @@
 		"after:bg-foreground after:absolute after:opacity-0 after:transition-opacity group-data-[orientation=horizontal]/tabs:after:inset-x-0 group-data-[orientation=horizontal]/tabs:after:bottom-[-5px] group-data-[orientation=horizontal]/tabs:after:h-0.5 group-data-[orientation=vertical]/tabs:after:inset-y-0 group-data-[orientation=vertical]/tabs:after:-right-1 group-data-[orientation=vertical]/tabs:after:w-0.5 group-data-[variant=line]/tabs-list:data-active:after:opacity-100",
 		className
 	)}
-	{...restProps}
+	{.../** @type {any} */ (restProps)}
 />

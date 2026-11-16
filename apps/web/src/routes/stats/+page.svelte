@@ -20,6 +20,7 @@
   import CarIcon from "@lucide/svelte/icons/car-front";
 
   // Tabs, kept in the hash (#vehicles; none = player data).
+  /** @type {[string, string, any][]} */
   const TABS = [
     ["players", "选手数据", UsersIcon],
     ["vehicles", "载具", CarIcon],

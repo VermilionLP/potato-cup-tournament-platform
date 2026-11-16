@@ -39,6 +39,7 @@ export function reportView(match, playerId) {
   return { ...flip(r), mine: r.by === playerId, counter: flip(r.counter) };
 }
 
+/** @returns {Record<string, any>} */
 export function myMatchInfo(t, playerId, { order = null } = {}) {
   if (!t || !playerId) return null;
   const me = (t.players || []).find((p) => p.id === playerId);

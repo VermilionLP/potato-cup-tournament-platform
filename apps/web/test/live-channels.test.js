@@ -66,10 +66,10 @@ test("overlay links carry the channel", () => {
 
 test("channel and stream mode are remembered per event", () => {
   const store = new Map();
-  globalThis.localStorage = {
+  globalThis.localStorage = /** @type {any} */ ({
     getItem: (k) => (store.has(k) ? store.get(k) : null),
     setItem: (k, v) => store.set(k, String(v)),
-  };
+  });
   try {
     saveChannel("a", 3);
     saveStreamMode("a", true);
@@ -77,7 +77,7 @@ test("channel and stream mode are remembered per event", () => {
     assert.equal(savedChannel("b"), 1);
     assert.equal(savedStreamMode("a"), true);
     assert.equal(savedStreamMode("b"), false);
-    globalThis.localStorage = { getItem() { throw new Error("blocked"); }, setItem() { throw new Error("blocked"); } };
+    globalThis.localStorage = /** @type {any} */ ({ getItem() { throw new Error("blocked"); }, setItem() { throw new Error("blocked"); } });
     assert.equal(savedChannel("a"), 1);
     saveChannel("a", 2); // no throw
   } finally {

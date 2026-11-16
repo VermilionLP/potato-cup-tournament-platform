@@ -7,6 +7,7 @@ export function pushSupported() {
 }
 
 /** iPhone / iPad Safari: notifications only from the site added to the home screen. */
+/** @param {any} [nav] @param {any} [win] */
 export function needsHomeScreen(nav = typeof navigator === "undefined" ? null : navigator, win = typeof window === "undefined" ? null : window) {
   if (!nav || !win) return false;
   const ios = /iPad|iPhone|iPod/.test(nav.userAgent || "") || (nav.platform === "MacIntel" && nav.maxTouchPoints > 1);

@@ -4,9 +4,9 @@
 	let {
 		ref = $bindable(null),
 		value = $bindable(),
-		type,
+		type = undefined,
 		files = $bindable(),
-		class: className,
+		class: className = undefined,
 		"data-slot": dataSlot = "input",
 		...restProps
 	} = $props();

@@ -73,6 +73,9 @@ test('cache expires after the TTL and failed loads are retried', async () => {
   const load = async () => ++loads;
   assert.equal(await cached(db, 'k', load, 0), 1);
   assert.equal(await cached(db, 'k', load, LADDER_CACHE_TTL_MS - 1), 1);
+  // At the TTL a reload starts; the old value is served until it's in.
+  assert.equal(await cached(db, 'k', load, LADDER_CACHE_TTL_MS), 1);
+  await new Promise((r) => setImmediate(r));
   assert.equal(await cached(db, 'k', load, LADDER_CACHE_TTL_MS), 2);
 
   let fail = true;
@@ -83,6 +86,40 @@ test('cache expires after the TTL and failed loads are retried', async () => {
   await assert.rejects(cached(db, 'f', flaky, LADDER_CACHE_TTL_MS));
   fail = false;
   assert.equal(await cached(db, 'f', flaky, LADDER_CACHE_TTL_MS), 'ok');
+});
+
+test('after the TTL the old value is served while the new one loads', async () => {
+  const db = {};
+  assert.equal(await cached(db, 'k', async () => 'v1', 0), 'v1');
+  let release;
+  let loads = 0;
+  const slow = () => { loads += 1; return new Promise((r) => { release = r; }); };
+  const t = LADDER_CACHE_TTL_MS + 1;
+  assert.equal(await cached(db, 'k', slow, t), 'v1', 'stale while loading');
+  assert.equal(await cached(db, 'k', slow, t + 1), 'v1', 'still stale, one load');
+  assert.equal(loads, 1);
+  release('v2');
+  await new Promise((r) => setImmediate(r));
+  assert.equal(await cached(db, 'k', slow, t + 2), 'v2');
+
+  // A key the expired store never had waits for its load.
+  assert.equal(await cached(db, 'other', async () => 'x', t + 3), 'x');
+  // Long idle: nothing that old is served.
+  assert.equal(await cached(db, 'k', async () => 'v3', t + 3 * LADDER_CACHE_TTL_MS), 'v3');
+  // A write drops the cache: the next read waits for fresh data.
+  invalidateLadder(db);
+  assert.equal(await cached(db, 'k', async () => 'v4', t + 3 * LADDER_CACHE_TTL_MS), 'v4');
+});
+
+test('a failed refresh after the TTL keeps serving the old value and retries', async () => {
+  const db = {};
+  await cached(db, 'k', async () => 'v1', 0);
+  const t = LADDER_CACHE_TTL_MS;
+  assert.equal(await cached(db, 'k', async () => { throw new Error('db down'); }, t), 'v1');
+  await new Promise((r) => setImmediate(r));
+  assert.equal(await cached(db, 'k', async () => 'v2', t + 1), 'v1', 'retry started, old value meanwhile');
+  await new Promise((r) => setImmediate(r));
+  assert.equal(await cached(db, 'k', async () => 'v3', t + 2), 'v2');
 });
 
 test('a load that finishes after a write does not bring old data back', async () => {

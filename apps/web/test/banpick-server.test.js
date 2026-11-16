@@ -42,7 +42,7 @@ test("viewer permissions follow the server", () => {
   const { record } = both({ bansPerPlayer: 1 }, [["ban", { group: "GA" }]]);
   // The admin made that ban; replay it as player A to test player undo.
   const asA = server.act(server.emptyRecord(normalizeRules({})), { action: "ban", group: "GA" }, { grouped: serverGroups, who: { admin: false, side: "A" }, by: "pa" }).record;
-  for (const [rec, me, id] of [[record, { side: "B" }, "pb"], [asA, { side: "A" }, "pa"], [asA, { side: "B" }, "pb"], [asA, { side: null }, "x"], [null, { side: "A" }, "pa"]]) {
+  for (const [rec, me, id] of /** @type {[any, any, string][]} */ ([[record, { side: "B" }, "pb"], [asA, { side: "A" }, "pa"], [asA, { side: "B" }, "pb"], [asA, { side: null }, "x"], [null, { side: "A" }, "pa"]])) {
     for (const action of server.ACTIONS) {
       const expected = rec ? !server.actionProblem(rec, action, { admin: false, ...me }, id) : !server.actionProblem(server.emptyRecord(normalizeRules({})), action, { admin: false, ...me }, id);
       assert.equal(mayAct(rec, action, me, id), expected && !(rec === null && action === "undo"), `${action} as ${me.side}`);

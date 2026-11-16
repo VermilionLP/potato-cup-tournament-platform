@@ -40,7 +40,8 @@
   const instant = $derived(toInstant(value));
   const viewerOffset = $derived(instant ? zoneOffsetMinutes(instant, zone) : SOURCE_OFFSET_MINUTES);
   const selectedTime = $derived(timeOf(selected));
-  let open = $state(startOpen);
+  // svelte-ignore state_referenced_locally
+  let open = $state(startOpen); // only the first value: the dialog opens itself
   const now = new Date();
   let view = $state({ y: now.getFullYear(), m: now.getMonth() + 1 });
   let customTime = $state("");

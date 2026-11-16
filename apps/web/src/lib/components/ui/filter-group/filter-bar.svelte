@@ -1,7 +1,7 @@
 <script>
   // A page's filter row: FilterGroups on the left, wrapping; an optional
   // search (or other control) on the right.
-  let { children, end } = $props();
+  let { children = undefined, end = undefined } = $props();
 </script>
 
 <div class="flex flex-wrap items-center gap-x-5 gap-y-2">

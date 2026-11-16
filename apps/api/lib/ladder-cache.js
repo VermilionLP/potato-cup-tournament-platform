@@ -7,7 +7,10 @@
 // One cache per database handle (a WeakMap, so tests with their own mock db
 // never share one). app.js drops it after every successful write request;
 // the TTL covers changes made outside this process (scripts, psql) and the
-// moving "last 365 days" window.
+// moving "last 365 days" window. When the TTL runs out, readers keep getting
+// the previous value while the new one is computed (stale-while-revalidate),
+// so no visitor waits for a recompute just because time passed; a write
+// drops the cache outright, so nothing stale is served after one.
 
 export const LADDER_CACHE_TTL_MS = 5 * 60 * 1000;
 
@@ -18,14 +21,20 @@ export const WARM_DELAY_MS = 2000;
 const WARM_RECENT_MS = 15 * 60 * 1000;
 const WARM_MAX_KEYS = 12;
 
-function freshStore(now) {
-  return { createdAt: now, entries: new Map() };
+// `entries`: key → promise; `done`: key → settled value; `stale`: the
+// store the TTL just replaced, whose values are served while these load.
+function freshStore(now, stale = null) {
+  return { createdAt: now, entries: new Map(), done: new Map(), stale };
 }
 
 function storeFor(db, now) {
   let store = caches.get(db);
   if (!store || now - store.createdAt >= LADDER_CACHE_TTL_MS) {
-    store = freshStore(now);
+    // Only a store that expired just now is worth serving (at most one TTL
+    // past its end), and only one generation back is kept.
+    const prev = store && now - store.createdAt < 2 * LADDER_CACHE_TTL_MS ? store : null;
+    if (prev) prev.stale = null;
+    store = freshStore(now, prev);
     caches.set(db, store);
   }
   return store;
@@ -34,19 +43,31 @@ function storeFor(db, now) {
 /**
  * The cached value for `key`, or `load()`'s. Concurrent callers share one
  * load; a failed load isn't kept. A load that finishes after the cache was
- * dropped lands in the old store, so it can't bring stale data back.
+ * dropped lands in the old store, so it can't bring stale data back. While
+ * a load after the TTL runs, callers get the expired store's value if it
+ * has one.
  */
 export function cached(db, key, load, now = Date.now()) {
   if (!loaders.has(db)) loaders.set(db, new Map());
   loaders.get(db).set(key, { load, usedAt: now });
   const store = storeFor(db, now);
-  if (store.entries.has(key)) return store.entries.get(key);
-  const pending = Promise.resolve().then(load);
-  store.entries.set(key, pending);
-  pending.catch(() => {
-    if (store.entries.get(key) === pending) store.entries.delete(key);
-  });
-  return pending;
+  if (!store.entries.has(key)) {
+    const pending = Promise.resolve().then(load);
+    store.entries.set(key, pending);
+    pending.then(
+      (value) => {
+        if (store.entries.get(key) === pending) store.done.set(key, value);
+      },
+      () => {
+        if (store.entries.get(key) === pending) store.entries.delete(key);
+      },
+    );
+  }
+  if (!store.done.has(key) && store.stale?.done.has(key)) {
+    store.entries.get(key).catch(() => {}); // the next caller retries
+    return Promise.resolve(store.stale.done.get(key));
+  }
+  return store.entries.get(key);
 }
 
 export function invalidateLadder(db) {

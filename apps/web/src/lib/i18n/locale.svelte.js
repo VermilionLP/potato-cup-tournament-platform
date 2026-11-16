@@ -95,7 +95,8 @@ function restore(root) {
       const store = attrOriginal.get(node);
       if (store) {
         for (const [name, { orig, written }] of Object.entries(store)) {
-          if (node.getAttribute(name) === written) node.setAttribute(name, orig);
+          const el = /** @type {Element} */ (node);
+          if (el.getAttribute(name) === written) el.setAttribute(name, orig);
         }
         attrOriginal.delete(node);
       }

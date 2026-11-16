@@ -30,7 +30,7 @@
 
 {#snippet flag(nation)}
   {@const f = nationFlag(nation)}
-  {#if f}<img src={f.cached} alt="" class="h-3.5 w-auto shrink-0 rounded-[2px]" loading="lazy" onerror={(e) => (e.currentTarget.style.display = "none")} />{/if}
+  {#if f}<img src={f.cached} alt="" class="h-3.5 w-auto shrink-0 rounded-[2px]" loading="lazy" onerror={(e) => (/** @type {HTMLElement} */ (e.currentTarget).style.display = "none")} />{/if}
 {/snippet}
 
 <div class="overflow-x-auto rounded-lg border border-border/60 bg-background/60">

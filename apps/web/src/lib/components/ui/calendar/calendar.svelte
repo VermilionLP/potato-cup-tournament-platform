@@ -7,16 +7,16 @@
 		ref = $bindable(null),
 		value = $bindable(),
 		placeholder = $bindable(),
-		class: className,
-		weekdayFormat = "short",
+		class: className = undefined,
+		weekdayFormat = /** @type {any} */ ("short"),
 		buttonVariant = "ghost",
 		captionLayout = "label",
 		locale = "en-US",
-		months: monthsProp,
-		years,
-		monthFormat: monthFormatProp,
-		yearFormat = "numeric",
-		day,
+		months: monthsProp = undefined,
+		years = undefined,
+		monthFormat: monthFormatProp = undefined,
+		yearFormat = /** @type {any} */ ("numeric"),
+		day = undefined,
 		disableDaysOutsideMonth = false,
 		...restProps
 	} = $props();
@@ -45,7 +45,7 @@ get along, so we shut typescript up by casting `value` to `never`.
 	{locale}
 	{monthFormat}
 	{yearFormat}
-	{...restProps}
+	{.../** @type {any} */ (restProps)}
 >
 	{#snippet children({ months, weekdays })}
 		<Calendar.Months>

@@ -1,7 +1,7 @@
 <script>
   // A setting that is on or off, as a card: icon, title, description and a
   // switch; `children` shows under it while it is on.
-  let { checked = $bindable(false), title, description = "", icon: Icon = null, children } = $props();
+  let { checked = $bindable(false), title = undefined, description = "", icon: Icon = null, children = undefined } = $props();
 </script>
 
 <div class="rounded-xl border transition-colors {checked ? 'border-primary/40 bg-primary/5' : 'border-border bg-background/40'}">

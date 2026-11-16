@@ -3,7 +3,7 @@
   // the title (with an optional `badge` snippet next to it), one short line
   // under it (`description`, text or snippet), a folded 「说明」 for longer
   // explanations (`more` snippet) and buttons on the right (`actions`).
-  let { title, icon: Icon = null, description = "", badge = null, more = null, actions = null } = $props();
+  let { title, icon: Icon = null, description = undefined, badge = null, more = null, actions = null } = $props();
 </script>
 
 <header class="flex flex-wrap items-start justify-between gap-x-4 gap-y-3 border-b border-border/60 pb-4">

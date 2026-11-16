@@ -6,7 +6,7 @@
 export async function scrollToRow(id) {
   // After the open row has rendered (no svelte import: tested with node).
   await new Promise((resolve) => requestAnimationFrame(() => resolve()));
-  const rows = [...document.querySelectorAll("[data-row]")].filter((el) => el.dataset.row === id && el.offsetParent !== null);
+  const rows = [.../** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll("[data-row]"))].filter((el) => el.dataset.row === id && el.offsetParent !== null);
   rows[0]?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 

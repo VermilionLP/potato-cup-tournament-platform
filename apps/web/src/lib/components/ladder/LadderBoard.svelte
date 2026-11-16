@@ -29,9 +29,6 @@
     detail,
   } = $props();
 
-  // The first rows only, until asked for more (search shows everything).
-  let limit = $state(PAGE_SIZE);
-  let shownPlayers = $derived(visibleRows(filteredPlayers, limit, { selectedId: selected?.id, searching: query.trim() !== "" }));
 
   const toggle = (p) => onselect(selected?.id === p.id ? null : p);
   let me = $derived(userState.id ? players.find((p) => p.id === userState.id) : null);
@@ -57,6 +54,10 @@
         (p.team || "").toLowerCase().includes(q),
     );
   });
+
+  // The first rows only, until asked for more (search shows everything).
+  let limit = $state(PAGE_SIZE);
+  let shownPlayers = $derived(visibleRows(filteredPlayers, limit, { selectedId: selected?.id, searching: query.trim() !== "" }));
 </script>
 
 <Card.Root class="border-border bg-card/40">

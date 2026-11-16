@@ -45,6 +45,7 @@ pnpm dev          # api + web
 pnpm migrate      # 运行 PostgreSQL 迁移
 pnpm build:web    # 生成 apps/web/build
 pnpm test         # web + api 单元测试（不需要数据库）
+pnpm --filter suck-tournament-web check   # 网页类型检查（svelte-check，CI 要求 0 错误 0 警告；先 build:web）
 ```
 
 ## Hard Rules
@@ -57,6 +58,9 @@ pnpm test         # web + api 单元测试（不需要数据库）
 - 前端只用 Svelte 5 runes（`$state` / `$derived` / `$effect` / `$props`），不要用 `$:` 或 `export let`。
 - API 请求统一走 `#lib/api.js`；开发时 `/api` 由 Vite 代理到 `:3100`。
 - 凭证只从环境变量读取，绝不提交到仓库；`apps/*/.env` 已被 gitignore。
+- 网页是不带类型的 JS，类型检查用非 strict 模式（`apps/web/jsconfig.json`）：推断不出的地方用 JSDoc（`@param`、`/** @type {any} */ (x)`）说明，不要为了过检查改运行逻辑；组件里可不传的 prop 要有默认值（没有就写 `= undefined`）。
+- 天梯缓存（`apps/api/lib/ladder-cache.js`）：写请求清空缓存并在后台重算；5 分钟过期后先继续返回旧数据、后台重算（stale-while-revalidate），访客不会因为过期等重算。只读或不影响排名的写接口要加进 `CACHE_NEUTRAL_ROUTES`。
+- 根布局里的管理员登录、个人资料、「报名成功」对话框是第一次打开时才加载的（动态 `import()`），新的全局对话框也这样做，别让每个页面都下载它们。
 
 ## Credentials
 

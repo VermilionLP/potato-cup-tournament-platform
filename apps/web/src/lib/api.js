@@ -39,7 +39,7 @@ async function request(path, options = {}) {
         : res.status === 403
           ? err.message || '没有权限执行此操作'
           : err.message || err.error || 'Request failed';
-    const error = new Error(message);
+    const error = /** @type {Error & { status?: number, code?: string }} */ (new Error(message));
     error.status = res.status;
     error.code = err.code;
     // The ID is bound to another device: the layout offers to import a key.
@@ -135,6 +135,7 @@ export const API = {
 
   // Ladder
   // mode / pool pick a division (e.g. AB 螺旋桨); omitted = all games.
+  /** @param {{ includeInactive?: boolean, days?: number, window?: string, mode?: string, pool?: string }} [opts] */
   getLadder: ({ includeInactive = false, days, window, mode, pool } = {}) => {
     const params = new URLSearchParams();
     if (days) params.set('days', String(days));
@@ -145,6 +146,7 @@ export const API = {
     const qs = params.toString();
     return request(`/ladder${qs ? `?${qs}` : ''}`);
   },
+  /** @param {string} id @param {{ days?: number, window?: string, mode?: string, pool?: string }} [opts] */
   getLadderPlayer: (id, { days, window, mode, pool } = {}) => {
     const params = new URLSearchParams();
     if (days) params.set('days', String(days));

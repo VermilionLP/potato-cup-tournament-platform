@@ -81,6 +81,8 @@
   let events = $derived(eventRows(stats?.tournaments || []));
   let pools = $derived(poolRows(stats?.pools));
   let modes = $derived(modeRows(stats?.modes));
+  /** @type {[string, any[]][]} */
+  let breakdowns = $derived([["比赛类型", pools], ["游戏模式", modes]]);
   let name = $derived(profile?.display_name || profile?.id || id);
   const pct = (v) => `${Math.round((v || 0) * 100)}%`;
 </script>
@@ -204,7 +206,7 @@
         <Card.Root class="border-border bg-card/40">
           <Card.Header class="p-5 pb-2"><Card.Title class="text-sm font-bold">分类战绩</Card.Title></Card.Header>
           <Card.Content class="p-5 pt-0 space-y-3">
-            {#each [["比赛类型", pools], ["游戏模式", modes]] as [title, rows] (title)}
+            {#each breakdowns as [title, rows] (title)}
               {#if rows.length}
                 <div class="space-y-1">
                   <div class="text-small text-muted-foreground">{title}</div>
