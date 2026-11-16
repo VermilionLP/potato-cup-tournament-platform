@@ -1,12 +1,13 @@
 // How much an event's games move ladder MMR: the Elo K of every game is
 // multiplied by its event's weight, by the event's kind (tournaments.
-// event_kind). Major events count more than the weekly cups. Used by the
+// event_kind). Major events count more than the weekly cups; qualifiers
+// count the same as weekly cups. Used by the
 // server's ladder (apps/api/lib/ladder.js) and the site's MMR preview
 // (apps/web/src/lib/ladder-sim.js), so both agree.
 
 export const LADDER_WEIGHTS = Object.freeze({
   major: 1.5, // 大型赛事
-  qualifier: 1.25, // 预选赛
+  qualifier: 1, // 预选赛：和周赛一样
   weekly: 1, // 周赛
 });
 // Events without a kind (unset).
