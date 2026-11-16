@@ -9,7 +9,7 @@
   import { API } from "#lib/api.js";
   import { askConfirm } from "#lib/confirm.svelte.js";
   import { Button } from "#lib/components/ui/button/index.js";
-  import { ENVIRONMENTS, WEATHERS, fileSize, imageDataUrl, missionFile } from "#lib/missions.js";
+  import { ENVIRONMENTS, WEATHERS, fileSize, imageDataUrl, menuOptions, missionFile, timeLabel, weatherLabel } from "#lib/missions.js";
   import MissionThumb from "./MissionThumb.svelte";
   import ImageIcon from "@lucide/svelte/icons/image";
   import { missionProblems, parseUnitList } from "@potato-cup/shared/mission-blk.js";
@@ -196,16 +196,20 @@
                 <label class="text-small font-semibold text-muted-foreground" for="mf-{key}">{label}</label>
                 {#if kind === "number"}
                   <input id="mf-{key}" type="number" step="any" class="field w-full" bind:value={fields[key]} />
+                {:else if kind === "env" || kind === "weather"}
+                  <select id="mf-{key}" class="field w-full cursor-pointer" bind:value={fields[key]}>
+                    {#each kind === "env" ? menuOptions(ENVIRONMENTS, timeLabel, savedFields[key]) : menuOptions(WEATHERS, weatherLabel, savedFields[key]) as o (o.value)}
+                      <option value={o.value}>{o.label}</option>
+                    {/each}
+                  </select>
                 {:else}
-                  <input id="mf-{key}" class="field w-full" bind:value={fields[key]} list={kind === "env" ? "mf-envs" : kind === "weather" ? "mf-weathers" : undefined} spellcheck="false" />
+                  <input id="mf-{key}" class="field w-full" bind:value={fields[key]} spellcheck="false" />
                 {/if}
                 {#if help}<p class="text-small text-muted-foreground">{help}</p>{/if}
               </div>
             {/if}
           {/each}
         </div>
-        <datalist id="mf-envs">{#each ENVIRONMENTS as v (v)}<option value={v}></option>{/each}</datalist>
-        <datalist id="mf-weathers">{#each WEATHERS as v (v)}<option value={v}></option>{/each}</datalist>
         <div class="flex items-center justify-end gap-2">
           <span class="text-small text-muted-foreground">{Object.keys(changedFields).length ? `改了 ${Object.keys(changedFields).length} 项` : "没有改动"}</span>
           <Button onclick={saveFields} disabled={saving || !Object.keys(changedFields).length}>保存设置</Button>
@@ -279,7 +283,7 @@
           <li class="flex flex-wrap items-center gap-x-3 gap-y-1 py-2.5">
             <span class="w-14 shrink-0 text-sm font-bold num">第 {v.version} 版</span>
             <span class="min-w-0 flex-1 text-sm">
-              <span data-no-i18n={v.note && !/^(上传|从链接导入|修改设置|修改原文|恢复到第)/.test(v.note)}>{v.note || "—"}</span>
+              <span data-no-i18n={v.note && !/^(上传|从链接导入|修改设置|修改原文|修改载具|开启载具限制|关闭载具限制|恢复到第)/.test(v.note) ? "" : undefined}>{v.note || "—"}</span>
               <span class="text-small text-muted-foreground"> · {when(v.created_at)}{#if v.created_by} · <span data-no-i18n>{v.created_by}</span>{/if} · {fileSize(v.size)}</span>
             </span>
             {#if v.version === mission.version}

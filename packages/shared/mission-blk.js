@@ -23,7 +23,7 @@ export const MISSION_FIELDS = {
   locDesc: { type: 't', max: 500 },
   scoreLimit: { type: 'i', min: 1, max: 1000 },
   timeLimit: { type: 'i', min: 1, max: 600 },
-  environment: { type: 't', pattern: /^[A-Za-z][A-Za-z0-9_]{0,31}$/ },
+  environment: { type: 't', pattern: /^[A-Za-z0-9][A-Za-z0-9_:.]{0,31}$/ },
   weather: { type: 't', pattern: /^[A-Za-z][A-Za-z0-9_]{0,31}$/ },
   respawnTimeMultiplier: { type: 'r', min: 0, max: 100 },
   deathPenaltyMul: { type: 'r', min: 0, max: 100 },
@@ -31,9 +31,11 @@ export const MISSION_FIELDS = {
   optionalTakeOff: { type: 'b' },
 };
 
-// Values the game uses (suggestions; other names are kept as they are).
-export const ENVIRONMENTS = ['Morning', 'Day', 'Noon', 'Evening', 'Dusk', 'Night', 'Dawn'];
-export const WEATHERS = ['clear', 'good', 'hazy', 'thin_clouds', 'cloudy', 'cloudy_windy', 'overcast', 'poor', 'blind', 'rain', 'thunder', 'storm'];
+// The values of the game's custom battle menus, in the menus' order (from
+// the game's menu_options.csv: options/weather<value>, options/time<value>).
+// Other values in a file are kept as they are.
+export const WEATHERS = ['clear', 'good', 'hazy', 'mist', 'thin_clouds', 'cloudy_windy', 'cloudy', 'overcast', 'poor', 'blind', 'rain', 'storm'];
+export const ENVIRONMENTS = ['Dawn', 'Morning', 'Noon', 'Day', 'Evening', 'Dusk', 'Night', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18'];
 
 export const TEAMS = ['teamA', 'teamB'];
 const UNITS_PATH = (team) => ['mission_settings', 'mission', 'customRules', 'teams', team, 'unlimitedUnits'];

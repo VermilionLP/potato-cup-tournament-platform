@@ -87,3 +87,10 @@ test('the vehicle limit turns off (customRules removed) and back on (the old blo
   assert.equal(applyMissionEdits(joust, { vehicleLimit: true }), joust);
   assert.equal(applyMissionEdits(off, { vehicleLimit: false }), off);
 });
+
+test('time of day can be an hour (the game menu offers 7-18)', () => {
+  const out = applyMissionEdits(joust, { fields: { environment: '7', weather: 'cloudy_windy' } });
+  assert.match(out, /environment:t="7"/);
+  assert.match(out, /weather:t="cloudy_windy"/);
+  assert.throws(() => applyMissionEdits(joust, { fields: { environment: '7 pm' } }), /英文字母/);
+});
