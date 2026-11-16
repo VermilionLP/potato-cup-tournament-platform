@@ -1,7 +1,8 @@
 // Vehicle pool templates used by Ban / Pick (lib/vehicle-pools.js). Everyone
 // can read them; admins create, edit, copy and delete them. An event page
 // reads only its own template (GET /tournaments/:id/vehicle-pool), with the
-// wiki unit of each vehicle filled in (lib/wt-unit-index.js).
+// wiki unit of each vehicle filled in (lib/wt-unit-index.js). A template also
+// lists the 比赛地图 its events use (missions, migration 056).
 
 import { randomBytes } from 'crypto';
 import { requireAdmin } from '../lib/admin.js';
@@ -9,11 +10,11 @@ import { GAME_MODES, VEHICLE_POOLS } from '../lib/tournament-config.js';
 import { normalizeRules, normalizeTemplate, resolveTemplate } from '@potato-cup/shared/vehicle-pools.js';
 import { withUnits } from '../lib/wt-unit-index.js';
 
-const COLUMNS = 'id, name, event_type, game_modes, rules, sort_order, vehicles, created_at, updated_at';
-const FIELDS = ['name', 'event_type', 'game_modes', 'rules', 'sort_order', 'vehicles'];
+const COLUMNS = 'id, name, event_type, game_modes, rules, sort_order, vehicles, missions, created_at, updated_at';
+const FIELDS = ['name', 'event_type', 'game_modes', 'rules', 'sort_order', 'vehicles', 'missions'];
 const options = { eventTypes: VEHICLE_POOLS, gameModes: GAME_MODES };
 
-const shape = (row) => row && { ...row, rules: normalizeRules(row.rules), game_modes: row.game_modes || [] };
+const shape = (row) => row && { ...row, rules: normalizeRules(row.rules), game_modes: row.game_modes || [], missions: row.missions || [] };
 
 export default async function vehiclePoolRoutes(fastify) {
   const db = fastify.db;
@@ -21,6 +22,14 @@ export default async function vehiclePoolRoutes(fastify) {
   async function listTemplates() {
     const rows = (await db.query(`SELECT ${COLUMNS} FROM axsuck.vehicle_pools ORDER BY event_type, sort_order, name`)).rows;
     return rows.map(shape);
+  }
+
+  // A template's maps must exist (routes/missions.js).
+  async function missionsProblem(ids) {
+    if (!ids?.length) return null;
+    const known = new Set((await db.query('SELECT id FROM axsuck.missions WHERE id = ANY($1)', [ids])).rows.map((r) => r.id));
+    const missing = ids.filter((x) => !known.has(x));
+    return missing.length ? `没有这个地图：${missing.join(', ')}` : null;
   }
 
   fastify.get('/vehicle-pools', async () => ({ templates: await listTemplates() }));
@@ -39,12 +48,14 @@ export default async function vehiclePoolRoutes(fastify) {
     requireAdmin(fastify, req);
     const { template, error } = normalizeTemplate(req.body, options);
     if (error) throw fastify.httpErrors.badRequest(error);
+    const missing = await missionsProblem(template.missions);
+    if (missing) throw fastify.httpErrors.badRequest(missing);
     const id = `pool-${randomBytes(4).toString('hex')}`;
     const row = (await db.query(`
-      INSERT INTO axsuck.vehicle_pools (id, name, event_type, game_modes, rules, sort_order, vehicles, updated_at)
-      VALUES ($1, $2, $3, $4, $5::jsonb, $6, $7::jsonb, NOW())
+      INSERT INTO axsuck.vehicle_pools (id, name, event_type, game_modes, rules, sort_order, vehicles, missions, updated_at)
+      VALUES ($1, $2, $3, $4, $5::jsonb, $6, $7::jsonb, $8, NOW())
       RETURNING ${COLUMNS}
-    `, [id, template.name, template.event_type, template.game_modes, JSON.stringify(template.rules), template.sort_order, JSON.stringify(template.vehicles)])).rows[0];
+    `, [id, template.name, template.event_type, template.game_modes, JSON.stringify(template.rules), template.sort_order, JSON.stringify(template.vehicles), template.missions])).rows[0];
     return shape(row);
   });
 
@@ -52,6 +63,8 @@ export default async function vehiclePoolRoutes(fastify) {
     requireAdmin(fastify, req);
     const { template, error } = normalizeTemplate(req.body, { ...options, partial: true });
     if (error) throw fastify.httpErrors.badRequest(error);
+    const missing = await missionsProblem(template.missions);
+    if (missing) throw fastify.httpErrors.badRequest(missing);
     const sets = [];
     const params = [req.params.id];
     for (const field of FIELDS) {

@@ -102,6 +102,9 @@ export const API = {
     return res.text();
   },
   setEventMissions: (id, missions) => request(`/tournaments/${enc(id)}/missions`, { method: 'PUT', body: JSON.stringify({ missions }) }),
+  getEventMissions: (id) => request(`/tournaments/${enc(id)}/missions`),
+  uploadMissionImage: (id, data) => request(`/missions/${enc(id)}/image`, { method: 'POST', body: JSON.stringify({ data }) }),
+  deleteMissionImage: (id) => request(`/missions/${enc(id)}/image`, { method: 'DELETE' }),
 
   // Tournaments
   listTournaments: () => request('/tournaments'),

@@ -15,6 +15,12 @@
 //   POST /missions/:id/revert          admin: a new version with an old text
 //   DELETE /missions/:id               admin
 //   PUT /tournaments/:id/missions      admin: the maps an event uses
+//   GET /tournaments/:id/missions      the maps an event uses: its own list,
+//                                      else its vehicle pool template's
+//   GET /missions/:id/image            the map's picture (cards)
+//   POST /missions/:id/image           admin: { data: data URL } (PNG / JPEG /
+//                                      WebP, at most 2 MB)
+//   DELETE /missions/:id/image         admin
 //
 // Every saved text is a new version (mission_versions, migration 055); edits
 // carry the version they started from and a stale one is refused. A .blk
@@ -27,10 +33,20 @@ import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { applyMissionEdits, MAX_MISSION_BYTES, missionProblems, missionSummary, vehicleLimitBlock } from '@potato-cup/shared/mission-blk.js';
 import { isAdminRequest, requireAdmin } from '../lib/admin.js';
+import { resolveTemplate } from '@potato-cup/shared/vehicle-pools.js';
 
 export const MISSION_FILE = /^[a-z0-9][a-z0-9_-]{0,79}\.blk$/i;
 export const MISSION_ID = /^[a-z0-9][a-z0-9-]{1,59}$/;
 export const MAX_EVENT_MISSIONS = 10;
+export const MAX_IMAGE_BYTES = 2 * 1024 * 1024;
+
+/** The picture's type from its first bytes (PNG, JPEG, WebP), or null. */
+export function imageType(buf) {
+  if (buf.length > 8 && buf[0] === 0x89 && buf.toString('latin1', 1, 4) === 'PNG') return 'image/png';
+  if (buf.length > 3 && buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) return 'image/jpeg';
+  if (buf.length > 12 && buf.toString('latin1', 0, 4) === 'RIFF' && buf.toString('latin1', 8, 12) === 'WEBP') return 'image/webp';
+  return null;
+}
 
 export const missionsDir = () => process.env.MISSIONS_DIR || join(homedir(), 'potato-missions');
 
@@ -44,14 +60,19 @@ export function missionSlug(name) {
     .replace(/-+$/, '');
 }
 
-const COLUMNS = 'id, name, description, credit, source_url, hidden, sort_order, version, content, created_at, updated_at';
-const META = { name: 120, description: 1000, credit: 120, source_url: 500 };
+const COLUMNS = 'id, name, description, credit, source_url, location, hidden, sort_order, version, content, image_version, (image_type IS NOT NULL) AS has_image, created_at, updated_at';
+const META = { name: 120, description: 1000, credit: 120, source_url: 500, location: 60 };
 
 /** A row for the page: the text replaced by what it says (missionSummary) and its size. */
 function shape(row) {
   if (!row) return row;
-  const { content, ...rest } = row;
-  return { ...rest, size: Buffer.byteLength(content || ''), summary: missionSummary(content || '') };
+  const { content, has_image: hasImage, ...rest } = row;
+  return {
+    ...rest,
+    image_url: hasImage ? `/api/missions/${encodeURIComponent(row.id)}/image?v=${row.image_version}` : null,
+    size: Buffer.byteLength(content || ''),
+    summary: missionSummary(content || ''),
+  };
 }
 
 const editor = (req) => String(req.headers['x-player-id'] || '').trim().slice(0, 64) || null;
@@ -156,7 +177,8 @@ export default async function missionsRoutes(fastify) {
       const block = await previousLimitBlock(row.id);
       if (block) previous = { units: missionSummary(`mission_settings{\nmission{\n${block}}\n}\n`)?.units || null };
     }
-    return { mission: shape(row), versions, events, previous_limit: previous };
+    const pools = (await db.query('SELECT id, name FROM axsuck.vehicle_pools WHERE $1 = ANY(missions) ORDER BY event_type, sort_order, name', [row.id])).rows;
+    return { mission: shape(row), versions, events, pools, previous_limit: previous };
   });
 
   async function saveVersion(id, content, note, by) {
@@ -283,7 +305,66 @@ export default async function missionsRoutes(fastify) {
     const gone = (await db.query('DELETE FROM axsuck.missions WHERE id = $1 RETURNING id', [req.params.id])).rows[0];
     if (!gone) throw fastify.httpErrors.notFound('没有这个地图');
     await db.query('UPDATE axsuck.tournaments SET missions = array_remove(missions, $1) WHERE $1 = ANY(missions)', [gone.id]);
+    await db.query('UPDATE axsuck.vehicle_pools SET missions = array_remove(missions, $1) WHERE $1 = ANY(missions)', [gone.id]);
     return { success: true };
+  });
+
+  // ------------------------------------------------------------ pictures
+
+  fastify.get('/missions/:id/image', async (req, reply) => {
+    const row = (await db.query('SELECT image, image_type, image_version, hidden FROM axsuck.missions WHERE id = $1', [req.params.id])).rows[0];
+    if (!row?.image || (row.hidden && !isAdminRequest(req))) throw fastify.httpErrors.notFound('没有这张图片');
+    // The URL carries the version, so a cached copy is never stale.
+    const versioned = Number(req.query?.v) === row.image_version;
+    reply.header('content-type', row.image_type).header('cache-control', versioned ? 'public, max-age=31536000, immutable' : 'public, max-age=300');
+    return reply.send(row.image);
+  });
+
+  fastify.post('/missions/:id/image', { bodyLimit: 4 * 1024 * 1024 }, async (req) => {
+    requireAdmin(fastify, req);
+    const raw = String(req.body?.data || '');
+    const buf = Buffer.from(raw.replace(/^data:[^,]*,/, ''), 'base64');
+    if (!buf.length) throw fastify.httpErrors.badRequest('请选择图片');
+    if (buf.length > MAX_IMAGE_BYTES) throw fastify.httpErrors.badRequest('图片太大（最大 2 MB）');
+    const type = imageType(buf);
+    if (!type) throw fastify.httpErrors.badRequest('只支持 PNG、JPEG 和 WebP 图片');
+    const row = (await db.query(`
+      UPDATE axsuck.missions SET image = $2, image_type = $3, image_version = image_version + 1, updated_at = NOW()
+      WHERE id = $1 RETURNING ${COLUMNS}
+    `, [req.params.id, buf, type])).rows[0];
+    if (!row) throw fastify.httpErrors.notFound('没有这个地图');
+    return { mission: shape(row) };
+  });
+
+  fastify.delete('/missions/:id/image', async (req) => {
+    requireAdmin(fastify, req);
+    const row = (await db.query(`
+      UPDATE axsuck.missions SET image = NULL, image_type = NULL, image_version = image_version + 1, updated_at = NOW()
+      WHERE id = $1 RETURNING ${COLUMNS}
+    `, [req.params.id])).rows[0];
+    if (!row) throw fastify.httpErrors.notFound('没有这个地图');
+    return { mission: shape(row) };
+  });
+
+  // ------------------------------------------------------------ events
+
+  // The maps an event uses: the ones set for it, else its vehicle pool
+  // template's (the template resolveTemplate picks, as Ban / Pick does).
+  fastify.get('/tournaments/:id/missions', async (req) => {
+    const t = (await db.query('SELECT missions, vehicle_pool, game_mode, vehicle_template FROM axsuck.tournaments WHERE id = $1', [req.params.id])).rows[0];
+    if (!t) throw fastify.httpErrors.notFound('Tournament not found');
+    const templates = (await db.query('SELECT id, name, event_type, game_modes, sort_order, missions FROM axsuck.vehicle_pools')).rows;
+    const pool = resolveTemplate(templates, t);
+    const own = t.missions || [];
+    const ids = own.length ? own : pool?.missions || [];
+    const rows = ids.length ? (await db.query(`SELECT ${COLUMNS} FROM axsuck.missions WHERE id = ANY($1) ${isAdminRequest(req) ? '' : 'AND NOT hidden'}`, [ids])).rows : [];
+    const byId = new Map(rows.map((r) => [r.id, r]));
+    return {
+      source: own.length ? 'event' : pool?.missions?.length ? 'pool' : 'none',
+      pool: pool ? { id: pool.id, name: pool.name, missions: pool.missions || [] } : null,
+      event_missions: own,
+      missions: ids.map((id) => byId.get(id)).filter(Boolean).map(shape),
+    };
   });
 
   fastify.put('/tournaments/:id/missions', async (req) => {

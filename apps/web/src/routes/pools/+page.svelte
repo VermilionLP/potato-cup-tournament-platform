@@ -21,6 +21,7 @@
   import { downloadText } from "#lib/download.js";
   import TemplatePicker from "#lib/components/pools/TemplatePicker.svelte";
   import TemplateSettings from "#lib/components/pools/TemplateSettings.svelte";
+  import PoolMissions from "#lib/components/pools/PoolMissions.svelte";
   import VehicleTable from "#lib/components/pools/VehicleTable.svelte";
   import PoolPreview from "#lib/components/pools/PoolPreview.svelte";
   import { Button } from "#lib/components/ui/button/index.js";
@@ -282,6 +283,9 @@
           {#if isAdmin}
             <TemplateSettings {current} {isAdmin} onfield={setField} onrule={setRule} ontogglemode={toggleMode} />
           {/if}
+          {#key activeId}
+            <PoolMissions selected={current.missions || []} {isAdmin} onchange={(list) => setField("missions", list)} />
+          {/key}
 
           <!-- Vehicles: table or Ban / Pick preview -->
           <div class="flex flex-wrap items-center gap-2">

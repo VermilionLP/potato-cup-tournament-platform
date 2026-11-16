@@ -9,7 +9,9 @@
   import { API } from "#lib/api.js";
   import { askConfirm } from "#lib/confirm.svelte.js";
   import { Button } from "#lib/components/ui/button/index.js";
-  import { ENVIRONMENTS, WEATHERS, fileSize, missionFile } from "#lib/missions.js";
+  import { ENVIRONMENTS, WEATHERS, fileSize, imageDataUrl, missionFile } from "#lib/missions.js";
+  import MissionThumb from "./MissionThumb.svelte";
+  import ImageIcon from "@lucide/svelte/icons/image";
   import { missionProblems, parseUnitList } from "@potato-cup/shared/mission-blk.js";
   import SlidersIcon from "@lucide/svelte/icons/sliders-horizontal";
   import PlaneIcon from "@lucide/svelte/icons/plane";
@@ -72,7 +74,7 @@
     sameUnits = !start || unitsA === unitsB;
     limitOn = Boolean(u);
     rawLoaded = 0;
-    info = { name: mission.name, description: mission.description, credit: mission.credit, source_url: mission.source_url, hidden: mission.hidden, sort_order: mission.sort_order };
+    info = { name: mission.name, location: mission.location || "", description: mission.description, credit: mission.credit, source_url: mission.source_url, hidden: mission.hidden, sort_order: mission.sort_order };
   });
 
   const savedFields = $derived(mission.summary?.fields || {});
@@ -125,6 +127,25 @@
   const saveNoLimit = () => run(() => API.editMission(mission.id, { base_version: mission.version, vehicle_limit: false }), "已关闭载具限制（新版本）");
   const saveRaw = () => run(() => API.editMission(mission.id, { base_version: rawLoaded, content: raw, note: rawNote.trim() || "修改原文" }), "已保存原文（新版本）");
   const saveInfo = () => run(() => API.updateMission(mission.id, info), "已保存资料");
+
+  // The picture is saved at once (not with 保存资料).
+  async function pickImage(e) {
+    const file = e.currentTarget.files?.[0];
+    e.currentTarget.value = "";
+    if (!file) return;
+    let data;
+    try {
+      data = await imageDataUrl(file);
+    } catch (err) {
+      toast.error(err.message);
+      return;
+    }
+    await run(() => API.uploadMissionImage(mission.id, data), "已更新缩略图");
+  }
+  async function removeImage() {
+    if (!(await askConfirm("删除这张地图的缩略图？"))) return;
+    await run(() => API.deleteMissionImage(mission.id), "已删除缩略图");
+  }
 
   async function revert(v) {
     if (!(await askConfirm(`恢复到第 ${v} 版？会保存为一个新版本，之后还能再改回来。`))) return;
@@ -271,10 +292,28 @@
         {/each}
       </ul>
     {:else if tab === "info"}
+      <div class="flex flex-wrap items-start gap-4 rounded-lg border border-border p-3">
+        <MissionThumb {mission} class="w-56 max-w-full shrink-0 rounded-md" />
+        <div class="min-w-0 flex-1 space-y-2">
+          <p class="text-sm font-semibold">缩略图</p>
+          <p class="text-small text-muted-foreground">显示在地图卡片和赛事页上，建议 16:9（例如 1280×720）。PNG、JPEG 或 WebP；太大的图片会自动缩小。没有图片时显示地点名称。</p>
+          <div class="flex flex-wrap gap-2">
+            <label class="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-md border border-border px-3 text-sm font-semibold hover:bg-muted/60 {saving ? 'pointer-events-none opacity-50' : ''}">
+              <ImageIcon class="size-4" />{mission.image_url ? "更换图片" : "上传图片"}
+              <input type="file" accept="image/png,image/jpeg,image/webp" class="sr-only" onchange={pickImage} />
+            </label>
+            {#if mission.image_url}<Button size="sm" variant="ghost" class="text-loss" onclick={removeImage} disabled={saving}>删除图片</Button>{/if}
+          </div>
+        </div>
+      </div>
       <div class="grid gap-3 sm:grid-cols-2">
         <div class="space-y-1">
           <label class="text-small font-semibold text-muted-foreground" for="mi-name">名称（网站上显示）</label>
           <input id="mi-name" class="field w-full" bind:value={info.name} />
+        </div>
+        <div class="space-y-1">
+          <label class="text-small font-semibold text-muted-foreground" for="mi-location">地点</label>
+          <input id="mi-location" class="field w-full" bind:value={info.location} placeholder="例如 Kursk、Eastern Europe" />
         </div>
         <div class="space-y-1">
           <label class="text-small font-semibold text-muted-foreground" for="mi-credit">作者 / 出处</label>

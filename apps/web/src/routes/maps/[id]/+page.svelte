@@ -12,6 +12,9 @@
   import { Tag } from "#lib/components/ui/tag/index.js";
   import MissionHowTo from "#lib/components/maps/MissionHowTo.svelte";
   import MissionEditor from "#lib/components/maps/MissionEditor.svelte";
+  import MissionThumb from "#lib/components/maps/MissionThumb.svelte";
+  import { levelName } from "@potato-cup/shared/mission-blk.js";
+  import MapPinIcon from "@lucide/svelte/icons/map-pin";
   import { copyText, fileSize, missionFacts, missionFile, missionLink, modeLabels, vehicleLists } from "#lib/missions.js";
   import { eventStatusLabel } from "#lib/event-view.js";
   import MapIcon from "@lucide/svelte/icons/map";
@@ -67,9 +70,12 @@
   {:else if missing || !mission}
     <EmptyState icon={MapIcon} title="没有这个地图" hint="可能已经删除或隐藏了。" />
   {:else}
-    <header class="flex flex-wrap items-start gap-3 border-b border-border/60 pb-4">
-      <div class="flex size-11 shrink-0 items-center justify-center rounded-xl border border-primary/25 bg-primary/10 text-brand-ink"><MapIcon class="size-5" /></div>
-      <div class="min-w-0 flex-1 space-y-1">
+    <header class="grid gap-4 border-b border-border/60 pb-5 sm:grid-cols-[minmax(0,22rem)_1fr] sm:items-end">
+      <MissionThumb {mission} eager class="rounded-xl border border-border" />
+      <div class="min-w-0 space-y-1.5">
+        {#if mission.location || summary?.level}
+          <p class="flex items-center gap-1 text-sm font-semibold text-muted-foreground"><MapPinIcon class="size-4" /><span data-no-i18n>{mission.location || levelName(summary?.level)}</span></p>
+        {/if}
         <h1 class="text-2xl font-extrabold tracking-tight sm:text-3xl" data-no-i18n>{mission.name}</h1>
         <div class="flex flex-wrap items-center gap-1.5">
           {#each modeLabels(summary) as m (m)}<Tag tone="info">{m}</Tag>{/each}
@@ -133,6 +139,17 @@
             </div>
           </div>
         {/each}
+      </section>
+    {/if}
+
+    {#if data.pools?.length}
+      <section class="space-y-2">
+        <h2 class="text-sm font-bold">使用这张地图的载具池</h2>
+        <ul class="flex flex-wrap gap-2">
+          {#each data.pools as p (p.id)}
+            <li><a href="/pools?template={encodeURIComponent(p.id)}" class="inline-flex items-center rounded-lg border border-border px-2.5 py-1 text-sm hover:bg-muted/50" data-no-i18n>{p.name}</a></li>
+          {/each}
+        </ul>
       </section>
     {/if}
 

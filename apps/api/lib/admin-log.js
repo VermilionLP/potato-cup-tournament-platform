@@ -59,6 +59,8 @@ export const ACTIONS = {
   'PUT /missions/:id/content': 'mission.edit',
   'POST /missions/:id/revert': 'mission.revert',
   'DELETE /missions/:id': 'mission.delete',
+  'POST /missions/:id/image': 'mission.image',
+  'DELETE /missions/:id/image': 'mission.image_delete',
   'PUT /tournaments/:id/missions': 'event.missions',
   'PUT /admin/alert-players': 'admin.alert_players',
   'PUT /seasons/:season/top': 'season.top',
@@ -88,6 +90,11 @@ export function cleanDetail(value, depth = 0) {
       // A mission file's text (routes/missions.js): its size is enough.
       if (k === 'content' && typeof v === 'string' && depth === 0) {
         out.content_bytes = Buffer.byteLength(v);
+        continue;
+      }
+      // A map picture (data URL): its size.
+      if (k === 'data' && typeof v === 'string' && depth === 0 && v.length > 1000) {
+        out.data_bytes = Math.floor((v.length * 3) / 4);
         continue;
       }
       out[k] = cleanDetail(v, depth + 1);
