@@ -126,7 +126,7 @@
 
 <div class="space-y-6">
   <div class="space-y-3">
-    <PageHeader title="排行" icon={SwordsIcon} description="天梯 MMR：全部已完成对局按日期顺序用 Elo 计算，初始 MMR 3000">
+    <PageHeader steady title="排行" icon={SwordsIcon} description="天梯 MMR：全部已完成对局按日期顺序用 Elo 计算，初始 MMR 3000">
       {#snippet badge()}
         {#if divisionLabel}
           <Badge variant="outline" class="text-xs font-bold border-primary/40 text-brand-ink">{divisionLabel}</Badge>

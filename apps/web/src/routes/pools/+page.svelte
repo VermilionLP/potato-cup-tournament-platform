@@ -200,9 +200,9 @@
 
 <!-- w-full min-w-0: with auto margins in the layout's flex column the page
      would otherwise grow to the vehicle table's width on phones. -->
-<div class="mx-auto w-full min-w-0 max-w-5xl space-y-4 px-1 sm:px-4 py-2 sm:py-6">
+<div class="mx-auto w-full min-w-0 max-w-6xl space-y-4 px-1 sm:px-4 py-2 sm:py-6">
   <div class="space-y-3">
-  <PageHeader title="载具池模板" icon={PlaneIcon} description="每种比赛类型的载具分组、Ban / Pick 规则和比赛地图">
+  <PageHeader steady title="载具池模板" icon={PlaneIcon} description="每种比赛类型的载具分组、Ban / Pick 规则和比赛地图">
     {#snippet more()}
       <p>
         每个模板属于一种比赛类型，可以限定游戏模式，并带有自己的 Ban / Pick 规则。比赛默认自动使用同类型里最匹配游戏模式的模板（按排序），管理员也可以在赛事页手动指定。{isAdmin

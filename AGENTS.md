@@ -61,6 +61,7 @@ pnpm --filter suck-tournament-web check   # 网页类型检查（svelte-check，
 - 网页是不带类型的 JS，类型检查用非 strict 模式（`apps/web/jsconfig.json`）：推断不出的地方用 JSDoc（`@param`、`/** @type {any} */ (x)`）说明，不要为了过检查改运行逻辑；组件里可不传的 prop 要有默认值（没有就写 `= undefined`）。
 - 天梯段位（`apps/api/lib/ladder.js` 的 `assignPercentileTiers`）：前 1% 是宗师（四舍五入，不足 50 人没有），其余按大师 4%、钻石 / 白金 / 黄金 / 白银各 23%、青铜 4% 分。
 - 天梯缓存（`apps/api/lib/ladder-cache.js`）：写请求清空缓存并在后台重算；5 分钟过期后先继续返回旧数据、后台重算（stale-while-revalidate），访客不会因为过期等重算。只读或不影响排名的写接口要加进 `CACHE_NEUTRAL_ROUTES`。
+- 同一组标签页（排行的 4 个、地图和载具的 2 个）用 `<PageHeader steady>` 和相同的外框，切换标签时标签栏不移动：`steady` 让说明文字在窄屏固定两行（lg 起一行）、没有「说明」也留出那一行。新加的标签页也要这样。
 - 根布局里的管理员登录、个人资料、「报名成功」对话框是第一次打开时才加载的（动态 `import()`），新的全局对话框也这样做，别让每个页面都下载它们。
 
 ## Credentials

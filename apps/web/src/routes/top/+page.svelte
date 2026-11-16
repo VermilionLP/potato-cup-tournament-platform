@@ -112,7 +112,7 @@
 
 <div class="space-y-6">
   <div class="space-y-3">
-    <PageHeader title="排行" icon={SwordsIcon} description="年度 Top20：赛季结束后从第 20 名开始，每天揭晓一位选手，直到第 1 名">
+    <PageHeader steady title="排行" icon={SwordsIcon} description="年度 Top20：赛季结束后从第 20 名开始，每天揭晓一位选手，直到第 1 名">
       {#snippet more()}
         <p>名单由系统按本赛季各类型年度积分之和排出，管理员可以调整。每天同一时间揭晓一位，QQ 群机器人同步公布。还没揭晓的名次只显示揭晓时间。</p>
       {/snippet}
