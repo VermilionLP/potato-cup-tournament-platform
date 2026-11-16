@@ -5,9 +5,9 @@
 
 	let {
 		ref = $bindable(null),
-		class: className,
-		value,
-		onchange,
+		class: className = undefined,
+		value = undefined,
+		onchange = undefined,
 		...restProps
 	} = $props();
 </script>

@@ -62,11 +62,12 @@
 {/if}
 
 <style>
-  .attention-ring {
-    animation: ring 2.4s ease-in-out infinite;
+  /* On the icon component's <svg>: outside this component's scope. */
+  :global(.attention-ring) {
+    animation: attention-ring-shake 2.4s ease-in-out infinite;
     transform-origin: 50% 10%;
   }
-  @keyframes ring {
+  @keyframes -global-attention-ring-shake {
     0%, 60%, 100% { transform: rotate(0); }
     65% { transform: rotate(14deg); }
     72% { transform: rotate(-12deg); }
@@ -74,6 +75,6 @@
     86% { transform: rotate(-4deg); }
   }
   @media (prefers-reduced-motion: reduce) {
-    .attention-ring { animation: none; }
+    :global(.attention-ring) { animation: none; }
   }
 </style>

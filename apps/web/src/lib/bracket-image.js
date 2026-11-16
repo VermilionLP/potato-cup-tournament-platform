@@ -244,6 +244,7 @@ function placingTable(group, ctx, perGroup) {
  * (`matches`, `standings`, `totalRounds`) or "groups" (`matches`: the
  * group stage, `groups`: group_stage.groups, `groupFormat`: the group
  * stage's format, `perGroup`). `playerName(id, match)`: the page's namer.
+ * @param {{ tournament?: any, matches?: any[], view?: string, doubleElim?: boolean, standings?: any[], totalRounds?: number | null, groups?: any[], groupFormat?: string, perGroup?: number, playerName?: Function | null, now?: Date }} [opts]
  */
 export function bracketImageLayout({
   tournament,
@@ -268,6 +269,7 @@ export function bracketImageLayout({
     return n ? `${text} · BO${n}` : text;
   };
   const ctx = { players, playerName, status, withBestOf };
+  /** @type {any[]} */
   const sections = [];
   let formatTag = doubleElim ? "双败淘汰" : "单败淘汰";
   let champion = null;

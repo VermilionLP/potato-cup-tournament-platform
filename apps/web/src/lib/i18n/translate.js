@@ -58,6 +58,7 @@ export function compile(dict) {
   return { exact, patterns };
 }
 
+/** @param {Record<string, string>} [dict] */
 export function createTranslator(dict = EN) {
   const { exact, patterns } = compile(dict);
   const cache = new Map();

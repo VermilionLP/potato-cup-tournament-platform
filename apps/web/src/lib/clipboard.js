@@ -67,7 +67,7 @@ function execCopy(value, near) {
     width: "1px",
     height: "1px",
   });
-  const previous = document.activeElement;
+  const previous = /** @type {HTMLElement | null} */ (document.activeElement);
   host.appendChild(area);
   let ok = false;
   try {

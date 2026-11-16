@@ -140,19 +140,6 @@
   });
   let gameLive = $derived(gameStatus(tournament?.game, gameClock + clockOffset).live);
 
-  let currentScene = $derived(
-    overlayScene({
-      param: sceneParam,
-      countdownOver: Boolean(countdown?.over),
-      chosen: tournament?.overlay_scene,
-      game: tournament?.game,
-      live: gameLive,
-      activeMatchId: activeMatch?.id ?? null,
-      overlaySetAt: tournament?.overlay_set_at,
-      bp: Boolean(activeMatch && (bpPending(activeMatch) || revealHold)),
-      decided: Boolean(activeMatch && isDecided(activeMatch)),
-    }),
-  );
   // The live match still needs its Ban / Pick: the event has one (and a
   // vehicle pool), the match is not played yet (no live score) and its
   // result is not confirmed.
@@ -173,6 +160,19 @@
   });
   let holdClock = $state(Date.now());
   let revealHold = $derived(revealUntil > holdClock + clockOffset);
+  let currentScene = $derived(
+    overlayScene({
+      param: sceneParam,
+      countdownOver: Boolean(countdown?.over),
+      chosen: tournament?.overlay_scene,
+      game: tournament?.game,
+      live: gameLive,
+      activeMatchId: activeMatch?.id ?? null,
+      overlaySetAt: tournament?.overlay_set_at,
+      bp: Boolean(activeMatch && (bpPending(activeMatch) || revealHold)),
+      decided: Boolean(activeMatch && isDecided(activeMatch)),
+    }),
+  );
   $effect(() => {
     const left = revealUntil - (Date.now() + clockOffset);
     holdClock = Date.now();

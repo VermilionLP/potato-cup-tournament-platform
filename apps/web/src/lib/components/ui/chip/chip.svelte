@@ -3,7 +3,7 @@
   // `count` shows "label · n".
   import { cn } from "#lib/utils.js";
 
-  let { selected = false, count = undefined, class: className, children, ...rest } = $props();
+  let { selected = false, count = undefined, class: className = undefined, children = undefined, ...rest } = $props();
 </script>
 
 <button

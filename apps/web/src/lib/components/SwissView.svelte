@@ -108,7 +108,7 @@
     {:else if isAdmin && status !== "completed"}
       <button
         type="button"
-        onclick={onEditRounds}
+        onclick={() => onEditRounds()}
         class="rounded-full border border-border px-2 py-0.5 text-muted-foreground hover:text-foreground cursor-pointer"
       >
         修改轮数

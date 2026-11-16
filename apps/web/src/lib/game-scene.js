@@ -29,6 +29,7 @@ const time = (v) => {
  * The scene the game asks for, or null: the HUD in a battle; the bracket
  * after the live match's battle ended. Only when the change came after the
  * console last picked a scene.
+ * @param {{ game?: any, live?: boolean, activeMatchId?: any, overlaySetAt?: string | null }} state
  */
 export function gameScene({ game, live, activeMatchId, overlaySetAt }) {
   if (!live || !game) return null;
@@ -42,6 +43,7 @@ export function gameScene({ game, live, activeMatchId, overlaySetAt }) {
  * The overlay's scene. `param` is ?scene=, `chosen` the console's scene
  * ("auto" or one scene), `bp` whether the live match's Ban / Pick (or its
  * reveal) is on, `decided` whether the live match has its result.
+ * @param {{ param?: string | null, countdownOver?: boolean, chosen?: string, game?: any, live?: boolean, activeMatchId?: any, overlaySetAt?: string | null, bp?: boolean, decided?: boolean }} state
  */
 export function overlayScene({ param, countdownOver, chosen, game, live, activeMatchId, overlaySetAt, bp, decided }) {
   if (param && param !== "auto") return param;

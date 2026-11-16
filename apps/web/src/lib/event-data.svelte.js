@@ -20,7 +20,7 @@ export class EventData {
   playTimes = $state(null);
   seedOrder = $state([]);
 
-  #tid;
+  #tid = () => ""; // set by the constructor
   #isAdmin;
   #loadedId = null;
   #rosterFor = null; // event whose player list was requested

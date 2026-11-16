@@ -5,7 +5,10 @@
 
 const cache = new Map(); // unit -> Promise<specs | null>
 
-/** The vehicle's specifications (null when the wiki has none), fetched once per page. */
+/**
+ * The vehicle's specifications (null when the wiki has none), fetched once per page.
+ * @param {string} unit @param {Function | null} [fetchImpl]
+ */
 export function loadVehicleSpecs(unit, fetchImpl = typeof fetch === "undefined" ? null : fetch) {
   if (!unit || !fetchImpl) return Promise.resolve(null);
   if (!cache.has(unit)) {

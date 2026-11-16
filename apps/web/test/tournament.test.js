@@ -74,8 +74,8 @@ test("score outcome follows the server's winner and advancement rules", async ()
   assert.deepEqual(scoreOutcome(2, 1), { tie: false, winner: 1, advancer: 1 });
   assert.deepEqual(scoreOutcome("0", "2"), { tie: false, winner: 2, advancer: 2 });
   assert.deepEqual(scoreOutcome(1, 1), { tie: true, winner: null, advancer: null });
-  assert.equal(scoreOutcome(2, 0, { loserAdvances: 1 }).advancer, 2);
-  assert.equal(scoreOutcome(2, 0, { format: "double_elim", loserAdvances: 1 }).advancer, 1);
+  assert.equal(scoreOutcome(2, 0, { loserAdvances: true }).advancer, 2);
+  assert.equal(scoreOutcome(2, 0, { format: "double_elim", loserAdvances: true }).advancer, 1);
   assert.equal(scoreOutcome(2, 0, { format: "swiss", loserAdvances: true }).advancer, 1);
 });
 

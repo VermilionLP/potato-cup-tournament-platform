@@ -4,10 +4,10 @@
 	import { cn } from "#lib/utils.js";
 	let {
 		ref = $bindable(null),
-		class: className,
+		class: className = undefined,
 		sideOffset = 4,
-		align = "center",
-		portalProps,
+		align = /** @type {any} */ ("center"),
+		portalProps = undefined,
 		...restProps
 	} = $props();
 </script>

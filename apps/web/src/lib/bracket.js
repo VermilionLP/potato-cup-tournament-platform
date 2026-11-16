@@ -58,8 +58,8 @@ export function buildMatchOrder(matches = []) {
     .sort(
       (a, b) =>
         (a.swiss_group || 1) - (b.swiss_group || 1) ||
-        (a.bracket === "glb") - (b.bracket === "glb") ||
-        (a.round === 0) - (b.round === 0) ||
+        Number(a.bracket === "glb") - Number(b.bracket === "glb") ||
+        Number(a.round === 0) - Number(b.round === 0) ||
         b.round - a.round ||
         a.position - b.position ||
         a.id - b.id,

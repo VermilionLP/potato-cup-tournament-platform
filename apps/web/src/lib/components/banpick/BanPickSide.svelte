@@ -4,7 +4,7 @@
   import Flag from "#lib/components/Flag.svelte";
   import { bansOf } from "#lib/banpick.js";
 
-  let { slot, player, active = false, bp, canPass = true, onpass } = $props();
+  let { slot = undefined, player = undefined, active = false, bp = undefined, canPass = true, onpass = undefined } = $props();
   const rules = $derived(bp.rules);
   const own = $derived(bansOf(bp, slot));
 

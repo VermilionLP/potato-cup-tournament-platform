@@ -3,7 +3,7 @@
   // and profile buttons) around every page except the OBS overlay. The
   // dialogs and header parts live in #lib/components/layout.
   import "../app.css";
-  import { onMount } from "svelte";
+  import { onMount, tick } from "svelte";
   import { Toaster, toast } from "svelte-sonner";
   import { page } from "$app/state";
   import { ModeWatcher, mode, toggleMode } from "mode-watcher";
@@ -17,21 +17,34 @@
   import ReminderCenter from "#lib/components/layout/ReminderCenter.svelte";
   import AttentionBanner from "#lib/components/layout/AttentionBanner.svelte";
   import { reminders } from "#lib/reminders.svelte.js";
-  import AdminDialog from "#lib/components/layout/AdminDialog.svelte";
   import AdminMenu from "#lib/components/layout/AdminMenu.svelte";
   import ConfirmHost from "#lib/components/layout/ConfirmHost.svelte";
-  import JoinDiscordDialog from "#lib/components/discord/JoinDiscordDialog.svelte";
+  import { discord } from "#lib/discord.svelte.js";
   import { installErrorReporting } from "#lib/error-report.js";
-  import ProfileDialog from "#lib/components/layout/ProfileDialog.svelte";
   import SiteFooter from "#lib/components/layout/SiteFooter.svelte";
   import SunIcon from "@lucide/svelte/icons/sun";
   import MoonIcon from "@lucide/svelte/icons/moon";
 
   let { children } = $props();
 
+  // The admin, profile and "报名成功" dialogs are loaded the first time they
+  // open, so the code every page loads stays small.
   let profileDialog = $state(null);
+  let ProfileDialog = $state(null);
   let adminOpen = $state(false);
-  const openProfileDialog = () => profileDialog?.openDialog();
+  let AdminDialog = $state(null);
+  let JoinDiscordDialog = $state(null);
+  async function openProfileDialog() {
+    if (!ProfileDialog) ProfileDialog = (await import("#lib/components/layout/ProfileDialog.svelte")).default;
+    await tick(); // mounted, profileDialog bound
+    profileDialog?.openDialog();
+  }
+  $effect(() => {
+    if (adminOpen && !AdminDialog) import("#lib/components/layout/AdminDialog.svelte").then((m) => (AdminDialog = m.default));
+  });
+  $effect(() => {
+    if (discord.prompt.open && !JoinDiscordDialog) import("#lib/components/discord/JoinDiscordDialog.svelte").then((m) => (JoinDiscordDialog = m.default));
+  });
 
   // Signed-in players without a contact are asked to add one.
   async function checkProfileCompleteness(playerId) {
@@ -197,7 +210,7 @@
 {#if !page.url.pathname.includes("/overlay")}<SiteNav placement="bottom" />{/if}
 <Toaster position="bottom-right" mobileOffset={{ bottom: "76px" }} />
 <ConfirmHost />
-<JoinDiscordDialog />
+{#if JoinDiscordDialog}<JoinDiscordDialog />{/if}
 
-<ProfileDialog bind:this={profileDialog} />
-<AdminDialog bind:open={adminOpen} />
+{#if ProfileDialog}<ProfileDialog bind:this={profileDialog} />{/if}
+{#if AdminDialog}<AdminDialog bind:open={adminOpen} />{/if}

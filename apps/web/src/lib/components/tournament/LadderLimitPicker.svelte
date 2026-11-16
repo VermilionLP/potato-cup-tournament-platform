@@ -3,7 +3,7 @@
   // used by the create wizard and the event header (LadderLimitTag).
   import { LIMIT_TIERS } from "#lib/ladder-limit.js";
 
-  let { choice = $bindable(""), mmr = $bindable(3300), disabled = false, compact = false, onchoice } = $props();
+  let { choice = $bindable(""), mmr = $bindable(3300), disabled = false, compact = false, onchoice = undefined } = $props();
 </script>
 
 <span class="inline-flex flex-wrap items-center gap-1.5">

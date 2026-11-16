@@ -128,7 +128,7 @@ let audio = null;
 /** Two soft rising tones (no audio file). Browsers may block it before the first click. */
 export function playChime() {
   try {
-    const Ctx = window.AudioContext || window.webkitAudioContext;
+    const Ctx = window.AudioContext || /** @type {any} */ (window).webkitAudioContext;
     if (!Ctx) return;
     audio ??= new Ctx();
     if (audio.state === "suspended") audio.resume().catch(() => {});

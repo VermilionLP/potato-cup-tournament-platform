@@ -50,7 +50,7 @@ const DT_BAND_GAP = 36;
  * right, with connectors from a match to the one its winner goes to.
  * Returns { items, headers, paths: [{ d, from }], width, height } or null.
  */
-export function layoutDoubleTree(matches = [], labelOf = () => "") {
+export function layoutDoubleTree(matches = [], labelOf = (_match) => "") {
   if (!matches.length || !matches.every((m) => ["wb", "lb", "gf"].includes(m.bracket))) return null;
   const wb = layoutBracketBand(matches, "wb", DT);
   const lb = layoutBracketBand(matches, "lb", DT);
@@ -116,7 +116,7 @@ const THIRD_GAP = 56;
  * before (single elimination links rounds by position), the third-place
  * match (round 0) under the final. Same shape as layoutDoubleTree, or null.
  */
-export function layoutSingleTree(matches = [], labelOf = () => "") {
+export function layoutSingleTree(matches = [], labelOf = (_match) => "") {
   const main = matches.filter((m) => (m.bracket || "main") === "main");
   if (!main.length || main.length !== matches.length) return null;
   const rounds = treeRounds(main.filter((m) => m.round > 0));

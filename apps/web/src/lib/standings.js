@@ -24,10 +24,10 @@ export function placeLabel(from, to) {
 
 /**
  * @param {object} args
- * @param {Array} args.matches  bracket matches (no group-stage matches)
- * @param {Array} args.players  [{ id, display_name, flag, team, link }]
- * @param {boolean} args.doubleElim
- * @param {object|null} args.championshipMatch  the match that decided the title
+ * @param {Array} [args.matches]  bracket matches (no group-stage matches)
+ * @param {Array} [args.players]  [{ id, display_name, flag, team, link }]
+ * @param {boolean} [args.doubleElim]
+ * @param {object|null} [args.championshipMatch]  the match that decided the title
  * @returns rows sorted by place: { id, ..., rank, place, matchesPlayed, matchesWon }
  */
 export function eliminationStandings({ matches = [], players = [], doubleElim = false, championshipMatch = null }) {

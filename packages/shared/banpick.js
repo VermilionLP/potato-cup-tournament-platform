@@ -34,6 +34,7 @@ const clampInt = (value, min, max) => {
 
 /** Rules with defaults filled in and values kept in range. */
 export function normalizeRules(raw = {}) {
+  /** @type {Record<string, any>} */
   const r = raw && typeof raw === 'object' ? raw : {};
   const limit = (v) => (v === null || v === undefined || v === '' ? null : clampInt(v, 0, 20));
   return {

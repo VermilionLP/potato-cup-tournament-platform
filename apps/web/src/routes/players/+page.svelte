@@ -75,6 +75,7 @@
     loading = false;
   }
 
+  /** @param {{ removed?: string }} [change] */
   async function onchanged({ removed } = {}) {
     if (removed) players = players.filter((p) => p.id !== removed);
     await load();

@@ -14,6 +14,7 @@ import { DELTA_TYPES, mergeLive } from "./live-merge.js";
  * Subscribes to an event's live updates. `current()` is the event as shown
  * (or null), `apply(next)` shows a new one. Returns stop().
  */
+/** @param {string} id @param {{ current?: () => any, apply?: (next: any) => void, delay?: number, maxWait?: number }} [opts] */
 export function liveSync(id, { current, apply, delay, maxWait } = {}) {
   let fullNeeded = false;
   const refresh = coalescedRefresh(

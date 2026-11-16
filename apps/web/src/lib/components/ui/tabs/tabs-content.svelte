@@ -4,7 +4,7 @@
 
 	let {
 		ref = $bindable(null),
-		class: className,
+		class: className = undefined,
 		...restProps
 	} = $props();
 </script>
@@ -13,5 +13,5 @@
 	bind:ref
 	data-slot="tabs-content"
 	class={cn("text-sm flex-1 outline-none", className)}
-	{...restProps}
+	{.../** @type {any} */ (restProps)}
 />

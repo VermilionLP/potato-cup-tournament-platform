@@ -117,7 +117,10 @@ export function overlayStages(matches = []) {
     .map(({ all, first, ...s }) => s);
 }
 
-/** Labels for one match (HUD badge, ticker). */
+/**
+ * Labels for one match (HUD badge, ticker).
+ * @returns {{ label: string, short: string, en?: string, tag?: string }}
+ */
 export function matchStageLabels(match, matches = []) {
   if (!match) return { label: "", short: "" };
   return stageLabels(match.bracket || "main", match.round, bracketTotals(matches));

@@ -3,7 +3,7 @@
   // tone colours the number: default | prize | win | loss | brand.
   import { cn } from "#lib/utils.js";
 
-  let { label, value, note = "", tone = "default", class: className, valueClass = "", children } = $props();
+  let { label = undefined, value = undefined, note = "", tone = "default", class: className = undefined, valueClass = "", children = undefined } = $props();
   const TONE = { default: "text-foreground", prize: "text-amber-600 dark:text-prize", win: "text-green-600 dark:text-win", loss: "text-loss", brand: "text-brand-ink" };
 </script>
 

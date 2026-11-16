@@ -8,10 +8,10 @@
 
 	let {
 		ref = $bindable(null),
-		class: className,
+		class: className = undefined,
 		overlayClass = "",
-		portalProps,
-		children,
+		portalProps = undefined,
+		children = undefined,
 		showCloseButton = true,
 		...restProps
 	} = $props();

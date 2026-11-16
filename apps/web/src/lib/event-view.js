@@ -325,7 +325,7 @@ export function recordedResultLabel(match, playerName) {
 export function seedOrderOf(players = []) {
   const seedOf = (p) => (p.seed !== null && p.seed !== undefined ? p.seed : 999999);
   return [...players]
-    .sort((a, b) => seedOf(a) - seedOf(b) || new Date(a.registered_at) - new Date(b.registered_at))
+    .sort((a, b) => seedOf(a) - seedOf(b) || +new Date(a.registered_at) - +new Date(b.registered_at))
     .map((p) => p.id);
 }
 
@@ -346,7 +346,7 @@ export function myFocusMatch(matches = [], playerId = "", order = new Map()) {
   const mine = matches.filter((m) => m && (m.player1_id === playerId || m.player2_id === playerId));
   if (!mine.length) return null;
   const rank = (m) => order.get(m.id) ?? 1e9 + m.id;
-  const pending = mine.filter((m) => m.status === "pending").sort((a, b) => Boolean(b.player1_id && b.player2_id) - Boolean(a.player1_id && a.player2_id) || rank(a) - rank(b));
+  const pending = mine.filter((m) => m.status === "pending").sort((a, b) => Number(Boolean(b.player1_id && b.player2_id)) - Number(Boolean(a.player1_id && a.player2_id)) || rank(a) - rank(b));
   if (pending.length) return pending[0];
   return [...mine].sort((a, b) => rank(b) - rank(a))[0];
 }

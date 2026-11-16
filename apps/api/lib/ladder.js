@@ -227,7 +227,7 @@ export function computeLadder(games = []) {
     return String(a.id).localeCompare(String(b.id));
   });
   players.forEach((p, index) => {
-    p.rank = index + 1;
+    /** @type {any} */ (p).rank = index + 1;
   });
   const tiered = assignPercentileTiers(players);
 

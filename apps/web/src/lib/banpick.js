@@ -47,7 +47,10 @@ export function logText(entry) {
   return ACTION_TEXT[entry.action]?.(entry) || entry.action;
 }
 
-/** Who did it: 管理员, or the player's name (with their side for bans). */
+/**
+ * Who did it: 管理员, or the player's name (with their side for bans).
+ * @param {any} entry @param {Function} [nameOf]
+ */
 export function logWho(entry, nameOf = (id) => id) {
   return entry.by === "admin" ? "管理员" : nameOf(entry.by) || entry.by;
 }

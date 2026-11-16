@@ -51,7 +51,7 @@
   });
   let featured = $derived(featuredEvent(activeTournaments, mine));
   let otherActive = $derived(
-    activeTournaments.filter((t) => t.id !== featured?.id).sort((a, b) => mine.has(b.id) - mine.has(a.id)),
+    activeTournaments.filter((t) => t.id !== featured?.id).sort((a, b) => Number(mine.has(b.id)) - Number(mine.has(a.id))),
   );
   // Other active events by status ("" = all); statuses with none are hidden.
   let activeStatus = $state("");

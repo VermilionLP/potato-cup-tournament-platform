@@ -4,13 +4,13 @@
 	import { DateFormatter, getLocalTimeZone } from "@internationalized/date";
 
 	let {
-		captionLayout,
-		months,
-		monthFormat,
-		years,
-		yearFormat,
-		month,
-		locale,
+		captionLayout = undefined,
+		months = undefined,
+		monthFormat = undefined,
+		years = undefined,
+		yearFormat = undefined,
+		month = undefined,
+		locale = undefined,
 		placeholder = $bindable(),
 		monthIndex = 0,
 	} = $props();

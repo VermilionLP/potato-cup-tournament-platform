@@ -21,8 +21,8 @@
 
 	let {
 		ref = $bindable(null),
-		variant = "default",
-		class: className,
+		variant = /** @type {any} */ ("default"),
+		class: className = undefined,
 		...restProps
 	} = $props();
 </script>

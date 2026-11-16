@@ -26,10 +26,12 @@
   const nameOf = (slot) => (slot === 1 ? player1.name : player2.name);
 
   const clamp = (n) => Math.min(MAX_SCORE, Math.max(0, Math.round(Number(n) || 0)));
+  // While typing a score is the input's text: Number() before adding.
   function step(slot, delta) {
-    if (slot === 1) score1 = clamp(score1 + delta);
-    else score2 = clamp(score2 + delta);
+    if (slot === 1) score1 = clamp(Number(score1) + delta);
+    else score2 = clamp(Number(score2) + delta);
   }
+  /** @param {number[]} pair */
   function preset([a, b]) {
     score1 = a;
     score2 = b;
@@ -59,7 +61,11 @@
       max={MAX_SCORE}
       {disabled}
       value={value}
-      oninput={(e) => (slot === 1 ? (score1 = e.currentTarget.value) : (score2 = e.currentTarget.value))}
+      oninput={(e) => {
+        const typed = /** @type {any} */ (e.currentTarget.value);
+        if (slot === 1) score1 = typed;
+        else score2 = typed;
+      }}
       onblur={() => (slot === 1 ? (score1 = clamp(score1)) : (score2 = clamp(score2)))}
       onfocus={(e) => e.currentTarget.select()}
       aria-label="{player.name} 的比分"

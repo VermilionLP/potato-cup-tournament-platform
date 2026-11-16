@@ -253,7 +253,7 @@ export async function drawBracketImage(layout, { scale = 2, host = typeof locati
           const name = fit(ctx, cell, w - (nx - x) - (r.mark ? 56 : 12));
           ctx.fillText(name, nx, mid);
           if (r.mark) {
-            const tone = r.mark === "晋级" ? [C.winSoft, C.win] : r.mark === "冠军" ? [C.prizeSoft, C.prize] : [C.soft, C.muted];
+            const tone = /** @type {[string, string]} */ (r.mark === "晋级" ? [C.winSoft, C.win] : r.mark === "冠军" ? [C.prizeSoft, C.prize] : [C.soft, C.muted]);
             pill(ctx, nx + ctx.measureText(name).width + 8, mid - 10, r.mark, tone, { size: 11, padX: 6, h: 20 });
             ctx.textBaseline = "middle";
           }
