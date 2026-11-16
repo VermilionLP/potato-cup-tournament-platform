@@ -1,9 +1,10 @@
 // Layout maths for the OBS overlay (routes/tournament/[id]/overlay): the
-// single-elimination tree, the double-elimination tree, the stage board and
-// grouped Swiss. Pure functions, no #lib imports beyond plain JS helpers, so
+// single- and double-elimination trees (always whole, scaled to fit, the side
+// panel moving under the tree when that leaves it bigger), the stage board
+// and grouped Swiss. Pure functions, no #lib imports beyond plain JS helpers, so
 // they can be tested with node --test.
 
-import { bracketConnectorPath, layoutBracketBand, treePositions } from "./bracket.js";
+import { bracketConnectorPath, layoutBracketBand } from "./bracket.js";
 import { stageKey } from "./overlay.js";
 
 export const isDecided = (m) => m.status === "completed" || m.status === "walkover";
@@ -37,75 +38,6 @@ export function treeRounds(matches = []) {
     .sort((a, b) => b.round - a.round);
 }
 
-/** Card and connector sizes for a tree whose first shown round has `count` matches. */
-export function treeSpecs(count) {
-  if (count >= 8) {
-    // 16 players or more
-    return {
-      H: 76,
-      g: 14,
-      G: 24,
-      cardWidth: "w-72",
-      cardSize: "md", // OverlayMatchCard size
-      colGap: "gap-6",
-      slotOffset: 19,
-      connMid: 12,
-      connWidth: 12,
-      connGap: 24,
-    };
-  }
-  // 8 players or fewer
-  return {
-    H: 144,
-    g: 32,
-    G: 96,
-    cardWidth: "w-96",
-    cardSize: "lg",
-    colGap: "gap-8",
-    slotOffset: 40,
-    connMid: 16,
-    connWidth: 16,
-    connGap: 32,
-  };
-}
-
-/**
- * Large brackets (16+ first-round matches) show 16-player sections in a
- * carousel until the final stage (the last four rounds) starts.
- * Returns { rounds, isLarge, sectionCount, finalStartRound, showFinal }.
- */
-export function treeSections(rounds, { sectionIndex = 0, activeRound = null, selectedRound = null } = {}) {
-  const maxRound = rounds.length ? Math.max(...rounds.map((r) => r.round)) : 1;
-  const firstCount = rounds.find((r) => r.round === maxRound)?.matches.length || 0;
-  const isLarge = firstCount >= 16;
-  const sectionCount = Math.max(1, Math.ceil(firstCount / 8));
-  const finalStartRound = Math.max(1, maxRound - 3);
-  const finalRound = rounds.find((r) => r.round === finalStartRound);
-  const finalStarted =
-    !isLarge || !finalRound || finalRound.matches.some((m) => m.player1_id || m.player2_id || isDecided(m));
-  const showFinal =
-    !isLarge ||
-    finalStarted ||
-    (activeRound !== null && activeRound <= finalStartRound) ||
-    (selectedRound ?? maxRound) <= finalStartRound;
-  let shown = rounds;
-  if (isLarge && showFinal) shown = rounds.filter((r) => r.round <= finalStartRound);
-  else if (isLarge) {
-    shown = rounds
-      .filter((r) => r.round >= finalStartRound && r.round <= maxRound)
-      .map((r) => {
-        const size = 8 >> (maxRound - r.round);
-        const start = sectionIndex * size;
-        return { ...r, matches: r.matches.slice(start, start + size) };
-      });
-  }
-  return { rounds: shown, maxRound, isLarge, sectionCount, finalStartRound, showFinal };
-}
-
-// Card tops and centres of the single-elimination tree: treePositions in
-// bracket.js, shared with the event page.
-export { treePositions };
-
 // ---------------------------------------------------------------- double elim
 
 export const DT = { cardHeight: 66, slotHeight: 82, columnWidth: 250, columnGap: 56 };
@@ -116,7 +48,7 @@ const DT_BAND_GAP = 36;
  * Challonge-style double-elimination tree: winners bracket on top, losers
  * bracket below, grand final (and its reset once it has players) on the
  * right, with connectors from a match to the one its winner goes to.
- * Returns { items, headers, paths, width, height } or null.
+ * Returns { items, headers, paths: [{ d, from }], width, height } or null.
  */
 export function layoutDoubleTree(matches = [], labelOf = () => "") {
   if (!matches.length || !matches.every((m) => ["wb", "lb", "gf"].includes(m.bracket))) return null;
@@ -164,14 +96,81 @@ export function layoutDoubleTree(matches = [], labelOf = () => "") {
       // Into the grand final: across to just before it, then up / down.
       const sx = it.x + DT.columnWidth;
       const mx = target.x - DT.columnGap / 2;
-      paths.push(`M ${sx} ${it.y} L ${mx} ${it.y} L ${mx} ${target.y} L ${target.x} ${target.y}`);
+      paths.push({ d: `M ${sx} ${it.y} L ${mx} ${it.y} L ${mx} ${target.y} L ${target.x} ${target.y}`, from: it.match });
     } else {
-      paths.push(bracketConnectorPath(it, target, DT.columnWidth));
+      paths.push({ d: bracketConnectorPath(it, target, DT.columnWidth), from: it.match });
     }
   }
   const width = gfX + gfs.length * (DT.columnWidth + DT.columnGap) - DT.columnGap;
   const height = lbTop + lb.height;
   return { items, headers, paths, width, height };
+}
+
+// ---------------------------------------------------------------- single elim
+
+const THIRD_GAP = 56;
+
+/**
+ * The whole single-elimination tree in the double tree's sizes: one column
+ * per round, match p of a round between matches 2p−1 and 2p of the round
+ * before (single elimination links rounds by position), the third-place
+ * match (round 0) under the final. Same shape as layoutDoubleTree, or null.
+ */
+export function layoutSingleTree(matches = [], labelOf = () => "") {
+  const main = matches.filter((m) => (m.bracket || "main") === "main");
+  if (!main.length || main.length !== matches.length) return null;
+  const rounds = treeRounds(main.filter((m) => m.round > 0));
+  const items = [];
+  const headers = [];
+  const paths = [];
+  const step = DT.columnWidth + DT.columnGap;
+  let previous = null; // position → item of the round before
+  rounds.forEach((r, col) => {
+    const x = col * step;
+    if (r.matches[0]) headers.push({ key: stageKey(r.matches[0]), x, y: 0, label: labelOf(r.matches[0]) });
+    const here = new Map();
+    r.matches.forEach((m, index) => {
+      const feeders = previous ? [previous.get(2 * m.position - 1), previous.get(2 * m.position)].filter(Boolean) : [];
+      const y = feeders.length
+        ? feeders.reduce((sum, f) => sum + f.y, 0) / feeders.length
+        : DT_HEADER + DT.cardHeight / 2 + index * DT.slotHeight;
+      const item = { match: m, x, y };
+      items.push(item);
+      here.set(m.position, item);
+      for (const f of feeders) paths.push({ d: bracketConnectorPath(f, item, DT.columnWidth), from: f.match });
+    });
+    previous = here;
+  });
+  const first = rounds[0]?.matches.length || 0;
+  let height = DT_HEADER + Math.max(0, first - 1) * DT.slotHeight + DT.cardHeight;
+  const third = main.find((m) => m.round === 0);
+  const final = items.find((i) => i.match.round === 1);
+  if (third && final) {
+    const y = final.y + DT.cardHeight + THIRD_GAP;
+    headers.push({ key: stageKey(third), x: final.x, y: y - DT.cardHeight / 2 - DT_HEADER, label: labelOf(third) });
+    items.push({ match: third, x: final.x, y });
+    height = Math.max(height, y + DT.cardHeight / 2);
+  }
+  const width = rounds.length ? rounds.length * step - DT.columnGap : 0;
+  return { items, headers, paths, width, height };
+}
+
+/**
+ * Where the side panel goes for a tree: on the right (the tree gets the
+ * rest of the width), or under it (the full width, less height), whichever
+ * draws the tree bigger. Sizes are the scene's: 1792 × 844 below the title
+ * line, a 420 px panel on the right or a 176 px strip under the tree.
+ * Returns { placement: "side" | "bottom", scale }.
+ */
+export const SCENE = { width: 1792, height: 844, sideWidth: 420, bottomHeight: 176, gap: 32 };
+export function treePlacement(tree, scene = SCENE) {
+  if (!tree?.width || !tree?.height) return { placement: "side", scale: 1 };
+  const fit = (w, h) => Math.min(1.3, w / tree.width, h / tree.height);
+  // A little room for the headers and the cards' shadows.
+  const side = fit(scene.width - scene.sideWidth - scene.gap - 24, scene.height - 24);
+  const bottom = fit(scene.width - 24, scene.height - scene.bottomHeight - scene.gap - 24);
+  // Under only when it is clearly better: the side panel shows more.
+  return bottom > side * 1.03 ? { placement: "bottom", scale: bottom } : { placement: "side", scale: side };
 }
 
 // ---------------------------------------------------------------- stage board
