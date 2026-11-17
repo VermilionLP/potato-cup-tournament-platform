@@ -115,6 +115,7 @@ export function describeEntry(entry) {
     case "pool.create": return `新建载具池模板「${d.name || ""}」`;
     case "pool.update": return `修改载具池模板「${d.name || target}」`;
     case "pool.delete": return "删除载具池模板";
+    case "event.spaded_refresh": return "从 Statshark 拉取选手的黑桃载具";
     case "mission.create": return `添加比赛地图「${d.name || d.id || d.source_url || ""}」`;
     case "mission.update": return d.hidden === true ? `隐藏比赛地图 ${target}` : d.hidden === false && Object.keys(d).length <= 2 ? `显示比赛地图 ${target}` : `修改比赛地图 ${target} 的资料`;
     case "mission.edit": return d.vehicle_limit === false ? `关闭比赛地图 ${target} 的载具限制` : d.content_bytes ? `修改比赛地图 ${target} 的原文` : d.units ? `修改比赛地图 ${target} 的载具` : `修改比赛地图 ${target} 的设置`;

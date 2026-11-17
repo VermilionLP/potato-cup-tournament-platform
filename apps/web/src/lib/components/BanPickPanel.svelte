@@ -24,6 +24,7 @@
 
   let {
     vehicles = [],
+    excluded = [], // names left out of this match: neither player has them spaded (Statshark)
     poolName = "",
     player1 = { name: "A", flag: "" },
     player2 = { name: "B", flag: "" },
@@ -122,6 +123,12 @@
       {/if}
     </span>
   </div>
+  {#if excluded.length}
+    <details class="rounded-lg border border-border bg-muted/20 px-2.5 py-1.5 text-small text-muted-foreground">
+      <summary class="cursor-pointer select-none font-semibold">已去掉 {excluded.length} 架双方都没有黑桃的载具（Statshark）</summary>
+      <p class="mt-1 leading-relaxed">{excluded.join("、")}</p>
+    </details>
+  {/if}
   <BanPickGroupGrid {bp} {grouped} banning={banning && can("ban") && !busy} onban={(group, vehicle) => run("ban", { group, vehicle })} />
   {#if remote?.record?.log?.length}
     <BanPickLog log={remote.record.log} {nameOf} />

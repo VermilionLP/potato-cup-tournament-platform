@@ -2,6 +2,7 @@
 // (PATCH), status changes, Swiss round count, and the playoff of two-stage
 // events.
 
+import { syncEventSpaded } from '../lib/statshark.js';
 import { TournamentRepo } from '../repositories/tournament-repo.js';
 import { MatchRepo } from '../repositories/match-repo.js';
 import { LadderRepo } from '../repositories/ladder-repo.js';
@@ -305,6 +306,15 @@ export default async function tournamentSettingsRoutes(fastify) {
     await afterResult(fastify, req.params.id);
 
     fastify.tournamentEvents.emit(`update:${req.params.id}`, { type: 'status_changed', status: 'in_progress', removed: remove, forfeited: forfeit });
+    // Spaded vehicles from Statshark for Ban / Pick, once per event, in the
+    // background (lib/statshark.js; nothing when it isn't set up).
+    syncEventSpaded(fastify.db, req.params.id, { log: fastify.log })
+      .then((r) => {
+        if (r.disabled) return;
+        fastify.log.info({ tournament: req.params.id, ...r }, 'statshark spaded fetched');
+        fastify.tournamentEvents.emit(`update:${req.params.id}`, { type: 'spaded_updated' });
+      })
+      .catch((err) => fastify.log.error({ err, tournament: req.params.id }, 'statshark spaded fetch failed'));
     return { ...(await repo.getById(req.params.id)), removed: remove, forfeited: forfeit };
   });
 

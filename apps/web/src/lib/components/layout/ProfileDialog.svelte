@@ -2,6 +2,7 @@
   // Identity dialog behind the header's profile button: sign in (player ID
   // plus a required QQ / Discord contact) for visitors, profile editing and
   // the device key for signed-in players. Open it with openDialog().
+  import { normalizeStatsharkId } from "@potato-cup/shared/spaded.js";
   import { toast } from "svelte-sonner";
   import { API } from "#lib/api.js";
   import { askConfirm } from "#lib/confirm.svelte.js";
@@ -34,6 +35,10 @@
   let contactBase = $state({}); // untouched battle_tags keys kept across saves
   let qq = $state("");
   let discord = $state("");
+  let statshark = $state("");
+  let spaded = $state(null); // { count, fetched_at, error } of the saved Statshark id
+
+  const statsharkProblem = (v) => (normalizeStatsharkId(v) === null ? "Statshark ID 应为数字，或者粘贴你的 Statshark 个人页面链接" : "");
 
   export async function openDialog() {
     idInput = userState.id || "";
@@ -54,6 +59,8 @@
           contactBase = contact.base;
           qq = contact.qq;
           discord = contact.discord;
+          statshark = p.statshark_id || "";
+          spaded = p.statshark_id ? { count: p.spaded_count, fetched_at: p.spaded_fetched_at, error: p.spaded_error } : null;
         }
       } catch (e) {
         console.error("获取选手资料失败:", e);
@@ -185,7 +192,7 @@
     }
 
     // 2. Profile details (a contact and the nationality are required)
-    const problem = flagProblem(flag) || requiredContactProblem({ qq: qq.trim(), discord: discord.trim() });
+    const problem = flagProblem(flag) || requiredContactProblem({ qq: qq.trim(), discord: discord.trim() }) || statsharkProblem(statshark);
     if (problem) {
       toast.error(problem);
       return;
@@ -197,6 +204,7 @@
         team: team || "",
         link: link || "",
         battle_tags: buildContact(contactBase, { qq, discord }),
+        statshark_id: normalizeStatsharkId(statshark) ?? "",
       });
       toast.success("个人资料保存成功！");
       open = false;
@@ -236,7 +244,7 @@
     </Dialog.Header>
 
     {#if userState.id}
-      <ProfileFields bind:idInput bind:qq bind:discord bind:flag bind:team bind:link />
+      <ProfileFields bind:idInput bind:qq bind:discord bind:flag bind:team bind:link bind:statshark {spaded} />
       <DeviceKeyCard />
     {:else}
       <GuestSignInFields bind:idInput bind:contactInput bind:flag bind:lookup {contactError} {flagError} players={existingPlayers} onsubmit={signIn} />

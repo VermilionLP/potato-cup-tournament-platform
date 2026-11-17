@@ -15,6 +15,10 @@ export class EventData {
   tournament = $state(null);
   loading = $state(true);
   bpTemplate = $state(null);
+  // Each player's spaded vehicles in this pool (Statshark): { [id]: { has, fetched_at, error, linked } }.
+  bpSpaded = $state({});
+  spadedRev = $state(0); // bump to reload them (after a fetch by hand)
+  statshark = $state(false); // the server fetches from Statshark
   vehicleTemplates = $state([]);
   allPlayers = $state([]);
   playTimes = $state(null);
@@ -28,7 +32,7 @@ export class EventData {
   // What picks the Ban / Pick template; it is reloaded when this changes.
   #poolKey = $derived(
     this.tournament
-      ? [this.#tid(), this.tournament.vehicle_pool, this.tournament.game_mode, this.tournament.vehicle_template ?? ""].join("|")
+      ? [this.#tid(), this.tournament.vehicle_pool, this.tournament.game_mode, this.tournament.vehicle_template ?? "", this.tournament.status, this.spadedRev].join("|")
       : "",
   );
 
@@ -57,7 +61,12 @@ export class EventData {
       if (!key) return;
       untrack(() =>
         API.getEventVehiclePool(this.#tid())
-          .then((res) => key === this.#poolKey && (this.bpTemplate = res.template || null))
+          .then((res) => {
+            if (key !== this.#poolKey) return;
+            this.bpTemplate = res.template || null;
+            this.bpSpaded = res.spaded || {};
+            this.statshark = Boolean(res.statshark);
+          })
           .catch((e) => console.warn("vehicle pool failed to load:", e)),
       );
     });

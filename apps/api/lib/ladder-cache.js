@@ -97,6 +97,8 @@ const READ_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 // data. Some run on every page load (touch, push re-subscribe), so letting
 // them drop the cache would make every visit recompute all ratings.
 export const CACHE_NEUTRAL_ROUTES = new Set([
+  // Spaded vehicles from Statshark (routes/vehicle-pools.js): Ban / Pick only.
+  'POST /tournaments/:id/spaded/refresh',
   // 比赛地图 (routes/missions.js): no results or players.
   'POST /missions',
   'PATCH /missions/:id',

@@ -7,6 +7,9 @@ import {
   confirmReport, disputeReport, rejectGroupEditDuringPlayoffs as frozenGroup, requireOpenMatch as openMatch, submitReport,
 } from '../lib/player-reports.js';
 import { act, emptyRecord, groupVehicles } from '@potato-cup/shared/banpick.js';
+import { withoutExcluded } from '@potato-cup/shared/spaded.js';
+import { matchExcluded } from '../lib/statshark.js';
+import { withUnits } from '../lib/wt-unit-index.js';
 import { normalizeRules, resolveTemplate } from '@potato-cup/shared/vehicle-pools.js';
 
 export default async function matchesRoutes(fastify) {
@@ -77,7 +80,9 @@ export default async function matchesRoutes(fastify) {
   // Ban / Pick on the server (lib/banpick.js): the two players and admins
   // act on it, the server makes the draws. `rev` (optional) is the revision
   // the client saw; a different one answers 409 with the current record so
-  // two clicks at once can't draw twice.
+  // two clicks at once can't draw twice. The pool vehicles neither player has
+  // spaded (Statshark, lib/statshark.js) are left out: fixed in the record
+  // (`excluded`) when the match's Ban / Pick starts, and again on a reset.
   fastify.post('/tournaments/:id/matches/:matchId/banpick', async (req) => {
     const { action, group = null, vehicle = null, rev = null } = req.body || {};
     const match = await matchOf(req);
@@ -102,15 +107,21 @@ export default async function matchesRoutes(fastify) {
 
     const out = await inTransaction(fastify.db, async (client) => {
       const row = (await client.query('SELECT banpick FROM axsuck.matches WHERE id = $1 FOR UPDATE', [match.id])).rows[0];
-      const record = row?.banpick?.state ? row.banpick : emptyRecord(rules);
+      const fresh = !row?.banpick?.state;
+      const record = fresh ? emptyRecord(rules) : row.banpick;
       if (rev !== null && rev !== undefined && Number(rev) !== record.rev) return { conflict: true, record };
+      const pool = withUnits(template).vehicles || [];
+      const excluded = fresh || action === 'reset'
+        ? await matchExcluded(client, req.params.id, pool, match.player1_id, match.player2_id)
+        : record.excluded || [];
       const result = act(record, { action, group, vehicle }, {
-        grouped: groupVehicles(template.vehicles || []),
+        grouped: groupVehicles(withoutExcluded(template.vehicles || [], excluded)),
         rules,
         who: { admin, side },
         by,
       });
       if (result.error) return { ...result, record };
+      result.record.excluded = excluded;
       await client.query('UPDATE axsuck.matches SET banpick = $2::jsonb WHERE id = $1', [match.id, JSON.stringify(result.record)]);
       return result;
     });

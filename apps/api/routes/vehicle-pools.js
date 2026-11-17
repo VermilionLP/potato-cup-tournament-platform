@@ -2,13 +2,16 @@
 // can read them; admins create, edit, copy and delete them. An event page
 // reads only its own template (GET /tournaments/:id/vehicle-pool), with the
 // wiki unit of each vehicle filled in (lib/wt-unit-index.js). A template also
-// lists the 比赛地图 its events use (missions, migration 056).
+// lists the 比赛地图 its events use (missions, migration 056). The event's
+// read also carries each player's spaded vehicles in that pool (Statshark,
+// lib/statshark.js) for Ban / Pick.
 
 import { randomBytes } from 'crypto';
 import { requireAdmin } from '../lib/admin.js';
 import { GAME_MODES, VEHICLE_POOLS } from '../lib/tournament-config.js';
 import { normalizeRules, normalizeTemplate, resolveTemplate } from '@potato-cup/shared/vehicle-pools.js';
 import { withUnits } from '../lib/wt-unit-index.js';
+import { eventSpaded, quotaLeft, statsharkConfig, syncEventSpaded } from '../lib/statshark.js';
 
 const COLUMNS = 'id, name, event_type, game_modes, rules, sort_order, vehicles, missions, created_at, updated_at';
 const FIELDS = ['name', 'event_type', 'game_modes', 'rules', 'sort_order', 'vehicles', 'missions'];
@@ -41,7 +44,30 @@ export default async function vehiclePoolRoutes(fastify) {
       [req.params.id],
     )).rows[0];
     if (!t) throw fastify.httpErrors.notFound('Tournament not found');
-    return { template: withUnits(resolveTemplate(await listTemplates(), t)) };
+    const template = withUnits(resolveTemplate(await listTemplates(), t));
+    const spaded = template ? await eventSpaded(db, req.params.id, template.vehicles || []) : {};
+    return { template, spaded, statshark: statsharkConfig().enabled };
+  });
+
+  // Admins: fetch the event's players' spaded vehicles now (the start of an
+  // event does it by itself), also those fetched lately, down to the last
+  // request of the day.
+  fastify.post('/tournaments/:id/spaded/refresh', async (req) => {
+    requireAdmin(fastify, req);
+    const cfg = statsharkConfig();
+    if (!cfg.enabled) throw fastify.httpErrors.badRequest('服务器还没有配置 Statshark API（STATSHARK_API_URL）');
+    const exists = (await db.query('SELECT 1 FROM axsuck.tournaments WHERE id = $1', [req.params.id])).rows.length;
+    if (!exists) throw fastify.httpErrors.notFound('Tournament not found');
+    const result = await syncEventSpaded(db, req.params.id, { force: true, cfg, log: fastify.log });
+    fastify.tournamentEvents.emit(`update:${req.params.id}`, { type: 'spaded_updated' });
+    return result;
+  });
+
+  // How many Statshark requests are left today (admins).
+  fastify.get('/statshark/quota', async (req) => {
+    requireAdmin(fastify, req);
+    const cfg = statsharkConfig();
+    return { enabled: cfg.enabled, limit: cfg.dailyLimit, left: cfg.enabled ? await quotaLeft(db, cfg) : null };
   });
 
   fastify.post('/vehicle-pools', async (req) => {
