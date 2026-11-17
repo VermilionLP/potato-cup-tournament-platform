@@ -47,6 +47,7 @@ export function LadderRepo(db) {
         t.game_mode,
         t.vehicle_pool,
         t.event_kind,
+        t.tier,
         ${PLAYED_AT} AS played_at
       FROM axsuck.matches m
       JOIN axsuck.tournaments t ON t.id = m.tournament_id

@@ -7,7 +7,7 @@
 
 import { ladderWeight } from '@potato-cup/shared/ladder-weight.js';
 
-export { LADDER_WEIGHTS, ladderWeight } from '@potato-cup/shared/ladder-weight.js';
+export { LADDER_WEIGHTS, TIER_WEIGHTS, ladderWeight } from '@potato-cup/shared/ladder-weight.js';
 
 export const BASE_MMR = 3000;
 export const ACTIVE_DAYS = 365;
@@ -120,7 +120,8 @@ function timestampOf(value) {
 /**
  * Compute current MMR from chronologically ordered games.
  * Each game: { id, player1_id, player2_id, score1, score2, played_at,
- * event_kind?, ... }; K is scaled by the event's weight (ladderWeight).
+ * event_kind?, tier?, ... }; K is scaled by the event's weight (ladderWeight:
+ * kind × tier).
  * Returns { players, history }; players are already ranked.
  */
 export function computeLadder(games = []) {
@@ -145,7 +146,7 @@ export function computeLadder(games = []) {
     const b = get(p2);
     const aWon = score1 > score2;
     const ea = expectedScore(a.rating, b.rating);
-    const weight = ladderWeight(game.event_kind);
+    const weight = ladderWeight(game.event_kind, game.tier);
     const ka = kForGames(a.games) * weight;
     const kb = kForGames(b.games) * weight;
     const aAfter = a.rating + ka * ((aWon ? 1 : 0) - ea);

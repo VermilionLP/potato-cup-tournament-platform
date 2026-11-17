@@ -8,7 +8,7 @@
   let { match, tournament, playerName = (id) => id, score1 = 0, score2 = 0 } = $props();
 
   const find = (id) => tournament?.players?.find((p) => p.id === id);
-  let sim = $derived(simulateMatch(find(match.player1_id), find(match.player2_id), { eventKind: tournament?.event_kind }));
+  let sim = $derived(simulateMatch(find(match.player1_id), find(match.player2_id), { eventKind: tournament?.event_kind, tier: tournament?.tier }));
   // "a" when player 1 is ahead in the entered score, "b" for player 2, else none.
   let picked = $derived(Number(score1) > Number(score2) ? "a" : Number(score2) > Number(score1) ? "b" : "");
   let division = $derived([gameModeLabel(tournament?.game_mode), vehiclePoolLabel(tournament?.vehicle_pool)].filter(Boolean).join(" · "));
