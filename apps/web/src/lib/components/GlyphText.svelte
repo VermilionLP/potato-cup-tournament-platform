@@ -18,5 +18,6 @@
           stroke="currentColor"
           stroke-width={p.width ?? 1.8}
           stroke-linejoin={p.join ?? "round"}
+          stroke-linecap={p.cap ?? "butt"}
         />{/if}</svg
     >{:else}{p.text}{/if}{/each}

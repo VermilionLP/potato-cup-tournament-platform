@@ -70,24 +70,24 @@ function fourWays(points, close = "Z") {
 // ▀ Balkenkreuz: four L-shaped corners round a white cross (the gap).
 const balkenkreuz = fourWays([["M", [7.8, 1.5]], ["L", [9.8, 1.5]], ["L", [9.8, 9.8]], ["L", [1.5, 9.8]], ["L", [1.5, 7.8]], ["L", [7.8, 7.8]]]);
 
-// ◄ Bundeswehr cross: eight curved horns, two per corner (one shape each),
-// wide at the outer edge and joined in a thin point near the centre.
-const bundeswehr = fourWays([
-  ["M", [6.4, 1.5]],
-  ["L", [8.5, 1.5]],
-  ["Q", [9.95, 5.6], [10.1, 10.1]],
-  ["Q", [5.6, 9.95], [1.5, 8.5]],
-  ["L", [1.5, 6.4]],
-  ["Q", [5.8, 7.6], [9.35, 9.35]],
-  ["Q", [7.6, 5.8], [6.4, 1.5]],
-]);
+// ◄ Bundeswehr cross: eight curved lines of even width (stroked), two per
+// corner, bending in to meet near the centre; even lines stay clear at
+// text size where tapered horns blur.
+const bundeswehrStroke = fourWays(
+  [
+    ["M", [7.4, 1.6]],
+    ["Q", [9.4, 5.6], [9.7, 9.7]],
+    ["Q", [5.6, 9.4], [1.6, 7.4]],
+  ],
+  "",
+);
 
 // ◊ GDR: a diamond outline with two upright bars inside.
 const gdrStroke = "M12 2.5L21.5 12L12 21.5L2.5 12Z M8.65 5.9V18.1 M15.35 5.9V18.1";
 
 /**
  * Character → { label, d (filled path, even-odd), stroke? (stroked path),
- * width? (its line width, default 1.8) }.
+ * width? (its line width, default 1.8), join? / cap? (line join / ends) }.
  * The labels are the page's (translated there).
  */
 export const WT_GLYPHS = {
@@ -95,7 +95,7 @@ export const WT_GLYPHS = {
   "␗": { label: "中国", d: star(8, 11, 6.2) + star(15.5, 4.8, 1.9, 0.38, -55) + star(19, 8.8, 1.9, 0.38, -75) + star(19, 13.8, 1.9, 0.38, -95) + star(15.5, 17.8, 1.9, 0.38, -115) }, // ␗
   "◔": { label: "匈牙利", d: "M1 12L23 4.5V7L7.6 12L23 17V19.5Z M12.5 12L23 8.7V10.5L17.2 12L23 13.5V15.3Z" }, // ◔ chevron
   "▀": { label: "德国（缴获）", d: balkenkreuz }, // ▀ Balkenkreuz
-  "◄": { label: "联邦德国", d: bundeswehr }, // ◄ Bundeswehr cross
+  "◄": { label: "联邦德国", stroke: bundeswehrStroke, width: 2.3, join: "round", cap: "butt" }, // ◄ Bundeswehr cross
   "▂": { label: "苏联", d: star(12, 12.8, 11) }, // ▂ red star
   "": { label: "以色列", stroke: "M12 2.2L21.2 18.1H2.8Z M12 21.8L2.8 5.9H21.2Z" }, // Star of David
   "◊": { label: "民主德国", stroke: gdrStroke, width: 1.5, join: "miter" }, // ◊ GDR
