@@ -1,7 +1,7 @@
 <script>
   // The admins' back office: the panel (pending matches, alerts, backups),
-  // the admin log and browser errors are tabs of one section, each its own
-  // page (/admin, /log, /errors) so old links keep working. Same look as the
+  // the admin log, browser errors and the TSS → Liquipedia export are tabs of
+  // one section, each its own page (/admin, /log, /errors, /tss) so old links keep working. Same look as the
   // 排行 tabs; phones get short labels. (The vehicle pool templates are a tab
   // of 地图, next to 比赛地图: MapsTabs.)
   import { page } from "$app/state";
@@ -9,11 +9,13 @@
   import GaugeIcon from "@lucide/svelte/icons/gauge";
   import HistoryIcon from "@lucide/svelte/icons/history";
   import BugIcon from "@lucide/svelte/icons/bug";
+  import FileTextIcon from "@lucide/svelte/icons/file-text";
 
   const TABS = [
     { href: "/admin", label: "待处理与备份", short: "概览", icon: GaugeIcon },
     { href: "/log", label: "操作记录", short: "记录", icon: HistoryIcon },
     { href: "/errors", label: "前端报错", short: "报错", icon: BugIcon },
+    { href: "/tss", label: "TSS 导出", short: "TSS", icon: FileTextIcon },
   ];
   let pending = $derived(adminPending.items.length);
 </script>

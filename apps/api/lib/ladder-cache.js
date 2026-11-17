@@ -99,6 +99,8 @@ const READ_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 export const CACHE_NEUTRAL_ROUTES = new Set([
   // Spaded vehicles from Statshark (routes/vehicle-pools.js): Ban / Pick only.
   'POST /tournaments/:id/spaded/refresh',
+  // Liquipedia export settings of TSS events (routes/tss.js): not the site's results.
+  'PUT /tss/:id/wiki',
   // 比赛地图 (routes/missions.js): no results or players.
   'POST /missions',
   'PATCH /missions/:id',

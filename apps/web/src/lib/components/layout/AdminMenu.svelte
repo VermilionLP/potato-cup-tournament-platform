@@ -10,6 +10,7 @@
   import MonitorPlayIcon from "@lucide/svelte/icons/monitor-play";
   import PlaneIcon from "@lucide/svelte/icons/plane";
   import BugIcon from "@lucide/svelte/icons/bug";
+  import FileTextIcon from "@lucide/svelte/icons/file-text";
   import HistoryIcon from "@lucide/svelte/icons/history";
   import GaugeIcon from "@lucide/svelte/icons/gauge";
   import TriangleAlertIcon from "@lucide/svelte/icons/triangle-alert";
@@ -97,6 +98,7 @@
       <a href="/admin" class={item} onclick={() => (open = false)}><GaugeIcon class="h-4 w-4 text-muted-foreground" />管理面板（待处理、提醒、备份）</a>
       <a href="/log" class={item} onclick={() => (open = false)}><HistoryIcon class="h-4 w-4 text-muted-foreground" />操作记录</a>
       <a href="/errors" class={item} onclick={() => (open = false)}><BugIcon class="h-4 w-4 text-muted-foreground" />报错记录</a>
+      <a href="/tss" class={item} onclick={() => (open = false)}><FileTextIcon class="h-4 w-4 text-muted-foreground" />TSS 比赛导出到 Liquipedia</a>
       <div class="my-1 h-px bg-border"></div>
       <button type="button" class="{item} w-full text-left" onclick={() => ((open = false), onadmin())}>
         <SettingsIcon class="h-4 w-4 text-muted-foreground" />管理员设置 / 退出

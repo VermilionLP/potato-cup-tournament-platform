@@ -1,0 +1,228 @@
+{{DISPLAYTITLE:The Dino Labs 2026 - 4v4 RB}}
+{{Template:TSS Season 2026 Navbox}}
+{{Infobox league
+|name=The Dino Labs 2026 - 4v4 RB
+|image=2026 the labs allmode.png
+|series=The Labs
+|abbreviation=
+|tickername=The Dino Labs 2026 4x4
+|organizer=Gaijin
+|sponsor=
+|server=EU
+|type=Online
+|country=World
+|format=4v4
+|mode=RBm
+|vehicle=Multiple
+|prizepool=
+|localcurrency=
+|sdate=2026-05-25
+|edate=2026-05-25
+|player_number=
+|liquipediatier=4 |liquipediatiertype=
+|web=
+|bracket=https://tss.warthunder.com/index.php?action=tournament&id=24850
+}}
+
+==Format==
+* Team Air Tournament The Labs 4v4 Air RB
+* ATTENTION! This tournament has enforced instructor feature enabled.
+** Anticheat IS REQUIRED
+** Spawns - Unlimited
+** Capture points: 15000.
+
+==Prize Pool==
+{{TeamPrizePool
+|{{Slot|place=1}}
+}}
+
+==Result==
+{{GroupTableLeague<includeonly>|storeStanding=false</includeonly>
+|tournament=TSS/Season_2026/The_Dino_Labs/4v4_RB
+|title=Standings|width=460px
+|show_p=1
+|tiebreaker1=points|tiebreaker2=gameDiff|tiebreaker3=ml.gameScore
+|pbg1=up|pbg2=stayup|pbg4=stay|pbg8=down
+|autoBg=swiss
+}}
+{{Box|break|padding=1em}}
+
+==={{HiddenSort|Round 1}}===
+{{Matchlist|id=tss24850r1|title=Round 1|collapsed=0
+|M1={{Match
+|date=2026-05-25 18:00{{Abbr/UTC}}
+|opponent1={{TeamOpponent|Team J|score=1}}
+|opponent2={{TeamOpponent|LEGION|score=0}}
+}}
+|M2={{Match
+|date=2026-05-25 18:00{{Abbr/UTC}}
+|opponent1={{TeamOpponent|Hide|score=1}}
+|opponent2={{TeamOpponent|GFRIS|score=0}}
+}}
+|M3={{Match
+|date=2026-05-25 18:00{{Abbr/UTC}}
+|opponent1={{TeamOpponent|Amiti|score=1}}
+|opponent2={{TeamOpponent|LEET|score=0}}
+}}
+|M4={{Match
+|date=2026-05-25 18:00{{Abbr/UTC}}
+|opponent1={{TeamOpponent|Abstract|score=0}}
+|opponent2={{TeamOpponent|MiGzStack|score=1}}
+}}
+|M5={{Match
+|date=2026-05-25 18:00{{Abbr/UTC}}
+|opponent1={{TeamOpponent|YES|score=1}}
+|opponent2={{TeamOpponent|FREETOJOIN|score=0}}
+}}
+}}
+{{Box|break|padding=1em}}
+
+==={{HiddenSort|Round 2}}===
+{{Matchlist|id=tss24850r2|title=Round 2|collapsed=0
+|M1={{Match
+|date=2026-05-25 18:12{{Abbr/UTC}}
+|opponent1={{TeamOpponent|Hide|score=0}}
+|opponent2={{TeamOpponent|MiGzStack|score=1}}
+}}
+|M2={{Match
+|date=2026-05-25 18:12{{Abbr/UTC}}
+|opponent1={{TeamOpponent|Amiti|score=0}}
+|opponent2={{TeamOpponent|Team J|score=1}}
+}}
+|M3={{Match
+|date=2026-05-25 18:12{{Abbr/UTC}}
+|opponent1={{TeamOpponent|GFRIS|score=0}}
+|opponent2={{TeamOpponent|YES|score=1}}
+}}
+|M4={{Match
+|date=2026-05-25 18:12{{Abbr/UTC}}
+|opponent1={{TeamOpponent|FREETOJOIN|score=0}}
+|opponent2={{TeamOpponent|LEGION|score=1}}
+}}
+|M5={{Match
+|date=2026-05-25 18:12{{Abbr/UTC}}
+|opponent1={{TeamOpponent|LEET|score=0}}
+|opponent2={{TeamOpponent|Abstract|score=1}}
+}}
+}}
+{{Box|break|padding=1em}}
+
+==={{HiddenSort|Round 3}}===
+{{Matchlist|id=tss24850r3|title=Round 3|collapsed=0
+|M1={{Match
+|date=2026-05-25 18:24{{Abbr/UTC}}
+|opponent1={{TeamOpponent|Team J|score=1}}
+|opponent2={{TeamOpponent|MiGzStack|score=0}}
+}}
+|M2={{Match
+|date=2026-05-25 18:24{{Abbr/UTC}}
+|opponent1={{TeamOpponent|Hide|score=1}}
+|opponent2={{TeamOpponent|YES|score=0}}
+}}
+|M3={{Match
+|date=2026-05-25 18:24{{Abbr/UTC}}
+|opponent1={{TeamOpponent|Abstract|score=0}}
+|opponent2={{TeamOpponent|LEGION|score=1}}
+}}
+|M4={{Match
+|date=2026-05-25 18:24{{Abbr/UTC}}
+|opponent1={{TeamOpponent|FREETOJOIN|score=0}}
+|opponent2={{TeamOpponent|Amiti|score=1}}
+}}
+|M5={{Match
+|date=2026-05-25 18:24{{Abbr/UTC}}
+|opponent1={{TeamOpponent|LEET|score=1}}
+|opponent2={{TeamOpponent|GFRIS|score=0}}
+}}
+}}
+{{Box|break|padding=1em}}
+
+==={{HiddenSort|Round 4}}===
+{{Matchlist|id=tss24850r4|title=Round 4|collapsed=0
+|M1={{Match
+|date=2026-05-25 18:36{{Abbr/UTC}}
+|opponent1={{TeamOpponent|Hide|score=0}}
+|opponent2={{TeamOpponent|Team J|score=1}}
+}}
+|M2={{Match
+|date=2026-05-25 18:36{{Abbr/UTC}}
+|opponent1={{TeamOpponent|Amiti|score=0}}
+|opponent2={{TeamOpponent|MiGzStack|score=1}}
+}}
+|M3={{Match
+|date=2026-05-25 18:36{{Abbr/UTC}}
+|opponent1={{TeamOpponent|YES|score=0}}
+|opponent2={{TeamOpponent|LEGION|score=1}}
+}}
+|M4={{Match
+|date=2026-05-25 18:36{{Abbr/UTC}}
+|opponent1={{TeamOpponent|LEET|score=0}}
+|opponent2={{TeamOpponent|Abstract|score=1}}
+}}
+|M5={{Match
+|date=2026-05-25 18:36{{Abbr/UTC}}
+|opponent1={{TeamOpponent|GFRIS|score=1}}
+|opponent2={{TeamOpponent|FREETOJOIN|score=0}}
+}}
+}}
+{{Box|break|padding=1em}}
+
+==={{HiddenSort|Round 5}}===
+{{Matchlist|id=tss24850r5|title=Round 5|collapsed=0
+|M1={{Match
+|date=2026-05-25 18:48{{Abbr/UTC}}
+|opponent1={{TeamOpponent|LEGION|score=0}}
+|opponent2={{TeamOpponent|MiGzStack|score=1}}
+}}
+|M2={{Match
+|date=2026-05-25 18:48{{Abbr/UTC}}
+|opponent1={{TeamOpponent|Abstract|score=0}}
+|opponent2={{TeamOpponent|Team J|score=1}}
+}}
+|M3={{Match
+|date=2026-05-25 18:48{{Abbr/UTC}}
+|opponent1={{TeamOpponent|Amiti|score=0}}
+|opponent2={{TeamOpponent|Hide|score=1}}
+}}
+|M4={{Match
+|date=2026-05-25 18:48{{Abbr/UTC}}
+|opponent1={{TeamOpponent|LEET|score=0}}
+|opponent2={{TeamOpponent|YES|score=1}}
+}}
+|M5={{Match
+|date=2026-05-25 18:48{{Abbr/UTC}}
+|opponent1={{TeamOpponent|FREETOJOIN|score=0}}
+|opponent2={{TeamOpponent|GFRIS|score=1}}
+}}
+}}
+{{Box|break|padding=1em}}
+
+==={{HiddenSort|Round 6}}===
+{{Matchlist|id=tss24850r6|title=Round 6|collapsed=0
+|M1={{Match
+|date=2026-05-25 19:00{{Abbr/UTC}}
+|opponent1={{TeamOpponent|MiGzStack|score=0}}
+|opponent2={{TeamOpponent|Team J|score=1}}
+}}
+|M2={{Match
+|date=2026-05-25 19:00{{Abbr/UTC}}
+|opponent1={{TeamOpponent|LEGION|score=1}}
+|opponent2={{TeamOpponent|Hide|score=0}}
+}}
+|M3={{Match
+|date=2026-05-25 19:00{{Abbr/UTC}}
+|opponent1={{TeamOpponent|Amiti|score=1}}
+|opponent2={{TeamOpponent|YES|score=0}}
+}}
+|M4={{Match
+|date=2026-05-25 19:00{{Abbr/UTC}}
+|opponent1={{TeamOpponent|GFRIS|score=0}}
+|opponent2={{TeamOpponent|Abstract|score=1}}
+}}
+|M5={{Match
+|date=2026-05-25 19:00{{Abbr/UTC}}
+|opponent1={{TeamOpponent|FREETOJOIN|score=0}}
+|opponent2={{TeamOpponent|LEET|score=1}}
+}}
+}}
+{{Box|end}}

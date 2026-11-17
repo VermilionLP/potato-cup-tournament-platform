@@ -22,6 +22,7 @@ export const ACTIONS = {
   'PUT /tournaments/:id/round-best-of': 'event.best_of',
   'POST /tournaments/:id/import': 'event.import',
   'PUT /tournaments/:id/wiki': 'event.wiki',
+  'PUT /tss/:id/wiki': 'tss.wiki',
   'POST /tournaments/:id/seeds': 'seeds.manual',
   'POST /tournaments/:id/seeds/auto': 'seeds.auto',
   'POST /tournaments/:id/seeds/randomize': 'seeds.random',
