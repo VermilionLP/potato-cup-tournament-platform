@@ -198,7 +198,228 @@ export function missionSummary(text) {
       units[team] = lists[i] ? entriesOf(text, blocks, lists[i]).filter((e) => e.type === 'b' && decode('b', e.raw)).map((e) => e.key) : [];
     });
   }
-  return { name: get('name'), level: get('level'), type: get('type'), unitTypes, fields, units, vehicleLimit: Boolean(units) };
+  return { name: get('name'), level: get('level'), type: get('type'), unitTypes, fields, units, vehicleLimit: Boolean(units), duel: duelSettings(text) };
+}
+
+// The duel ("gladiators") template the community duel maps are made from:
+// rounds driven by trigger variables, two spawn spheres per team and a
+// cylinder battle area. Each setting is found by what it is (the varSetInt
+// actions that set a variable, the areas by name), so other maps simply
+// have none of them. Labels and help are the page's.
+export const DUEL_FIELDS = {
+  firstCountdown: { type: 'i', min: 1, max: 600 },
+  countdown: { type: 'i', min: 1, max: 600 },
+  shootingDelay: { type: 'i', min: 0, max: 600 },
+  forfeitAfter: { type: 'i', min: 10, max: 36000 },
+  firstHit: { type: 'b' },
+  bailoutDelay: { type: 'r', min: 0, max: 60 },
+  spawnAltitude: { type: 'r', min: 50, max: 15000 },
+  spawnDistance: { type: 'r', min: 200, max: 60000 },
+  areaRadius: { type: 'r', min: 500, max: 60000 },
+};
+// The variable each round setting writes (its varSetInt actions in
+// triggers). The countdown is set twice: when the mission starts (a trigger
+// with an initMission event: the first round) and between rounds; files
+// differ there (1 s, then 10 s), so they are two settings.
+const DUEL_VARS = { firstCountdown: 'timer', countdown: 'timer', shootingDelay: 'shooting_timer', forfeitAfter: 'disqualification_timer' };
+// "First hit wins": this trigger group and the triggers in it that run by
+// themselves (hit_timer is switched on by them, so it stays as it is).
+const FIRST_HIT = 'first_hit_wins';
+const FIRST_HIT_TRIGGERS = ['check_t1', 'check_t2', 't1_and_t2_hit'];
+const SPAWN = /^t([12])_air_spawn_\d+$/;
+
+const insideTriggers = (blocks, b) => {
+  for (let p = b.parent; p !== null; p = blocks[p].parent) if (blocks[p].depth === 0) return blocks[p].name === 'triggers';
+  return false;
+};
+const entryOf = (text, blocks, block, key) => entriesOf(text, blocks, block).find((e) => e.key === key);
+
+/** Whether the trigger a block is in runs when the mission starts. */
+function atStart(blocks, b) {
+  for (let p = b.parent; p !== null; p = blocks[p].parent) {
+    const events = blocks.find((x) => x.parent === p && x.name === 'events');
+    if (events) return blocks.some((x) => x.parent === blocks.indexOf(events) && x.name === 'initMission');
+  }
+  return false;
+}
+
+/**
+ * The varSetInt actions in triggers that set `name`: their value entries.
+ * For the countdown, only the mission start's (firstCountdown) or only the
+ * others (countdown).
+ */
+function varSets(text, blocks, name, key = null) {
+  return blocks
+    .filter((b) => b.name === 'varSetInt' && insideTriggers(blocks, b))
+    .filter((b) => (key === 'firstCountdown' ? atStart(blocks, b) : key === 'countdown' ? !atStart(blocks, b) : true))
+    .map((b) => {
+      const entries = entriesOf(text, blocks, b);
+      const v = entries.find((e) => e.key === 'var');
+      return v && decode('t', v.raw) === name ? entries.find((e) => e.key === 'value') : null;
+    })
+    .filter(Boolean);
+}
+
+function triggerBlock(blocks, name, within = null) {
+  return blocks.find((b) => b.name === name && insideTriggers(blocks, b) && (within === null || isInside(blocks, b, within)));
+}
+function isInside(blocks, b, ancestor) {
+  const target = blocks.indexOf(ancestor);
+  for (let p = b.parent; p !== null; p = blocks[p].parent) if (p === target) return true;
+  return false;
+}
+
+/** tm:m=[[..] [..] [..] [x, y, z]] → { rows: number[][], entry }, or null. */
+function matrixOf(text, blocks, block) {
+  const e = entryOf(text, blocks, block, 'tm');
+  if (!e || e.type !== 'm') return null;
+  const tokens = [...e.raw.matchAll(/\[([^\[\]]*)\]/g)].map((m) => m[1].split(',').map((x) => x.trim()));
+  const rows = tokens.map((r) => r.map(Number));
+  if (rows.length !== 4 || rows.some((r) => r.length !== 3 || r.some((n) => !Number.isFinite(n)))) return null;
+  return { rows, tokens, entry: e };
+}
+const num = (n) => String(Math.round(n * 1000) / 1000);
+/** The matrix with `rows`; numbers that didn't change keep their text (e.g. 2.38339e-07). */
+const matrixText = (m, rows) => `[${rows.map((r, i) => `[${r.map((n, j) => (n === m.rows[i][j] ? m.tokens[i][j] : num(n))).join(', ')}]`).join(' ')}]`;
+
+function spawnAreas(text, blocks) {
+  const areas = blocks.find((b) => b.depth === 0 && b.name === 'areas');
+  if (!areas) return [];
+  const own = blocks.indexOf(areas);
+  return blocks
+    .filter((b) => b.parent === own && SPAWN.test(b.name))
+    .map((b) => ({ team: Number(SPAWN.exec(b.name)[1]), m: matrixOf(text, blocks, b) }))
+    .filter((a) => a.m);
+}
+const areaNamed = (text, blocks, name) => {
+  const b = findPath(blocks, ['areas', name]);
+  return b ? matrixOf(text, blocks, b) : null;
+};
+const centre = (list) => list.reduce((a, s) => [a[0] + s.m.rows[3][0] / list.length, a[1] + s.m.rows[3][2] / list.length], [0, 0]);
+
+/**
+ * The duel template's settings in a file: { firstCountdown, countdown, shootingDelay,
+ * forfeitAfter, firstHit, bailoutDelay, spawnAltitude, spawnDistance,
+ * areaRadius }, each null when the file has no such thing; null when it has
+ * none at all.
+ */
+export function duelSettings(text) {
+  if (missionProblems(text).length) return null;
+  const { blocks } = scanBlocks(text);
+  const out = Object.fromEntries(Object.keys(DUEL_FIELDS).map((k) => [k, null]));
+  for (const [key, name] of Object.entries(DUEL_VARS)) {
+    const sets = varSets(text, blocks, name, key);
+    if (sets.length) out[key] = decode('i', sets[0].raw);
+  }
+  const group = triggerBlock(blocks, FIRST_HIT);
+  if (group) {
+    const on = entryOf(text, blocks, group, 'is_enabled');
+    out.firstHit = on ? decode('b', on.raw) : true;
+    const hitTimer = triggerBlock(blocks, 'hit_timer', group);
+    const wait = hitTimer && blocks.find((b) => b.name === 'wait' && isInside(blocks, b, hitTimer));
+    const time = wait && entryOf(text, blocks, wait, 'time');
+    if (time) out.bailoutDelay = decode('r', time.raw);
+  }
+  const spawns = spawnAreas(text, blocks);
+  if (spawns.some((s) => s.team === 1) && spawns.some((s) => s.team === 2)) {
+    out.spawnAltitude = Math.round(spawns[0].m.rows[3][1]);
+    const [a, b] = [1, 2].map((t) => centre(spawns.filter((s) => s.team === t)));
+    out.spawnDistance = Math.round(Math.hypot(b[0] - a[0], b[1] - a[1]));
+  }
+  const area = areaNamed(text, blocks, 'battle_area_01');
+  if (area) out.areaRadius = Math.round(area.rows[0][0]);
+  return Object.values(out).some((v) => v !== null) ? out : null;
+}
+
+function checkDuel(key, value) {
+  const spec = DUEL_FIELDS[key];
+  if (!spec) throw new Error(`不能修改 ${key}`);
+  if (spec.type === 'b') return Boolean(value);
+  const n = Number(value);
+  if (value === '' || value === null || !Number.isFinite(n)) throw new Error('决斗规则里的数值必须是数字');
+  if (spec.type === 'i' && !Number.isInteger(n)) throw new Error('决斗规则里的秒数必须是整数');
+  if (n < spec.min || n > spec.max) throw new Error(`决斗规则的数值要在 ${spec.min}-${spec.max} 之间`);
+  return n;
+}
+
+/** Replaces [start, end, text] ranges (not overlapping) in one pass. */
+function replaceRanges(text, reps) {
+  let out = text;
+  for (const [a, b, s] of [...reps].sort((x, y) => y[0] - x[0])) out = out.slice(0, a) + s + out.slice(b);
+  return out;
+}
+
+function setDuel(text, duel) {
+  const now = duelSettings(text) || {};
+  let out = text;
+  // One setting at a time (spawn altitude and distance change the same lines).
+  for (const [key, raw] of Object.entries(duel)) {
+    if (raw === undefined) continue;
+    if (now[key] === null || now[key] === undefined) throw new Error(`这个地图没有「${key}」这项决斗规则`);
+    out = setDuelOne(out, key, checkDuel(key, raw));
+  }
+  return out;
+}
+
+function setDuelOne(text, key, value) {
+  const { blocks } = scanBlocks(text);
+  const reps = [];
+  {
+    if (key in DUEL_VARS) {
+      for (const e of varSets(text, blocks, DUEL_VARS[key], key)) reps.push([e.valueStart, e.valueEnd, encode('i', value)]);
+    } else if (key === 'firstHit') {
+      const group = triggerBlock(blocks, FIRST_HIT);
+      for (const b of [group, ...FIRST_HIT_TRIGGERS.map((n) => triggerBlock(blocks, n, group))]) {
+        const e = b && entryOf(text, blocks, b, 'is_enabled');
+        if (e) reps.push([e.valueStart, e.valueEnd, encode('b', value)]);
+        else if (b) {
+          // No is_enabled line (on by default): add one after "name{".
+          const eol = text.indexOf('\n', b.open);
+          const indent = entriesOf(text, blocks, b)[0]?.indent ?? '  '.repeat(b.depth + 1);
+          const nl = text.includes('\r\n') ? '\r\n' : '\n';
+          reps.push([eol + 1, eol + 1, `${indent}is_enabled:b=${encode('b', value)}${nl}`]);
+        }
+      }
+    } else if (key === 'bailoutDelay') {
+      const hitTimer = triggerBlock(blocks, 'hit_timer', triggerBlock(blocks, FIRST_HIT));
+      for (const w of blocks.filter((b) => b.name === 'wait' && isInside(blocks, b, hitTimer))) {
+        const e = entryOf(text, blocks, w, 'time');
+        if (e) reps.push([e.valueStart, e.valueEnd, num(value)]);
+      }
+    } else if (key === 'spawnAltitude' || key === 'spawnDistance') {
+      const spawns = spawnAreas(text, blocks);
+      const [a, b] = [1, 2].map((t) => centre(spawns.filter((s) => s.team === t)));
+      const d = Math.hypot(b[0] - a[0], b[1] - a[1]);
+      // Each team moves half the change, along the line between them.
+      const shift = key === 'spawnDistance' && d > 0 ? (value - d) / 2 : 0;
+      const dir = d > 0 ? [(b[0] - a[0]) / d, (b[1] - a[1]) / d] : [0, 0];
+      for (const s of spawns) {
+        const rows = s.m.rows.map((r) => [...r]);
+        if (key === 'spawnAltitude') rows[3][1] = value;
+        else {
+          const sign = s.team === 1 ? -1 : 1;
+          rows[3][0] += sign * dir[0] * shift;
+          rows[3][2] += sign * dir[1] * shift;
+        }
+        reps.push([s.m.entry.valueStart, s.m.entry.valueEnd, matrixText(s.m, rows)]);
+      }
+    } else if (key === 'areaRadius') {
+      // The battle area's radius; the kill border (battle_area_destr_01)
+      // keeps its distance outside it.
+      const area = areaNamed(text, blocks, 'battle_area_01');
+      const old = area.rows[0][0];
+      for (const [name, r] of [['battle_area_01', value], ['battle_area_destr_01', null]]) {
+        const m = name === 'battle_area_01' ? area : areaNamed(text, blocks, name);
+        if (!m) continue;
+        const radius = r ?? m.rows[0][0] + (value - old);
+        const rows = m.rows.map((row) => [...row]);
+        rows[0][0] = radius;
+        rows[2][2] = radius;
+        reps.push([m.entry.valueStart, m.entry.valueEnd, matrixText(m, rows)]);
+      }
+    }
+  }
+  return replaceRanges(text, reps);
 }
 
 /** "levels/air_africa_desert.bin" → "air_africa_desert". */
@@ -312,10 +533,11 @@ export function parseUnitList(input) {
 
 /**
  * The text with `fields` ({ scoreLimit: 3, ... }), `units` ({ teamA:
- * [...], teamB: [...] }) and the vehicle limit (on / off) changed in place.
+ * [...], teamB: [...] }), the vehicle limit (on / off) and the duel
+ * template's settings (`duel`: { shootingDelay: 20, ... }) changed in place.
  * Throws a message for people.
  */
-export function applyMissionEdits(text, { fields = {}, units = null, vehicleLimit = undefined, limitBlock = null } = {}) {
+export function applyMissionEdits(text, { fields = {}, units = null, vehicleLimit = undefined, limitBlock = null, duel = null } = {}) {
   const problems = missionProblems(text);
   if (problems.length) throw new Error(problems[0]);
   let out = text;
@@ -337,6 +559,7 @@ export function applyMissionEdits(text, { fields = {}, units = null, vehicleLimi
       out = setUnits(out, team, parseUnitList(units[team]));
     }
   }
+  if (duel && Object.keys(duel).length) out = setDuel(out, duel);
   const after = missionProblems(out);
   if (after.length) throw new Error(after[0]);
   return out;
