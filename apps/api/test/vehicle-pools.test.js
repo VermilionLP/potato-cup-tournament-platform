@@ -22,3 +22,9 @@ test('bad lists are rejected with the row number', () => {
   assert.match(normalizeVehicles([{ name: 'a', br: 99 }]).error, /BR/);
   assert.match(normalizeVehicles(Array.from({ length: MAX_POOL_VEHICLES + 1 }, () => ({ name: 'a' }))).error, /最多/);
 });
+
+test('a vehicle keeps what it is a copy of (copy_of, for the spaded filter)', () => {
+  const { vehicles } = normalizeVehicles([{ name: 'J-11', group: 'B', copy_of: ' Su-27SM ;  su_27sm_china ' }, { name: 'X', copy_of: '' }]);
+  assert.equal(vehicles[0].copy_of, 'Su-27SM ; su_27sm_china');
+  assert.equal('copy_of' in vehicles[1], false);
+});

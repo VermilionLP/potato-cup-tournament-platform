@@ -1,7 +1,7 @@
 <script>
   // 黑桃过滤 on the 载具池 tab: whose spaded vehicles (Statshark) the server
-  // has for this event, as Ban / Pick leaves out the vehicles neither player
-  // of a match has spaded. Admins can fetch them now (the event's start does
+  // has for this event, as Ban / Pick keeps only the vehicles both players
+  // of a match have spaded (copies counted). Admins can fetch them now (the event's start does
   // it by itself) and see the requests left today.
   import { API } from "#lib/api.js";
   import { toast } from "svelte-sonner";
@@ -49,7 +49,7 @@
       <div>
         <h3 class="text-sm font-bold">黑桃过滤（Statshark）</h3>
         <p class="text-small text-muted-foreground">
-          Ban/Pick 时去掉双方都没有黑桃的载具；只要有一方没有数据，这场就不过滤。选手在「个人资料」里填 Statshark ID，比赛开始时读取。
+          Ban/Pick 只保留双方都有黑桃的载具，复制载具（载具池里的「复制自」）算同一辆；有一方没有数据、或两人没有共同的黑桃载具时，这场不过滤。选手在「个人资料」里填 Statshark ID，比赛开始时读取。
         </p>
       </div>
       {#if isAdmin && statshark}

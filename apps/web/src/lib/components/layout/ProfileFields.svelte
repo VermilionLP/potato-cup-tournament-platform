@@ -59,7 +59,7 @@
     <label for="edit-statshark" class="text-small font-semibold text-muted-foreground">Statshark ID（可选）</label>
     <Input id="edit-statshark" bind:value={statshark} placeholder="例如: 67556271，或粘贴 statshark.net/player/… 链接" class={field} />
     <p class="text-small text-muted-foreground/60">
-      你在 statshark.net 个人页面链接里 /player/ 后面的数字。每届比赛开始时会读取你的黑桃载具，Ban/Pick 时去掉双方都没有黑桃的载具。
+      你在 statshark.net 个人页面链接里 /player/ 后面的数字。每届比赛开始时会读取你的黑桃载具，Ban/Pick 时只保留双方都有黑桃的载具。
     </p>
     {#if spaded}
       <p class="text-small {spaded.error ? 'text-loss' : 'text-muted-foreground'}">
