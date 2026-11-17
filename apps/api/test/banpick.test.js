@@ -101,3 +101,37 @@ test('bad input is refused', () => {
   assert.match(act(r, { action: 'fly' }, { grouped, ...A }).error, /未知/);
   assert.match(act(r, { action: 'ban', group: 'GA' }, { grouped, who: { admin: false, side: null }, by: 'x' }).error, /两位选手/);
 });
+
+test('a banned or removed vehicle takes its copies (copy_of) out of the draw', async () => {
+  const { groupVehicles, initialBanPick, localAct, availableGroups, availableVehicles, removedNames } = await import('@potato-cup/shared/banpick.js');
+  const grouped = groupVehicles([
+    { name: 'Su-27SM', group: 'Flanker' },
+    { name: 'F-15E', group: 'Eagle' },
+    { name: 'J-11', group: 'China', copy_of: 'Su-27SM' },
+    { name: 'J-10C', group: 'China' },
+    { name: 'Bf 109 F-4', group: 'Bf 109' },
+    { name: 'Bf 109 F-4 (HU)', group: 'Bf 109', copy_of: 'bf-109f-4; Bf 109 F-4' },
+    { name: 'Bf 109 G-2', group: 'Bf 109' },
+  ]);
+  const rules = { bansPerPlayer: 1, groupRerolls: null, vehicleRerolls: null, drawVehicle: true };
+  let s = initialBanPick(rules);
+  s = localAct(s, grouped, 'ban', { group: 'Flanker' }); // A bans the Su-27SM's group
+  assert.ok(removedNames(s, grouped).has('J-11'), 'the J-11 (a copy) goes too');
+  assert.ok(!removedNames(s, grouped).has('Su-27SM'), 'the banned group\'s own vehicles are out with the group');
+  s = localAct(s, grouped, 'pass');
+  assert.deepEqual(availableGroups(s, grouped), ['Eagle', 'China', 'Bf 109']);
+  assert.deepEqual(availableVehicles(s, grouped, 'China'), ['J-10C']);
+  // Removing a drawn vehicle removes its copies in the group.
+  s = localAct(s, grouped, 'drawGroup', {}, () => 0.99); // Bf 109
+  assert.equal(s.group, 'Bf 109');
+  s = localAct(s, grouped, 'confirmGroup');
+  s = localAct(s, grouped, 'drawVehicle', {}, () => 0); // Bf 109 F-4
+  assert.equal(s.vehicle, 'Bf 109 F-4');
+  s = localAct(s, grouped, 'removeVehicle');
+  assert.deepEqual(availableVehicles(s, grouped, 'Bf 109'), ['Bf 109 G-2']);
+  // No copies in the pool: as before.
+  const plain = groupVehicles([{ name: 'A', group: 'X' }, { name: 'B', group: 'Y' }]);
+  let p = localAct(initialBanPick(rules), plain, 'ban', { group: 'X' });
+  p = localAct(p, plain, 'pass');
+  assert.deepEqual(availableGroups(p, plain), ['Y']);
+});

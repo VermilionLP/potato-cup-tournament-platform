@@ -7,7 +7,7 @@
   // server for a match); a draw someone else made (a new `lastEntry`) rolls
   // here too, so everyone watching sees it land.
   import { untrack } from "svelte";
-  import { availableGroups, availableVehicles } from "#lib/banpick.js";
+  import { availableGroups, availableVehicles, removedNames } from "#lib/banpick.js";
   import VehicleSlot from "./VehicleSlot.svelte";
 
   let { bp, grouped = [], run, can = () => true, busy = false, lastEntry = null, rolling = $bindable(false) } = $props();
@@ -75,12 +75,13 @@
   let shownVehicle = $derived(
     rolling && rollingPhase === "drawVehicle" ? groupVehiclesShown.find((v) => v.name === rollingLabel) : groupVehiclesShown.find((v) => v.name === bp.vehicle),
   );
+  const removed = $derived(removedNames(bp, grouped)); // copies of removed / banned vehicles too
   const slotState = (v) =>
     rolling && rollingPhase === "drawVehicle" && v.name === rollingLabel
       ? "rolling"
       : v.name === bp.vehicle && !(rolling && rollingPhase === "drawVehicle")
         ? "chosen"
-        : bp.removedVehicles.includes(v.name)
+        : removed.has(v.name)
           ? "out"
           : "";
 </script>

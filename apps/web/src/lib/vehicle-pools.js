@@ -128,6 +128,8 @@ export function previewVehicles(rows = []) {
         br: Number.isFinite(br) ? br : null,
         type: String(raw?.type ?? "").trim(),
         group: String(raw?.group ?? "").trim() || name,
+        ...(raw?.wiki ? { wiki: String(raw.wiki).trim() } : {}),
+        ...(String(raw?.copy_of ?? "").trim() ? { copy_of: String(raw.copy_of).trim() } : {}),
       };
     })
     .filter((v) => v.name);

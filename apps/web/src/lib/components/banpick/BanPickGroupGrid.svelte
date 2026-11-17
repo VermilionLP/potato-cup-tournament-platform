@@ -4,13 +4,15 @@
   // drawn result are marked. Pointing at
   // (or tapping) a vehicle shows its wiki slot picture in the preview bar
   // above, so the grid stays the same size.
-  import { bannedBy, isGroupBanned } from "#lib/banpick.js";
+  import { bannedBy, isGroupBanned, removedNames } from "#lib/banpick.js";
   import VehicleSlot from "./VehicleSlot.svelte";
 
   // `banning`: the viewer may ban now; onban(group, vehicle) bans.
   let { bp, grouped = [], banning = false, onban } = $props();
 
   let preview = $state(null);
+  // Removed vehicles and the copies of removed / banned ones.
+  const outVehicles = $derived(removedNames(bp, grouped));
 
   function vehicleInfo(v) {
     return [v.nation, v.br != null ? `BR ${v.br}` : null, v.type].filter(Boolean).join(" · ");
@@ -67,7 +69,7 @@
       </button>
       <div class="mt-0.5 flex flex-wrap gap-0.5">
         {#each g.vehicles as v (v.name)}
-          {@const out = bp.removedVehicles.includes(v.name)}
+          {@const out = outVehicles.has(v.name)}
           {@const chosen = bp.vehicle === v.name}
           <!-- Not `disabled`: disabled buttons get no pointer events, and the preview needs them. -->
           <button

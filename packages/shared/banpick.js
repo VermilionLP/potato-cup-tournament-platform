@@ -10,6 +10,11 @@
 // come up again. A template can limit the removals, or end at the group
 // (any vehicle of it may be used).
 //
+// Copies (the pool's copy_of, ./spaded.js): a vehicle goes with its copies.
+// Banning a group, or removing a drawn vehicle, also removes the copies of
+// those vehicles in other groups (removedNames); a group left with none
+// can't be drawn.
+//
 // On the server a match keeps { rev, state, log } (matches.banpick,
 // migration 044). log: every action with its outcome:
 //   { n, at, by, side, action, group, vehicle, undone?, target? }
@@ -23,6 +28,8 @@
 //   groupRerolls    drawn groups that may be removed (null = no limit)
 //   vehicleRerolls  drawn vehicles that may be removed (null = no limit)
 //   drawVehicle     false: the drawn group is the result
+import { vehicleFamilies } from './spaded.js';
+
 export const DEFAULT_RULES = { bansPerPlayer: 1, groupRerolls: null, vehicleRerolls: null, drawVehicle: true };
 export const ACTIONS = ['ban', 'pass', 'drawGroup', 'removeGroup', 'confirmGroup', 'backToGroups', 'drawVehicle', 'removeVehicle', 'confirm', 'undo', 'reset'];
 export const MAX_LOG = 300;
@@ -112,17 +119,38 @@ export function bannedBy(state, group) {
   return state.bans.find((b) => b.group === group)?.by || null;
 }
 
+/**
+ * Names of the vehicles out of the draw: those removed, and every copy of a
+ * removed vehicle or of a vehicle in a banned group (a Set).
+ */
+export function removedNames(state, grouped = []) {
+  const out = new Set(state.removedVehicles);
+  const banned = new Set(state.bans.map((b) => b.group).filter(Boolean));
+  const gone = grouped.filter((g) => banned.has(g.group)).flatMap((g) => g.vehicles.map((v) => v.name));
+  const seeds = [...state.removedVehicles, ...gone];
+  if (!seeds.length) return out;
+  const families = vehicleFamilies(grouped.flatMap((g) => g.vehicles));
+  const keys = new Set(seeds.flatMap((name) => [...(families.get(name) || [])]));
+  for (const [name, fam] of families) {
+    if (gone.includes(name)) continue; // the banned group's own vehicles: the group is out
+    if ([...fam].some((k) => keys.has(k))) out.add(name);
+  }
+  return out;
+}
+
 /** Groups that can still be drawn: not banned, not removed, with vehicles left. */
 export function availableGroups(state, grouped) {
+  const out = removedNames(state, grouped);
   return grouped
-    .filter((g) => !isGroupBanned(state, g.group) && !state.removedGroups.includes(g.group) && g.vehicles.some((v) => !state.removedVehicles.includes(v.name)))
+    .filter((g) => !isGroupBanned(state, g.group) && !state.removedGroups.includes(g.group) && g.vehicles.some((v) => !out.has(v.name)))
     .map((g) => g.group);
 }
 
 /** Vehicles of `group` that can still be drawn. */
 export function availableVehicles(state, grouped, group) {
   const entry = grouped.find((g) => g.group === group);
-  return entry ? entry.vehicles.filter((v) => !state.removedVehicles.includes(v.name)).map((v) => v.name) : [];
+  const out = removedNames(state, grouped);
+  return entry ? entry.vehicles.filter((v) => !out.has(v.name)).map((v) => v.name) : [];
 }
 
 /** Removals left: { groups, vehicles }, null = no limit. */

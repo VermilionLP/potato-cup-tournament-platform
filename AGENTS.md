@@ -152,7 +152,7 @@ Ban / Pick 的载具池是 `axsuck.vehicle_pools` 里的模板（迁移 027）�
 
 选手在个人资料里填 Statshark ID（`players.statshark_id`，数字或 statshark.net/player/ 链接，`@potato-cup/shared/spaded.js` 的 `normalizeStatsharkId`；迁移 058）。赛事开始（`POST /tournaments/:id/start`）时在后台按参赛名单从 Statshark API 拉一次黑桃载具（`apps/api/lib/statshark.js` 的 `syncEventSpaded`），存在 `players.spaded_units`（`unitKey` 后的 id / 名称），下届比赛再拉时覆盖；12 小时内拉过的跳过。每次请求记在 `statshark_usage`（按 UTC 日），离每日上限（`STATSHARK_DAILY_LIMIT`，默认 350）还剩 `RESERVE` 次时自动拉取停下，留给管理员在载具池 tab「现在读取」（`POST /tournaments/:id/spaded/refresh`，不受 12 小时限制）。没配 `STATSHARK_API_URL` 时什么都不做。响应由 `parseSpaded` 读：接口文档到了以后按实际格式改这一个函数。
 
-Ban/Pick 只保留双方都有黑桃的载具：复制载具算同一辆（载具池每辆载具的「复制自」`copy_of`：载具名称或单位 ID，用 ; 或 、 隔开；`vehicleFamilies` 把互相是复制的载具连成一族，`spadedNames` 按族判断），`spadedExcluded` 算出其余要去掉的（任一方没有数据、或两人没有共同的黑桃载具时不过滤），服务器在这场 Ban/Pick 第一次操作（和重置）时把名单固定在 `matches.banpick.excluded`，抽取只在剩下的载具里；页面（`MatchReport`、直播 `BanPickScene`）用同一个名单显示。`GET /tournaments/:id/vehicle-pool` 带每个参赛选手在这个池子里的黑桃载具（`spaded`）；玩家接口只给数量（`spaded_count`），不发整个列表。
+复制载具在 Ban/Pick 里也一起走（不需要 Statshark）：禁用一个大组、或移除抽到的载具时，这些载具在别的大组里的复制也一起移出抽取（`@potato-cup/shared/banpick.js` 的 `removedNames`，服务器和页面都按它算；服务器的 grouped 带单位 ID，和页面一致）。Ban/Pick 只保留双方都有黑桃的载具：复制载具算同一辆（载具池每辆载具的「复制自」`copy_of`：载具名称或单位 ID，用 ; 或 、 隔开；`vehicleFamilies` 把互相是复制的载具连成一族，`spadedNames` 按族判断），`spadedExcluded` 算出其余要去掉的（任一方没有数据、或两人没有共同的黑桃载具时不过滤），服务器在这场 Ban/Pick 第一次操作（和重置）时把名单固定在 `matches.banpick.excluded`，抽取只在剩下的载具里；页面（`MatchReport`、直播 `BanPickScene`）用同一个名单显示。`GET /tournaments/:id/vehicle-pool` 带每个参赛选手在这个池子里的黑桃载具（`spaded`）；玩家接口只给数量（`spaded_count`），不发整个列表。
 
 ## Hall of fame and sharing
 
