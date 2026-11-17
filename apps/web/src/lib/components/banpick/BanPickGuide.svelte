@@ -5,6 +5,7 @@
   // quieter buttons. Pinned to the top of the dialog while the groups
   // scroll. Draws go through `ondraw(kind)` (the draw strip rolls them),
   // everything else through `run(action)`; `onscore` moves on once locked.
+  import { plainGlyphs } from "#lib/wt-glyphs.js";
   import { availableGroups, availableVehicles, banTurn, canConfirm, rerollsLeft, resultLabel } from "#lib/banpick.js";
   import CheckIcon from "@lucide/svelte/icons/check";
   import DicesIcon from "@lucide/svelte/icons/dices";
@@ -125,7 +126,7 @@
   <!-- Now -->
   <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
     <div class="min-w-0 flex-1">
-      <p class="truncate text-base font-black text-foreground">{now.title}</p>
+      <p class="truncate text-base font-black text-foreground">{plainGlyphs(now.title)}</p>
       <p class="text-small text-muted-foreground">{showButtons ? now.hint : "观战中，等待选手或管理员操作…"}</p>
     </div>
     {#if showButtons}

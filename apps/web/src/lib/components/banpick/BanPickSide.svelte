@@ -1,6 +1,7 @@
 <script>
   // One player in Ban / Pick: slot (A / B), name and their bans; while it is
   // their turn to ban (and the viewer may), a 空过 (skip) button.
+  import { plainGlyphs } from "#lib/wt-glyphs.js";
   import Flag from "#lib/components/Flag.svelte";
   import { bansOf } from "#lib/banpick.js";
 
@@ -10,7 +11,7 @@
 
   function banLabel(entry) {
     if (!entry.group) return "空过";
-    return entry.vehicle ? `${entry.group} · ${entry.vehicle}` : entry.group;
+    return entry.vehicle ? `${entry.group} · ${plainGlyphs(entry.vehicle)}` : entry.group;
   }
 </script>
 <div

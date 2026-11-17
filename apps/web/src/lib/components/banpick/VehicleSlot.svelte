@@ -4,6 +4,7 @@
   // Ban / Pick uses it for the drawn group's vehicles and the result.
   // `state`: "" | "chosen" | "rolling" | "out". Cached picture first, then
   // the wiki, then none (#lib/wt-units.js).
+  import GlyphText from "#lib/components/GlyphText.svelte";
   import { slotImage, slotImageDirect, unitIdOf } from "#lib/wt-units.js";
 
   let { vehicle, size = "md", state = "" } = $props();
@@ -47,7 +48,7 @@
     class="absolute right-1.5 top-1 max-w-[85%] truncate text-right font-semibold leading-tight drop-shadow
       {size === 'lg' ? 'text-sm' : 'text-small'} {state === 'out' ? 'line-through' : ''}"
   >
-    {vehicle.name}
+    <GlyphText text={vehicle.name} />
   </span>
   {#if vehicle.br != null}
     <span class="absolute bottom-1 right-1.5 drop-shadow {size === 'lg' ? 'text-xs' : 'text-small'} text-slate-300">{br(vehicle.br)}</span>

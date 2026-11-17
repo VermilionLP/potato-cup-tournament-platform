@@ -7,6 +7,7 @@
   // head to head (series and games, the last five meetings). Ladder data
   // from /ladder/players/:id, vehicles from /banpick/stats?player=
   // (#lib/versus.js).
+  import GlyphText from "#lib/components/GlyphText.svelte";
   import { fade, fly, scale } from "svelte/transition";
   import { API } from "#lib/api.js";
   import { matchStageLabels } from "#lib/overlay.js";
@@ -117,7 +118,7 @@
         <span class="w-[210px] shrink-0 whitespace-nowrap font-num text-base font-bold tracking-[0.16em] text-[#7184A3]">GO-TO VEHICLES</span>
         <span class="flex min-w-0 gap-2 {right ? 'flex-row-reverse' : ''}">
           {#each s.vehicles as v (v.name)}
-            <span class="truncate rounded-lg bg-white/[0.06] px-3 py-1 text-xl font-bold">{v.name}</span>
+            <span class="truncate rounded-lg bg-white/[0.06] px-3 py-1 text-xl font-bold"><GlyphText text={v.name} /></span>
           {:else}
             <span class="text-lg text-[#7184A3]">—</span>
           {/each}

@@ -5,6 +5,7 @@
   // War Thunder unit id the picture comes from: typed in, or matched by
   // name (#lib/wt-units.js, shown greyed). 复制自 (copy_of): the vehicles
   // this one is a copy of, for the spaded filter of Ban / Pick.
+  import GlyphText from "#lib/components/GlyphText.svelte";
   import { onMount } from "svelte";
   import { loadUnitIndex, nationFlag, unitIdOf, wikiPage } from "#lib/wt-units.js";
   import Trash2Icon from "@lucide/svelte/icons/trash-2";
@@ -80,7 +81,7 @@
               </button>
             </td>
           {:else}
-            <td class="px-2 py-1.5 font-semibold text-foreground">{v.name}</td>
+            <td class="px-2 py-1.5 font-semibold text-foreground"><GlyphText text={v.name} /></td>
             <td class="px-2 py-1.5 text-muted-foreground"><span class="flex items-center gap-1.5">{@render flag(v.nation)}{v.nation}</span></td>
             <td class="px-2 py-1.5 text-right num font-semibold">{v.br == null || v.br === "" ? "" : Number(v.br).toFixed(1)}</td>
             <td class="px-2 py-1.5 text-muted-foreground">{v.type}</td>

@@ -4,6 +4,7 @@
   // drawn result are marked. Pointing at
   // (or tapping) a vehicle shows its wiki slot picture in the preview bar
   // above, so the grid stays the same size.
+  import GlyphText from "#lib/components/GlyphText.svelte";
   import { bannedBy, isGroupBanned, removedNames } from "#lib/banpick.js";
   import VehicleSlot from "./VehicleSlot.svelte";
 
@@ -24,7 +25,7 @@
   {#if preview}
     <div class="w-44 shrink-0"><VehicleSlot vehicle={preview} size="sm" /></div>
     <div class="min-w-0 text-small leading-tight">
-      <div class="truncate font-bold text-foreground">{preview.name}</div>
+      <div class="truncate font-bold text-foreground"><GlyphText text={preview.name} /></div>
       <div class="truncate text-muted-foreground">{vehicleInfo(preview)}</div>
     </div>
   {:else}
@@ -90,7 +91,7 @@
                 : 'bg-muted/60 text-foreground/80'}
               {pickable ? 'hover:bg-foreground/10 cursor-pointer' : 'cursor-default'}"
           >
-            {v.name}
+            <GlyphText text={v.name} />
           </button>
         {/each}
       </div>
