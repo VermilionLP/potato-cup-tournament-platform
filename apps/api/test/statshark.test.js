@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { eventSpaded, matchExcluded, parseSpaded, quotaLeft, RESERVE, statsharkConfig, syncEventSpaded } from '../lib/statshark.js';
-import { normalizeStatsharkId, spadedExcluded, unitKey, withoutExcluded } from '@potato-cup/shared/spaded.js';
+import { copyList, normalizeStatsharkId, spadedExcluded, spadedNames, unitKey, vehicleFamilies, withoutExcluded } from '@potato-cup/shared/spaded.js';
 
 // The few queries lib/statshark.js makes, on plain objects.
 function fakeDb({ players = [], event = [], usage = 0 } = {}) {
@@ -50,16 +50,32 @@ test('spaded vehicles are read from the usual response shapes', () => {
   assert.deepEqual(parseSpaded({ vehicles: [{ id: 'a10a', battles: 3 }] }), [], 'no spaded flag, not under a spaded key: nothing');
 });
 
-test('Ban / Pick leaves out the pool vehicles neither player has spaded, only with both players\' data', () => {
-  const pool = [{ name: 'F-15E', group: 'A' }, { name: 'Su-27SM', group: 'A' }, { name: 'J-10C', group: 'B' }];
-  assert.deepEqual(spadedExcluded(pool, ['F-15E'], ['Su-27SM']), ['J-10C']);
-  assert.deepEqual(spadedExcluded(pool, ['F-15E'], null), [], 'no data for one player: nothing left out');
-  assert.deepEqual(spadedExcluded(pool, [], []), [], 'would leave nothing: nothing left out');
-  assert.deepEqual(withoutExcluded(pool, ['J-10C']).map((v) => v.name), ['F-15E', 'Su-27SM']);
+test('a match keeps the pool vehicles both players have spaded; copies count as the same vehicle', () => {
+  const pool = [
+    { name: 'F-15E', unit: 'f_15e', group: 'A' },
+    { name: 'Su-27SM', unit: 'su_27sm', group: 'A' },
+    { name: 'J-10C', unit: 'j_10c', group: 'B' },
+    { name: 'J-11', unit: 'j_11', group: 'B', copy_of: 'Su-27SM' }, // a copy of a pool vehicle
+    { name: 'MiG-15bis (CN)', unit: 'mig_15bis_china', group: 'C', copy_of: 'mig_15bis; mig_15bis_hungary' }, // copies outside the pool
+  ];
+  const a = spadedNames(pool, new Set(['f15e', 'su27sm', 'mig15bis']));
+  const b = spadedNames(pool, new Set(['f15e', 'j11', 'mig15bishungary', 'j10c']));
+  assert.deepEqual(a.sort(), ['F-15E', 'J-11', 'MiG-15bis (CN)', 'Su-27SM']);
+  assert.deepEqual(b.sort(), ['F-15E', 'J-10C', 'J-11', 'MiG-15bis (CN)', 'Su-27SM']);
+  // Both: F-15E, the Su-27SM / J-11 family, the MiG-15bis; J-10C is only b's.
+  assert.deepEqual(spadedExcluded(pool, a, b), ['J-10C']);
+  assert.deepEqual(spadedExcluded(pool, a, null), [], 'no data for one player: nothing left out');
+  assert.deepEqual(spadedExcluded(pool, ['F-15E'], ['J-10C']), [], 'nothing in common: nothing left out');
+  assert.deepEqual(withoutExcluded(pool, ['J-10C']).map((v) => v.name), ['F-15E', 'Su-27SM', 'J-11', 'MiG-15bis (CN)']);
   assert.equal(unitKey('Su-27SM'), 'su27sm');
+  assert.deepEqual(copyList('Bf 109 F-4; bf-109f-4_hungary、A6M2'), ['Bf 109 F-4', 'bf-109f-4_hungary', 'A6M2']);
+  // Copies chain: C is a copy of B, B of A: one family.
+  const chain = vehicleFamilies([{ name: 'A' }, { name: 'B', copy_of: 'A' }, { name: 'C', copy_of: 'B' }, { name: 'D' }]);
+  assert.ok(chain.get('C').has('a'));
+  assert.ok(!chain.get('D').has('a'));
 });
 
-test('an event\'s players are matched to the pool by unit id or name', async () => {
+test('an event\'s players are matched to the pool by unit id, name or copy', async () => {
   const db = fakeDb({
     event: ['a', 'b', 'c'],
     players: [
@@ -68,13 +84,22 @@ test('an event\'s players are matched to the pool by unit id or name', async () 
       { id: 'c', statshark_id: null },
     ],
   });
-  const pool = [{ name: 'F-15E Strike Eagle', unit: 'f_15e', group: 'A' }, { name: 'Su-27SM', group: 'A' }, { name: 'J-10C', unit: 'j_10c', group: 'B' }, { name: 'Gripen', unit: 'saab_jas39c', group: 'B' }];
+  const pool = [
+    { name: 'F-15E Strike Eagle', unit: 'f_15e', group: 'A' },
+    { name: 'Su-27SM', group: 'A' },
+    { name: 'J-10C', unit: 'j_10c', group: 'B' },
+    { name: 'Gripen', unit: 'saab_jas39c', group: 'B' },
+    { name: 'J-11', unit: 'j_11', group: 'B', copy_of: 'Su-27SM' },
+  ];
   const data = await eventSpaded(db, 't', pool);
   assert.deepEqual(data.a.has, ['F-15E Strike Eagle', 'J-10C']);
-  assert.deepEqual(data.b.has, ['Su-27SM']);
+  assert.deepEqual(data.b.has.sort(), ['J-11', 'Su-27SM'], 'the copy counts');
   assert.equal(data.c.has, null);
   assert.equal(data.c.linked, false);
-  assert.deepEqual(await matchExcluded(db, 't', pool, 'a', 'b'), ['Gripen']);
+  // a and b have no spaded vehicle in common: nothing is left out.
+  assert.deepEqual(await matchExcluded(db, 't', pool, 'a', 'b'), []);
+  db.state.players.get('b').spaded_units = ['su27sm', 'f15e'];
+  assert.deepEqual(await matchExcluded(db, 't', pool, 'a', 'b'), ['Su-27SM', 'J-10C', 'Gripen', 'J-11'], 'only the F-15E both have');
   assert.deepEqual(await matchExcluded(db, 't', pool, 'a', 'c'), [], 'c has no data');
 });
 

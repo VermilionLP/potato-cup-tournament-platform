@@ -3,8 +3,9 @@
 // Kept free of #lib imports so it can be tested with node --test.
 
 // wiki: War Thunder unit id for the picture (optional; looked up by name
-// when empty, #lib/wt-units.js).
-export const POOL_FIELDS = ["name", "nation", "br", "type", "group", "wiki"];
+// when empty, #lib/wt-units.js). copy_of: the vehicles this one is a copy
+// of (names or unit ids, ; or 、 between them), for the spaded filter.
+export const POOL_FIELDS = ["name", "nation", "br", "type", "group", "wiki", "copy_of"];
 
 // Which template an event uses: shared with the server.
 export { resolveTemplate } from "@potato-cup/shared/vehicle-pools.js";
@@ -26,6 +27,7 @@ function cleanVehicle(raw) {
     type: text(raw?.type, 30),
     group: text(raw?.group, 80) || name,
     ...(text(raw?.wiki, 80) ? { wiki: text(raw.wiki, 80).toLowerCase() } : {}),
+    ...(text(raw?.copy_of, 200) ? { copy_of: text(raw.copy_of, 200) } : {}),
   };
 }
 

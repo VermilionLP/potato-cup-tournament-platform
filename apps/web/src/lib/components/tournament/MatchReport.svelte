@@ -84,7 +84,7 @@
   let liveRow = $derived(selectedMatch ? tournament?.matches?.find((m) => m.id === selectedMatch.id) || selectedMatch : null);
   let bpRecord = $derived(newerRecord(liveRow?.banpick, bpAnswer));
   let bpState = $derived(bpRecord?.state || initialBanPick(bpTemplate?.rules));
-  // Vehicles neither player has spaded are left out: as the server fixed it
+  // Only the vehicles both players have spaded are kept: as the server fixed it
   // when Ban / Pick started, or (before) as it will.
   let bpExcluded = $derived(
     bpRecord?.excluded ??

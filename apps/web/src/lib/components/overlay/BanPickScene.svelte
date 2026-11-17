@@ -26,7 +26,7 @@
   let { tournament, activeMatch = null, pool = null, stageMatches = [], who } = $props();
 
   let record = $derived(activeMatch?.banpick?.state ? activeMatch.banpick : null);
-  // Without the vehicles neither player has spaded (fixed when Ban / Pick started).
+  // Only the vehicles both players have spaded (fixed when Ban / Pick started).
   let grouped = $derived(groupVehicles(withoutExcluded(pool?.vehicles || [], record?.excluded || [])));
   let bp = $derived(record?.state || initialBanPick(pool?.rules));
   let rules = $derived(bp.rules);

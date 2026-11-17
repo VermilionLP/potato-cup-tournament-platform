@@ -1,8 +1,10 @@
 // Vehicle pool templates, shared by the API (which stores them) and the
 // website (which picks an event's template the same way).
 //
-// Contents: [{ name, nation, br, type, group, wiki? }] (wiki: War Thunder
-// unit id for the picture, optional).
+// Contents: [{ name, nation, br, type, group, wiki?, copy_of? }] (wiki: War
+// Thunder unit id for the picture, optional; copy_of: the vehicles this one
+// is a copy of, names or unit ids separated by ; or 、, for the spaded
+// filter: a player who spaded any of them has this one too, ./spaded.js).
 
 import { DEFAULT_RULES, normalizeRules } from './banpick.js';
 
@@ -43,6 +45,7 @@ export function normalizeVehicles(input) {
       type: text(raw.type, 30),
       group: text(raw.group, 80) || name,
       ...(wikiId(raw.wiki) ? { wiki: wikiId(raw.wiki) } : {}),
+      ...(text(raw.copy_of, 200) ? { copy_of: text(raw.copy_of, 200) } : {}),
     });
   }
   return { vehicles };

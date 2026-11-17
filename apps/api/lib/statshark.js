@@ -17,7 +17,7 @@
 // it takes the usual shapes: a list of vehicle ids / names under a key
 // with "spade" in it, or a list of vehicle objects with a spaded flag.
 
-import { hasSpaded, spadedExcluded, unitKey } from '@potato-cup/shared/spaded.js';
+import { spadedExcluded, spadedNames, unitKey } from '@potato-cup/shared/spaded.js';
 
 export const DEFAULT_DAILY_LIMIT = 350;
 // Requests kept back for refreshes by hand when an event's fetch stops.
@@ -157,7 +157,8 @@ export async function syncEventSpaded(db, tournamentId, { force = false, cfg = s
 
 /**
  * Each event player's spaded vehicles among `vehicles` (the event's pool,
- * names): { [playerId]: { has: [names] | null, fetched_at, error, linked } }.
+ * names, copies counted): { [playerId]: { has: [names] | null, fetched_at,
+ * error, linked } }.
  * `has` is null when there is no data for them yet.
  */
 export async function eventSpaded(db, tournamentId, vehicles = [], playerIds = null) {
@@ -172,7 +173,7 @@ export async function eventSpaded(db, tournamentId, vehicles = [], playerIds = n
     const spaded = Array.isArray(r.spaded_units) ? new Set(r.spaded_units) : null;
     out[r.id] = {
       linked: Boolean(r.statshark_id),
-      has: spaded ? [...new Set(vehicles.filter((v) => hasSpaded(spaded, v)).map((v) => v.name))] : null,
+      has: spaded ? spadedNames(vehicles, spaded) : null,
       fetched_at: r.spaded_fetched_at,
       error: r.spaded_error,
     };

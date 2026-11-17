@@ -30,7 +30,7 @@
     correcting = false,
     banpickEnabled = false,
     vehicles = [],
-    excluded = [], // names left out: neither player has them spaded
+    excluded = [], // names left out: not spaded by both players
     poolName = "",
     submitting = false,
     roundLabel,
