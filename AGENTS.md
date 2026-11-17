@@ -148,6 +148,12 @@ Ban / Pick 的载具池是 `axsuck.vehicle_pools` 里的模板（迁移 027）�
 
 决斗地图（社区的 gladiators 模板，比如 Kursk 2x2、1x1 先命中者胜）在「比赛设置」里多一块「决斗规则」（`duelSettings` / `DUEL_FIELDS`，`applyMissionEdits` 的 `duel`）：第一回合和回合间倒计时（触发器里给 `timer` 赋值的 varSetInt：initMission 触发器里的算第一回合）、出生后禁止开火（`shooting_timer`）、缺席判负（`disqualification_timer`）、先命中者胜开关（`first_hit_wins` 组和其中三个触发器的 is_enabled）和跳伞延迟（`hit_timer` 里的 wait）、两队出生点距离和高度（areas 里的 `t1_air_spawn_*` / `t2_air_spawn_*`，各移一半）、战斗区域半径（`battle_area_01`，`battle_area_destr_01` 保持原来的间距）。按内容找，不按触发器名字；文件里没有的项是 null，页面不显示。只改那几个值，没变的数字保持原文。
 
+## Statshark spaded vehicles
+
+选手在个人资料里填 Statshark ID（`players.statshark_id`，数字或 statshark.net/player/ 链接，`@potato-cup/shared/spaded.js` 的 `normalizeStatsharkId`；迁移 058）。赛事开始（`POST /tournaments/:id/start`）时在后台按参赛名单从 Statshark API 拉一次黑桃载具（`apps/api/lib/statshark.js` 的 `syncEventSpaded`），存在 `players.spaded_units`（`unitKey` 后的 id / 名称），下届比赛再拉时覆盖；12 小时内拉过的跳过。每次请求记在 `statshark_usage`（按 UTC 日），离每日上限（`STATSHARK_DAILY_LIMIT`，默认 350）还剩 `RESERVE` 次时自动拉取停下，留给管理员在载具池 tab「现在读取」（`POST /tournaments/:id/spaded/refresh`，不受 12 小时限制）。没配 `STATSHARK_API_URL` 时什么都不做。响应由 `parseSpaded` 读：接口文档到了以后按实际格式改这一个函数。
+
+Ban/Pick：`spadedExcluded` 算出双方都没有黑桃的载具（任一方没有数据、或会把载具全去掉时不过滤），服务器在这场 Ban/Pick 第一次操作（和重置）时把名单固定在 `matches.banpick.excluded`，抽取只在剩下的载具里；页面（`MatchReport`、直播 `BanPickScene`）用同一个名单显示。`GET /tournaments/:id/vehicle-pool` 带每个参赛选手在这个池子里的黑桃载具（`spaded`）；玩家接口只给数量（`spaded_count`），不发整个列表。
+
 ## Hall of fame and sharing
 
 `GET /hall-of-fame`（`lib/hall-of-fame.js`）：每场结束赛事的领奖台（`eventPlacements`，预选赛列出但不计冠军）和全部纪录（冠军、登台、参赛、胜场、最长连胜、最高 MMR，后三项来自天梯历史），在排行的「名人堂」标签（`/hall`：上面是全部赛事的生涯榜单（冠军、亚军、胜率、场数、弃权，`RankingBoards`），下面是纪录：登台、最长连胜、历史最高 MMR，另列每个赛季各类型的积分榜第一（链接到赛季总览）；旧链接 `/stats#hall` 会跳转过去）。赛季总览 `/season/<season>`（`GET /season-summary?season=`，`lib/season-summary.js`）：赛事数、选手数、比赛场次、年度 Top20 进度、各积分榜前三、赛季之最（冠军、胜场、胜率至少 10 场）和本赛季每场冠军与亚军（预选赛不算）。统计页的「载具」标签（`/stats#vehicles`，`BanPickStats`）列出每个大组的禁用 / 禁用率 / 抽中 / 出场、每辆出场载具和占比、选手禁用偏好（`banners`：每位禁用过的选手，含场次和最常禁的 5 个大组）。赛事结束后「分享到 Discord」可以生成 1080×1350 的结果图（`#lib/result-image.js`，浏览器 canvas 绘制，保存或复制）；赛事链接的预览图是 `static/og-image.png`（`summary_large_image`）。

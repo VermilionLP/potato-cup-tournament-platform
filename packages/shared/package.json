@@ -9,6 +9,7 @@
     "./vehicle-pools.js": "./vehicle-pools.js",
     "./round-format.js": "./round-format.js",
     "./ladder-weight.js": "./ladder-weight.js",
-    "./mission-blk.js": "./mission-blk.js"
+    "./mission-blk.js": "./mission-blk.js",
+    "./spaded.js": "./spaded.js"
   }
 }

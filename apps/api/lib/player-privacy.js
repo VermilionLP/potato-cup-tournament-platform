@@ -7,10 +7,21 @@ const ADMIN_ONLY = ['last_ip'];
 
 /** The player row without admin-only fields unless `admin`. */
 export function publicPlayer(player, admin = false) {
-  if (!player || admin) return player;
-  const out = { ...player };
+  if (!player) return player;
+  const out = withSpadedCount(player);
+  if (admin) return out;
   for (const key of ADMIN_ONLY) delete out[key];
   return out;
+}
+
+/**
+ * The row with its spaded vehicle list (Statshark, hundreds of ids) as a
+ * count: the lists are only needed per event (GET /tournaments/:id/vehicle-pool).
+ */
+export function withSpadedCount(player) {
+  if (!player || !('spaded_units' in player)) return player ? { ...player } : player;
+  const { spaded_units: units, ...rest } = player;
+  return { ...rest, spaded_count: Array.isArray(units) ? units.length : null };
 }
 
 // Contacts (QQ / Discord in players.battle_tags) are for signed-in players

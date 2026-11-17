@@ -11,6 +11,7 @@
   //      its specifications from the War Thunder wiki (#lib/vehicle-specs.js)
   //      in four cards, or the group's vehicles and the bans without them.
   // A new draw rolls through the options for a moment before it lands.
+  import { withoutExcluded } from "@potato-cup/shared/spaded.js";
   import { untrack } from "svelte";
   import { fade } from "svelte/transition";
   import { availableGroups, availableVehicles, bansOf, effectiveLog, groupVehicles, initialBanPick } from "#lib/banpick.js";
@@ -24,8 +25,9 @@
 
   let { tournament, activeMatch = null, pool = null, stageMatches = [], who } = $props();
 
-  let grouped = $derived(groupVehicles(pool?.vehicles || []));
   let record = $derived(activeMatch?.banpick?.state ? activeMatch.banpick : null);
+  // Without the vehicles neither player has spaded (fixed when Ban / Pick started).
+  let grouped = $derived(groupVehicles(withoutExcluded(pool?.vehicles || [], record?.excluded || [])));
   let bp = $derived(record?.state || initialBanPick(pool?.rules));
   let rules = $derived(bp.rules);
   let log = $derived(effectiveLog(record?.log || []));

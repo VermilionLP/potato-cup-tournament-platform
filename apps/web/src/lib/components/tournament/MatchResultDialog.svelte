@@ -30,6 +30,7 @@
     correcting = false,
     banpickEnabled = false,
     vehicles = [],
+    excluded = [], // names left out: neither player has them spaded
     poolName = "",
     submitting = false,
     roundLabel,
@@ -101,7 +102,7 @@
       {#if step === "banpick" && banpickEnabled}
         <div class="py-2">
           {#key match.id}
-            <BanPickPanel {bp} remote={bpRemote} nameOf={playerName} {vehicles} {poolName} player1={player(match.player1_id)} player2={player(match.player2_id)} onscore={() => (step = "score")} />
+            <BanPickPanel {bp} remote={bpRemote} nameOf={playerName} {vehicles} {excluded} {poolName} player1={player(match.player1_id)} player2={player(match.player2_id)} onscore={() => (step = "score")} />
           {/key}
         </div>
       {:else}

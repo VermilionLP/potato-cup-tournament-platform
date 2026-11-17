@@ -12,7 +12,10 @@
     flag = $bindable(""),
     team = $bindable(""),
     link = $bindable(""),
+    statshark = $bindable(""),
+    spaded = null, // { count, fetched_at, error } of the saved id
   } = $props();
+  const fetchedDate = (at) => (at ? new Date(at).toLocaleDateString() : "");
 
   const field = "bg-background";
 </script>
@@ -50,6 +53,19 @@
       <label for="edit-team" class="text-small font-semibold text-muted-foreground">战队</label>
       <Input id="edit-team" bind:value={team} placeholder="战队缩写" class={field} />
     </div>
+  </div>
+
+  <div class="space-y-1">
+    <label for="edit-statshark" class="text-small font-semibold text-muted-foreground">Statshark ID（可选）</label>
+    <Input id="edit-statshark" bind:value={statshark} placeholder="例如: 67556271，或粘贴 statshark.net/player/… 链接" class={field} />
+    <p class="text-small text-muted-foreground/60">
+      你在 statshark.net 个人页面链接里 /player/ 后面的数字。每届比赛开始时会读取你的黑桃载具，Ban/Pick 时去掉双方都没有黑桃的载具。
+    </p>
+    {#if spaded}
+      <p class="text-small {spaded.error ? 'text-loss' : 'text-muted-foreground'}">
+        {#if spaded.count !== null && spaded.count !== undefined}已读取 {spaded.count} 辆黑桃载具（{fetchedDate(spaded.fetched_at)}）{:else}还没有读取，比赛开始时读取{/if}{#if spaded.error}；上次读取失败：{spaded.error}{/if}
+      </p>
+    {/if}
   </div>
 
   <div class="space-y-1">

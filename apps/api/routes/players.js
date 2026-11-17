@@ -9,7 +9,9 @@ import { PlayerRepo, mergePlayerInto } from '../repositories/player-repo.js';
 import { canSeeContactsRequest, isAdminRequest, requireAdmin, requireSelfOrAdmin } from '../lib/admin.js';
 import { contactProblem, parseContact, CONTACT_REQUIRED } from '../lib/contact.js';
 import { inTransaction } from '../lib/transaction.js';
-import { contactFor, publicPlayer } from '../lib/player-privacy.js';
+import { contactFor, publicPlayer, withSpadedCount } from '../lib/player-privacy.js';
+import { normalizeStatsharkId } from '@potato-cup/shared/spaded.js';
+
 
 export default async function playersRoutes(fastify) {
   const repo = PlayerRepo(fastify.db);
@@ -115,7 +117,7 @@ export default async function playersRoutes(fastify) {
     const id = String(req.params.id || '').trim();
     if (!id) throw fastify.httpErrors.badRequest('id is required');
     await requireSelfOrAdmin(fastify, req, id);
-    return await repo.touch(id);
+    return withSpadedCount(await repo.touch(id));
   });
 
   fastify.post('/players/:id/change-id', async (req) => {
@@ -191,7 +193,7 @@ export default async function playersRoutes(fastify) {
   });
 
   fastify.post('/players', async (req) => {
-    const { id, flag, team, link, battle_tags, tournament_id } = req.body;
+    const { id, flag, team, link, battle_tags, tournament_id, statshark_id } = req.body;
     if (!id) throw fastify.httpErrors.badRequest('id is required');
     await requireSelfOrAdmin(fastify, req, id);
 
@@ -212,10 +214,17 @@ export default async function playersRoutes(fastify) {
     if (flagCode && !/^[a-z]{2}$/.test(flagCode)) throw fastify.httpErrors.badRequest('国籍代码无效');
     if (!flagCode && !isAdminRequest(req)) throw fastify.httpErrors.badRequest('请选择国籍 / 地区');
 
+    // Statshark id (or profile link): left out = unchanged, '' = removed.
+    let statshark;
+    if (statshark_id !== undefined && statshark_id !== null) {
+      statshark = normalizeStatsharkId(statshark_id);
+      if (statshark === null) throw fastify.httpErrors.badRequest('Statshark ID 应为数字，或者 statshark.net/player/ 后面的那串数字');
+    }
+
     const requesterIdRaw = req.headers['x-player-id'];
     const requesterId = requesterIdRaw ? decodeURIComponent(requesterIdRaw) : undefined;
     const lastIp = (requesterId === id) ? req.ip : null;
-    const updatedPlayer = await repo.upsert(id, flagCode, team, link, battleTagsStr, lastIp);
+    const updatedPlayer = await repo.upsert(id, flagCode, team, link, battleTagsStr, lastIp, statshark);
 
     if (tournament_id) {
       await fastify.db.query(`
@@ -230,6 +239,6 @@ export default async function playersRoutes(fastify) {
       await notifyActiveEvents({ type: 'player_updated', id });
     }
 
-    return updatedPlayer;
+    return withSpadedCount(updatedPlayer);
   });
 }

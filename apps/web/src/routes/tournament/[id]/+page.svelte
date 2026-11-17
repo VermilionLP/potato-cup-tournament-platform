@@ -440,7 +440,7 @@
         {@render bracket()}
       {/if}
     {:else if activeTab === "pool"}
-      <EventPoolTab bind:tournament={data.tournament} {tid} {isAdmin} template={data.bpTemplate} templates={data.vehicleTemplates} {banpickEnabled} />
+      <EventPoolTab bind:tournament={data.tournament} {tid} {isAdmin} template={data.bpTemplate} templates={data.vehicleTemplates} {banpickEnabled} spaded={data.bpSpaded} statshark={data.statshark} onspaded={() => (data.spadedRev += 1)} />
     {:else if activeTab === "players"}
       {@render roster()}
     {:else if activeTab === "live"}
@@ -496,6 +496,7 @@
   {isAdmin}
   {banpickEnabled}
   bpTemplate={data.bpTemplate}
+  bpSpaded={data.bpSpaded}
   {playerName}
   {matchRoundLabel}
   {live}

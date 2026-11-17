@@ -53,7 +53,8 @@ export async function mergePlayerInto(client, oldId, targetId) {
   await client.query('UPDATE axsuck.matches SET winner_id = $2 WHERE winner_id = $1', [oldId, targetId]);
 
   // 6. Profile: every field the target is missing (flag, team, Liquipedia
-  // link, QQ / Discord contact) is taken from the merged player.
+  // link, QQ / Discord contact, Statshark id with its spaded vehicles) is
+  // taken from the merged player.
   // last_seen_at keeps the later of the two.
   const parse = (v, fallback) => {
     try {
@@ -88,6 +89,12 @@ export async function mergePlayerInto(client, oldId, targetId) {
     JSON.stringify(contact),
     oldPlayer.last_seen_at ? new Date(oldPlayer.last_seen_at).toISOString() : null,
   ]);
+  if (!targetPlayer.statshark_id && oldPlayer.statshark_id) {
+    await client.query(
+      'UPDATE axsuck.players SET statshark_id = $2, spaded_units = $3, spaded_fetched_at = $4, spaded_error = $5 WHERE id = $1',
+      [targetId, oldPlayer.statshark_id, oldPlayer.spaded_units ?? null, oldPlayer.spaded_fetched_at ?? null, oldPlayer.spaded_error ?? null],
+    );
+  }
 
   // 7. Remember the old id (and ids that already pointed at it) so the
   // Liquipedia import maps that name onto the kept player.
@@ -113,21 +120,27 @@ export function PlayerRepo(db) {
     };
   }
 
-  async function upsert(id, flag = 'cn', team = '', link = '', battleTags = '{}', lastIp = null) {
+  // statshark: undefined keeps the player's Statshark id, '' removes it; a
+  // new id drops the spaded vehicles fetched for the old one.
+  async function upsert(id, flag = 'cn', team = '', link = '', battleTags = '{}', lastIp = null, statshark = undefined) {
     await db.query(`
-      INSERT INTO axsuck.players (id, flag, team, link, battle_tags, last_ip, last_seen_at) 
-      VALUES ($1, $2, $3, $4, $5, $6, NOW())
+      INSERT INTO axsuck.players (id, flag, team, link, battle_tags, last_ip, last_seen_at, statshark_id)
+      VALUES ($1, $2, $3, $4, $5, $6, NOW(), NULLIF($7, ''))
       ON CONFLICT (id) DO UPDATE SET 
         flag = EXCLUDED.flag,
         team = EXCLUDED.team,
         link = EXCLUDED.link,
         battle_tags = EXCLUDED.battle_tags,
+        statshark_id = CASE WHEN $7::text IS NULL THEN axsuck.players.statshark_id ELSE EXCLUDED.statshark_id END,
+        spaded_units = CASE WHEN $7::text IS NULL OR NULLIF($7, '') IS NOT DISTINCT FROM axsuck.players.statshark_id THEN axsuck.players.spaded_units END,
+        spaded_fetched_at = CASE WHEN $7::text IS NULL OR NULLIF($7, '') IS NOT DISTINCT FROM axsuck.players.statshark_id THEN axsuck.players.spaded_fetched_at END,
+        spaded_error = CASE WHEN $7::text IS NULL OR NULLIF($7, '') IS NOT DISTINCT FROM axsuck.players.statshark_id THEN axsuck.players.spaded_error END,
         last_ip = COALESCE(EXCLUDED.last_ip, axsuck.players.last_ip),
         last_seen_at = CASE
           WHEN EXCLUDED.last_ip IS NOT NULL THEN NOW()
           ELSE axsuck.players.last_seen_at
         END
-    `, [id, flag || 'cn', team || '', link || '', battleTags || '{}', lastIp]);
+    `, [id, flag || 'cn', team || '', link || '', battleTags || '{}', lastIp, statshark === undefined ? null : statshark]);
     
     return getById(id);
   }

@@ -5,6 +5,7 @@
   // take effect at once. Ban / Pick runs on the server (bpAct). Methods: report(match), openBanPick(match),
   // openDetails(match) (report when pending, correct when an admin can),
   // confirmReport(match), disputeReport(match), withdrawReport(match).
+  import { spadedExcluded, withoutExcluded } from "@potato-cup/shared/spaded.js";
   import { toast } from "svelte-sonner";
   import { API } from "#lib/api.js";
   import { askConfirm } from "#lib/confirm.svelte.js";
@@ -20,6 +21,7 @@
     isAdmin = false,
     banpickEnabled = false,
     bpTemplate = null,
+    bpSpaded = {}, // each player's spaded vehicles in the pool (Statshark)
     playerName,
     matchRoundLabel,
     live = null, // the event as this console's live channel sees it
@@ -82,6 +84,12 @@
   let liveRow = $derived(selectedMatch ? tournament?.matches?.find((m) => m.id === selectedMatch.id) || selectedMatch : null);
   let bpRecord = $derived(newerRecord(liveRow?.banpick, bpAnswer));
   let bpState = $derived(bpRecord?.state || initialBanPick(bpTemplate?.rules));
+  // Vehicles neither player has spaded are left out: as the server fixed it
+  // when Ban / Pick started, or (before) as it will.
+  let bpExcluded = $derived(
+    bpRecord?.excluded ??
+      spadedExcluded(bpTemplate?.vehicles || [], bpSpaded?.[liveRow?.player1_id]?.has ?? null, bpSpaded?.[liveRow?.player2_id]?.has ?? null),
+  );
   let bpRemote = $derived({
     record: bpRecord,
     myId: isAdmin ? "admin" : userState.id,
@@ -291,7 +299,8 @@
   {tournament}
   correcting={correctingMatch}
   {banpickEnabled}
-  vehicles={bpTemplate?.vehicles || []}
+  vehicles={withoutExcluded(bpTemplate?.vehicles || [], bpExcluded)}
+  excluded={bpExcluded}
   poolName={bpTemplate?.name || ""}
   submitting={submittingResult}
   roundLabel={matchRoundLabel}

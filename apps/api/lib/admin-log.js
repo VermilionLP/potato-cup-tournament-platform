@@ -54,6 +54,7 @@ export const ACTIONS = {
   'POST /vehicle-pools': 'pool.create',
   'PUT /vehicle-pools/:id': 'pool.update',
   'DELETE /vehicle-pools/:id': 'pool.delete',
+  'POST /tournaments/:id/spaded/refresh': 'event.spaded_refresh',
   'POST /missions': 'mission.create',
   'PATCH /missions/:id': 'mission.update',
   'PUT /missions/:id/content': 'mission.edit',
