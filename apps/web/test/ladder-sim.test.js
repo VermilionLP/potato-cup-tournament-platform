@@ -49,3 +49,18 @@ test("events weigh by kind: majors move MMR more than weekly cups, same as the s
   assert.equal(simulateMatch(a, b, { eventKind: "major", tier: "A" }).weight, 2.25);
   assert.equal(simulateMatch(a, b, { eventKind: "weekly", tier: "D" }).weight, 0.75);
 });
+
+test("a placed player's preview against a newcomer counts their game less, like the server's first pass", async () => {
+  const { simulateMatch, opponentConfidence } = await import("../src/lib/ladder-sim.js");
+  const server = await import("../../api/lib/ladder.js");
+  const vet = { ladder_mmr: 3600, ladder_games: 40 };
+  const fresh = { ladder_mmr: 3000, ladder_games: 0 };
+  const sim = simulateMatch(vet, fresh, { eventKind: "weekly", tier: "C" });
+  const full = 50 / (1 + 10 ** (-600 / 400)); // K × the vet's expected score
+  assert.equal(sim.ifBWins.a.delta, -Math.round(full * 0.25), "vet loses a quarter");
+  assert.equal(sim.ifBWins.b.delta, Math.round(200 * (1 - 1 / (1 + 10 ** (600 / 400)))), "the newcomer as usual");
+  assert.equal(opponentConfidence(4), server.opponentConfidence(4));
+  // Two placed players: unchanged.
+  const other = { ladder_mmr: 3000, ladder_games: 40 };
+  assert.equal(simulateMatch(vet, other).ifBWins.a.delta, -Math.round(full));
+});

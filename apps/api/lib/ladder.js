@@ -100,6 +100,16 @@ export function expectedScore(rating, opponentRating) {
   return 1 / (1 + Math.pow(10, (opponentRating - rating) / 400));
 }
 
+// Games against a player who hasn't finished placement (PROVISIONAL_GAMES):
+// their MMR still says little (everyone starts at 3000, strong newcomers
+// included), so they count less for the other player: K × the opponent's
+// confidence, 25% against a first game up to 100% once placed.
+export const NEW_OPPONENT_CONFIDENCE = 0.25;
+export function opponentConfidence(opponentGames) {
+  const done = Math.min(Math.max(Number(opponentGames) || 0, 0), PROVISIONAL_GAMES) / PROVISIONAL_GAMES;
+  return NEW_OPPONENT_CONFIDENCE + (1 - NEW_OPPONENT_CONFIDENCE) * done;
+}
+
 function emptyState() {
   return {
     rating: BASE_MMR,
@@ -108,6 +118,8 @@ function emptyState() {
     losses: 0,
     peak: BASE_MMR,
     last_game_at: null,
+    placedAt: null, // MMR right after the PROVISIONAL_GAMES-th game
+
   };
 }
 
@@ -122,15 +134,44 @@ function timestampOf(value) {
  * Each game: { id, player1_id, player2_id, score1, score2, played_at,
  * event_kind?, tier?, ... }; K is scaled by the event's weight (ladderWeight:
  * kind × tier).
+ *
+ * A placed player's games against a player still in placement (fewer than
+ * PROVISIONAL_GAMES games then) are rated in two passes, for the placed
+ * player only:
+ * - first pass: that player's MMR then, and K × opponentConfidence (a
+ *   newcomer's 3000 says little, so the game counts less);
+ * - second pass, once that player has finished placement: their MMR right
+ *   after placement (the first pass's) is what the game is judged by, at
+ *   full K. Losing to a newcomer who turns out strong then costs little;
+ *   losing to one who turns out weak is the upset it was.
+ * The newcomer's own result is rated as usual (their opponent's MMR, full
+ * K), and so are games between two players still in placement.
  * Returns { players, history }; players are already ranked.
  */
 export function computeLadder(games = []) {
+  const first = rateGames(games, null);
+  // MMR right after placement, of everyone who finished it.
+  const placed = new Map();
+  for (const [id, s] of first.state) if (s.placedAt !== null) placed.set(id, s.placedAt);
+  return rankLadder(placed.size ? rateGames(games, placed) : first);
+}
+
+/** One pass over the games (see computeLadder); `placed`: id → MMR after placement. */
+function rateGames(games, placed) {
   const state = new Map();
   const history = [];
 
   const get = (id) => {
     if (!state.has(id)) state.set(id, emptyState());
     return state.get(id);
+  };
+  // How player `me` sees opponent `them` in this game: the MMR to judge
+  // the game by, and how much it counts (confidence before the opponent is
+  // placed; their placed MMR after). Only for a placed `me`.
+  const view = (me, them, id) => {
+    if (me.games < PROVISIONAL_GAMES || them.games >= PROVISIONAL_GAMES) return { rating: them.rating, factor: 1, judged: null };
+    if (placed?.has(id)) return { rating: placed.get(id), factor: 1, judged: placed.get(id) };
+    return { rating: them.rating, factor: opponentConfidence(them.games), judged: null };
   };
 
   for (const game of games) {
@@ -145,12 +186,15 @@ export function computeLadder(games = []) {
     const a = get(p1);
     const b = get(p2);
     const aWon = score1 > score2;
-    const ea = expectedScore(a.rating, b.rating);
     const weight = ladderWeight(game.event_kind, game.tier);
-    const ka = kForGames(a.games) * weight;
-    const kb = kForGames(b.games) * weight;
+    const seenByA = view(a, b, p2);
+    const seenByB = view(b, a, p1);
+    const ea = expectedScore(a.rating, seenByA.rating);
+    const eb = expectedScore(b.rating, seenByB.rating);
+    const ka = kForGames(a.games) * weight * seenByA.factor;
+    const kb = kForGames(b.games) * weight * seenByB.factor;
     const aAfter = a.rating + ka * ((aWon ? 1 : 0) - ea);
-    const bAfter = b.rating + kb * ((aWon ? 0 : 1) - (1 - ea));
+    const bAfter = b.rating + kb * ((aWon ? 0 : 1) - eb);
     const playedAt = game.played_at || null;
 
     history.push(
@@ -170,6 +214,8 @@ export function computeLadder(games = []) {
         opponent_rating_after: bAfter,
         delta: aAfter - a.rating,
         weight,
+        opponent_factor: seenByA.factor,
+        opponent_judged_at: seenByA.judged,
         played_at: playedAt,
       },
       {
@@ -188,12 +234,15 @@ export function computeLadder(games = []) {
         opponent_rating_after: aAfter,
         delta: bAfter - b.rating,
         weight,
+        opponent_factor: seenByB.factor,
+        opponent_judged_at: seenByB.judged,
         played_at: playedAt,
       }
     );
 
     a.rating = aAfter;
     a.games += 1;
+    if (a.games === PROVISIONAL_GAMES) a.placedAt = aAfter;
     a.wins += aWon ? 1 : 0;
     a.losses += aWon ? 0 : 1;
     a.peak = Math.max(a.peak, aAfter);
@@ -201,12 +250,16 @@ export function computeLadder(games = []) {
 
     b.rating = bAfter;
     b.games += 1;
+    if (b.games === PROVISIONAL_GAMES) b.placedAt = bAfter;
     b.wins += aWon ? 0 : 1;
     b.losses += aWon ? 1 : 0;
     b.peak = Math.max(b.peak, bAfter);
     b.last_game_at = playedAt;
   }
+  return { state, history };
+}
 
+function rankLadder({ state, history }) {
   const players = [...state.entries()].map(([id, s]) => ({
     id,
     rating: s.rating,

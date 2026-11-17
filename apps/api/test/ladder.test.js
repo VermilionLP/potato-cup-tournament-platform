@@ -7,6 +7,8 @@ import {
   randomizeSeedOrder,
   sortForSeeds,
   assignPercentileTiers,
+  expectedScore,
+  opponentConfidence,
 } from "../lib/ladder.js";
 
 function mulberry32(seed) {
@@ -226,4 +228,57 @@ test('the event tier multiplies the weight too: S 2, A 1.5, B 1.25, C 1, D 0.75'
   assert.equal(delta('major', 'A'), 225, '1.5 × 1.5');
   assert.equal(delta('major', 'S'), 300);
   assert.equal(computeLadder([game('major', 'B')]).history[0].weight, 1.875);
+});
+
+test('a placed player losing to a newcomer loses less (opponent confidence), the newcomer gains as usual', () => {
+  let id = 0;
+  const g = (p1, p2, s1 = 2, s2 = 0) => ({ id: ++id, tournament_id: 't', player1_id: p1, player2_id: p2, score1: s1, score2: s2, played_at: `2026-01-01T00:00:${String(id).padStart(2, '0')}Z`, event_kind: 'weekly', tier: 'C' });
+  // vet finishes placement against ten different players.
+  const games = Array.from({ length: 10 }, (_, i) => g('vet', `f${i}`));
+  const before = computeLadder(games).players.find((p) => p.id === 'vet').rating;
+  games.push(g('new', 'vet')); // the newcomer's first game: an upset win
+  const { history, players } = computeLadder(games);
+  const vetLoss = history.find((h) => h.player_id === 'vet' && h.opponent_id === 'new');
+  const newWin = history.find((h) => h.player_id === 'new');
+  assert.equal(vetLoss.opponent_factor, 0.25);
+  const full = kForGames(10) * expectedScore(before, 3000);
+  assert.ok(Math.abs(vetLoss.delta + full * 0.25) < 1e-9, `${vetLoss.delta} = -${full} × 0.25`);
+  assert.equal(newWin.opponent_factor, 1, 'the newcomer\'s own result is not scaled');
+  assert.ok(newWin.delta > 150);
+  assert.equal(players.find((p) => p.id === 'vet').rating, before + vetLoss.delta);
+  // The factor grows with the opponent's games: 25% → 100% at placement.
+  assert.equal(opponentConfidence(0), 0.25);
+  assert.equal(opponentConfidence(5), 0.625);
+  assert.equal(opponentConfidence(10), 1);
+});
+
+test('once the newcomer is placed, the placed player\'s game is judged by their placed MMR at full K', () => {
+  let id = 0;
+  const g = (p1, p2) => ({ id: ++id, tournament_id: 't', player1_id: p1, player2_id: p2, score1: 2, score2: 0, played_at: `2026-01-01T00:${String(id).padStart(2, '0')}:00Z`, event_kind: 'weekly', tier: 'C' });
+  const base = Array.from({ length: 10 }, (_, i) => g('vet', `f${i}`));
+  const loss = g('new', 'vet');
+  // The newcomer wins all of their placement: placed high, above vet.
+  const strong = [...base, loss, ...Array.from({ length: 9 }, (_, i) => g('new', `x${i}`))];
+  const s = computeLadder(strong);
+  const vs = s.history.find((h) => h.player_id === 'vet' && h.opponent_id === 'new');
+  const placedAt = s.history.filter((h) => h.player_id === 'new').at(-1).rating_after;
+  assert.equal(vs.opponent_factor, 1);
+  assert.equal(vs.opponent_judged_at, placedAt);
+  const vetBefore = vs.rating_before;
+  assert.ok(Math.abs(vs.delta + kForGames(10) * expectedScore(vetBefore, placedAt)) < 1e-9);
+  // The real opponent MMR at the time stays in the record (awards use it).
+  assert.equal(vs.opponent_rating_before, 3000);
+
+  // A newcomer who loses the rest of placement is placed low: the loss to
+  // them is the upset it was (more than the 25% the first pass gave).
+  const weak = [...base, loss, ...Array.from({ length: 9 }, (_, i) => g(`y${i}`, 'new'))];
+  const w = computeLadder(weak).history.find((h) => h.player_id === 'vet' && h.opponent_id === 'new');
+  const firstPass = computeLadder([...base, loss]).history.find((h) => h.player_id === 'vet' && h.opponent_id === 'new');
+  assert.ok(w.delta < firstPass.delta, `${w.delta} < ${firstPass.delta}`);
+  assert.ok(Math.abs(vs.delta) < Math.abs(w.delta), 'losing to a strong newcomer costs less than to a weak one');
+
+  // Two players both still in placement: rated as usual.
+  const fresh = computeLadder([g('p', 'q')]).history[0];
+  assert.equal(fresh.opponent_factor, 1);
+  assert.equal(fresh.delta, 100);
 });

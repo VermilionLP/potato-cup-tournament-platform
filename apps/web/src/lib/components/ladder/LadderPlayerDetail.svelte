@@ -95,6 +95,11 @@
             <span class="hidden sm:block text-small text-muted-foreground truncate max-w-40">
               {h.tournament_name}
             </span>
+            {#if h.opponent_judged_mmr !== null && h.opponent_judged_mmr !== undefined}
+              <span class="shrink-0 rounded bg-muted px-1 text-small font-semibold text-muted-foreground num" title="对手当时还在定级，这场按对手定级后的分数计算">按定级后 {h.opponent_judged_mmr}</span>
+            {:else if h.opponent_factor < 1}
+              <span class="shrink-0 rounded bg-muted px-1 text-small font-semibold text-muted-foreground num" title="对手还在定级，这场的加减分打折；对手定级后会按定级分数重算">定级中 ×{h.opponent_factor}</span>
+            {/if}
             {#if h.weight > 1}
               <span class="shrink-0 rounded bg-primary/12 px-1 text-small font-semibold text-brand-ink num" title="大型赛事的天梯加减分更多">×{h.weight}</span>
             {/if}
