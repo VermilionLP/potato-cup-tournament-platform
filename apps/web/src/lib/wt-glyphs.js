@@ -59,19 +59,46 @@ const trefoil = (() => {
   return d;
 })();
 
+/** A path's points turned 0°, 90°, 180°, 270° about the centre: one quadrant drawn, four placed. */
+function fourWays(points, close = "Z") {
+  const turn = ([x, y], k) => [[x, y], [24 - y, x], [24 - x, 24 - y], [y, 24 - x]][k];
+  return [0, 1, 2, 3]
+    .map((k) => points.map((seg) => seg[0] + seg.slice(1).map((pt) => turn(pt, k).map(r2).join(" ")).join(" ")).join("") + close)
+    .join("");
+}
+
+// ▀ Balkenkreuz: four L-shaped corners round a white cross (the gap).
+const balkenkreuz = fourWays([["M", [7.8, 1.5]], ["L", [9.8, 1.5]], ["L", [9.8, 9.8]], ["L", [1.5, 9.8]], ["L", [1.5, 7.8]], ["L", [7.8, 7.8]]]);
+
+// ◄ Bundeswehr cross: eight curved horns, two per corner (one shape each),
+// wide at the outer edge and joined in a thin point near the centre.
+const bundeswehr = fourWays([
+  ["M", [6.4, 1.5]],
+  ["L", [8.5, 1.5]],
+  ["Q", [9.95, 5.6], [10.1, 10.1]],
+  ["Q", [5.6, 9.95], [1.5, 8.5]],
+  ["L", [1.5, 6.4]],
+  ["Q", [5.8, 7.6], [9.35, 9.35]],
+  ["Q", [7.6, 5.8], [6.4, 1.5]],
+]);
+
+// ◊ GDR: a diamond outline with two upright bars inside.
+const gdrStroke = "M12 2.5L21.5 12L12 21.5L2.5 12Z M8.65 5.9V18.1 M15.35 5.9V18.1";
+
 /**
- * Character → { label, d (filled path, even-odd), stroke? (stroked path) }.
+ * Character → { label, d (filled path, even-odd), stroke? (stroked path),
+ * width? (its line width, default 1.8) }.
  * The labels are the page's (translated there).
  */
 export const WT_GLYPHS = {
   "▄": { label: "圆形机徽", d: ring(12, 12, 10.5, 2.6) + circle(12, 12, 4.6) }, // ▄ roundel: many countries
   "␗": { label: "中国", d: star(8, 11, 6.2) + star(15.5, 4.8, 1.9, 0.38, -55) + star(19, 8.8, 1.9, 0.38, -75) + star(19, 13.8, 1.9, 0.38, -95) + star(15.5, 17.8, 1.9, 0.38, -115) }, // ␗
   "◔": { label: "匈牙利", d: "M1 12L23 4.5V7L7.6 12L23 17V19.5Z M12.5 12L23 8.7V10.5L17.2 12L23 13.5V15.3Z" }, // ◔ chevron
-  "▀": { label: "德国（缴获）", d: plus(12, 11, 9.6) + plus(12, 8.6, 5.6) + plus(12, 7.4, 3.6) }, // ▀ Balkenkreuz
-  "◄": { label: "联邦德国", d: "M10.4 10.2L9.3 1.5H14.7L13.6 10.2Z M13.8 10.4L22.5 9.3V14.7L13.8 13.6Z M13.6 13.8L14.7 22.5H9.3L10.4 13.8Z M10.2 13.6L1.5 14.7V9.3L10.2 10.4Z" }, // ◄ Bundeswehr cross
+  "▀": { label: "德国（缴获）", d: balkenkreuz }, // ▀ Balkenkreuz
+  "◄": { label: "联邦德国", d: bundeswehr }, // ◄ Bundeswehr cross
   "▂": { label: "苏联", d: star(12, 12.8, 11) }, // ▂ red star
   "": { label: "以色列", stroke: "M12 2.2L21.2 18.1H2.8Z M12 21.8L2.8 5.9H21.2Z" }, // Star of David
-  "◊": { label: "民主德国", d: "M12 1L23 12L12 23L1 12Z M12 4.2L4.2 12L12 19.8L19.8 12Z M12 8L16 12L12 16L8 12Z" }, // ◊ GDR
+  "◊": { label: "民主德国", stroke: gdrStroke, width: 1.5, join: "miter" }, // ◊ GDR
   "▅": { label: "日本", d: "M6 19A6 6 0 0 1 18 19Z M1 20.3H23V22H1Z" + sunRays }, // ▅ rising sun
   "▃": { label: "美国", d: circle(12, 12, 11) + star(12, 12.6, 8.6) }, // ▃ US star roundel
   "◘": { label: "荷兰（战后）", d: ring(12, 12, 11, 2.2) + ring(12, 12, 3.2, 1.6) + "M11.1 2H12.9V9H11.1Z M3.7 17.2L9.8 13.4L10.8 15L4.7 18.8Z M20.3 17.2L14.2 13.4L13.2 15L19.3 18.8Z" }, // ◘

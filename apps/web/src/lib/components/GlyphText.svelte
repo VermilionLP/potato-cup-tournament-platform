@@ -16,7 +16,7 @@
           d={p.stroke}
           fill="none"
           stroke="currentColor"
-          stroke-width="1.8"
-          stroke-linejoin="round"
+          stroke-width={p.width ?? 1.8}
+          stroke-linejoin={p.join ?? "round"}
         />{/if}</svg
     >{:else}{p.text}{/if}{/each}
