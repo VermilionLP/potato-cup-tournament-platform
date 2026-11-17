@@ -171,6 +171,9 @@ export function LadderRepo(db) {
         mmr_delta: Math.round(h.delta),
         opponent_mmr: Math.round(h.opponent_rating_before),
         opponent_mmr_after: Math.round(h.opponent_rating_after),
+        // The opponent was still in placement: their MMR after placement
+        // this game was judged by, or (not placed yet) how much it counted.
+        opponent_judged_mmr: h.opponent_judged_at === null || h.opponent_judged_at === undefined ? null : Math.round(h.opponent_judged_at),
       }));
 
     return {

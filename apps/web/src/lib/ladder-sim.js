@@ -22,6 +22,17 @@ export function kForGames(games) {
   return (K_SCHEDULE.find((s) => games < s.until) || K_SCHEDULE[K_SCHEDULE.length - 1]).k;
 }
 
+// A placed player's game against one still in placement counts less for
+// them: K × the opponent's confidence (25% at 0 games → 100% at 10), as on
+// the server. (The server re-rates it once that opponent is placed; the
+// preview can't know that yet.)
+export const NEW_OPPONENT_CONFIDENCE = 0.25;
+export function opponentConfidence(opponentGames) {
+  const done = Math.min(Math.max(Number(opponentGames) || 0, 0), PROVISIONAL_GAMES) / PROVISIONAL_GAMES;
+  return NEW_OPPONENT_CONFIDENCE + (1 - NEW_OPPONENT_CONFIDENCE) * done;
+}
+const factorFor = (me, them) => (me.games >= PROVISIONAL_GAMES && them.games < PROVISIONAL_GAMES ? opponentConfidence(them.games) : 1);
+
 export function expectedScore(rating, opponentRating) {
   return 1 / (1 + Math.pow(10, (opponentRating - rating) / 400));
 }
@@ -43,8 +54,8 @@ export function simulateMatch(playerA, playerB, { eventKind = null, tier = null 
   const ea = expectedScore(a.mmr, b.mmr);
   // The event's weight (kind × tier: major and higher-tier events move MMR more).
   const weight = ladderWeight(eventKind, tier);
-  const ka = kForGames(a.games) * weight;
-  const kb = kForGames(b.games) * weight;
+  const ka = kForGames(a.games) * weight * factorFor(a, b);
+  const kb = kForGames(b.games) * weight * factorFor(b, a);
   const outcome = (aWon) => {
     const aAfter = a.mmr + ka * ((aWon ? 1 : 0) - ea);
     const bAfter = b.mmr + kb * ((aWon ? 0 : 1) - (1 - ea));
