@@ -6,7 +6,7 @@
 
 const STATUS = {
   badRequest: 400, unauthorized: 401, forbidden: 403, notFound: 404, conflict: 409,
-  serviceUnavailable: 503, internalServerError: 500,
+  serviceUnavailable: 503, internalServerError: 500, badGateway: 502,
 };
 
 export function httpErrors() {

@@ -261,6 +261,10 @@ export const API = {
     request(`/tournaments/${enc(tournamentId)}/votes/past`, { method: 'DELETE', body: JSON.stringify({}) }),
 
   // Liquipedia export: { wikiScript, warnings, meta, saved }
+  // TSS (tss.warthunder.com) events exported to Liquipedia (admins).
+  getTssExports: () => request('/tss'),
+  getTss: (tssId) => request(`/tss/${enc(tssId)}`),
+  saveTssWiki: (tssId, settings) => request(`/tss/${enc(tssId)}/wiki`, { method: 'PUT', body: JSON.stringify({ settings }) }),
   getWikiScript: (tournamentId) => request(`/tournaments/${enc(tournamentId)}/wiki`),
   saveWikiSettings: (tournamentId, meta) =>
     request(`/tournaments/${enc(tournamentId)}/wiki`, { method: 'PUT', body: JSON.stringify({ meta }) }),

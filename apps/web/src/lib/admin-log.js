@@ -79,6 +79,7 @@ export function describeEntry(entry) {
     case "event.import": return "导入赛事数据";
     case "event.missions": return (d.missions || []).length ? `设置比赛地图：${d.missions.join("、")}` : "清空比赛地图";
     case "event.wiki": return "保存 Liquipedia 导出设置";
+    case "tss.wiki": return `保存 TSS 比赛 ${target} 的 Liquipedia 导出设置`;
     case "seeds.manual": return "手动调整种子";
     case "seeds.auto": return "按天梯分重排种子";
     case "seeds.random": return "随机微调种子";

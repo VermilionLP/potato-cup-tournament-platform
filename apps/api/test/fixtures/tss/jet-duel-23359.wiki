@@ -1,0 +1,44 @@
+{{Bracket|Bracket/8|id=JDRB112548|finish=true
+
+<!-- Quarterfinals -->
+|R1M1={{Match
+    |bestof=1
+    |date=2025-11-26
+    |opponent1={{SoloOpponent|p1=Ανι Ρhysιcα|score=0}}
+    |opponent2={{SoloOpponent|p1=микрофеникс|score=1}}
+}}
+|R1M2={{Match
+    |date=2025-11-26
+    |opponent1={{SoloOpponent|p1=Ilyxa_keno4ka|score=0}}
+    |opponent2={{SoloOpponent|p1=RNGеsus|score=1}}
+}}
+|R1M3={{Match
+    |date=2025-11-26
+    |opponent1={{SoloOpponent|p1=SlytHer|score=1}}
+    |opponent2={{SoloOpponent|p1=SaLoMa|score=0}}
+}}
+|R1M4={{Match
+    |date=2025-11-26
+    |opponent1={{SoloOpponent|p1=Чебурашка|score=1}}
+    |opponent2={{SoloOpponent|p1=AgentSeagle|score=0}}
+}}
+
+<!-- Semifinals -->
+|R2M1={{Match
+    |date=2025-11-26
+    |opponent1={{SoloOpponent|p1=микрофеникс|score=W}}
+    |opponent2={{SoloOpponent|p1=RNGеsus|score=FF}}
+}}
+|R2M2={{Match
+    |date=2025-11-26
+    |opponent1={{SoloOpponent|p1=SlytHer|score=1}}
+    |opponent2={{SoloOpponent|p1=Чебурашка|score=0}}
+}}
+
+<!-- Grand Final -->
+|R3M1={{Match
+    |date=2025-11-26
+    |opponent1={{SoloOpponent|p1=микрофеникс|score=0}}
+    |opponent2={{SoloOpponent|p1=SlytHer|score=1}}
+}}
+}}

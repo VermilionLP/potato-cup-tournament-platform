@@ -7,7 +7,7 @@ import { hashPlayerKey } from '../lib/player-key.js';
 // it sends, so all load without the npm packages.
 const MODULE_FILES = [
   'tournaments', 'tournament-settings', 'tournament-bracket', 'tournament-import', 'players',
-  'player-keys', 'player-stats', 'registrations', 'matches', 'votes', 'ladder', 'wiki', 'push', 'reminders',
+  'player-keys', 'player-stats', 'registrations', 'matches', 'votes', 'ladder', 'wiki', 'tss', 'push', 'reminders',
   'admin', 'vehicle-pools', 'points', 'client-errors', 'bot', 'missions',
 ];
 const modules = await Promise.all(MODULE_FILES.map(async (f) => (await import(`../routes/${f}.js`)).default));
@@ -34,7 +34,7 @@ const SELF_WRITES = new Set([
 ]);
 // Reads only admins may make.
 const ADMIN_READS = [
-  'GET /players/:id/key', 'GET /players/duplicates', 'GET /tournaments/:id/wiki', 'GET /client-errors',
+  'GET /players/:id/key', 'GET /players/duplicates', 'GET /tournaments/:id/wiki', 'GET /tss', 'GET /tss/:id', 'GET /client-errors',
   // The bot routes (the bot's token or an admin).
   'GET /bot/notices', 'GET /bot/whois/:openid', 'GET /bot/players/:id/schedule', 'GET /bot/open-events',
 ];
