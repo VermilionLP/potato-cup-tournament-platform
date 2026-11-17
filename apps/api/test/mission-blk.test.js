@@ -94,3 +94,69 @@ test('time of day can be an hour (the game menu offers 7-18)', () => {
   assert.match(out, /weather:t="cloudy_windy"/);
   assert.throws(() => applyMissionEdits(joust, { fields: { environment: '7 pm' } }), /英文字母/);
 });
+
+// Trimmed from a community duel map (the "gladiators" template, Kursk 2x2,
+// with the 1x1 "first hit wins" group), CRLF line ends like the real files.
+const duel = readFileSync(new URL('./fixtures/mission-duel.blk', import.meta.url), 'utf8');
+
+test('the duel template\'s settings are read; other maps have none', () => {
+  assert.deepEqual(missionSummary(duel).duel, {
+    firstCountdown: 7,
+    countdown: 7,
+    shootingDelay: 35,
+    forfeitAfter: 3600,
+    firstHit: true,
+    bailoutDelay: 3,
+    spawnAltitude: 1500,
+    spawnDistance: 7000,
+    areaRadius: 6500,
+  });
+  assert.equal(missionSummary(joust).duel, null);
+  // Without the "first hit wins" group those two are null.
+  const plain = duel.replace(/    first_hit_wins\{[\s\S]*?\r\n    \}\r\n  \}\r\n\}/, '  }\r\n}');
+  assert.equal(missionSummary(plain).duel.firstHit, null);
+  assert.equal(missionSummary(plain).duel.bailoutDelay, null);
+  assert.throws(() => applyMissionEdits(plain, { duel: { firstHit: false } }), /没有/);
+});
+
+test('duel settings change every place that sets them, nothing else', () => {
+  const out = applyMissionEdits(duel, { duel: { firstCountdown: 1, countdown: 10, shootingDelay: 20, forfeitAfter: 600, firstHit: false, bailoutDelay: 1.5 } });
+  const d = missionSummary(out).duel;
+  assert.equal(d.firstCountdown, 1, 'the mission start\'s countdown');
+  assert.equal(d.countdown, 10, 'between rounds');
+  assert.match(out, /round_01_init\{[\s\S]*?value:i=1\r\n {10}var:t="timer"/);
+  assert.equal(d.shootingDelay, 20);
+  assert.equal(d.forfeitAfter, 600);
+  assert.equal(d.firstHit, false);
+  assert.equal(d.bailoutDelay, 1.5);
+  assert.equal((out.match(/value:i=10\r\n {10,12}var:t="timer"/g) || []).length, 1);
+  assert.equal((out.match(/value:i=600\r\n {10,12}var:t="disqualification_timer"/g) || []).length, 2);
+  assert.equal((out.match(/time:r=1\.5\r\n/g) || []).length, 2, 'both bail-out waits');
+  // The group and its three self-running triggers are off; hit_timer as it was.
+  assert.match(out, /first_hit_wins\{\r\n      isCategory:b=yes\r\n      is_enabled:b=no/);
+  const group = out.slice(out.indexOf('first_hit_wins{'));
+  assert.equal((group.match(/is_enabled:b=no\r\n {8}comments/g) || []).length, 4, 'check_t1, check_t2, t1_and_t2_hit, hit_timer');
+  assert.match(out, /time_stop\{\r\n {8}is_enabled:b=no/, 'other triggers untouched');
+  // The variables block and other lines stay the same; CRLF stays.
+  assert.match(out, /variables\{\r\n  timer:i=1\r\n  shooting_timer:i=1/);
+  assert.equal(out.split('\r\n').length, duel.split('\r\n').length);
+  assert.ok(!/[^\r]\n/.test(out));
+});
+
+test('spawn distance and altitude move both teams evenly; the area keeps its kill border', () => {
+  const out = applyMissionEdits(duel, { duel: { spawnDistance: 3000, spawnAltitude: 2500, areaRadius: 5000 } });
+  const d = missionSummary(out).duel;
+  assert.equal(d.spawnDistance, 3000);
+  assert.equal(d.spawnAltitude, 2500);
+  assert.equal(d.areaRadius, 5000);
+  // Halfway point unchanged (z 2094), each team 2000 m closer, rotation kept.
+  assert.match(out, /t1_air_spawn_01\{\r\n    type:t="Sphere"\r\n    tm:m=\[\[2\.38339e-07, 0, 30\] \[0, 30, 0\] \[-30, 0, 2\.38339e-07\] \[3359\.7, 2500, 594\]\]/);
+  assert.match(out, /t2_air_spawn_02\{\r\n    type:t="Sphere"\r\n    tm:m=\[\[-4\.76837e-07, 0, -30\] \[0, 30, 0\] \[30, 0, -4\.76837e-07\] \[3359\.8, 2500, 3594\]\]/);
+  // Kill border stays 900 m outside the area; height and centre unchanged
+  // (numbers that didn't change keep their exact text).
+  assert.match(out, /battle_area_01\{[\s\S]*?tm:m=\[\[5000, 0, 0\] \[0, 5000, 0\] \[0, 0, 5000\] \[3330, 1\.52588e-05, 2094\]\]/);
+  assert.match(out, /battle_area_destr_01\{[\s\S]*?tm:m=\[\[5900, 0, 0\] \[0, 5000, 0\] \[0, 0, 5900\]/);
+  assert.throws(() => applyMissionEdits(duel, { duel: { spawnDistance: 50 } }), /200-60000/);
+  assert.throws(() => applyMissionEdits(duel, { duel: { shootingDelay: 2.5 } }), /整数/);
+  assert.throws(() => applyMissionEdits(joust, { duel: { countdown: 5 } }), /没有/);
+});

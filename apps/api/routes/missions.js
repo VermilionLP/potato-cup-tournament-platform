@@ -11,7 +11,9 @@
 //                                      edits (@potato-cup/shared/mission-blk.js);
 //                                      vehicle_limit false removes the vehicle
 //                                      limit, true puts the newest older
-//                                      version's back (or a new one from units)
+//                                      version's back (or a new one from units);
+//                                      duel: the duel template's round, spawn
+//                                      and battle-area settings
 //   POST /missions/:id/revert          admin: a new version with an old text
 //   DELETE /missions/:id               admin
 //   PUT /tournaments/:id/missions      admin: the maps an event uses
@@ -273,7 +275,7 @@ export default async function missionsRoutes(fastify) {
       const limit = body.vehicle_limit === undefined ? undefined : Boolean(body.vehicle_limit);
       const limitBlock = limit === true ? await previousLimitBlock(row.id) : null;
       try {
-        content = applyMissionEdits(row.content, { fields: body.fields || {}, units: body.units || null, vehicleLimit: limit, limitBlock });
+        content = applyMissionEdits(row.content, { fields: body.fields || {}, units: body.units || null, vehicleLimit: limit, limitBlock, duel: body.duel || null });
       } catch (e) {
         throw fastify.httpErrors.badRequest(e.message);
       }
@@ -283,7 +285,8 @@ export default async function missionsRoutes(fastify) {
       || (typeof body.content === 'string' ? '修改原文'
         : body.vehicle_limit === false ? '关闭载具限制'
           : body.vehicle_limit === true && !missionSummary(row.content)?.vehicleLimit ? '开启载具限制'
-            : body.units ? '修改载具' : '修改设置');
+            : body.units ? '修改载具'
+              : body.duel && Object.keys(body.duel).length && !Object.keys(body.fields || {}).length ? '修改决斗规则' : '修改设置');
     const saved = await saveVersion(row.id, content, note, editor(req));
     return { mission: shape(saved) };
   });

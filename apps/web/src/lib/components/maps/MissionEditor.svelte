@@ -51,8 +51,24 @@
     ["optionalTakeOff", "可以选择从跑道起飞", "bool", ""],
   ];
 
+  // The duel ("gladiators") template's settings (DUEL_FIELDS): shown only
+  // for files that have them (summary.duel; a null value = not in the file).
+  const DUEL = [
+    ["firstCountdown", "第一回合倒计时（秒）", "number", "开局后多久开始第一回合"],
+    ["countdown", "回合间倒计时（秒）", "number", "两队进入战斗区域后倒数，归零开始下一回合"],
+    ["shootingDelay", "出生后禁止开火（秒）", "number", "每回合出生后这段时间不能开火"],
+    ["forfeitAfter", "缺席判负（秒）", "number", "一方没有存活的玩家时开始倒数，归零该方输掉这一回合"],
+    ["spawnDistance", "两队出生点距离（米）", "number", "两队各自沿连线移动一半，中点不变"],
+    ["spawnAltitude", "出生高度（米）", "number", ""],
+    ["areaRadius", "战斗区域半径（米）", "number", "出界摧毁的边界跟着移动，和区域保持原来的距离"],
+    ["firstHit", "先命中者胜", "bool", "被命中的一方几秒后强制跳伞；双方都被命中则一起跳伞"],
+    ["bailoutDelay", "命中后跳伞（秒）", "number", "开启「先命中者胜」时有效"],
+  ];
+
   // Forms start from the saved file each time it changes (a new version).
   let fields = $state({});
+  /** @type {Record<string, any>} */
+  let duel = $state({});
   let sameUnits = $state(true);
   let unitsA = $state("");
   let unitsB = $state("");
@@ -68,6 +84,7 @@
     seen = mission.version;
     const f = mission.summary?.fields || {};
     fields = Object.fromEntries(FIELDS.map(([k]) => [k, f[k] ?? (FIELDS.find((x) => x[0] === k)[2] === "bool" ? false : "")]));
+    duel = { ...(mission.summary?.duel || {}) };
     const u = mission.summary?.units;
     // No limit now: the form starts from the last list it had.
     const start = u || previous?.units;
@@ -80,7 +97,11 @@
   });
 
   const savedFields = $derived(mission.summary?.fields || {});
+  const savedDuel = $derived(mission.summary?.duel || null);
+  const duelRows = $derived(savedDuel ? DUEL.filter(([k]) => savedDuel[k] !== null && savedDuel[k] !== undefined) : []);
+  const changedDuel = $derived(Object.fromEntries(duelRows.map(([k]) => [k, duel[k]]).filter(([k, v]) => String(v ?? "") !== String(savedDuel[k]))));
   const changedFields = $derived(Object.fromEntries(Object.entries(fields).filter(([k, v]) => String(v ?? "") !== String(savedFields[k] ?? (typeof v === "boolean" ? false : "")))));
+  const changeCount = $derived(Object.keys(changedFields).length + Object.keys(changedDuel).length);
   const unitsError = $derived.by(() => {
     try {
       parseUnitList(unitsA);
@@ -123,7 +144,8 @@
     }
   }
 
-  const saveFields = () => run(() => API.editMission(mission.id, { base_version: mission.version, fields: changedFields }), "已保存比赛设置（新版本）");
+  const saveFields = () =>
+    run(() => API.editMission(mission.id, { base_version: mission.version, fields: changedFields, duel: changedDuel }), "已保存比赛设置（新版本）");
   const limitSaved = $derived(Boolean(mission.summary?.vehicleLimit));
   const saveUnits = () => run(() => API.editMission(mission.id, { base_version: mission.version, vehicle_limit: true, units: { teamA: unitsA, teamB: sameUnits ? unitsA : unitsB } }), limitSaved ? "已保存载具（新版本）" : "已开启载具限制（新版本）");
   const saveNoLimit = () => run(() => API.editMission(mission.id, { base_version: mission.version, vehicle_limit: false }), "已关闭载具限制（新版本）");
@@ -212,9 +234,33 @@
             {/if}
           {/each}
         </div>
+        {#if duelRows.length}
+          <div class="space-y-3 rounded-lg border border-border p-3">
+            <div>
+              <h3 class="text-sm font-bold">决斗规则</h3>
+              <p class="text-small text-muted-foreground">这个地图用的是决斗（gladiators）模板：回合、出生点和战斗区域由地图里的触发器和区域决定。</p>
+            </div>
+            <div class="grid gap-3 sm:grid-cols-2">
+              {#each duelRows as [key, label, kind, help] (key)}
+                {#if kind === "bool"}
+                  <label class="flex items-start gap-2 rounded-lg border border-border px-3 py-2 text-sm font-semibold">
+                    <input type="checkbox" bind:checked={duel[key]} class="mt-0.5 size-4 accent-primary" />
+                    <span>{label}{#if help}<span class="block text-small font-normal text-muted-foreground">{help}</span>{/if}</span>
+                  </label>
+                {:else}
+                  <div class="space-y-1">
+                    <label class="text-small font-semibold text-muted-foreground" for="md-{key}">{label}</label>
+                    <input id="md-{key}" type="number" step="any" min="0" class="field w-full" bind:value={duel[key]} disabled={key === "bailoutDelay" && !duel.firstHit} />
+                    {#if help}<p class="text-small text-muted-foreground">{help}</p>{/if}
+                  </div>
+                {/if}
+              {/each}
+            </div>
+          </div>
+        {/if}
         <div class="flex items-center justify-end gap-2">
-          <span class="text-small text-muted-foreground">{Object.keys(changedFields).length ? `改了 ${Object.keys(changedFields).length} 项` : "没有改动"}</span>
-          <Button onclick={saveFields} disabled={saving || !Object.keys(changedFields).length}>保存设置</Button>
+          <span class="text-small text-muted-foreground">{changeCount ? `改了 ${changeCount} 项` : "没有改动"}</span>
+          <Button onclick={saveFields} disabled={saving || !changeCount}>保存设置</Button>
         </div>
         <p class="text-small text-muted-foreground">只改这些设置所在的那几行，文件其余内容保持原样。其他设置请在「原文」里改。</p>
       {/if}

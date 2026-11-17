@@ -1,0 +1,266 @@
+selected_tag:t=""
+bin_dump_file:t=""
+
+mission_settings{
+  mission{
+    name:t="gladiators_kursk_2x2_by_Team154"
+    level:t="levels/kursk.bin"
+    type:t="domination"
+    environment:t="Day"
+    weather:t="hazy"
+    scoreLimit:i=50000
+    timeLimit:i=60
+    isBotsAllowed:b=no
+
+    allowedUnitTypes{
+      isAirplanesAllowed:b=yes
+      isTanksAllowed:b=no
+      isShipsAllowed:b=no
+      isHelicoptersAllowed:b=no
+    }
+  }
+}
+
+imports{}
+triggers{
+  isCategory:b=yes
+  is_enabled:b=yes
+
+  gladiators_air_2x2_template{
+    isCategory:b=yes
+    is_enabled:b=yes
+
+    round_01_init{
+      is_enabled:b=yes
+      comments:t=""
+
+      props{
+        actionsType:t="PERFORM_ONE_BY_ONE"
+        conditionsType:t="ALL"
+        enableAfterComplete:b=no
+      }
+
+      events{
+        initMission{}
+      }
+
+      conditions{}
+      actions{
+        varSetInt{
+          value:i=7
+          var:t="timer"
+        }
+
+        varSetInt{
+          value:i=3600
+          var:t="disqualification_timer"
+        }
+
+        varSetInt{
+          value:i=1
+          var:t="num_of_battles_in_round"
+        }
+      }
+
+      else_actions{}
+    }
+
+    round_01{
+      isCategory:b=yes
+      is_enabled:b=yes
+
+      "unit respawn"{
+        is_enabled:b=yes
+        comments:t=""
+
+        props{
+          actionsType:t="PERFORM_ONE_BY_ONE"
+          conditionsType:t="ALL"
+          enableAfterComplete:b=no
+        }
+
+        events{
+          periodicEvent{
+            time:r=1
+          }
+        }
+
+        conditions{
+          varCompareInt{
+            var_value:t="timer"
+            value:i=1
+            comparasion_func:t="less"
+          }
+        }
+
+        actions{
+          varSetInt{
+            value:i=35
+            var:t="shooting_timer"
+          }
+        }
+
+        else_actions{}
+      }
+    }
+
+    stop_time{
+      isCategory:b=yes
+      is_enabled:b=yes
+
+      time_stop{
+        is_enabled:b=no
+        comments:t=""
+
+        props{
+          actionsType:t="PERFORM_ONE_BY_ONE"
+          conditionsType:t="ALL"
+          enableAfterComplete:b=yes
+        }
+
+        events{
+          periodicEvent{
+            time:r=1
+          }
+        }
+
+        conditions{}
+        actions{}
+        else_actions{
+          varSetInt{
+            value:i=7
+            var:t="timer"
+          }
+
+          varSetInt{
+            value:i=3600
+            var:t="disqualification_timer"
+          }
+        }
+      }
+    }
+
+    first_hit_wins{
+      isCategory:b=yes
+      is_enabled:b=yes
+
+      check_t1{
+        is_enabled:b=yes
+        comments:t=""
+      }
+
+      check_t2{
+        is_enabled:b=yes
+        comments:t=""
+      }
+
+      t1_and_t2_hit{
+        is_enabled:b=yes
+        comments:t=""
+      }
+
+      hit_timer{
+        is_enabled:b=no
+        comments:t=""
+
+        actions{
+          wait{
+            time:r=3
+          }
+
+          unitDoBailout{
+            object:t="t1_player_squad"
+          }
+        }
+
+        else_actions{
+          wait{
+            time:r=3
+          }
+
+          unitDoBailout{
+            object:t="t2_player_squad"
+          }
+        }
+      }
+    }
+  }
+}
+
+mission_objectives{
+  isCategory:b=yes
+  is_enabled:b=yes
+}
+
+variables{
+  timer:i=1
+  shooting_timer:i=1
+  disqualification_timer:i=3600
+}
+
+dialogs{}
+airfields{}
+effects{}
+units{
+  armada{
+    name:t="t1_player01"
+    tm:m=[[1, 0, 0] [0, 1, 0] [0, 0, 1] [2805.75, 490, 11895]]
+    unit_class:t="dummy_plane"
+  }
+}
+
+areas{
+  t2_air_spawn_02{
+    type:t="Sphere"
+    tm:m=[[-4.76837e-07, 0, -30] [0, 30, 0] [30, 0, -4.76837e-07] [3359.8, 1500, 5594]]
+    objLayer:i=3
+
+    props{}
+  }
+
+  t2_air_spawn_01{
+    type:t="Sphere"
+    tm:m=[[-4.76837e-07, 0, -30] [0, 30, 0] [30, 0, -4.76837e-07] [3300, 1500, 5594]]
+    objLayer:i=3
+
+    props{}
+  }
+
+  t1_air_spawn_02{
+    type:t="Sphere"
+    tm:m=[[2.38339e-07, 0, 30] [0, 30, 0] [-30, 0, 2.38339e-07] [3300.1, 1500, -1406]]
+    objLayer:i=3
+
+    props{}
+  }
+
+  t1_air_spawn_01{
+    type:t="Sphere"
+    tm:m=[[2.38339e-07, 0, 30] [0, 30, 0] [-30, 0, 2.38339e-07] [3359.7, 1500, -1406]]
+    objLayer:i=3
+
+    props{}
+  }
+
+  battle_area_01{
+    type:t="Cylinder"
+    tm:m=[[6500, 0, 0] [0, 5000, 0] [0, 0, 6500] [3330, 1.52588e-05, 2094]]
+    objLayer:i=4
+
+    props{}
+  }
+
+  battle_area_destr_01{
+    type:t="Cylinder"
+    tm:m=[[7400, 0, 0] [0, 5000, 0] [0, 0, 7400] [3330, 1.52588e-05, 2094]]
+    objLayer:i=4
+
+    props{}
+  }
+}
+
+objLayers{
+  layer{
+    enabled:b=yes
+  }
+}
