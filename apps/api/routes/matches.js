@@ -115,7 +115,8 @@ export default async function matchesRoutes(fastify) {
         ? await matchExcluded(client, req.params.id, pool, match.player1_id, match.player2_id)
         : record.excluded || [];
       const result = act(record, { action, group, vehicle }, {
-        grouped: groupVehicles(withoutExcluded(template.vehicles || [], excluded)),
+        // With unit ids, as the pages have them (copies are matched by them too).
+        grouped: groupVehicles(withoutExcluded(pool, excluded)),
         rules,
         who: { admin, side },
         by,

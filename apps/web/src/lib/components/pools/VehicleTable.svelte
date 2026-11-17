@@ -45,7 +45,7 @@
         <th class="w-24 px-2 py-2 text-left font-semibold">类型</th>
         <th class="w-36 px-2 py-2 text-left font-semibold" title="Ban / Pick 按分组禁用和抽取">分组</th>
         <th class="w-36 px-2 py-2 text-left font-semibold" title="War Thunder Wiki 的单位 ID，用来显示载具图片；留空时按名称自动匹配（灰字）">Wiki ID</th>
-        <th class="w-40 px-2 py-2 text-left font-semibold" title="这辆载具是哪些载具的复制（别国同款、金币复制等）：填载具名称或单位 ID，多个用 ; 或 、 隔开。黑桃过滤时，玩过其中任何一辆满黑桃都算有这辆">复制自</th>
+        <th class="w-40 px-2 py-2 text-left font-semibold" title="这辆载具是哪些载具的复制（别国同款、金币复制等）：填载具名称或单位 ID，多个用 ; 或 、 隔开。Ban/Pick 中禁用或移除一辆载具时，它的复制也一起移除；黑桃过滤时，其中任何一辆满黑桃都算有这辆">复制自</th>
         {#if isAdmin}<th class="w-8 px-1 py-2"></th>{/if}
       </tr>
     </thead>

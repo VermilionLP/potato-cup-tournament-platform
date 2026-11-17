@@ -2237,7 +2237,7 @@ export default {
   "修改决斗规则": "Changed duel rules",
   "只保留双方都有黑桃的载具（Statshark，复制载具算同一辆）：已去掉 {0:n} 架": "Only vehicles both players have spaded are kept (Statshark, copies count as the same vehicle): {0} left out",
   "复制自": "Copy of",
-  "这辆载具是哪些载具的复制（别国同款、金币复制等）：填载具名称或单位 ID，多个用 ; 或 、 隔开。黑桃过滤时，玩过其中任何一辆满黑桃都算有这辆": "Which vehicles this one is a copy of (the same vehicle in another nation, a premium copy…): vehicle names or unit IDs, separated by ; or 、. For the spaded filter, spading any of them counts as having this one",
+  "这辆载具是哪些载具的复制（别国同款、金币复制等）：填载具名称或单位 ID，多个用 ; 或 、 隔开。Ban/Pick 中禁用或移除一辆载具时，它的复制也一起移除；黑桃过滤时，其中任何一辆满黑桃都算有这辆": "Which vehicles this one is a copy of (the same vehicle in another nation, a premium copy…): vehicle names or unit IDs, separated by ; or 、. In Ban/Pick, banning or removing a vehicle removes its copies too; for the spaded filter, spading any of them counts as having this one",
   "从 Statshark 拉取选手的黑桃载具": "Fetched players' spaded vehicles from Statshark",
   "Statshark ID 应为数字，或者粘贴你的 Statshark 个人页面链接": "The Statshark ID is a number, or paste your Statshark profile link",
   "Statshark ID（可选）": "Statshark ID (optional)",

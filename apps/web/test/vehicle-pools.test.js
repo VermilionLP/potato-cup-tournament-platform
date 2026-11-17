@@ -75,3 +75,11 @@ test("the wiki unit id survives import and export", async () => {
   assert.deepEqual(parsePoolFile(poolToJson(vehicles), "a.json"), vehicles);
   assert.deepEqual(parsePoolFile(poolToCsv(vehicles), "a.csv"), vehicles);
 });
+
+test("the Ban / Pick preview keeps what a vehicle is a copy of", async () => {
+  const { previewVehicles, parsePoolFile, poolToCsv } = await import("../src/lib/vehicle-pools.js");
+  const rows = [{ name: "F-80A-5", group: "F-80" }, { name: "F-86A-5", group: "F-86", copy_of: " F-80A-5 " }];
+  assert.equal(previewVehicles(rows)[1].copy_of, "F-80A-5");
+  assert.equal("copy_of" in previewVehicles(rows)[0], false);
+  assert.equal(parsePoolFile(poolToCsv(rows), "a.csv")[1].copy_of, "F-80A-5");
+});

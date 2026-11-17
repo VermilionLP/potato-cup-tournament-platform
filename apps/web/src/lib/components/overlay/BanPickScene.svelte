@@ -14,7 +14,7 @@
   import { withoutExcluded } from "@potato-cup/shared/spaded.js";
   import { untrack } from "svelte";
   import { fade } from "svelte/transition";
-  import { availableGroups, availableVehicles, bansOf, effectiveLog, groupVehicles, initialBanPick } from "#lib/banpick.js";
+  import { availableGroups, availableVehicles, bansOf, effectiveLog, groupVehicles, initialBanPick, removedNames } from "#lib/banpick.js";
   import { matchStageLabels, tierEnglish } from "#lib/overlay.js";
   import { slotImage, slotImageDirect, unitImage, unitImageDirect } from "#lib/wt-units.js";
   import { loadVehicleSpecs, specCards } from "#lib/vehicle-specs.js";
@@ -29,6 +29,7 @@
   // Only the vehicles both players have spaded (fixed when Ban / Pick started).
   let grouped = $derived(groupVehicles(withoutExcluded(pool?.vehicles || [], record?.excluded || [])));
   let bp = $derived(record?.state || initialBanPick(pool?.rules));
+  let removed = $derived(removedNames(bp, grouped)); // removed vehicles and copies of removed / banned ones
   let rules = $derived(bp.rules);
   let log = $derived(effectiveLog(record?.log || []));
   let lastEntry = $derived(record?.log?.at(-1) || null);
@@ -125,12 +126,12 @@
     return "free";
   }
   function vehicleState(v) {
-    if (bp.removedVehicles.includes(v.name)) return "out";
+    if (removed.has(v.name)) return "out";
     if (rolling && rollingPhase === "drawVehicle") return rollingLabel === v.name ? "rolling" : "free";
     if (bp.vehicle === v.name) return "picked";
     return "free";
   }
-  const left = (g) => g.vehicles.filter((v) => !bp.removedVehicles.includes(v.name)).length;
+  const left = (g) => g.vehicles.filter((v) => !removed.has(v.name)).length;
   const br = (v) => (v?.br == null ? "" : Number(v.br).toFixed(1));
   let gridCols = $derived(grouped.length > 18 ? 8 : 6);
   let gridRows = $derived(Math.max(1, Math.ceil(grouped.length / gridCols)));

@@ -20,6 +20,7 @@ export {
   localAct,
   mayAct,
   normalizeRules,
+  removedNames,
   rerollsLeft,
   resultLabel,
   rulesSummary,
