@@ -3,6 +3,7 @@
   // at a time, every group (bans, ban rate, drawn, played), every played
   // vehicle with its share, and every player who bans with their favourite
   // bans. Undone steps are not counted.
+  import GlyphText from "#lib/components/GlyphText.svelte";
   import { EmptyState } from "#lib/components/ui/empty-state/index.js";
   import ShowMoreRows from "#lib/components/ShowMoreRows.svelte";
   import { PAGE_SIZE } from "#lib/expand-row.js";
@@ -161,7 +162,7 @@
                 {#each vehicles as v, i (v.name)}
                   <tr class="border-b border-border/60 last:border-0">
                     <td class="py-2 pr-2">
-                      <span class="num mr-1.5 inline-block w-4 text-muted-foreground">{i + 1}</span><span class="font-semibold">{v.name}</span>
+                      <span class="num mr-1.5 inline-block w-4 text-muted-foreground">{i + 1}</span><span class="font-semibold"><GlyphText text={v.name} /></span>
                     </td>
                     <td class="py-2 pr-2 text-muted-foreground">{v.group || "—"}</td>
                     <td class="w-2/5 py-2">

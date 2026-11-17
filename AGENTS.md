@@ -148,6 +148,10 @@ Ban / Pick 的载具池是 `axsuck.vehicle_pools` 里的模板（迁移 027）�
 
 决斗地图（社区的 gladiators 模板，比如 Kursk 2x2、1x1 先命中者胜）在「比赛设置」里多一块「决斗规则」（`duelSettings` / `DUEL_FIELDS`，`applyMissionEdits` 的 `duel`）：第一回合和回合间倒计时（触发器里给 `timer` 赋值的 varSetInt：initMission 触发器里的算第一回合）、出生后禁止开火（`shooting_timer`）、缺席判负（`disqualification_timer`）、先命中者胜开关（`first_hit_wins` 组和其中三个触发器的 is_enabled）和跳伞延迟（`hit_timer` 里的 wait）、两队出生点距离和高度（areas 里的 `t1_air_spawn_*` / `t2_air_spawn_*`，各移一半）、战斗区域半径（`battle_area_01`，`battle_area_destr_01` 保持原来的间距）。按内容找，不按触发器名字；文件里没有的项是 null，页面不显示。只改那几个值，没变的数字保持原文。
 
+## Vehicle name marks
+
+战争雷霆的载具名前面可能带一个特殊字符（"▄JAS39C"、"␗MiG-9"）：游戏和 War Thunder Wiki 用自己的字体（WTSymbols）把它画成小机徽（圆形机徽、铁十字、美国星徽、旭日、奖杯……）。网站不用游戏字体，而是自己画的 SVG：`apps/web/src/lib/wt-glyphs.js`（字符 → 名称 + 图形），`GlyphText.svelte` 显示任意带这些字符的文字；放不下图标的地方（标题、Ban/Pick 记录这类会被翻译的整句）用 `plainGlyphs()` 去掉字符。载具名称比对（`unitKey`）本来就忽略这些字符。
+
 ## Statshark spaded vehicles
 
 选手在个人资料里填 Statshark ID（`players.statshark_id`，数字或 statshark.net/player/ 链接，`@potato-cup/shared/spaded.js` 的 `normalizeStatsharkId`；迁移 058）。赛事开始（`POST /tournaments/:id/start`）时在后台按参赛名单从 Statshark API 拉一次黑桃载具（`apps/api/lib/statshark.js` 的 `syncEventSpaded`），存在 `players.spaded_units`（`unitKey` 后的 id / 名称），下届比赛再拉时覆盖；12 小时内拉过的跳过。每次请求记在 `statshark_usage`（按 UTC 日），离每日上限（`STATSHARK_DAILY_LIMIT`，默认 350）还剩 `RESERVE` 次时自动拉取停下，留给管理员在载具池 tab「现在读取」（`POST /tournaments/:id/spaded/refresh`，不受 12 小时限制）。没配 `STATSHARK_API_URL` 时什么都不做。响应由 `parseSpaded` 读：接口文档到了以后按实际格式改这一个函数。

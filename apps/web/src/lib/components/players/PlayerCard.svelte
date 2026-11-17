@@ -3,6 +3,7 @@
   // contacts, the ladder league icon and MMR with a sparkline of the last 30
   // games, the last 5 results (W / L) and the vehicles played most in Ban /
   // Pick (GET /banpick/stats?player=). Maths in #lib/player-profile.js.
+  import GlyphText from "#lib/components/GlyphText.svelte";
   import { API } from "#lib/api.js";
   import { formatWinRate, tierBadgeClass } from "#lib/ladder.js";
   import { leagueIcon } from "#lib/sc2-icons.js";
@@ -64,7 +65,7 @@
             <span class="mr-1 text-label font-bold uppercase tracking-wider text-muted-foreground">常用载具</span>
             {#each bp.vehicles.slice(0, 3) as v (v.name)}
               <span class="rounded-md border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 font-semibold text-amber-700 dark:text-amber-300" title={v.decided ? `${v.played} 场 · ${v.wins} 胜` : `${v.played} 场`}>
-                {v.name} <span class="font-normal opacity-70">×{v.played}</span>
+                <GlyphText text={v.name} /> <span class="font-normal opacity-70">×{v.played}</span>
               </span>
             {/each}
           </div>

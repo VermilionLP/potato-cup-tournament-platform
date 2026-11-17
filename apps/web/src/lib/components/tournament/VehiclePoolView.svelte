@@ -1,4 +1,5 @@
 <script>
+  import GlyphText from "#lib/components/GlyphText.svelte";
   import { EmptyState } from "#lib/components/ui/empty-state/index.js";
   // The event's vehicle pool as War Thunder tech-tree cards: one row per
   // Ban / Pick group (with its nation's flag), each vehicle with its wiki
@@ -80,7 +81,7 @@
                     onerror={(e) => fallback(e, slotImageDirect(v.unit))}
                   />
                 {/if}
-                <span class="absolute right-1.5 top-1 max-w-[85%] truncate text-right text-small font-semibold leading-tight drop-shadow">{v.name}</span>
+                <span class="absolute right-1.5 top-1 max-w-[85%] truncate text-right text-small font-semibold leading-tight drop-shadow"><GlyphText text={v.name} /></span>
                 {#if v.br != null}
                   <span class="absolute bottom-1 right-1.5 text-small text-slate-300 drop-shadow">{br(v.br)}</span>
                 {/if}

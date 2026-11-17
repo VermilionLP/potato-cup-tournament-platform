@@ -1,6 +1,7 @@
 <script>
   // Finished event: the vehicles flown and the Ban / Pick of every match
   // (#lib/event-banpick.js). Hidden when the event had no Ban / Pick.
+  import GlyphText from "#lib/components/GlyphText.svelte";
   import * as Card from "#lib/components/ui/card/index.js";
   import { eventBanpickRecap } from "#lib/event-banpick.js";
   import SwordsIcon from "@lucide/svelte/icons/swords";
@@ -42,7 +43,7 @@
             <div class="flex flex-wrap gap-1.5">
               {#each recap.vehicles as v (v.name)}
                 <span class="inline-flex items-center gap-1 rounded-full bg-brand-soft px-2.5 py-0.5 text-xs font-bold text-brand-soft-foreground">
-                  {v.name}<span class="num font-semibold opacity-70">×{v.n}</span>
+                  <GlyphText text={v.name} /><span class="num font-semibold opacity-70">×{v.n}</span>
                 </span>
               {/each}
             </div>
@@ -97,7 +98,7 @@
                 <td class="px-3 py-2.5">{@render bans(r.bansB, r.passesB, "bg-side-b/20 text-violet-800 dark:text-violet-200")}</td>
                 <td class="px-3 py-2.5">
                   {#if r.locked}
-                    <span class="font-bold text-brand-ink">{r.vehicle}</span>
+                    <span class="font-bold text-brand-ink"><GlyphText text={r.vehicle} /></span>
                     {#if r.drawnVehicle}<span class="block text-small text-muted-foreground">{r.group}</span>{/if}
                   {:else}
                     <span class="text-muted-foreground/60">未确认</span>

@@ -11,6 +11,7 @@
   //      its specifications from the War Thunder wiki (#lib/vehicle-specs.js)
   //      in four cards, or the group's vehicles and the bans without them.
   // A new draw rolls through the options for a moment before it lands.
+  import GlyphText from "#lib/components/GlyphText.svelte";
   import { withoutExcluded } from "@potato-cup/shared/spaded.js";
   import { untrack } from "svelte";
   import { fade } from "svelte/transition";
@@ -397,7 +398,7 @@
                 <div class="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-b from-[#3a4552] to-[#1d242c] {st === 'out' ? 'opacity-40 grayscale' : ''}">
                   {@render vehicleImage(v, "h-full w-full object-contain")}
                 </div>
-                <span class="truncate font-display text-[36px] font-extrabold leading-none {st === 'out' ? 'text-[#7184A3] line-through' : ''}">{v.name}</span>
+                <span class="truncate font-display text-[36px] font-extrabold leading-none {st === 'out' ? 'text-[#7184A3] line-through' : ''}"><GlyphText text={v.name} /></span>
                 <span class="flex items-center justify-between font-num text-[17px] font-bold tracking-[0.08em]">
                   <span class="text-[#AFC0D8]">BR {br(v)}</span>
                   <span class={st === "out" ? "text-[#7184A3]" : "text-cyan-400"}>{st === "out" ? "REMOVED" : st === "picked" ? "★ PICKED" : ""}</span>
@@ -408,7 +409,7 @@
           <div class="flex items-center gap-3.5 font-num text-[17px] font-bold tracking-[0.1em] text-[#AFC0D8]">
             {#each vehicleSteps as e, i (i)}
               {#if i > 0}<span class="text-cyan-400">→</span>{/if}
-              <span>{e.action === "drawVehicle" ? "DRAW" : "REMOVE"} <b class={e.action === "drawVehicle" ? "text-cyan-200" : "text-white"}>{e.vehicle}</b></span>
+              <span>{e.action === "drawVehicle" ? "DRAW" : "REMOVE"} <b class={e.action === "drawVehicle" ? "text-cyan-200" : "text-white"}><GlyphText text={e.vehicle} /></b></span>
             {:else}
               <span>Waiting for the vehicle draw…</span>
             {/each}
@@ -482,7 +483,7 @@
             {#each groupEntry?.vehicles || [] as v (v.name)}
               {@const st = vehicleState(v)}
               <div class="flex items-baseline justify-between gap-3 border-t border-white/[0.06] py-1.5">
-                <span class="truncate text-xl font-bold {st === 'out' ? 'text-[#7184A3] line-through' : st === 'picked' ? 'text-cyan-200' : ''}">{st === "picked" ? "★ " : ""}{v.name}</span>
+                <span class="truncate text-xl font-bold {st === 'out' ? 'text-[#7184A3] line-through' : st === 'picked' ? 'text-cyan-200' : ''}">{st === "picked" ? "★ " : ""}<GlyphText text={v.name} /></span>
                 <span class="shrink-0 font-num text-xl font-bold tabular-nums {st === 'out' ? 'text-[#7184A3]' : ''}">{v.br != null ? `BR ${br(v)}` : ""}</span>
               </div>
             {/each}

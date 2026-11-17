@@ -2,6 +2,7 @@
   // The server's Ban / Pick log, newest first: when, who and what (undone
   // steps struck through, undos and resets shown too), so a redraw by undoing
   // stays visible. Folded to the last 3 entries.
+  import { plainGlyphs } from "#lib/wt-glyphs.js";
   import { logText, logWho } from "#lib/banpick.js";
   import HistoryIcon from "@lucide/svelte/icons/history";
 
@@ -33,7 +34,7 @@
         {/if}
         <span class="min-w-0 truncate">
           <span class="font-semibold text-foreground/90">{logWho(e, nameOf)}</span>
-          <span class={e.action === "undo" || e.action === "reset" ? "text-amber-600 dark:text-amber-400" : ""}>{logText(e)}</span>
+          <span class={e.action === "undo" || e.action === "reset" ? "text-amber-600 dark:text-amber-400" : ""}>{plainGlyphs(logText(e))}</span>
         </span>
       </li>
     {/each}
