@@ -42,5 +42,10 @@ test("events weigh by kind: majors move MMR more than weekly cups, same as the s
   assert.ok(major > weekly, `${major} > ${weekly}`);
   assert.equal(Math.round(major / weekly * 10) / 10, 1.5);
   assert.equal(simulateMatch(a, b).weight, 1);
-  for (const k of ["major", "weekly", "qualifier", "", null, "season", "monthly"]) assert.equal(ladderWeight(k), server.ladderWeight(k), String(k));
+  for (const k of ["major", "weekly", "qualifier", "", null, "season", "monthly"]) {
+    for (const t of ["S", "A", "B", "C", "D", null]) assert.equal(ladderWeight(k, t), server.ladderWeight(k, t), `${k} ${t}`);
+  }
+  // The tier counts in the preview too.
+  assert.equal(simulateMatch(a, b, { eventKind: "major", tier: "A" }).weight, 2.25);
+  assert.equal(simulateMatch(a, b, { eventKind: "weekly", tier: "D" }).weight, 0.75);
 });

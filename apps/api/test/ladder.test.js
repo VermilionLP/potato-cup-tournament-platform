@@ -215,3 +215,15 @@ test('major events move MMR more than weekly cups (K times the event weight)', (
   assert.equal(delta('qualifier'), 100, 'qualifiers count like weekly cups');
   assert.equal(computeLadder([game(1, 'major')]).history[0].weight, 1.5);
 });
+
+test('the event tier multiplies the weight too: S 2, A 1.5, B 1.25, C 1, D 0.75', () => {
+  const game = (kind, tier) => ({ id: 1, tournament_id: 't', player1_id: 'a', player2_id: 'b', score1: 2, score2: 0, played_at: '2026-11-01', event_kind: kind, tier });
+  const delta = (kind, tier) => computeLadder([game(kind, tier)]).history[0].delta;
+  assert.equal(delta('weekly', 'C'), 100, 'a C-tier weekly cup is the baseline');
+  assert.equal(delta('weekly', null), 100);
+  assert.equal(delta('weekly', 'D'), 75);
+  assert.equal(delta('weekly', 'B'), 125);
+  assert.equal(delta('major', 'A'), 225, '1.5 × 1.5');
+  assert.equal(delta('major', 'S'), 300);
+  assert.equal(computeLadder([game('major', 'B')]).history[0].weight, 1.875);
+});

@@ -1,5 +1,5 @@
 <script>
-  import { LADDER_WEIGHTS } from "#lib/ladder-sim.js";
+  import { LADDER_WEIGHTS, TIER_WEIGHTS } from "#lib/ladder-sim.js";
   import SwordsIcon from "@lucide/svelte/icons/swords";
   import PageHeader from "#lib/components/PageHeader.svelte";
   import RankingTabs from "#lib/components/rankings/RankingTabs.svelte";
@@ -174,7 +174,7 @@
 
     <p class="text-small text-muted-foreground/70">
       Elo：初始 3000，前 10 场 K=200（同分对局 ±100），10–30 场 K=100，30 场以后 K=50；2-0 与 2-1 同权。
-      按赛事性质加权：大型赛事 ×{LADDER_WEIGHTS.major}，周赛和预选赛 ×{LADDER_WEIGHTS.weekly}（K 乘以权重，大赛加减分更多）。
+      按赛事性质和等级加权：大型赛事 ×{LADDER_WEIGHTS.major}，周赛和预选赛 ×{LADDER_WEIGHTS.weekly}；再乘等级 S ×{TIER_WEIGHTS.S}、A ×{TIER_WEIGHTS.A}、B ×{TIER_WEIGHTS.B}、C ×{TIER_WEIGHTS.C}、D ×{TIER_WEIGHTS.D}（K 乘以权重，大赛和高等级赛事加减分更多）。
       只有已完成的赛事对局计入，弃权/平局不计。活跃窗口 {data?.active_days || 365} 天；
       不活跃选手移出榜单，但分数保留，回归后继续使用。
     </p>
