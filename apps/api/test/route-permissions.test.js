@@ -18,8 +18,9 @@ process.env.ADMIN_TOKEN = ADMIN['x-admin-token'];
 process.env.BOT_TOKEN = 'test-bot-token';
 const BOT = { 'x-bot-token': 'test-bot-token' };
 
-// Writes anyone may make without an identity.
-const PUBLIC_WRITES = new Set(['POST /push/subscribe', 'DELETE /push/unsubscribe', 'POST /push/test', 'POST /client-errors']);
+// Writes anyone may make without an identity. (The TSS export builds a page for
+// anyone; only an admin's settings are saved, see tss-routes.test.js.)
+const PUBLIC_WRITES = new Set(['POST /push/subscribe', 'DELETE /push/unsubscribe', 'POST /push/test', 'POST /client-errors', 'PUT /tss/:id/wiki']);
 // Writes a player may make for themselves (checked separately below).
 const SELF_WRITES = new Set([
   'POST /players', 'POST /players/:id/touch', 'POST /players/:id/key',
@@ -34,7 +35,7 @@ const SELF_WRITES = new Set([
 ]);
 // Reads only admins may make.
 const ADMIN_READS = [
-  'GET /players/:id/key', 'GET /players/duplicates', 'GET /tournaments/:id/wiki', 'GET /tss', 'GET /tss/:id', 'GET /client-errors',
+  'GET /players/:id/key', 'GET /players/duplicates', 'GET /tournaments/:id/wiki', 'GET /client-errors',
   // The bot routes (the bot's token or an admin).
   'GET /bot/notices', 'GET /bot/whois/:openid', 'GET /bot/players/:id/schedule', 'GET /bot/open-events',
 ];

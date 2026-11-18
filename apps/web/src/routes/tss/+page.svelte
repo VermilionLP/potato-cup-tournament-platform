@@ -1,10 +1,11 @@
 <script>
-  // Admins: export a War Thunder TSS tournament (tss.warthunder.com) to
-  // Liquipedia. The server reads the event from TSS and builds the page
-  // (api routes/tss.js, lib/tss/wiki.js); the settings below are saved per
-  // TSS event, and a new event starts from the last one of the same kind.
+  // Everyone: export a War Thunder TSS tournament (tss.warthunder.com) to
+  // Liquipedia (main navigation, TSS 导出). The server reads the event from
+  // TSS and builds the page (api routes/tss.js, lib/tss/wiki.js). Admins'
+  // settings are saved on the server per TSS event (a new event starts from
+  // the last one of the same kind); other people's are kept in their
+  // browser (localStorage), per event.
   import PageHeader from "#lib/components/PageHeader.svelte";
-  import AdminTabs from "#lib/components/layout/AdminTabs.svelte";
   import { Button } from "#lib/components/ui/button/index.js";
   import { onMount } from "svelte";
   import { page } from "$app/state";
@@ -14,7 +15,7 @@
   import { userState } from "#lib/user.svelte.js";
   import { copyText } from "#lib/clipboard.js";
   import { formatInZone } from "#lib/datetime.js";
-  import ShieldIcon from "@lucide/svelte/icons/shield";
+  import FileTextIcon from "@lucide/svelte/icons/file-text";
   import CopyIcon from "@lucide/svelte/icons/copy";
   import DownloadIcon from "@lucide/svelte/icons/download";
   import TriangleAlertIcon from "@lucide/svelte/icons/triangle-alert";
@@ -40,6 +41,23 @@
     { key: "description", label: "TSS 比赛说明" },
     { key: "trailer", label: "页尾分类等" },
   ];
+
+  // A visitor's settings, per TSS event, in this browser.
+  const LOCAL = "tss-settings:";
+  function localSettings(id) {
+    try {
+      return JSON.parse(localStorage.getItem(LOCAL + id) || "null");
+    } catch {
+      return null;
+    }
+  }
+  function keepLocal(id, settings) {
+    try {
+      localStorage.setItem(LOCAL + id, JSON.stringify(settings));
+    } catch {
+      /* private window: not kept */
+    }
+  }
 
   // "https://tss.warthunder.com/index.php?action=tournament&id=26354" or "26354".
   function idFrom(value) {
@@ -68,7 +86,8 @@
     try {
       const { data } = await API.getTss(id);
       info = data;
-      draft = JSON.parse(JSON.stringify(data.settings));
+      const mine = isAdmin ? null : localSettings(id);
+      draft = JSON.parse(JSON.stringify(mine ? { ...data.settings, ...mine } : data.settings));
       if (page.url.searchParams.get("id") !== id) goto(`?id=${id}`, { replaceState: true });
     } catch (e) {
       info = null;
@@ -87,8 +106,10 @@
       text = data.wikiScript;
       warnings = data.warnings || [];
       draft = data.settings;
-      info.saved = true;
-      loadRecent();
+      if (data.saved) {
+        info.saved = true;
+        loadRecent();
+      } else keepLocal(info.summary.id, data.settings);
     } catch (e) {
       toast.error(e.message);
     } finally {
@@ -139,7 +160,6 @@
   let firstRound = $derived(draft && summary ? summary.upper_rounds.find((r) => r.round === Math.max(1, draft.startRound)) : null);
 
   onMount(() => {
-    if (!isAdmin) return;
     loadRecent();
     const id = page.url.searchParams.get("id");
     if (id) open(id);
@@ -151,17 +171,11 @@
   const box = "h-4 w-4 accent-[var(--primary)] cursor-pointer";
 </script>
 
-<svelte:head><title>TSS 导出 · 管理 · Potato Cup</title></svelte:head>
+<svelte:head><title>TSS 导出 · Potato Cup</title></svelte:head>
 
 <div class="space-y-4">
-  <div class="space-y-3">
-    <PageHeader title="管理" icon={ShieldIcon} description="把 TSS（tss.warthunder.com）上的比赛导出成 Liquipedia 页面代码，设置按比赛保存。" />
-    {#if isAdmin}<AdminTabs />{/if}
-  </div>
+  <PageHeader title="TSS 导出" icon={FileTextIcon} description="把 TSS（tss.warthunder.com）上任意一场比赛导出成 Liquipedia 页面代码，复制后贴到 Liquipedia 即可。" />
 
-  {#if !isAdmin}
-    <p class="py-16 text-center text-sm text-muted-foreground">需要管理员权限，请先点击右上角盾牌图标登录。</p>
-  {:else}
     <form class="flex flex-wrap items-end gap-2" onsubmit={(e) => (e.preventDefault(), open(input))}>
       <label class="min-w-56 flex-1 space-y-1">
         <span class={label}>TSS 比赛 ID 或比赛页面地址</span>
@@ -192,7 +206,7 @@
         <span class="text-muted-foreground">{summary.start}{summary.end && summary.end !== summary.start ? ` – ${summary.end}` : ""}</span>
         <span class="text-muted-foreground">{summary.teams} {summary.solo ? "名选手" : "支队伍"}</span>
         {#if summary.status}<span class="rounded-full bg-muted px-2 py-0.5 font-semibold">{summary.status}</span>{/if}
-        {#if !info.saved}<span class="text-small text-muted-foreground">第一次导出这场，设置沿用上一场同类比赛。</span>{/if}
+        {#if !info.saved && isAdmin}<span class="text-small text-muted-foreground">第一次导出这场，设置沿用上一场同类比赛。</span>{/if}
         <a href="https://tss.warthunder.com/index.php?action=tournament&id={summary.id}" target="_blank" rel="noopener" class="ml-auto inline-flex items-center gap-1 text-brand-ink hover:underline">
           TSS 页面 <ExternalLinkIcon class="h-3.5 w-3.5" />
         </a>
@@ -327,8 +341,9 @@
           </details>
 
           <Button size="sm" onclick={build} disabled={building} class="h-9 w-full cursor-pointer text-xs font-semibold">
-            {building ? "正在读取 TSS 并生成..." : "保存设置并生成代码"}
+            {building ? "正在读取 TSS 并生成..." : isAdmin ? "保存设置并生成代码" : "生成代码"}
           </Button>
+          {#if !isAdmin}<p class="text-small text-muted-foreground">设置记在这台设备的浏览器里，下次打开这场比赛会沿用。</p>{/if}
         </div>
 
         <div class="flex min-h-96 flex-col gap-3">
@@ -340,7 +355,7 @@
           <textarea
             readonly
             value={text}
-            placeholder="填好左边的设置，点「保存设置并生成代码」。"
+            placeholder={isAdmin ? "填好左边的设置，点「保存设置并生成代码」。" : "填好左边的设置，点「生成代码」。"}
             class="min-h-96 w-full flex-1 resize-y rounded-md border border-border bg-background p-2 num text-small text-foreground focus:border-primary focus:outline-none"
           ></textarea>
           <div class="flex gap-2">
@@ -354,5 +369,4 @@
         </div>
       </div>
     {/if}
-  {/if}
 </div>

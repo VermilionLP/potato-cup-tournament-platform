@@ -12,6 +12,11 @@ export const RATE_LIMITS = [
   { bucket: 'player-lookup', reads: true, test: (path) => path === '/api/players/lookup', limit: 60, windowMs: 60_000 },
   // Binding device keys: a handful per minute is plenty.
   { bucket: 'player-key', test: (path) => /^\/api\/players\/[^/]+\/key$/.test(path), limit: 10, windowMs: 60_000 },
+  // TSS → Liquipedia export (open to everyone): every page built reads TSS,
+  // team by team and match by match, so building is kept to a few a minute
+  // and reading events to a steady pace.
+  { bucket: 'tss-build', test: (path) => /^\/api\/tss\/[^/]+\/wiki$/.test(path), limit: 6, windowMs: 60_000 },
+  { bucket: 'tss', reads: true, test: (path) => path === '/api/tss' || path.startsWith('/api/tss/'), limit: 30, windowMs: 60_000 },
   // Everything else that writes: registration, votes, profiles, results.
   { bucket: 'write', test: () => true, limit: 60, windowMs: 60_000 },
 ];

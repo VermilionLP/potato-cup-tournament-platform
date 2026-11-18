@@ -53,7 +53,8 @@ test('GET /tss/:id: the event, its rounds and numbered matches; bad ids and unkn
   assert.equal(settings.opponent, 'auto');
   assert.equal((await inject({ method: 'GET', url: '/tss/abc', headers: ADMIN })).statusCode, 400);
   assert.equal((await inject({ method: 'GET', url: '/tss/1', headers: ADMIN })).statusCode, 404);
-  assert.equal((await inject({ method: 'GET', url: '/tss/23359', headers: {} })).statusCode, 401);
+  assert.equal((await inject({ method: 'GET', url: '/tss/23359', headers: {} })).statusCode, 200, 'open to everyone');
+  assert.equal((await inject({ method: 'GET', url: '/tss', headers: {} })).statusCode, 200);
 });
 
 test('PUT /tss/:id/wiki: builds the page with match times, saves the settings', async () => {
@@ -69,6 +70,14 @@ test('PUT /tss/:id/wiki: builds the page with match times, saves the settings', 
   assert.equal(calls.filter((c) => c === 'getInfoMatch').length, 7);
   assert.equal(calls.filter((c) => c === 'infoTeam').length, 1);
   assert.ok(db.writes.some((w) => w.startsWith('INSERT INTO axsuck.tss_exports')));
+  assert.equal(res.payload.data.saved, true);
+  // Anyone can build the page; only admins' settings are saved.
+  const before = db.writes.length;
+  const pub = await inject({ method: 'PUT', url: '/tss/23359/wiki', headers: {}, body: { settings: { startRound: 3 } } });
+  assert.equal(pub.statusCode, 200, pub.error?.message);
+  assert.match(pub.payload.data.wikiScript, /\{\{Bracket\|Bracket\/4\|/);
+  assert.equal(pub.payload.data.saved, false);
+  assert.ok(!db.writes.slice(before).some((w) => w.includes('tss_exports')), 'a visitor\'s settings are not saved');
   const bad = await inject({ method: 'PUT', url: '/tss/23359/wiki', headers: ADMIN, body: { settings: { filter: { ranges: 'x-y' } } } });
   assert.equal(bad.statusCode, 400);
 });
