@@ -16,6 +16,20 @@
   import GuestSignInFields from "./GuestSignInFields.svelte";
   import ProfileFields from "./ProfileFields.svelte";
   import DeviceKeyCard from "./DeviceKeyCard.svelte";
+  import IdCardIcon from "@lucide/svelte/icons/id-card";
+  import LinkIcon from "@lucide/svelte/icons/link";
+  import KeyRoundIcon from "@lucide/svelte/icons/key-round";
+
+  // A signed-in player's profile in three tabs, so the dialog stays short:
+  // basic profile, linked accounts (optional), device key. A dot marks a tab
+  // that needs a look (a failed Statshark read, no device key here).
+  const TABS = [
+    { id: "basic", label: "基本资料", Icon: IdCardIcon },
+    { id: "accounts", label: "关联账号", Icon: LinkIcon },
+    { id: "key", label: "设备密钥", Icon: KeyRoundIcon },
+  ];
+  let tab = $state("basic");
+  const needsLook = (id) => (id === "accounts" ? Boolean(spaded?.error) : id === "key" ? !userState.key : false);
 
   let open = $state(false);
   let busy = $state(false);
@@ -46,6 +60,8 @@
     contactError = "";
     flagError = "";
     flag = "";
+    // A device without this ID's key opens on the key tab.
+    tab = userState.id && userState.keyConflict ? "key" : "basic";
     open = true;
 
     if (userState.id) {
@@ -236,7 +252,7 @@
       </Dialog.Title>
       <Dialog.Description class="text-xs text-muted-foreground">
         {#if userState.id}
-          修改联系方式、国籍和战队；Liquipedia Wiki 页面可选。
+          修改联系方式、国籍和战队；关联 Statshark 和 Liquipedia（可选）；管理设备密钥。
         {:else}
           填写游戏内昵称、国籍和联系方式（QQ 号或 Discord 用户名），就可以报名、投票和修改自己的资料。
         {/if}
@@ -244,8 +260,28 @@
     </Dialog.Header>
 
     {#if userState.id}
-      <ProfileFields bind:idInput bind:qq bind:discord bind:flag bind:team bind:link bind:statshark {spaded} />
-      <DeviceKeyCard />
+      <div class="flex gap-1 border-b border-border" role="tablist" aria-label="个人资料">
+        {#each TABS as { id, label, Icon } (id)}
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tab === id}
+            onclick={() => (tab = id)}
+            class="relative -mb-px inline-flex items-center gap-1.5 whitespace-nowrap border-b-2 px-2 py-2 text-xs font-semibold transition-colors cursor-pointer sm:px-2.5
+              {tab === id ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}"
+          >
+            <Icon class="h-3.5 w-3.5 max-sm:hidden" />{label}
+            {#if needsLook(id)}<span class="h-1.5 w-1.5 rounded-full bg-amber-500" aria-hidden="true"></span>{/if}
+          </button>
+        {/each}
+      </div>
+      <div class="min-h-64">
+        {#if tab === "key"}
+          <div class="py-1"><DeviceKeyCard /></div>
+        {:else}
+          <ProfileFields part={tab} bind:idInput bind:qq bind:discord bind:flag bind:team bind:link bind:statshark {spaded} />
+        {/if}
+      </div>
     {:else}
       <GuestSignInFields bind:idInput bind:contactInput bind:flag bind:lookup {contactError} {flagError} players={existingPlayers} onsubmit={signIn} />
     {/if}
