@@ -6,6 +6,8 @@
   // the last one of the same kind); other people's are kept in their
   // browser (localStorage), per event.
   import PageHeader from "#lib/components/PageHeader.svelte";
+  import TssGuide from "#lib/components/tss/TssGuide.svelte";
+  import TssDraftLink from "#lib/components/tss/TssDraftLink.svelte";
   import { Button } from "#lib/components/ui/button/index.js";
   import { onMount } from "svelte";
   import { page } from "$app/state";
@@ -155,6 +157,8 @@
   }
 
   let summary = $derived(info?.summary);
+  // The page name for the user-space draft link.
+  let pageName = $derived(draft?.title || summary?.name || "");
   let matches = $derived(info?.matches || []);
   let shownCount = $derived(draft ? matches.filter((m) => inRange(m, draft.filter)).length : 0);
   let firstRound = $derived(draft && summary ? summary.upper_rounds.find((r) => r.round === Math.max(1, draft.startRound)) : null);
@@ -175,6 +179,8 @@
 
 <div class="space-y-4">
   <PageHeader title="TSS 导出" icon={FileTextIcon} description="把 TSS（tss.warthunder.com）上任意一场比赛导出成 Liquipedia 页面代码，复制后贴到 Liquipedia 即可。" />
+
+  <TssGuide page={pageName} />
 
     <form class="flex flex-wrap items-end gap-2" onsubmit={(e) => (e.preventDefault(), open(input))}>
       <label class="min-w-56 flex-1 space-y-1">
@@ -217,7 +223,7 @@
           <section class="space-y-2">
             <h3 class="text-label font-bold uppercase tracking-wider text-muted-foreground">① 页面信息</h3>
             <div class="grid gap-2 sm:grid-cols-2">
-              <label class="space-y-1 sm:col-span-2"><span class={label}>页面名称（留空用 TSS 上的名称）</span><input class={field} bind:value={draft.title} placeholder={summary.name} /></label>
+              <label class="space-y-1 sm:col-span-2"><span class={label}>页面名称（留空用 TSS 上的名称）</span><input class={field} bind:value={draft.title} placeholder={summary.name} /><span class="block text-small text-muted-foreground">只是页面上显示的标题，页面地址由你在 Liquipedia 上创建的页面决定。</span></label>
               <label class="space-y-1 sm:col-span-2"><span class={label}>系列 series</span><input class={field} bind:value={draft.series} placeholder="TSS" /></label>
               <label class="space-y-1">
                 <span class={label}>Liquipedia 等级</span>
@@ -366,6 +372,12 @@
               <CopyIcon class="h-3.5 w-3.5" /> 复制 Wiki 代码
             </Button>
           </div>
+          {#if text}
+            <section class="space-y-2 rounded-xl border border-primary/30 bg-primary/5 px-4 py-3 text-xs">
+              <p class="font-semibold">下一步：先粘贴到你自己的用户空间，预览核对后再移到正式页面，不要直接创建正式页面。</p>
+              <TssDraftLink page={pageName} />
+            </section>
+          {/if}
         </div>
       </div>
     {/if}
