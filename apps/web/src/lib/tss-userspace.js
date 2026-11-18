@@ -30,12 +30,18 @@ export function wikiTitle(text) {
     .replace(/\s+/g, "_");
 }
 
-/** "User:<name>/<page>", or "" without a user name. */
-export function draftTitle(user, page) {
+/**
+ * "User:<name>/<page>/<year>/<MM-DD>" with the event's start date
+ * ("YYYY-MM-DD"): most TSS weekly cups share one name and have no edition
+ * number, so the date keeps each one apart (and, moved to the main space,
+ * puts them under one series page by year). "" without a user name.
+ */
+export function draftTitle(user, page, date = "") {
   const u = wikiTitle(String(user || "").replace(/^user:/i, ""));
   if (!u) return "";
   const p = wikiTitle(page) || "Draft";
-  return `User:${u}/${p}`;
+  const m = /^(\d{4})-(\d{2}-\d{2})$/.exec(String(date || ""));
+  return `User:${u}/${p}${m ? `/${m[1]}/${m[2]}` : ""}`;
 }
 
 /** The edit page of a Liquipedia page (creates it when it doesn't exist). */
