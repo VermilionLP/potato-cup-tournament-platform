@@ -55,7 +55,7 @@ export default async function vehiclePoolRoutes(fastify) {
   fastify.post('/tournaments/:id/spaded/refresh', async (req) => {
     requireAdmin(fastify, req);
     const cfg = statsharkConfig();
-    if (!cfg.enabled) throw fastify.httpErrors.badRequest('服务器还没有配置 Statshark API（STATSHARK_API_URL）');
+    if (!cfg.enabled) throw fastify.httpErrors.badRequest('服务器还没有配置 Statshark API（STATSHARK_API_KEY）');
     const exists = (await db.query('SELECT 1 FROM axsuck.tournaments WHERE id = $1', [req.params.id])).rows.length;
     if (!exists) throw fastify.httpErrors.notFound('Tournament not found');
     const result = await syncEventSpaded(db, req.params.id, { force: true, cfg, log: fastify.log });

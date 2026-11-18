@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { eventSpaded, matchExcluded, parseSpaded, quotaLeft, RESERVE, statsharkConfig, syncEventSpaded } from '../lib/statshark.js';
+import { DEFAULT_API_URL, eventSpaded, matchExcluded, parseSpaded, quotaLeft, RESERVE, statsharkConfig, statsharkProblem, syncEventSpaded } from '../lib/statshark.js';
 import { copyList, normalizeStatsharkId, spadedExcluded, spadedNames, unitKey, vehicleFamilies, withoutExcluded } from '@potato-cup/shared/spaded.js';
 
 // The few queries lib/statshark.js makes, on plain objects.
@@ -48,6 +48,29 @@ test('spaded vehicles are read from the usual response shapes', () => {
   assert.deepEqual(parseSpaded({ vehicles: [{ unit: 'p-47d-28', spaded: true }, { unit: 'bf-109f-4', spaded: false }, { name: 'Spitfire F Mk IX', isSpaded: 1 }] }), ['p47d28', 'spitfirefmkix']);
   assert.deepEqual(parseSpaded({ data: { player: { vehicles: [{ id: 'mig_29smt_9_19', aced: true }] } } }), ['mig29smt919']);
   assert.deepEqual(parseSpaded({ vehicles: [{ id: 'a10a', battles: 3 }] }), [], 'no spaded flag, not under a spaded key: nothing');
+});
+
+test('the Statshark answer: SpadeInfo status 2 is spaded; unreadable profiles are errors', () => {
+  const body = { Basics: { uid: '67556271' }, SpadeInfo: { country_usa: { f_15e: 2, f_16a: 1, a_10a: 0 }, country_ussr: { su_27sm: 2 }, country_china: null } };
+  assert.deepEqual(parseSpaded(body), ['f15e', 'su27sm']);
+  assert.equal(statsharkProblem(body), null);
+  assert.match(statsharkProblem({ Message: 'OLD_PROFILE' }), /太旧/);
+  assert.match(statsharkProblem({ message: 'Failed to retrieve player data' }), /读不到/);
+  assert.ok(statsharkProblem({}));
+  // The key alone turns it on, with statshark.net's endpoint and header.
+  const c = statsharkConfig({ STATSHARK_API_KEY: ' secret ' });
+  assert.deepEqual([c.enabled, c.url, c.header, c.key], [true, DEFAULT_API_URL, 'x-turnstile-header', 'secret']);
+  assert.equal(statsharkConfig({ STATSHARK_API_URL: DEFAULT_API_URL }).enabled, false, 'no key: off');
+});
+
+test('a profile Statshark can\'t read, or a key turned down', async () => {
+  const db = fakeDb({ event: ['a', 'b', 'c'], players: [{ id: 'a', statshark_id: '1', spaded_units: ['x'] }, { id: 'b', statshark_id: '2' }, { id: 'c', statshark_id: '3' }] });
+  const r = await syncEventSpaded(db, 't', { cfg, fetchImpl: async (url) => (url.endsWith('/1') ? ok({ Message: 'OLD_PROFILE' }) : ok({ Basics: {}, SpadeInfo: { country_usa: { f_15e: 2 } } })) });
+  assert.deepEqual({ fetched: r.fetched, failed: r.failed }, { fetched: 2, failed: 1 });
+  assert.match(db.state.players.get('a').spaded_error, /太旧/);
+  assert.deepEqual(db.state.players.get('a').spaded_units, ['x'], 'the last list is kept');
+  const denied = await syncEventSpaded(db, 't', { cfg, force: true, fetchImpl: async () => ({ ok: false, status: 403 }) });
+  assert.deepEqual({ failed: denied.failed, pending: denied.pending }, { failed: 1, pending: 2 }, 'a wrong key stops the fetch');
 });
 
 test('a match keeps the pool vehicles both players have spaded; copies count as the same vehicle', () => {
@@ -115,13 +138,13 @@ test('the start of an event fetches its linked players once, counting requests a
   });
   const calls = [];
   const fetchImpl = async (url, opts) => {
-    calls.push([url, opts.headers.Authorization]);
-    return url.endsWith('/2') ? { ok: false, status: 404 } : ok({ spaded: ['f_15e'] });
+    calls.push([url, opts.headers['x-turnstile-header'], opts.method]);
+    return url.endsWith('/2') ? { ok: false, status: 404 } : ok({ Basics: { uid: '1' }, SpadeInfo: { country_usa: { f_15e: 2, f_16a: 1 } } });
   };
   const r = await syncEventSpaded(db, 't', { cfg, fetchImpl });
   assert.deepEqual({ fetched: r.fetched, failed: r.failed, skipped: r.skipped, pending: r.pending }, { fetched: 1, failed: 1, skipped: 1, pending: 0 });
   assert.deepEqual(calls.map((c) => c[0]).sort(), ['https://api.statshark.test/player/1', 'https://api.statshark.test/player/2']);
-  assert.equal(calls[0][1], 'Bearer k');
+  assert.deepEqual(calls[0].slice(1), ['k', 'POST'], 'the key as it is in x-turnstile-header, by POST');
   assert.deepEqual(db.state.players.get('a').spaded_units, ['f15e']);
   assert.match(db.state.players.get('b').spaded_error, /没有这个 ID/);
   assert.equal(db.state.usage, 2, 'both requests counted');
@@ -135,11 +158,11 @@ test('the start of an event fetches its linked players once, counting requests a
 test('fetching stops before the daily limit (a reserve is kept, an admin can use it)', async () => {
   const players = Array.from({ length: 5 }, (_, i) => ({ id: `p${i}`, statshark_id: String(i + 1) }));
   const db = fakeDb({ event: players.map((p) => p.id), players, usage: 350 - RESERVE - 2 });
-  const r = await syncEventSpaded(db, 't', { cfg, fetchImpl: async () => ok({ spaded: [] }) });
+  const r = await syncEventSpaded(db, 't', { cfg, fetchImpl: async () => ok({ Basics: {}, SpadeInfo: {} }) });
   assert.equal(r.fetched, 2);
   assert.equal(r.pending, 3);
   assert.equal(await quotaLeft(db, cfg), RESERVE);
-  const forced = await syncEventSpaded(db, 't', { cfg, fetchImpl: async () => ok({ spaded: [] }), force: true });
+  const forced = await syncEventSpaded(db, 't', { cfg, fetchImpl: async () => ok({ Basics: {}, SpadeInfo: {} }), force: true });
   assert.equal(forced.fetched, 5 > RESERVE ? RESERVE : 5);
   // The API's own "too many": the rest wait, the last list is kept.
   const db2 = fakeDb({ event: ['a', 'b', 'c'], players: [{ id: 'a', statshark_id: '1', spaded_units: ['x'] }, { id: 'b', statshark_id: '2' }, { id: 'c', statshark_id: '3' }] });

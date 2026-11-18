@@ -5,21 +5,30 @@
 // requests a day (350); every request is counted in statshark_usage and
 // fetching stops before the limit (a margin is kept for admins' refreshes).
 //
-// Settings (apps/api/.env):
-//   STATSHARK_API_URL    the player endpoint, with {id} for the Statshark id
-//   STATSHARK_API_KEY    sent as STATSHARK_API_HEADER (default: Authorization:
-//                        Bearer <key>; a header name other than
-//                        Authorization gets the key as it is)
-//   STATSHARK_DAILY_LIMIT  requests a day (default 350)
-// Without STATSHARK_API_URL nothing is fetched.
+// The API is the one statshark.net's own player page uses: POST
+// /api/stat/MakeStatRequestById/<id>?update=true, with the key Statshark
+// gave us in the x-turnstile-header header (in place of the page's
+// Turnstile check). The answer has the profile; SpadeInfo is
+// { <country>: { <unit id>: status } }, status 2 = spaded (1 half spaded,
+// 0 not yet); a profile Statshark can't read answers { Message: "OLD_PROFILE" }
+// or { message: "Failed to retrieve player data" }.
 //
-// parseSpaded() reads the response. Until the API's documentation is in,
-// it takes the usual shapes: a list of vehicle ids / names under a key
-// with "spade" in it, or a list of vehicle objects with a spaded flag.
+// Settings (apps/api/.env):
+//   STATSHARK_API_KEY    the key (secret: only in .env, never in the repo)
+//   STATSHARK_API_URL    the player endpoint, {id} for the Statshark id
+//                        (default the one above)
+//   STATSHARK_API_HEADER the key's header (default x-turnstile-header; for
+//                        Authorization the key is sent as Bearer <key>)
+//   STATSHARK_DAILY_LIMIT  requests a day (default 350)
+// Without STATSHARK_API_KEY nothing is fetched.
 
 import { spadedExcluded, spadedNames, unitKey } from '@potato-cup/shared/spaded.js';
 
 export const DEFAULT_DAILY_LIMIT = 350;
+export const DEFAULT_API_URL = 'https://statshark.net/api/stat/MakeStatRequestById/{id}?update=true';
+export const DEFAULT_API_HEADER = 'x-turnstile-header';
+// SpadeInfo statuses: 2 spaded, 1 half spaded, 0 not yet.
+const SPADED = 2;
 // Requests kept back for refreshes by hand when an event's fetch stops.
 export const RESERVE = 10;
 // A player fetched this recently (another event starting) isn't fetched again.
@@ -27,13 +36,14 @@ export const FRESH_HOURS = 12;
 const TIMEOUT_MS = 15_000;
 
 export function statsharkConfig(env = process.env) {
-  const url = String(env.STATSHARK_API_URL || '').trim();
+  const url = String(env.STATSHARK_API_URL || '').trim() || DEFAULT_API_URL;
+  const key = String(env.STATSHARK_API_KEY || '').trim();
   const limit = Number(env.STATSHARK_DAILY_LIMIT);
   return {
-    enabled: Boolean(url && url.includes('{id}')),
+    enabled: Boolean(key && url.includes('{id}')),
     url,
-    key: String(env.STATSHARK_API_KEY || '').trim(),
-    header: String(env.STATSHARK_API_HEADER || 'Authorization').trim(),
+    key,
+    header: String(env.STATSHARK_API_HEADER || '').trim() || DEFAULT_API_HEADER,
     dailyLimit: Number.isInteger(limit) && limit > 0 ? limit : DEFAULT_DAILY_LIMIT,
   };
 }
@@ -41,8 +51,27 @@ export function statsharkConfig(env = process.env) {
 const SPADED_FLAG = /spade|aced|expert|mastered|fully_?upgraded|maxed/i;
 const ID_FIELDS = ['unit', 'unit_id', 'unitId', 'internal_name', 'internalName', 'vehicle_id', 'vehicleId', 'id', 'vehicle', 'name', 'display_name', 'displayName'];
 
+/** Why Statshark gave no profile, or null. */
+export function statsharkProblem(body) {
+  if (!body || typeof body !== 'object') return 'Statshark 没有返回数据';
+  if (body.Message === 'OLD_PROFILE') return '这个 Statshark 档案太旧，需要本人登录 Statshark 更新一次';
+  if (typeof body.message === 'string' && /failed to retrieve/i.test(body.message)) return 'Statshark 读不到这名玩家的数据';
+  if (!body.Basics && !body.SpadeInfo) return 'Statshark 返回的数据里没有玩家资料';
+  return null;
+}
+
 /** The spaded vehicles in an API response: unitKey()s (ids and names both kept). */
 export function parseSpaded(body) {
+  // The Statshark answer: SpadeInfo { country: { unit id: status } }.
+  if (body && typeof body.SpadeInfo === 'object' && body.SpadeInfo) {
+    const keys = new Set();
+    for (const units of Object.values(body.SpadeInfo)) {
+      if (!units || typeof units !== 'object') continue;
+      for (const [unit, status] of Object.entries(units)) if (Number(status) >= SPADED && unitKey(unit)) keys.add(unitKey(unit));
+    }
+    return [...keys].sort();
+  }
+  // Other shapes (a list under a key with "spade" in it, vehicles with a spaded flag).
   const keys = new Set();
   const addEntry = (entry) => {
     if (typeof entry === 'string') {
@@ -96,13 +125,22 @@ async function countRequest(db, now) {
 export async function fetchSpaded(db, statsharkId, { cfg = statsharkConfig(), fetchImpl = fetch, now = new Date() } = {}) {
   if (!cfg.enabled) throw new Error('没有配置 Statshark API');
   await countRequest(db, now);
-  const headers = { accept: 'application/json', 'user-agent': 'PotatoCup-spaded' };
+  const headers = { accept: 'application/json', 'content-type': 'application/json', 'user-agent': 'PotatoCup-spaded' };
   if (cfg.key) headers[cfg.header] = /^authorization$/i.test(cfg.header) && !/^\w+ /.test(cfg.key) ? `Bearer ${cfg.key}` : cfg.key;
-  const res = await fetchImpl(cfg.url.replaceAll('{id}', encodeURIComponent(statsharkId)), { headers, signal: AbortSignal.timeout(TIMEOUT_MS) });
+  const res = await fetchImpl(cfg.url.replaceAll('{id}', encodeURIComponent(statsharkId)), { method: 'POST', headers, body: '{}', signal: AbortSignal.timeout(TIMEOUT_MS) });
   if (res.status === 404) throw new Error('Statshark 上没有这个 ID');
   if (res.status === 429) throw Object.assign(new Error('Statshark 今天的次数用完了'), { quota: true });
+  if (res.status === 401 || res.status === 403) throw Object.assign(new Error(`Statshark 拒绝了请求（${res.status}），请检查 STATSHARK_API_KEY`), { denied: true });
   if (!res.ok) throw new Error(`Statshark 返回 ${res.status}`);
-  return parseSpaded(await res.json());
+  let body;
+  try {
+    body = await res.json();
+  } catch {
+    throw new Error('Statshark 返回的不是 JSON');
+  }
+  const problem = statsharkProblem(body);
+  if (problem) throw new Error(problem);
+  return parseSpaded(body);
 }
 
 /**
@@ -144,8 +182,8 @@ export async function syncEventSpaded(db, tournamentId, { force = false, cfg = s
       await db.query('UPDATE axsuck.players SET spaded_error = $2 WHERE id = $1', [p.id, String(e.message).slice(0, 200)]);
       result.failed += 1;
       log?.warn({ err: e, player: p.id }, 'statshark fetch failed');
-      if (e.quota) {
-        // The API says the day's requests are used up: the rest wait.
+      if (e.quota || e.denied) {
+        // The API says the day's requests are used up, or turns the key down: the rest wait.
         result.pending += players.length - i - 1;
         break;
       }
