@@ -1,10 +1,14 @@
 // Liquipedia export of War Thunder TSS tournaments (tss.warthunder.com):
 // the server reads the TSS event (lib/tss/client.js) and builds the wiki
 // page (lib/tss/wiki.js) with the settings saved per TSS event
-// (axsuck.tss_exports). Admins only. The site's own events have their
-// export in routes/wiki.js.
+// (axsuck.tss_exports). Open to everyone: anyone can read an event and
+// generate its page; only admins' settings are saved on the server (other
+// people's stay in their browser), so the saved ones and the defaults new
+// events start from are the admins'. Visitors are rate-limited
+// (lib/rate-limit.js), as every page reads TSS. The site's own events have
+// their export in routes/wiki.js.
 
-import { requireAdmin, getRequesterId } from '../lib/admin.js';
+import { getRequesterId, isAdminRequest } from '../lib/admin.js';
 import { createTssClient, loadTournament, loadRosters, loadMatchTimes, TssError } from '../lib/tss/client.js';
 import { buildTssWikiPage, exportedMatches, matchIndex, participantTeams, tssSummary } from '../lib/tss/wiki.js';
 import { defaultTssSettings, normalizeTssSettings } from '../lib/tss/settings.js';
@@ -43,15 +47,13 @@ export default async function tssRoutes(fastify, opts = {}) {
   }
 
   // Recently exported TSS events, for picking one again.
-  fastify.get('/tss', async (req) => {
-    requireAdmin(fastify, req);
+  fastify.get('/tss', async () => {
     return { data: await repo.recent(20) };
   });
 
   // The event as the export page shows it before generating: name, format,
   // rounds, every bracket match with its number, and the settings to use.
   fastify.get('/tss/:id', async (req) => {
-    requireAdmin(fastify, req);
     const id = idOf(req);
     const data = await read(id);
     const summary = tssSummary(data);
@@ -59,9 +61,8 @@ export default async function tssRoutes(fastify, opts = {}) {
     return { data: { summary, matches: matchIndex(data, settings), settings, saved } };
   });
 
-  // Saves the settings and returns the page made with them.
+  // Returns the page made with the settings; an admin's settings are saved.
   fastify.put('/tss/:id/wiki', async (req) => {
-    requireAdmin(fastify, req);
     const id = idOf(req);
     const settings = normalizeTssSettings(req.body?.settings);
     const data = await read(id);
@@ -79,7 +80,8 @@ export default async function tssRoutes(fastify, opts = {}) {
     }
     if (pageMatches.length) await loadMatchTimes(client, data, pageMatches, settings.timeField);
     const { text, warnings } = buildTssWikiPage(data, settings);
-    await repo.save(id, { name: summary.name, solo: summary.solo, settings, updatedBy: getRequesterId(req) });
-    return { data: { wikiScript: text, warnings, settings } };
+    const saved = isAdminRequest(req);
+    if (saved) await repo.save(id, { name: summary.name, solo: summary.solo, settings, updatedBy: getRequesterId(req) });
+    return { data: { wikiScript: text, warnings, settings, saved } };
   });
 }

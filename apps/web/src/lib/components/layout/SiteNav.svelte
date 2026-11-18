@@ -8,6 +8,7 @@
   import SwordsIcon from "@lucide/svelte/icons/swords";
   import UserRoundIcon from "@lucide/svelte/icons/user-round";
   import MapIcon from "@lucide/svelte/icons/map";
+  import FileTextIcon from "@lucide/svelte/icons/file-text";
 
   // placement: "top" (in the header, wide screens) or "bottom" (phones).
   let { placement = "top" } = $props();
@@ -26,8 +27,12 @@
     { href: "/me", label: "我的", icon: UserRoundIcon, match: [], narrow: true },
     // 比赛地图 and 载具池模板 (MapsTabs): wide screens (lg up); elsewhere from events' tabs and the search.
     { href: "/maps", label: "地图和载具", icon: MapIcon, match: ["/pools"], narrow: true },
+    // TSS → Liquipedia export, open to everyone: only from 1400px up (the header is full below
+    // that, in English most); every screen has it in the footer and the search.
+    // Labelled just "TSS" (the full name in the tooltip) to fit.
+    { href: "/tss", label: "TSS", title: "TSS 比赛导出到 Liquipedia", icon: FileTextIcon, match: [], wide: true },
   ];
-  const TOP = [LINKS[0], LINKS[1], LINKS[2], LINKS[3], LINKS[5], LINKS[4]];
+  const TOP = [LINKS[0], LINKS[1], LINKS[2], LINKS[3], LINKS[5], LINKS[6], LINKS[4]];
   // Phones: 赛事 · 排行 · 数据 · 我的.
   const BOTTOM = [LINKS[0], LINKS[2], LINKS[3], LINKS[4]];
   const under = (path, base) => path === base || path.startsWith(base + "/");
@@ -43,8 +48,8 @@
   {#each TOP as link (link.href)}
     <a
       href={link.href}
-      title={link.label}
-      class="flex items-center gap-1 px-2 xl:px-3 h-8 rounded-md text-sm font-medium transition-colors shrink-0 whitespace-nowrap {link.narrow ? 'md:hidden lg:flex' : ''}
+      title={link.title || link.label}
+      class="flex items-center gap-1 px-2 xl:px-3 h-8 rounded-md text-sm font-medium transition-colors shrink-0 whitespace-nowrap {link.narrow ? 'md:hidden lg:flex' : ''} {link.wide ? 'max-[1399px]:hidden' : ''}
         {active(link)
         ? 'text-brand-ink font-semibold bg-primary/8'
         : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'}"

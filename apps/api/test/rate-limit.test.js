@@ -38,3 +38,12 @@ test('reads are limited only by rules marked reads', async () => {
   assert.ok(limiter.check('1.2.3.4', '/api/players/lookup', true).retryAfter > 0);
   for (let i = 0; i < 100; i += 1) assert.equal(limiter.check('1.2.3.4', '/api/tournaments', true), null);
 });
+
+test('the public TSS export: a few pages built a minute, event reads at a steady pace', () => {
+  const limiter = createRateLimiter(RATE_LIMITS, () => 0);
+  for (let i = 0; i < 6; i += 1) assert.equal(limiter.check('1.1.1.1', '/api/tss/23359/wiki'), null);
+  assert.ok(limiter.check('1.1.1.1', '/api/tss/23359/wiki'));
+  for (let i = 0; i < 30; i += 1) assert.equal(limiter.check('1.1.1.1', '/api/tss/23359', true), null);
+  assert.ok(limiter.check('1.1.1.1', '/api/tss/23359', true));
+  assert.equal(limiter.check('1.1.1.1', '/api/tournaments', true), null, 'other reads stay open');
+});
