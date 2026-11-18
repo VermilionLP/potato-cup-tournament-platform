@@ -271,6 +271,13 @@
           {#if summary.has_bracket}
             <section class="space-y-2">
               <h3 class="text-label font-bold uppercase tracking-wider text-muted-foreground">④ 对阵图范围</h3>
+              <div class="space-y-1 rounded-md bg-muted/50 px-2.5 py-2 text-small text-muted-foreground">
+                <p><span class="font-semibold text-foreground">一般不用改</span>，默认导出整个对阵图。只在比赛太大、Liquipedia 页面只需要其中一部分时用：</p>
+                <ul class="list-disc space-y-0.5 pl-4">
+                  <li><span class="font-semibold text-foreground">从胜者组第几轮开始</span>：参赛人数很多的比赛（例如 64、128 人），前几轮对局多又不重要，页面通常只放后面的淘汰阶段。比如选「16 进 8」那一轮，对阵图就从 16 强开始，之前的轮次不导出；双败赛的败者组也从对应的轮次开始。</li>
+                  <li><span class="font-semibold text-foreground">只放这些比赛</span>：只导出其中一部分比赛，比如把一个很大的对阵图分成几段或几个页面。点下面的「查看比赛编号」找到编号（也可以改按 TSS 比赛 ID），写成 49-63、1-8 这样，60- 表示 60 号及以后。不在范围内的比赛，在对阵图上的位置留空；没有选起始轮次时，对阵图从所选比赛里最早的那一轮开始。</li>
+                </ul>
+              </div>
               <label class="block space-y-1">
                 <span class={label}>从胜者组第几轮开始</span>
                 <select class="{field} cursor-pointer" bind:value={draft.startRound}>
