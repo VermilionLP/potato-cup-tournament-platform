@@ -5,9 +5,9 @@
   import { draftTitle, editUrl, keepUser, savedUser } from "#lib/tss-userspace.js";
   import ExternalLinkIcon from "@lucide/svelte/icons/external-link";
 
-  let { page = "" } = $props();
+  let { page = "", date = "" } = $props();
   let user = $state(savedUser());
-  const title = $derived(draftTitle(user, page));
+  const title = $derived(draftTitle(user, page, date));
 </script>
 
 <div class="flex flex-wrap items-end gap-2">

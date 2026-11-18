@@ -38,6 +38,14 @@ export function tssDay(unix) {
   if (Number.isNaN(d.getTime())) return '';
   return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`;
 }
+/**
+ * The page's title (DISPLAYTITLE, the infobox name): the one set, or the TSS
+ * name with the start date, as most TSS weekly cups have no edition number
+ * and share one name ("Realistic Air Weekly 2026-11-15").
+ */
+export function pageTitle(d, settings = {}) {
+  return settings.title || [d.nameEN || d.tournamentNameShort, tssDay(d.dateStartTournament)].filter(Boolean).join(' ');
+}
 /** "2026-09-19 19:15 {{abbr/UTC}}" from TSS unix seconds. */
 export function tssTime(unix) {
   const day = tssDay(unix);
@@ -375,7 +383,7 @@ function infoboxTeam(data, settings) {
   const url = tssUrl(data.id);
   return [
     '{{Infobox league',
-    `|name=${esc(settings.title || d.nameEN || d.tournamentNameShort)}`,
+    `|name=${esc(pageTitle(d, settings))}`,
     '|image=', '|icon=', '|imagedark=', '|icondark=',
     `|series=${esc(settings.series)}`,
     '|tickername=',
@@ -404,7 +412,7 @@ function infoboxSolo(data, settings) {
   const size = teamSizeOf(d);
   return [
     '{{Infobox league',
-    `|name=${esc(settings.title || d.nameEN || d.tournamentNameShort)}`,
+    `|name=${esc(pageTitle(d, settings))}`,
     '|image=', '|icon=',
     `|series=${esc(settings.series || d.tournamentNameShort || d.nameEN)}`,
     '|abbreviation=',
@@ -599,7 +607,7 @@ export function buildTssWikiPage(data, settings) {
   const warnings = [];
   const notes = { noWinner: 0, filtered: 0, shape: false, startRound: 0 };
   const ctxBase = { bestof: d.amountBattles || '', past: d.tournamentStatus === 'past', mtimes: data.mtimes || {} };
-  const out = [`<!-- Generated from ${tssUrl(data.id)} -->`, `{{DISPLAYTITLE:${esc(settings.title || d.nameEN || d.tournamentNameShort)}}}`];
+  const out = [`<!-- Generated from ${tssUrl(data.id)} -->`, `{{DISPLAYTITLE:${esc(pageTitle(d, settings))}}}`];
   out.push(O.solo ? infoboxSolo(data, settings) : infoboxTeam(data, settings), '');
   if (S.format) out.push('==Format==', formatBlock(data, O.solo), '');
   if (S.description) {
@@ -651,6 +659,7 @@ export function tssSummary(data) {
     team_size: size,
     solo: size === 1,
     status: d.tournamentStatus || '',
+    title: pageTitle(d),
     start: tssDay(d.dateStartTournament),
     end: tssDay(d.dateEndTournament),
     teams: teamsOf(d).length,

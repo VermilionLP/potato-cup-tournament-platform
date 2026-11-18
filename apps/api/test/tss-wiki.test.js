@@ -139,6 +139,11 @@ test('match numbers and a range: #9-15 of a 16 bracket is the bracket of 8', () 
   assert.equal(summary.solo, true);
   assert.equal(summary.type, 'single');
   assert.deepEqual(summary.upper_rounds.map((r) => r.teams), [16, 8, 4, 2]);
+  // Weekly cups share one name: the default title carries the start date.
+  assert.ok(summary.start);
+  assert.equal(summary.title, `${summary.name} ${summary.start}`);
+  assert.match(buildTssWikiPage(data, settings()).text, new RegExp(`\\{\\{DISPLAYTITLE:${summary.name} ${summary.start}\\}\\}`));
+  assert.match(buildTssWikiPage(data, settings({ title: 'My Cup #5' })).text, /\{\{DISPLAYTITLE:My Cup #5\}\}/, 'a title set is kept as it is');
 });
 
 test('team double elimination: slots follow the commons template 8U4L2DSL1D (TSS 26300)', () => {
