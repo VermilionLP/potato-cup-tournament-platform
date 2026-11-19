@@ -11,7 +11,7 @@ import { requireAdmin } from '../lib/admin.js';
 import { GAME_MODES, VEHICLE_POOLS } from '../lib/tournament-config.js';
 import { normalizeRules, normalizeTemplate, resolveTemplate } from '@potato-cup/shared/vehicle-pools.js';
 import { withUnits } from '../lib/wt-unit-index.js';
-import { eventSpaded, quotaLeft, statsharkConfig, syncEventSpaded } from '../lib/statshark.js';
+import { eventSpaded, playerSpaded, quotaLeft, refreshPlayerSpaded, statsharkConfig, syncEventSpaded } from '../lib/statshark.js';
 
 const COLUMNS = 'id, name, event_type, game_modes, rules, sort_order, vehicles, missions, created_at, updated_at';
 const FIELDS = ['name', 'event_type', 'game_modes', 'rules', 'sort_order', 'vehicles', 'missions'];
@@ -61,6 +61,26 @@ export default async function vehiclePoolRoutes(fastify) {
     const result = await syncEventSpaded(db, req.params.id, { force: true, cfg, log: fastify.log });
     fastify.tournamentEvents.emit(`update:${req.params.id}`, { type: 'spaded_updated' });
     return result;
+  });
+
+  // Admins: one player's Statshark data (the spaded vehicles read), and
+  // reading it again now (one request of the day's).
+  fastify.get('/players/:id/spaded', async (req) => {
+    requireAdmin(fastify, req);
+    const p = await playerSpaded(db, req.params.id);
+    if (!p) throw fastify.httpErrors.notFound('Player not found');
+    return p;
+  });
+  fastify.post('/players/:id/spaded/refresh', async (req) => {
+    requireAdmin(fastify, req);
+    const cfg = statsharkConfig();
+    if (!cfg.enabled) throw fastify.httpErrors.badRequest('服务器还没有配置 Statshark API（STATSHARK_API_KEY）');
+    try {
+      return await refreshPlayerSpaded(db, req.params.id, { cfg });
+    } catch (e) {
+      if (e.statusCode) throw fastify.httpErrors.createError(e.statusCode, e.message);
+      throw e;
+    }
   });
 
   // How many Statshark requests are left today (admins).

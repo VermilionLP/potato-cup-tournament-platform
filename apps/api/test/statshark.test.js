@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { DEFAULT_API_URL, eventSpaded, matchExcluded, parseSpaded, quotaLeft, RESERVE, statsharkConfig, statsharkProblem, syncEventSpaded } from '../lib/statshark.js';
+import { DEFAULT_API_URL, eventSpaded, matchExcluded, parseSpaded, playerSpaded, quotaLeft, refreshPlayerSpaded, RESERVE, statsharkConfig, statsharkProblem, syncEventSpaded } from '../lib/statshark.js';
 import { copyList, normalizeStatsharkId, spadedExcluded, spadedNames, unitKey, vehicleFamilies, withoutExcluded } from '@potato-cup/shared/spaded.js';
 
 // The few queries lib/statshark.js makes, on plain objects.
@@ -21,6 +21,10 @@ function fakeDb({ players = [], event = [], usage = 0 } = {}) {
       if (/UPDATE axsuck\.players SET spaded_error/.test(sql)) {
         state.players.get(params[0]).spaded_error = params[1];
         return { rows: [] };
+      }
+      if (/FROM axsuck\.players WHERE id = \$1/.test(sql)) {
+        const p = state.players.get(params[0]);
+        return { rows: p ? [p] : [] };
       }
       if (/FROM axsuck\.tournament_players/.test(sql)) {
         let rows = [...state.players.values()].filter((p) => state.event.has(p.id));
@@ -171,4 +175,16 @@ test('fetching stops before the daily limit (a reserve is kept, an admin can use
   assert.deepEqual(db2.state.players.get('a').spaded_units, ['x']);
   // Not set up: nothing happens.
   assert.equal((await syncEventSpaded(db2, 't', { cfg: statsharkConfig({}) })).disabled, true);
+});
+
+test('an admin reads one player now: the list, or the error with the last list kept', async () => {
+  const db = fakeDb({ players: [{ id: 'a', statshark_id: '1', spaded_units: ['old'] }, { id: 'b', statshark_id: null }] });
+  const r = await refreshPlayerSpaded(db, 'a', { cfg, fetchImpl: async () => ok({ Basics: {}, SpadeInfo: { country_usa: { f_15e: 2 } } }) });
+  assert.deepEqual([r.units, r.error, r.left], [['f15e'], null, 349]);
+  const bad = await refreshPlayerSpaded(db, 'a', { cfg, fetchImpl: async () => ok({ Message: 'OLD_PROFILE' }) });
+  assert.deepEqual(bad.units, ['f15e'], 'the last list is kept');
+  assert.match(bad.error, /太旧/);
+  await assert.rejects(refreshPlayerSpaded(db, 'b', { cfg }), /没有填 Statshark ID/);
+  await assert.rejects(refreshPlayerSpaded(db, 'x', { cfg }), (e) => e.statusCode === 404);
+  assert.equal((await playerSpaded(db, 'b')).units, null);
 });
