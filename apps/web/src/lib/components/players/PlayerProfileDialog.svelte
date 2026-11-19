@@ -2,7 +2,10 @@
   // Create / edit a player profile from the player list. Players edit their
   // own profile; admins edit anyone, rename IDs, merge, delete and reset the
   // device key (PlayerAdminTools, loaded only for admins). Open with
-  // openCreate() or openEdit(player).
+  // openCreate() or openEdit(player). Three tabs like the profile dialog:
+  // basic profile, linked accounts (Statshark with what was read — admins —,
+  // Liquipedia) and, for admins editing a player, management (device key,
+  // merge).
   import { toast } from "svelte-sonner";
   import { API } from "#lib/api.js";
   import { userState } from "#lib/user.svelte.js";
@@ -14,8 +17,13 @@
   import TrashIcon from "@lucide/svelte/icons/trash-2";
   import SettingsIcon from "@lucide/svelte/icons/settings";
   import { lazy } from "#lib/lazy.js";
+  import { normalizeStatsharkId } from "@potato-cup/shared/spaded.js";
+  import IdCardIcon from "@lucide/svelte/icons/id-card";
+  import LinkIcon from "@lucide/svelte/icons/link";
+  import WrenchIcon from "@lucide/svelte/icons/wrench";
 
   const loadAdminTools = lazy(() => import("./PlayerAdminTools.svelte"));
+  const loadSpadedPanel = lazy(() => import("./PlayerSpadedPanel.svelte"));
 
   let { players = [], isAdmin = false, onchanged } = $props();
 
@@ -29,6 +37,15 @@
   let contactBase = $state({});
   let qq = $state("");
   let discord = $state("");
+  let statshark = $state("");
+  let savedStatshark = $state(""); // the id saved, whose read result the panel shows
+  let spadedError = $state("");
+  let tab = $state("basic");
+  const tabs = $derived([
+    { id: "basic", label: "基本资料", Icon: IdCardIcon },
+    { id: "accounts", label: "关联账号", Icon: LinkIcon, dot: Boolean(spadedError) },
+    ...(!isCreating && isAdmin ? [{ id: "manage", label: "管理", Icon: WrenchIcon }] : []),
+  ]);
   // In-page confirmation ('merge' | 'delete' | 'rename-self' | 'reset-key' |
   // null). The native confirm() returns false without showing anything once
   // a browser blocks the site's dialogs, which made these buttons silently
@@ -57,6 +74,10 @@
     contactBase = {};
     qq = "";
     discord = "";
+    statshark = "";
+    savedStatshark = "";
+    spadedError = "";
+    tab = "basic";
     pendingAction = null;
     open = true;
   }
@@ -77,6 +98,10 @@
     contactBase = contact.base;
     qq = contact.qq;
     discord = contact.discord;
+    statshark = p.statshark_id || "";
+    savedStatshark = p.statshark_id || "";
+    spadedError = p.spaded_error || "";
+    tab = "basic";
     pendingAction = null;
     open = true;
   }
@@ -92,6 +117,12 @@
     const contactIssue = isAdmin ? contactProblem(contact) : requiredContactProblem(contact);
     if (contactIssue) {
       toast.error(contactIssue);
+      tab = "basic";
+      return;
+    }
+    if (normalizeStatsharkId(statshark) === null) {
+      toast.error("Statshark ID 应为数字，或者粘贴 Statshark 个人页面链接");
+      tab = "accounts";
       return;
     }
 
@@ -130,6 +161,7 @@
         team,
         link,
         battle_tags: buildContact(contactBase, { qq, discord }),
+        statshark_id: normalizeStatsharkId(statshark) ?? "",
       });
 
       toast.dismiss("ps");
@@ -178,57 +210,83 @@
         {isCreating ? "新建选手资料" : `编辑 · ${editingId}`}
       </Dialog.Title>
       <Dialog.Description class="text-xs text-muted-foreground">
-        配置选手全局档案，包含 ID、显示名称、国籍、战队和联系方式。
+        配置选手全局档案：ID、联系方式、国籍和战队；关联 Statshark 和 Liquipedia；设备密钥与合并。
       </Dialog.Description>
     </Dialog.Header>
 
-    <div class="space-y-3 py-1 max-h-[65vh] overflow-y-auto pr-1">
-      <div class="space-y-1">
-        <label for="edit-new-id" class="text-small font-semibold text-muted-foreground">选手 ID *</label>
-        <Input id="edit-new-id" bind:value={newId} placeholder="例如: Vermilion" class="bg-background" />
-        <p class="text-small text-muted-foreground/60">选手的唯一 ID 标识，若修改将同步更新其历史对阵、报名和投票数据。</p>
-      </div>
+    <div class="flex gap-1 border-b border-border" role="tablist" aria-label="选手资料">
+      {#each tabs as t (t.id)}
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === t.id}
+          onclick={() => (tab = t.id)}
+          class="-mb-px inline-flex items-center gap-1.5 whitespace-nowrap border-b-2 px-2 py-2 text-xs font-semibold transition-colors cursor-pointer sm:px-2.5
+            {tab === t.id ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}"
+        >
+          <t.Icon class="h-3.5 w-3.5 max-sm:hidden" />{t.label}
+          {#if t.dot}<span class="h-1.5 w-1.5 rounded-full bg-amber-500" aria-hidden="true"></span>{/if}
+        </button>
+      {/each}
+    </div>
 
-      <div class="space-y-2.5">
-        <span class="text-xs font-bold text-muted-foreground">联系方式（QQ / Discord）</span>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 bg-muted/20 border border-border/60 p-4 rounded-xl">
-          <div class="space-y-1">
-            <label for="edit-contact-qq" class="text-small font-semibold text-muted-foreground">QQ 号</label>
-            <Input id="edit-contact-qq" bind:value={qq} placeholder="例如: 123456789" class="bg-background" />
-          </div>
-          <div class="space-y-1">
-            <label for="edit-contact-discord" class="text-small font-semibold text-muted-foreground">Discord 用户名</label>
-            <Input id="edit-contact-discord" bind:value={discord} placeholder="例如: username" class="bg-background" />
-          </div>
-        </div>
-        <p class="text-small text-muted-foreground/60">赛务联系用，会显示在选手列表中。</p>
-      </div>
-
-      <div class="grid grid-cols-2 gap-3">
+    <div class="min-h-64 space-y-3 py-1 max-h-[60vh] overflow-y-auto pr-1">
+      {#if tab === "basic"}
         <div class="space-y-1">
-          <label for="edit-flag" class="text-small font-semibold text-muted-foreground">国籍 (Flag)</label>
-          <div class="flex items-center gap-2">
-            <Flag code={flag} size={20} />
-            <Input id="edit-flag" bind:value={flag} placeholder="cn / hk / tw / xx（白旗）" class="flex-1" />
+          <label for="edit-new-id" class="text-small font-semibold text-muted-foreground">选手 ID *</label>
+          <Input id="edit-new-id" bind:value={newId} placeholder="例如: Vermilion" class="bg-background" />
+          <p class="text-small text-muted-foreground/60">选手的唯一 ID 标识，若修改将同步更新其历史对阵、报名和投票数据。</p>
+        </div>
+
+        <div class="space-y-1">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div class="space-y-1">
+              <label for="edit-contact-qq" class="text-small font-semibold text-muted-foreground">QQ 号</label>
+              <Input id="edit-contact-qq" bind:value={qq} placeholder="例如: 123456789" class="bg-background" />
+            </div>
+            <div class="space-y-1">
+              <label for="edit-contact-discord" class="text-small font-semibold text-muted-foreground">Discord 用户名</label>
+              <Input id="edit-contact-discord" bind:value={discord} placeholder="例如: username" class="bg-background" />
+            </div>
+          </div>
+          <p class="text-small text-muted-foreground/60">赛务联系用，会显示在选手列表中。</p>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div class="space-y-1">
+            <label for="edit-flag" class="text-small font-semibold text-muted-foreground">国籍 (Flag)</label>
+            <div class="flex items-center gap-2">
+              <Flag code={flag} size={20} />
+              <Input id="edit-flag" bind:value={flag} placeholder="cn / hk / tw / xx（白旗）" class="flex-1" />
+            </div>
+          </div>
+          <div class="space-y-1">
+            <label for="edit-team" class="text-small font-semibold text-muted-foreground">战队</label>
+            <Input id="edit-team" bind:value={team} placeholder="战队缩写" />
           </div>
         </div>
+      {:else if tab === "accounts"}
         <div class="space-y-1">
-          <label for="edit-team" class="text-small font-semibold text-muted-foreground">战队</label>
-          <Input id="edit-team" bind:value={team} placeholder="战队缩写"  />
+          <label for="edit-statshark" class="text-small font-semibold text-muted-foreground">Statshark ID（可选）</label>
+          <Input id="edit-statshark" bind:value={statshark} placeholder="例如: 67556271，或粘贴 statshark.net/player/… 链接" class="bg-background" />
+          <p class="text-small text-muted-foreground/60">statshark.net 个人页面链接里 /player/ 后面的数字。改了 ID 要先保存，再读取。</p>
         </div>
-      </div>
+        {#if !isCreating && isAdmin && editingId}
+          {#await loadSpadedPanel() then m}
+            <m.default playerId={editingId} savedId={savedStatshark} />
+          {/await}
+        {/if}
 
-      <div class="space-y-1">
-        <label for="edit-link" class="text-small font-semibold text-muted-foreground">Wiki 页面名称</label>
-        <Input id="edit-link" bind:value={link} placeholder="例如: Vermilion"  />
-        <p class="text-small text-muted-foreground/60">
-          Liquipedia Wiki 页面名称，最终将链接至
-          https://liquipedia.net/warthunder/&lt;名称&gt;
-        </p>
-      </div>
-
-      <!-- Device key and merge (admin, edit only) -->
-      {#if !isCreating && isAdmin && editingId}
+        <div class="space-y-1">
+          <label for="edit-link" class="text-small font-semibold text-muted-foreground">Wiki 页面名称</label>
+          <Input id="edit-link" bind:value={link} placeholder="例如: Vermilion" />
+          <p class="text-small text-muted-foreground/60">
+            Liquipedia Wiki 页面名称，最终将链接至
+            https://liquipedia.net/warthunder/&lt;名称&gt;
+          </p>
+        </div>
+      {:else if tab === "manage" && !isCreating && isAdmin && editingId}
+        <!-- Device key and merge (admin, edit only) -->
         {#await loadAdminTools() then m}
           <m.default playerId={editingId} {players} bind:pendingAction onmerged={merged} />
         {/await}

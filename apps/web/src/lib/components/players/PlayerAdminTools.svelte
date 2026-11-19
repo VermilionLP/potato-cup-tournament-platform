@@ -71,7 +71,7 @@
 
 <!-- Device key -->
 {#if keyBound !== null}
-  <div class="flex items-center justify-between gap-2 pt-2 border-t border-border/60 text-xs">
+  <div class="flex items-center justify-between gap-2 pb-1 text-xs">
     <span class="text-muted-foreground">
       设备密钥：<span class="font-semibold text-foreground">{keyBound ? "已绑定" : "未绑定"}</span>
     </span>

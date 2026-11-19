@@ -193,6 +193,35 @@ export async function syncEventSpaded(db, tournamentId, { force = false, cfg = s
   return result;
 }
 
+/** One player's Statshark data for admins: { statshark_id, units, fetched_at, error }, or null. */
+export async function playerSpaded(db, playerId) {
+  const r = (await db.query(
+    'SELECT statshark_id, spaded_units, spaded_fetched_at, spaded_error FROM axsuck.players WHERE id = $1',
+    [playerId],
+  )).rows[0];
+  if (!r) return null;
+  return { statshark_id: r.statshark_id, units: Array.isArray(r.spaded_units) ? r.spaded_units : null, fetched_at: r.spaded_fetched_at, error: r.spaded_error };
+}
+
+/**
+ * Fetches one player's spaded vehicles now (an admin checking a Statshark
+ * id; one request of the day's). Keeps the last good list when it fails.
+ * Returns playerSpaded() and the requests left today.
+ */
+export async function refreshPlayerSpaded(db, playerId, { cfg = statsharkConfig(), fetchImpl = fetch, now = new Date() } = {}) {
+  const p = await playerSpaded(db, playerId);
+  if (!p) throw Object.assign(new Error('没有这名选手'), { statusCode: 404 });
+  if (!p.statshark_id) throw Object.assign(new Error('这名选手没有填 Statshark ID'), { statusCode: 400 });
+  if ((await quotaLeft(db, cfg, now)) <= 0) throw Object.assign(new Error('Statshark 今天的次数用完了'), { statusCode: 429 });
+  try {
+    const units = await fetchSpaded(db, p.statshark_id, { cfg, fetchImpl, now });
+    await db.query('UPDATE axsuck.players SET spaded_units = $2, spaded_fetched_at = NOW(), spaded_error = NULL WHERE id = $1', [playerId, units]);
+  } catch (e) {
+    await db.query('UPDATE axsuck.players SET spaded_error = $2 WHERE id = $1', [playerId, String(e.message).slice(0, 200)]);
+  }
+  return { ...(await playerSpaded(db, playerId)), left: await quotaLeft(db, cfg, now) };
+}
+
 /**
  * Each event player's spaded vehicles among `vehicles` (the event's pool,
  * names, copies counted): { [playerId]: { has: [names] | null, fetched_at,
