@@ -7,8 +7,8 @@
 //
 // The API is the one statshark.net's own player page uses: POST
 // /api/stat/MakeStatRequestById/<id>?update=true, with the key Statshark
-// gave us in the x-turnstile-header header (in place of the page's
-// Turnstile check). The answer has the profile; SpadeInfo is
+// gave us in the X-Turnstile-Token header, where the page puts its
+// Turnstile token (a missing or wrong one gets 406). The answer has the profile; SpadeInfo is
 // { <country>: { <unit id>: status } }, status 2 = spaded (1 half spaded,
 // 0 not yet); a profile Statshark can't read answers { Message: "OLD_PROFILE" }
 // or { message: "Failed to retrieve player data" }.
@@ -17,7 +17,7 @@
 //   STATSHARK_API_KEY    the key (secret: only in .env, never in the repo)
 //   STATSHARK_API_URL    the player endpoint, {id} for the Statshark id
 //                        (default the one above)
-//   STATSHARK_API_HEADER the key's header (default x-turnstile-header; for
+//   STATSHARK_API_HEADER the key's header (default X-Turnstile-Token; for
 //                        Authorization the key is sent as Bearer <key>)
 //   STATSHARK_DAILY_LIMIT  requests a day (default 350)
 // Without STATSHARK_API_KEY nothing is fetched.
@@ -26,7 +26,7 @@ import { spadedExcluded, spadedNames, unitKey } from '@potato-cup/shared/spaded.
 
 export const DEFAULT_DAILY_LIMIT = 350;
 export const DEFAULT_API_URL = 'https://statshark.net/api/stat/MakeStatRequestById/{id}?update=true';
-export const DEFAULT_API_HEADER = 'x-turnstile-header';
+export const DEFAULT_API_HEADER = 'X-Turnstile-Token';
 // SpadeInfo statuses: 2 spaded, 1 half spaded, 0 not yet.
 const SPADED = 2;
 // Requests kept back for refreshes by hand when an event's fetch stops.
@@ -130,7 +130,7 @@ export async function fetchSpaded(db, statsharkId, { cfg = statsharkConfig(), fe
   const res = await fetchImpl(cfg.url.replaceAll('{id}', encodeURIComponent(statsharkId)), { method: 'POST', headers, body: '{}', signal: AbortSignal.timeout(TIMEOUT_MS) });
   if (res.status === 404) throw new Error('Statshark 上没有这个 ID');
   if (res.status === 429) throw Object.assign(new Error('Statshark 今天的次数用完了'), { quota: true });
-  if (res.status === 401 || res.status === 403) throw Object.assign(new Error(`Statshark 拒绝了请求（${res.status}），请检查 STATSHARK_API_KEY`), { denied: true });
+  if (res.status === 401 || res.status === 403 || res.status === 406) throw Object.assign(new Error(`Statshark 拒绝了请求（${res.status}），请检查 STATSHARK_API_KEY`), { denied: true });
   if (!res.ok) throw new Error(`Statshark 返回 ${res.status}`);
   let body;
   try {
@@ -183,7 +183,7 @@ export async function syncEventSpaded(db, tournamentId, { force = false, cfg = s
       result.failed += 1;
       log?.warn({ err: e, player: p.id }, 'statshark fetch failed');
       if (e.quota || e.denied) {
-        // The API says the day's requests are used up, or turns the key down: the rest wait.
+        // The API says the day's requests are used up, or turns the key down (401 / 403 / 406): the rest wait.
         result.pending += players.length - i - 1;
         break;
       }

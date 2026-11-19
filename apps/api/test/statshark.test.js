@@ -59,7 +59,7 @@ test('the Statshark answer: SpadeInfo status 2 is spaded; unreadable profiles ar
   assert.ok(statsharkProblem({}));
   // The key alone turns it on, with statshark.net's endpoint and header.
   const c = statsharkConfig({ STATSHARK_API_KEY: ' secret ' });
-  assert.deepEqual([c.enabled, c.url, c.header, c.key], [true, DEFAULT_API_URL, 'x-turnstile-header', 'secret']);
+  assert.deepEqual([c.enabled, c.url, c.header, c.key], [true, DEFAULT_API_URL, 'X-Turnstile-Token', 'secret']);
   assert.equal(statsharkConfig({ STATSHARK_API_URL: DEFAULT_API_URL }).enabled, false, 'no key: off');
 });
 
@@ -69,7 +69,7 @@ test('a profile Statshark can\'t read, or a key turned down', async () => {
   assert.deepEqual({ fetched: r.fetched, failed: r.failed }, { fetched: 2, failed: 1 });
   assert.match(db.state.players.get('a').spaded_error, /太旧/);
   assert.deepEqual(db.state.players.get('a').spaded_units, ['x'], 'the last list is kept');
-  const denied = await syncEventSpaded(db, 't', { cfg, force: true, fetchImpl: async () => ({ ok: false, status: 403 }) });
+  const denied = await syncEventSpaded(db, 't', { cfg, force: true, fetchImpl: async () => ({ ok: false, status: 406 }) });
   assert.deepEqual({ failed: denied.failed, pending: denied.pending }, { failed: 1, pending: 2 }, 'a wrong key stops the fetch');
 });
 
@@ -138,13 +138,13 @@ test('the start of an event fetches its linked players once, counting requests a
   });
   const calls = [];
   const fetchImpl = async (url, opts) => {
-    calls.push([url, opts.headers['x-turnstile-header'], opts.method]);
+    calls.push([url, opts.headers['X-Turnstile-Token'], opts.method]);
     return url.endsWith('/2') ? { ok: false, status: 404 } : ok({ Basics: { uid: '1' }, SpadeInfo: { country_usa: { f_15e: 2, f_16a: 1 } } });
   };
   const r = await syncEventSpaded(db, 't', { cfg, fetchImpl });
   assert.deepEqual({ fetched: r.fetched, failed: r.failed, skipped: r.skipped, pending: r.pending }, { fetched: 1, failed: 1, skipped: 1, pending: 0 });
   assert.deepEqual(calls.map((c) => c[0]).sort(), ['https://api.statshark.test/player/1', 'https://api.statshark.test/player/2']);
-  assert.deepEqual(calls[0].slice(1), ['k', 'POST'], 'the key as it is in x-turnstile-header, by POST');
+  assert.deepEqual(calls[0].slice(1), ['k', 'POST'], 'the key as it is in X-Turnstile-Token, by POST');
   assert.deepEqual(db.state.players.get('a').spaded_units, ['f15e']);
   assert.match(db.state.players.get('b').spaded_error, /没有这个 ID/);
   assert.equal(db.state.usage, 2, 'both requests counted');
