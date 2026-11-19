@@ -53,7 +53,7 @@ Route (routes/*.js)
 - Prizes: rows of an event's `points_table` may carry `prize` (Golden Eagles, integer), checked in `lib/points.js` next to the points.
 - Migrations live in `migrations/` (`{NNN}.do.description.sql` + `{NNN}.undo.description.sql`).
 - Utility and migration scripts live in `scripts/`.
-- The API is served under the `/api` prefix; Swagger UI is at `/docs`.
+- The API is served under the `/api` prefix; Swagger UI is at `/docs` only with `API_DOCS=true` (development; off on the public site). Every response gets the security headers of `lib/security-headers.js`.
 
 ## Database
 
@@ -69,7 +69,7 @@ Route (routes/*.js)
 - Build: none (plain ESM Node, `node app.js`).
 - Dev server: `pnpm --filter suck-tournament-api dev` (port 3100); web + API via `pnpm dev:suck`.
 - Migrations: `pnpm --filter suck-tournament-api migrate`
-- Swagger docs: `http://localhost:3100/docs`
+- Swagger docs: `http://localhost:3100/docs` (start with `API_DOCS=true`)
 
 ## Definition of Done
 

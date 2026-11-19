@@ -8,7 +8,7 @@ This app lives in the `suck-utilities` repository; see the root `README.md`.
 
 Run from the repository root with pnpm:
 
-- Dev server (`http://localhost:3100`, docs at `/docs`): `pnpm dev:suck` (with the web app) or run this package directly
+- Dev server (`http://localhost:3100`, docs at `/docs` with `API_DOCS=true`): `pnpm dev:suck` (with the web app) or run this package directly
 - Migrations: `pnpm --filter suck-tournament-api migrate`
 - Tests: `pnpm --filter suck-tournament-api test` (pure ladder/seed logic; no DB needed)
 - Smoke test: `node scripts/test-api.js`

@@ -34,7 +34,6 @@ check "api hall of fame"     /api/hall-of-fame
 check "api banpick stats"    /api/banpick/stats
 check "overlay logo"         /overlay/potato-cup-logo.webp
 check "og image"             /og-image.png
-check "api docs"             /docs
 check "flag cn.svg"          /flags/cn.svg
 check "wt-units.json"        /wt-units.json
 
