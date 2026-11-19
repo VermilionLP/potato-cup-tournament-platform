@@ -29,7 +29,7 @@ pnpm migrate
 pnpm dev
 ```
 
-前端开发服务器把 `/api` 代理到 `http://127.0.0.1:3100`，Swagger 文档在 `http://localhost:3100/docs`。
+前端开发服务器把 `/api` 代理到 `http://127.0.0.1:3100`，Swagger 文档在 `http://localhost:3100/docs`（需设置 `API_DOCS=true`，正式站不开放）。
 
 ## 常用命令
 

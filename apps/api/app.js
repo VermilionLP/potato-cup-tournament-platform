@@ -3,6 +3,7 @@ import cors from '@fastify/cors';
 import sensible from '@fastify/sensible';
 import swagger from '@fastify/swagger';
 import swaggerUi from '@fastify/swagger-ui';
+import { registerSecurityHeaders } from './lib/security-headers.js';
 import fastifyStatic from '@fastify/static';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
@@ -75,16 +76,23 @@ registerRequestLogging(fastify, esLogger);
 // gzip / Brotli for /api JSON (lib/compression.js); static files come pre-compressed.
 registerCompression(fastify);
 
+// Security headers on every response (lib/security-headers.js).
+registerSecurityHeaders(fastify);
+
 // Other sites' browsers may call the API only when listed in CORS_ORIGINS (lib/cors.js).
 await fastify.register(cors, { origin: corsOrigin(), credentials: true });
 await fastify.register(sensible);
 registerRateLimit(fastify);
 registerLadderCacheInvalidation(fastify);
 await fastify.register(fastifySse, { heartbeatInterval: 20000 });
-await fastify.register(swagger, {
-  openapi: { info: { title: 'Potato Cup Tournament API', version: pkg.version } }
-});
-await fastify.register(swaggerUi, { routePrefix: '/docs' });
+// The API reference (/docs) lists every route: only when API_DOCS=true
+// (development), not on the public site.
+if (process.env.API_DOCS === 'true') {
+  await fastify.register(swagger, {
+    openapi: { info: { title: 'Potato Cup Tournament API', version: pkg.version } }
+  });
+  await fastify.register(swaggerUi, { routePrefix: '/docs' });
+}
 await fastify.register(databasePlugin);
 // Admin writes are logged (lib/admin-log.js); before the routes so it covers them all.
 registerAdminLog(fastify);
