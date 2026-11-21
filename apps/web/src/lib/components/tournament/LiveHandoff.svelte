@@ -4,9 +4,12 @@
   // a match, one stage at a time; every timed stage is STAGE_SECONDS long,
   // shown in a banner with 立即切换 and 延后 +30s:
   //   1. versus  — the next match is picked: the VS card (players' intro);
-  //   2. banpick — with Ban / Pick on (`banpick`) and no confirmed result:
-  //                the Ban / Pick scene until the result is confirmed (by
-  //                anyone, on the server; 跳过 BP moves on);
+  //   2. banpick — with Ban / Pick on (`banpick`) and no confirmed result
+  //                when the match was picked: the Ban / Pick scene until
+  //                the result is confirmed (by anyone, on the server; 跳过
+  //                BP moves on). Ban / Pick starting during the VS card
+  //                switches to it at once; one already confirmed shows its
+  //                result through prep;
   //   3. prep    — time to start the game (the scene stays), then the
   //                in-game HUD; an admin undoing the Ban / Pick result goes
   //                back to 2. With the auto-scene script checking in
@@ -103,6 +106,19 @@
       }
     });
   });
+  // Ban / Pick started while the VS card is up: show it now, not after the card.
+  let bpStarted = $derived((liveMatch?.banpick?.log?.length || 0) > 0);
+  $effect(() => {
+    const started = bpStarted;
+    untrack(() => {
+      if (started && stage?.name === "versus" && stage.withBp && liveMatch?.id === stage.matchId) {
+        if (timer) clearInterval(timer);
+        timer = null;
+        startBanPick(stage);
+      }
+    });
+  });
+
   // Another match went live: the stages of the old one stop.
   $effect(() => {
     const id = tournament?.active_match_id;
@@ -190,7 +206,7 @@
 
   function afterVersus(s) {
     if (liveMatch?.id !== s.matchId) return stopStage();
-    if (s.withBp && !bpDone) startBanPick(s);
+    if (s.withBp) startBanPick(s);
     else startPrep(s);
   }
 
@@ -199,6 +215,9 @@
     timer = null;
     stage = { ...s, name: "banpick", seconds: 0 };
     await setScene("banpick");
+    // Already confirmed (quickly, during the VS card): its result stays on
+    // screen through prep.
+    if (bpDone && stage?.name === "banpick") startPrep(stage);
   }
 
   // The scene stays (the Ban / Pick result or the VS card) while the game
